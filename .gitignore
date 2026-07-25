@@ -1,0 +1,9 @@
+.gradle/
+.idea/
+.tools/
+.signing/
+local.properties
+**/build/
+dist/*.apk
+dist/*.sha256
+*.iml
