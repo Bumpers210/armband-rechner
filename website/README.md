@@ -112,6 +112,21 @@ Setup und Restore sind in
 dokumentiert. Der private IONOS-Pfad muss im tatsächlichen Konto geprüft
 werden, bevor die API produktiv genutzt wird.
 
+Benutzer und widerrufbare Geräte der getrennten Testumgebung werden
+ausschließlich per PHP-CLI verwaltet:
+
+```bash
+php scripts/product-admin.php user:create
+php scripts/product-admin.php user:password --username 'BENUTZERNAME'
+php scripts/product-admin.php device:list
+php scripts/product-admin.php device:revoke --device-id 'GERAETE_ID'
+php scripts/product-admin.php device:revoke-user --username 'BENUTZERNAME'
+```
+
+Das CLI akzeptiert keine Passwörter als Argument und verweigert HTTP-Aufrufe.
+Es benötigt die im Setup-Dokument beschriebenen privaten Testpfade und
+Umgebungsmarkierungen.
+
 Ohne weitere Konfiguration liegt die Datei unter
 `out/private-data/clicks.json`. Dieses Verzeichnis wird durch eine aktive
 `.htaccess` vollständig gegen Webzugriffe gesperrt. Bevorzugt wird ein
