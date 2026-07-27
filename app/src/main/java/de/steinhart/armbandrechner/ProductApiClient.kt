@@ -8,11 +8,28 @@ import java.util.UUID
 import org.json.JSONArray
 import org.json.JSONObject
 
+data class ProductServerImage(
+    val imageId: String,
+    val fileName: String,
+    val isMain: Boolean,
+)
+
 data class ProductServerUpdate(
+    val draftId: String,
     val version: Int,
     val sku: String?,
     val slug: String?,
     val status: ProductStatus,
+    val updatedAt: String?,
+    val name: String,
+    val materials: List<String>,
+    val metalElements: List<String>,
+    val braceletSize: String,
+    val stock: Int,
+    val shortDescription: String,
+    val careInstructions: List<String>,
+    val vintedUrl: String,
+    val images: List<ProductServerImage>,
 )
 
 data class PublishResult(
@@ -41,12 +58,14 @@ class ProductConflictException(
     errorCode: String,
     fields: Map<String, String>,
     message: String,
+    val currentVersion: Int? = fields["currentVersion"]?.toIntOrNull(),
+    val serverUpdatedAt: String? = fields["updatedAt"],
 ) : ProductApiException(409, errorCode, fields, message)
 
 class ProductTargetMismatchException(message: String) :
     ProductApiException(409, "publish_target_mismatch", message = message)
 
-class ProductApiClient {
+open class ProductApiClient {
     fun login(
         baseUrl: String,
         username: String,
@@ -73,7 +92,7 @@ class ProductApiClient {
         )
     }
 
-    fun saveDraft(baseUrl: String, token: String, draft: ProductDraft): ProductServerUpdate {
+    open fun saveDraft(baseUrl: String, token: String, draft: ProductDraft): ProductServerUpdate {
         val response = requestJson(
             baseUrl = baseUrl,
             path = "products/${draft.draftId}",
@@ -84,7 +103,24 @@ class ProductApiClient {
         return response.getJSONObject("product").toServerUpdate()
     }
 
-    fun uploadImages(baseUrl: String, token: String, draft: ProductDraft): ProductServerUpdate {
+    open fun getDraft(baseUrl: String, token: String, draftId: String): ProductServerUpdate {
+        val response = requestJson(
+            baseUrl = baseUrl,
+            path = "products/$draftId",
+            method = "GET",
+            token = token,
+            body = null,
+        )
+        return response.getJSONObject("product").toServerUpdate()
+    }
+
+    open fun uploadImage(
+        baseUrl: String,
+        token: String,
+        draft: ProductDraft,
+        image: ProductImage,
+        desiredImageIds: List<String>,
+    ): ProductServerUpdate {
         val boundary = "CarmajaBoundary${UUID.randomUUID()}"
         val connection = openConnection(
             baseUrl = baseUrl,
@@ -104,20 +140,19 @@ class ProductApiClient {
             }
 
             writeTextPart("expectedVersion", draft.version.toString())
-            draft.images.forEach { image ->
-                writeTextPart("alt[]", image.alt)
-            }
-            draft.images.forEachIndexed { index, image ->
-                val file = File(image.localPath)
-                output.write("--$boundary\r\n".toByteArray())
-                output.write(
-                    "Content-Disposition: form-data; name=\"images[]\"; filename=\"${index + 1}.jpg\"\r\n"
-                        .toByteArray(),
-                )
-                output.write("Content-Type: image/jpeg\r\n\r\n".toByteArray())
-                file.inputStream().use { it.copyTo(output) }
-                output.write("\r\n".toByteArray())
-            }
+            writeTextPart("imageId", image.imageId)
+            writeTextPart("desiredImageIds", JSONArray(desiredImageIds).toString())
+            writeTextPart("alt", image.alt)
+
+            val file = File(image.localPath)
+            output.write("--$boundary\r\n".toByteArray())
+            output.write(
+                "Content-Disposition: form-data; name=\"image\"; filename=\"image.jpg\"\r\n"
+                    .toByteArray(),
+            )
+            output.write("Content-Type: image/jpeg\r\n\r\n".toByteArray())
+            file.inputStream().use { it.copyTo(output) }
+            output.write("\r\n".toByteArray())
             output.write("--$boundary--\r\n".toByteArray())
         }
 
@@ -169,13 +204,17 @@ class ProductApiClient {
         path: String,
         method: String,
         token: String?,
-        body: JSONObject,
+        body: JSONObject?,
     ): JSONObject {
         val connection = openConnection(baseUrl, path, method, token).apply {
-            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            if (body != null) {
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            }
         }
-        connection.outputStream.use { output ->
-            output.write(body.toString().toByteArray(Charsets.UTF_8))
+        if (body != null) {
+            connection.outputStream.use { output ->
+                output.write(body.toString().toByteArray(Charsets.UTF_8))
+            }
         }
         return readResponse(connection)
     }
@@ -311,12 +350,49 @@ private fun CalculationSnapshot.toJson(): JSONObject {
 }
 
 private fun JSONObject.toServerUpdate(): ProductServerUpdate {
+    val serverImages = optJSONArray("images")?.let { array ->
+        buildList {
+            for (index in 0 until array.length()) {
+                val image = array.optJSONObject(index) ?: continue
+                val imageId = image.optStringOrNull("imageId") ?: continue
+                val fileName = image.optStringOrNull("fileName") ?: continue
+                add(
+                    ProductServerImage(
+                        imageId = imageId,
+                        fileName = fileName,
+                        isMain = image.optBoolean("isMain", index == 0),
+                    ),
+                )
+            }
+        }
+    }.orEmpty()
+
     return ProductServerUpdate(
+        draftId = getString("draftId"),
         version = getInt("version"),
         sku = optStringOrNull("sku"),
         slug = optStringOrNull("slug"),
         status = ProductStatus.fromWireName(optString("status", "draft")),
+        updatedAt = optStringOrNull("updatedAt"),
+        name = optString("name"),
+        materials = optStringList("materials"),
+        metalElements = optStringList("metalElements"),
+        braceletSize = optString("braceletSize"),
+        stock = optInt("stock", 1),
+        shortDescription = optString("shortDescription"),
+        careInstructions = optStringList("careInstructions"),
+        vintedUrl = optString("vintedUrl"),
+        images = serverImages,
     )
+}
+
+private fun JSONObject.optStringList(name: String): List<String> {
+    val values = optJSONArray(name) ?: return emptyList()
+    return buildList {
+        for (index in 0 until values.length()) {
+            values.optString(index).takeIf { it.isNotBlank() }?.let(::add)
+        }
+    }
 }
 
 private fun JSONObject.optStringOrNull(name: String): String? {

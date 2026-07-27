@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 const CARMAJA_API_STATUSES = ['draft', 'ready', 'published', 'sold', 'disabled'];
 const CARMAJA_DRAFT_PATTERN = '/^[0-9a-fA-F-]{36}$|^[0-9A-HJKMNP-TV-Z]{26}$/';
+const CARMAJA_IMAGE_PATTERN =
+    '/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/';
 const CARMAJA_OPERATION_PATTERN = '/^[A-Za-z0-9._:-]{8,100}$/';
 const CARMAJA_SLUG_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
 const CARMAJA_MAX_IMAGES = 5;
@@ -2577,6 +2579,50 @@ function carmaja_api_process_jpeg(
 
 function carmaja_api_upload_images(string $draftId, array $body, array $actor): array
 {
+    $rawImageId = $_POST['imageId'] ?? null;
+    $imageId = is_string($rawImageId)
+        && preg_match(CARMAJA_IMAGE_PATTERN, trim($rawImageId)) === 1
+            ? strtolower(trim($rawImageId))
+            : 'invalid';
+    carmaja_api_audit_best_effort('image_upload_started', [
+        'draftId' => $draftId,
+        'imageId' => $imageId,
+        'result' => 'started',
+    ]);
+
+    try {
+        $draft = carmaja_api_upload_image_transaction($draftId, $body, $actor);
+        carmaja_api_audit_best_effort('image_upload_succeeded', [
+            'draftId' => $draftId,
+            'imageId' => $imageId,
+            'result' => 'success',
+        ]);
+        return $draft;
+    } catch (CarmajaApiException $error) {
+        carmaja_api_audit_best_effort('image_upload_rejected', [
+            'draftId' => $draftId,
+            'imageId' => $imageId,
+            'result' => 'rejected',
+            'errorCode' => $error->errorCode,
+        ]);
+        throw $error;
+    } catch (Throwable $error) {
+        carmaja_api_audit_best_effort('image_upload_failed', [
+            'draftId' => $draftId,
+            'imageId' => $imageId,
+            'result' => 'failed',
+            'errorCode' => 'image_upload_failed',
+        ]);
+        throw $error;
+    }
+}
+
+function carmaja_api_upload_image_transaction(
+    string $draftId,
+    array $body,
+    array $actor
+): array
+{
     carmaja_api_validate_draft_id($draftId);
     $rawExpectedVersion = $_POST['expectedVersion'] ?? null;
     $expectedVersion = is_string($rawExpectedVersion)
@@ -2602,91 +2648,142 @@ function carmaja_api_upload_images(string $draftId, array $body, array $actor): 
         );
     }
 
-    $files = $_FILES['images'] ?? null;
+    $rawImageId = $_POST['imageId'] ?? null;
+    $imageId = is_string($rawImageId) ? strtolower(trim($rawImageId)) : null;
 
-    if (!is_array($files)
-        || !is_array($files['tmp_name'] ?? null)
-        || !is_array($files['name'] ?? null)
-        || !is_array($files['size'] ?? null)
-        || !is_array($files['error'] ?? null)) {
+    if (!is_string($imageId)
+        || preg_match(CARMAJA_IMAGE_PATTERN, $imageId) !== 1) {
         throw new CarmajaApiException(
             422,
-            'Keine vollständigen Bilder übertragen.',
-            ['images' => 'Mindestens ein JPEG ist erforderlich.'],
-            'images_missing'
+            'imageId ist ungültig.',
+            ['imageId' => 'UUID erwartet.'],
+            'image_id_invalid'
         );
     }
 
-    $count = count($files['tmp_name']);
+    $rawDesiredImageIds = $_POST['desiredImageIds'] ?? null;
+    $desiredImageIds = is_string($rawDesiredImageIds)
+        ? json_decode($rawDesiredImageIds, true)
+        : null;
 
-    if ($count < 1 || $count > CARMAJA_MAX_IMAGES) {
+    if (!is_array($desiredImageIds)
+        || count($desiredImageIds) < 1
+        || count($desiredImageIds) > CARMAJA_MAX_IMAGES
+        || count(array_unique($desiredImageIds)) !== count($desiredImageIds)) {
         throw new CarmajaApiException(
             422,
-            'Es sind ein bis fünf Bilder erlaubt.',
-            ['images' => 'Maximal fünf Bilder.'],
-            'image_count_invalid'
+            'Die Bildliste ist ungültig.',
+            ['desiredImageIds' => 'Ein bis fünf eindeutige Bild-IDs erwartet.'],
+            'image_manifest_invalid'
         );
     }
 
-    $processed = [];
+    foreach ($desiredImageIds as $desiredImageId) {
+        if (!is_string($desiredImageId)
+            || preg_match(CARMAJA_IMAGE_PATTERN, $desiredImageId) !== 1) {
+            throw new CarmajaApiException(
+                422,
+                'Die Bildliste ist ungültig.',
+                ['desiredImageIds' => 'UUIDs erwartet.'],
+                'image_manifest_invalid'
+            );
+        }
+    }
+
+    $desiredImageIds = array_map('strtolower', $desiredImageIds);
+
+    if (count(array_unique($desiredImageIds)) !== count($desiredImageIds)) {
+        throw new CarmajaApiException(
+            422,
+            'Die Bildliste ist ungültig.',
+            ['desiredImageIds' => 'Eindeutige UUIDs erwartet.'],
+            'image_manifest_invalid'
+        );
+    }
+
+    $imageIndex = array_search($imageId, $desiredImageIds, true);
+
+    if (!is_int($imageIndex)) {
+        throw new CarmajaApiException(
+            422,
+            'imageId fehlt in der Bildliste.',
+            ['imageId' => 'Bild muss Teil der Bildliste sein.'],
+            'image_manifest_invalid'
+        );
+    }
+
+    $file = $_FILES['image'] ?? null;
+
+    if (!is_array($file)
+        || !is_string($file['tmp_name'] ?? null)
+        || !is_string($file['name'] ?? null)) {
+        throw new CarmajaApiException(
+            422,
+            'Kein vollständiges Bild übertragen.',
+            ['image' => 'Ein JPEG ist erforderlich.'],
+            'image_missing'
+        );
+    }
+
+    $tmpName = $file['tmp_name'];
+    $originalName = $file['name'];
+    $uploadError = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+    $size = (int) ($file['size'] ?? 0);
+
+    if ($uploadError !== UPLOAD_ERR_OK) {
+        throw new CarmajaApiException(
+            422,
+            'Bild-Upload ist ungültig.',
+            ['image' => 'Upload wurde nicht vollständig übertragen.'],
+            'image_upload_invalid'
+        );
+    }
+
     $temporaryDirectory = carmaja_api_path(
         'uploads-temp/' . $draftId . '/' . bin2hex(random_bytes(8))
     );
     carmaja_api_ensure_directory($temporaryDirectory);
 
     try {
-        for ($index = 0; $index < $count; $index++) {
-            $tmpName = $files['tmp_name'][$index] ?? null;
-            $error = (int) ($files['error'][$index] ?? UPLOAD_ERR_NO_FILE);
-            $size = (int) ($files['size'][$index] ?? 0);
-            $originalName = $files['name'][$index] ?? null;
+        $fileName = sprintf('%02d.jpg', $imageIndex + 1);
+        $temporaryFile = $temporaryDirectory . DIRECTORY_SEPARATOR . $fileName;
+        $imageInfo = carmaja_api_process_jpeg(
+            $tmpName,
+            $originalName,
+            $size,
+            $temporaryFile,
+            !($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS'] ?? false)
+        );
+        $alt = is_string($_POST['alt'] ?? null) ? trim($_POST['alt']) : '';
 
-            if ($error !== UPLOAD_ERR_OK
-                || !is_string($tmpName)
-                || !is_string($originalName)) {
-                throw new CarmajaApiException(
-                    422,
-                    'Bild-Upload ist ungültig.',
-                    ['images' => 'Upload wurde nicht vollständig übertragen.'],
-                    'image_upload_invalid'
-                );
-            }
-
-            $temporaryFile = $temporaryDirectory . DIRECTORY_SEPARATOR . sprintf('%02d.jpg', $index + 1);
-            $imageInfo = carmaja_api_process_jpeg(
-                $tmpName,
-                $originalName,
-                $size,
-                $temporaryFile,
-                true
+        if (mb_strlen($alt) > 160) {
+            throw new CarmajaApiException(
+                422,
+                'Bildbeschreibung ist zu lang.',
+                ['image' => 'Bildbeschreibung darf maximal 160 Zeichen enthalten.'],
+                'image_alt_invalid'
             );
-            $alt = is_array($_POST['alt'] ?? null)
-                && is_string($_POST['alt'][$index] ?? null)
-                    ? trim($_POST['alt'][$index])
-                    : '';
-
-            if (mb_strlen($alt) > 160) {
-                throw new CarmajaApiException(
-                    422,
-                    'Bildbeschreibung ist zu lang.',
-                    ['images' => 'Bildbeschreibung darf maximal 160 Zeichen enthalten.'],
-                    'image_alt_invalid'
-                );
-            }
-
-            $processed[] = [
-                'path' => $temporaryFile,
-                'width' => $imageInfo['width'],
-                'height' => $imageInfo['height'],
-                'alt' => $alt,
-                'isMain' => $index === 0,
-            ];
         }
+
+        $processed = [
+            'path' => $temporaryFile,
+            'fileName' => $fileName,
+            'imageId' => $imageId,
+            'imageIndex' => $imageIndex,
+            'width' => $imageInfo['width'],
+            'height' => $imageInfo['height'],
+            'size' => $imageInfo['size'],
+            'sha256' => hash_file('sha256', $temporaryFile),
+            'alt' => $alt,
+            'isMain' => $imageIndex === 0,
+        ];
 
         return carmaja_api_with_lock('draft-' . $draftId, function () use (
             $draftId,
             $expectedVersion,
             $processed,
+            $desiredImageIds,
+            $temporaryDirectory,
             $actor
         ): array {
             $draft = carmaja_api_load_draft($draftId);
@@ -2718,7 +2815,94 @@ function carmaja_api_upload_images(string $draftId, array $body, array $actor): 
             $imageParent = dirname($imageDirectory);
             carmaja_api_ensure_directory($imageParent);
             $backupDirectory = $imageDirectory . '.backup.' . bin2hex(random_bytes(6));
+            $existingImages = is_array($draft['images'] ?? null) ? $draft['images'] : [];
+            $existingById = [];
+
+            foreach ($existingImages as $existingImage) {
+                $existingId = is_array($existingImage)
+                    && is_string($existingImage['imageId'] ?? null)
+                        ? strtolower($existingImage['imageId'])
+                        : null;
+
+                if (is_string($existingId)
+                    && in_array($existingId, $desiredImageIds, true)) {
+                    $existingById[$existingId] = $existingImage;
+                }
+            }
+
+            $processed['alt'] = $processed['alt'] !== ''
+                ? $processed['alt']
+                : (string) ($draft['name'] ?? 'Carmaja-Perlen Armband');
+            $sameImage = $existingById[$processed['imageId']] ?? null;
+            $hasRemovedImages = count($existingById) !== count($existingImages);
+            $existingManifest = array_values(array_filter(
+                array_map(
+                    static fn (mixed $image): ?string =>
+                        is_array($image) && is_string($image['imageId'] ?? null)
+                            ? strtolower($image['imageId'])
+                            : null,
+                    $existingImages
+                ),
+                'is_string'
+            ));
+            $confirmedDesiredManifest = array_values(array_filter(
+                $desiredImageIds,
+                static fn (string $id): bool => isset($existingById[$id])
+            ));
+
+            if (!$hasRemovedImages
+                && $existingManifest === $confirmedDesiredManifest
+                && is_array($sameImage)
+                && hash_equals(
+                    (string) ($sameImage['sha256'] ?? ''),
+                    (string) $processed['sha256']
+                )
+                && ($sameImage['alt'] ?? null) === $processed['alt']
+                && ($sameImage['fileName'] ?? null) === $processed['fileName']
+                && ($sameImage['isMain'] ?? null) === $processed['isMain']) {
+                return $draft;
+            }
+
+            $finalById = $existingById;
+            $finalById[$processed['imageId']] = $processed;
             $finalImages = [];
+
+            foreach ($desiredImageIds as $index => $desiredImageId) {
+                $image = $finalById[$desiredImageId] ?? null;
+
+                if (!is_array($image)) {
+                    continue;
+                }
+
+                $fileName = sprintf('%02d.jpg', $index + 1);
+
+                if ($desiredImageId !== $processed['imageId']) {
+                    $sourcePath = $image['path'] ?? null;
+
+                    if (!is_string($sourcePath)
+                        || !carmaja_api_path_is_inside($sourcePath, $imageDirectory)
+                        || !is_file($sourcePath)
+                        || !copy(
+                            $sourcePath,
+                            $temporaryDirectory . DIRECTORY_SEPARATOR . $fileName
+                        )) {
+                        throw new CarmajaApiException(
+                            409,
+                            'Bestätigter Bildstand ist unvollständig.',
+                            [],
+                            'image_state_incomplete'
+                        );
+                    }
+                }
+
+                $image['imageId'] = $desiredImageId;
+                $image['imageIndex'] = $index;
+                $image['fileName'] = $fileName;
+                $image['isMain'] = $index === 0;
+                $image['path'] = $temporaryDirectory . DIRECTORY_SEPARATOR . $fileName;
+                $finalImages[] = $image;
+            }
+
             $oldDirectoryMoved = false;
             $newDirectoryMoved = false;
 
@@ -2747,15 +2931,12 @@ function carmaja_api_upload_images(string $draftId, array $body, array $actor): 
 
                 $newDirectoryMoved = true;
 
-                foreach ($processed as $index => $image) {
+                foreach ($finalImages as $index => &$image) {
                     $image['path'] = $imageDirectory
                         . DIRECTORY_SEPARATOR
-                        . sprintf('%02d.jpg', $index + 1);
-                    $image['alt'] = $image['alt'] !== ''
-                        ? $image['alt']
-                        : (string) ($draft['name'] ?? 'Carmaja-Perlen Armband');
-                    $finalImages[] = $image;
+                        . $image['fileName'];
                 }
+                unset($image);
 
                 $draft['images'] = $finalImages;
                 $draft['version'] = $currentVersion + 1;

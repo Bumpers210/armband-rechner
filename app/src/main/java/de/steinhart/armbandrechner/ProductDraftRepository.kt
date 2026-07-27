@@ -102,6 +102,7 @@ class ProductDraftRepository(
             .put("images", JSONArray(draft.images.map(::encodeImage)))
             .put("createdAtMillis", draft.createdAtMillis)
             .put("updatedAtMillis", draft.updatedAtMillis)
+            .put("serverUpdatedAt", draft.serverUpdatedAt)
             .put("pendingPublishOperationId", draft.pendingPublishOperationId)
             .put("pendingSoldOperationId", draft.pendingSoldOperationId)
             .put("pendingDisableOperationId", draft.pendingDisableOperationId)
@@ -132,6 +133,7 @@ class ProductDraftRepository(
             }.orEmpty(),
             createdAtMillis = json.optLong("createdAtMillis"),
             updatedAtMillis = json.optLong("updatedAtMillis"),
+            serverUpdatedAt = json.optStringOrNull("serverUpdatedAt"),
             pendingPublishOperationId = json.optStringOrNull("pendingPublishOperationId"),
             pendingSoldOperationId = json.optStringOrNull("pendingSoldOperationId"),
             pendingDisableOperationId = json.optStringOrNull("pendingDisableOperationId"),
@@ -182,6 +184,11 @@ class ProductDraftRepository(
             .put("height", image.height)
             .put("alt", image.alt)
             .put("isMain", image.isMain)
+            .put("imageId", image.imageId)
+            .put("serverImageId", image.serverImageId)
+            .put("serverFileName", image.serverFileName)
+            .put("serverIsMain", image.serverIsMain)
+            .put("uploadedAtVersion", image.uploadedAtVersion)
     }
 
     private fun decodeImage(json: JSONObject): ProductImage {
@@ -191,6 +198,11 @@ class ProductDraftRepository(
             height = json.optInt("height", 0),
             alt = json.optString("alt"),
             isMain = json.optBoolean("isMain"),
+            imageId = json.optStringOrNull("imageId") ?: java.util.UUID.randomUUID().toString(),
+            serverImageId = json.optStringOrNull("serverImageId"),
+            serverFileName = json.optStringOrNull("serverFileName"),
+            serverIsMain = json.optBooleanOrNull("serverIsMain"),
+            uploadedAtVersion = json.optIntOrNull("uploadedAtVersion"),
         )
     }
 
@@ -302,4 +314,14 @@ private fun JSONObject.optStringList(name: String): List<String> {
 private fun JSONObject.optStringOrNull(name: String): String? {
     if (!has(name) || isNull(name)) return null
     return optString(name).takeIf { it.isNotBlank() }
+}
+
+private fun JSONObject.optBooleanOrNull(name: String): Boolean? {
+    if (!has(name) || isNull(name)) return null
+    return getBoolean(name)
+}
+
+private fun JSONObject.optIntOrNull(name: String): Int? {
+    if (!has(name) || isNull(name)) return null
+    return getInt(name)
 }

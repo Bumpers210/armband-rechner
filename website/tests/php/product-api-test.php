@@ -274,6 +274,32 @@ function carmaja_api_test_create_jpeg(
     unset($image);
 }
 
+function carmaja_api_test_prepare_image_upload(
+    int $expectedVersion,
+    string $imageId,
+    array $desiredImageIds,
+    string $source,
+    string $alt
+): void {
+    $_POST = [
+        'expectedVersion' => (string) $expectedVersion,
+        'imageId' => $imageId,
+        'desiredImageIds' => json_encode(
+            $desiredImageIds,
+            JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+        ),
+        'alt' => $alt,
+    ];
+    $_FILES = [
+        'image' => [
+            'tmp_name' => $source,
+            'name' => 'image.jpg',
+            'size' => filesize($source),
+            'error' => UPLOAD_ERR_OK,
+        ],
+    ];
+}
+
 function carmaja_api_test_ready_draft(
     string $draftId,
     ?string $vintedUrl = null,
@@ -985,16 +1011,19 @@ carmaja_api_test('Zu große Datei und zu große Kante werden abgelehnt', static 
     );
 });
 
-carmaja_api_test('Maximal fünf Bilder werden akzeptiert', static function (): void {
+carmaja_api_test('Bildmanifest ist auf fünf eindeutige IDs begrenzt', static function (): void {
     carmaja_api_test_fixture();
-    $_POST = ['expectedVersion' => '1'];
-    $_FILES = [
-        'images' => [
-            'tmp_name' => array_fill(0, 6, 'unused'),
-            'name' => array_fill(0, 6, 'image.jpg'),
-            'size' => array_fill(0, 6, 1),
-            'error' => array_fill(0, 6, UPLOAD_ERR_OK),
-        ],
+    $_POST = [
+        'expectedVersion' => '1',
+        'imageId' => '00000000-0000-4000-8000-000000000001',
+        'desiredImageIds' => json_encode([
+            '00000000-0000-4000-8000-000000000001',
+            '00000000-0000-4000-8000-000000000002',
+            '00000000-0000-4000-8000-000000000003',
+            '00000000-0000-4000-8000-000000000004',
+            '00000000-0000-4000-8000-000000000005',
+            '00000000-0000-4000-8000-000000000006',
+        ], JSON_THROW_ON_ERROR),
     ];
 
     carmaja_api_test_exception(
@@ -1004,9 +1033,127 @@ carmaja_api_test('Maximal fünf Bilder werden akzeptiert', static function (): v
             carmaja_api_test_actor()
         ),
         422,
-        'image_count_invalid'
+        'image_manifest_invalid'
     );
 });
+
+carmaja_api_test(
+    'Einzelbilder verwenden fortlaufende Versionen und bleiben idempotent',
+    static function (): void {
+        $fixture = carmaja_api_test_fixture();
+        $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5412';
+        $firstId = '00000000-0000-4000-8000-000000000001';
+        $secondId = '00000000-0000-4000-8000-000000000002';
+        $desiredIds = [$firstId, $secondId];
+        $firstSource = $fixture['root'] . '/first.jpg';
+        $secondSource = $fixture['root'] . '/second.jpg';
+        carmaja_api_test_create_jpeg($firstSource);
+        carmaja_api_test_create_jpeg($secondSource, 100, 100);
+        $GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS'] = true;
+
+        try {
+            $saved = carmaja_api_save_product(
+                $draftId,
+                carmaja_api_test_save_payload(0),
+                carmaja_api_test_actor()
+            );
+            carmaja_api_test_same(1, $saved['version'], 'Speichern muss Version 1 liefern.');
+
+            carmaja_api_test_prepare_image_upload(
+                1,
+                $firstId,
+                $desiredIds,
+                $firstSource,
+                'Hauptbild'
+            );
+            $first = carmaja_api_upload_images($draftId, [], carmaja_api_test_actor());
+            carmaja_api_test_same(2, $first['version'], 'Erster Upload muss Version 2 liefern.');
+            carmaja_api_test_same(
+                $firstId,
+                $first['images'][0]['imageId'] ?? null,
+                'Server muss stabile imageId bestätigen.'
+            );
+            carmaja_api_test_same(
+                '01.jpg',
+                $first['images'][0]['fileName'] ?? null,
+                'Dateiname muss serverseitig aus dem Index entstehen.'
+            );
+
+            carmaja_api_test_prepare_image_upload(
+                2,
+                $secondId,
+                $desiredIds,
+                $secondSource,
+                'Detailbild'
+            );
+            $second = carmaja_api_upload_images($draftId, [], carmaja_api_test_actor());
+            carmaja_api_test_same(3, $second['version'], 'Zweiter Upload muss Version 3 liefern.');
+            carmaja_api_test_same(2, count($second['images']), 'Beide Bilder müssen bestätigt sein.');
+            carmaja_api_test_same(
+                [$firstId, $secondId],
+                array_column($second['images'], 'imageId'),
+                'Serverreihenfolge muss dem Bildmanifest entsprechen.'
+            );
+
+            carmaja_api_test_prepare_image_upload(
+                3,
+                $secondId,
+                $desiredIds,
+                $secondSource,
+                'Detailbild'
+            );
+            $repeated = carmaja_api_upload_images($draftId, [], carmaja_api_test_actor());
+            carmaja_api_test_same(
+                3,
+                $repeated['version'],
+                'Identischer Retry darf die Version nicht erneut erhöhen.'
+            );
+            carmaja_api_test_same(
+                2,
+                count($repeated['images']),
+                'Identischer Retry darf kein Duplikat erzeugen.'
+            );
+
+            carmaja_api_test_prepare_image_upload(
+                1,
+                $secondId,
+                $desiredIds,
+                $secondSource,
+                'Detailbild'
+            );
+            carmaja_api_test_exception(
+                static fn (): array => carmaja_api_upload_images(
+                    $draftId,
+                    [],
+                    carmaja_api_test_actor()
+                ),
+                409,
+                'version_conflict'
+            );
+
+            $auditPath = $fixture['testPrivate']
+                . '/audit/actions-'
+                . gmdate('Y-m')
+                . '.jsonl';
+            $audit = (string) file_get_contents($auditPath);
+            carmaja_api_test_assert(
+                str_contains($audit, '"action":"image_upload_started"')
+                    && str_contains($audit, '"action":"image_upload_succeeded"')
+                    && str_contains($audit, '"action":"image_upload_rejected"'),
+                'Sichere Bild-Upload-Ereignisse fehlen im Auditlog.'
+            );
+            carmaja_api_test_assert(
+                !str_contains($audit, $firstSource)
+                    && !str_contains($audit, $secondSource)
+                    && !str_contains($audit, 'Should-Not-Be-Audited')
+                    && !str_contains($audit, '203.0.113.10'),
+                'Auditlog darf keine Pfade, IP-Adresse oder User-Agent enthalten.'
+            );
+        } finally {
+            unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS']);
+        }
+    }
+);
 
 carmaja_api_test('EXIF und Standortmarker werden entfernt', static function (): void {
     $fixture = carmaja_api_test_fixture();

@@ -25,7 +25,15 @@ data class ProductImage(
     val height: Int,
     val alt: String,
     val isMain: Boolean,
-)
+    val imageId: String = UUID.randomUUID().toString(),
+    val serverImageId: String? = null,
+    val serverFileName: String? = null,
+    val serverIsMain: Boolean? = null,
+    val uploadedAtVersion: Int? = null,
+) {
+    val isUploaded: Boolean
+        get() = serverImageId == imageId && serverFileName != null
+}
 
 data class CalculationSnapshot(
     val quantities: Map<String, Int>,
@@ -58,6 +66,7 @@ data class ProductDraft(
     val images: List<ProductImage> = emptyList(),
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
+    val serverUpdatedAt: String? = null,
     val pendingPublishOperationId: String? = null,
     val pendingSoldOperationId: String? = null,
     val pendingDisableOperationId: String? = null,

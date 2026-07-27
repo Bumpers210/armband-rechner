@@ -27,6 +27,7 @@ data class ProductUiState(
     val message: String? = null,
     val error: String? = null,
     val fieldErrors: Map<String, String> = emptyMap(),
+    val conflict: ProductSyncConflictState? = null,
 ) {
     val selectedDraft: ProductDraft?
         get() = drafts.firstOrNull { it.draftId == selectedDraftId }
@@ -184,6 +185,7 @@ class ProductViewModel(
             _uiState.value = _uiState.value.copy(
                 message = "Produktentwurf synchronisiert.",
                 fieldErrors = emptyMap(),
+                conflict = null,
             )
         }
     }
@@ -283,29 +285,37 @@ class ProductViewModel(
     }
 
     private suspend fun syncDraft(draft: ProductDraft): ProductDraft {
-        val saved = withContext(Dispatchers.IO) {
-            apiClient.saveDraft(requireBaseUrl(), requireToken(), draft)
-        }
-        var updated = applyServerUpdate(draft, saved)
-        updated = repository.saveDraft(updated)
-
-        if (updated.images.isNotEmpty()) {
-            val uploaded = withContext(Dispatchers.IO) {
-                apiClient.uploadImages(requireBaseUrl(), requireToken(), updated)
+        val baseUrl = requireBaseUrl()
+        val token = requireToken()
+        val synchronizationApi = object : ProductSynchronizationApi {
+            override suspend fun saveDraft(draft: ProductDraft): ProductServerUpdate {
+                return withContext(Dispatchers.IO) {
+                    apiClient.saveDraft(baseUrl, token, draft)
+                }
             }
-            updated = repository.saveDraft(applyServerUpdate(updated, uploaded))
+
+            override suspend fun getDraft(draftId: String): ProductServerUpdate {
+                return withContext(Dispatchers.IO) {
+                    apiClient.getDraft(baseUrl, token, draftId)
+                }
+            }
+
+            override suspend fun uploadImage(
+                draft: ProductDraft,
+                image: ProductImage,
+                desiredImageIds: List<String>,
+            ): ProductServerUpdate {
+                return withContext(Dispatchers.IO) {
+                    apiClient.uploadImage(baseUrl, token, draft, image, desiredImageIds)
+                }
+            }
         }
-
-        return updated
-    }
-
-    private fun applyServerUpdate(draft: ProductDraft, update: ProductServerUpdate): ProductDraft {
-        return draft.copy(
-            version = update.version,
-            sku = update.sku ?: draft.sku,
-            slug = update.slug ?: draft.slug,
-            status = update.status,
-        )
+        return ProductSynchronizer(
+            api = synchronizationApi,
+            persist = { candidate ->
+                repository.saveDraft(candidate).also(::replaceDraft)
+            },
+        ).synchronize(draft)
     }
 
     private fun replaceDraft(draft: ProductDraft) {
@@ -360,9 +370,12 @@ class ProductViewModel(
                     val fieldErrors = (error as? ProductApiException)
                         ?.fields
                         .orEmpty()
+                    val conflict = (error as? ProductSynchronizationConflictException)
+                        ?.toState()
                     _uiState.value = _uiState.value.copy(
                         error = readableError(error),
                         busy = false,
+                        conflict = conflict ?: _uiState.value.conflict,
                         fieldErrors = if (fieldErrors.isEmpty()) {
                             _uiState.value.fieldErrors
                         } else {
@@ -378,11 +391,17 @@ class ProductViewModel(
 
     private fun readableError(error: Throwable): String {
         return when (error) {
+            is ProductSynchronizationConflictException ->
+                "HTTP 409 · ${error.errorCode}: ${error.message} " +
+                    "Serverversion ${error.serverUpdate.version}; lokaler Entwurf bleibt erhalten."
             is ProductConflictException ->
-                "Der Serverstand ist neuer. Bitte Entwurf erneut laden und Änderungen prüfen."
+                "HTTP 409 · ${error.errorCode}: ${error.message}"
             is ProductTargetMismatchException ->
                 "Anmeldung abgelehnt: Die API ist nicht als Testumgebung konfiguriert."
-            is ProductApiException -> error.message ?: "Produktserverfehler"
+            is ProductApiException -> {
+                val status = error.statusCode.takeIf { it > 0 }?.let { "HTTP $it · " }.orEmpty()
+                "$status${error.errorCode}: ${error.message ?: "Produktserverfehler"}"
+            }
             is IOException -> "Keine Verbindung zur Produktverwaltung"
             is IllegalArgumentException -> error.message ?: "Ungültige Eingabe"
             else -> "Produktaktion konnte nicht abgeschlossen werden"
