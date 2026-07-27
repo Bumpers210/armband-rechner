@@ -70,6 +70,9 @@ class MainActivity : ComponentActivity() {
     private val viewModel: CalculatorViewModel by viewModels {
         CalculatorViewModel.factory(applicationContext)
     }
+    private val productViewModel: ProductViewModel by viewModels {
+        ProductViewModel.factory(applicationContext)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,8 +80,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             ArmbandRechnerTheme {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
+                val productState by productViewModel.uiState.collectAsStateWithLifecycle()
                 ArmbandCalculatorScreen(
                     state = state,
+                    productState = productState,
                     onRefresh = viewModel::refreshPriceList,
                     onQuantityChange = viewModel::changeQuantity,
                     onWorkMinutesChange = viewModel::updateWorkMinutes,
@@ -87,6 +92,61 @@ class MainActivity : ComponentActivity() {
                     onMarkupChange = viewModel::updateMarkup,
                     onNewCalculation = viewModel::newCalculation,
                     onNoticeShown = viewModel::consumeNotice,
+                    productActions = ProductUiActions(
+                        onCreateFromCalculation = {
+                            productViewModel.createFromCalculation(
+                                state.prices,
+                                state.calculator,
+                                state.totals,
+                            )
+                        },
+                        onSelectDraft = productViewModel::selectDraft,
+                        onApiBaseUrlChange = productViewModel::updateApiBaseUrl,
+                        onUsernameChange = productViewModel::updateUsername,
+                        onPasswordChange = productViewModel::updatePassword,
+                        onDeviceNameChange = productViewModel::updateDeviceName,
+                        onLogin = productViewModel::login,
+                        onNameChange = { value ->
+                            productViewModel.updateSelected { copy(name = value) }
+                        },
+                        onMaterialsChange = { value ->
+                            productViewModel.updateSelected {
+                                copy(materials = multilineTextToList(value))
+                            }
+                        },
+                        onMetalElementsChange = { value ->
+                            productViewModel.updateSelected {
+                                copy(metalElements = multilineTextToList(value))
+                            }
+                        },
+                        onBraceletSizeChange = { value ->
+                            productViewModel.updateSelected { copy(braceletSize = value) }
+                        },
+                        onStockChange = { value ->
+                            value.toIntOrNull()?.let { stock ->
+                                productViewModel.updateSelected {
+                                    copy(stock = stock.coerceIn(0, 99))
+                                }
+                            }
+                        },
+                        onShortDescriptionChange = { value ->
+                            productViewModel.updateSelected { copy(shortDescription = value) }
+                        },
+                        onCareInstructionsChange = { value ->
+                            productViewModel.updateSelected {
+                                copy(careInstructions = multilineTextToList(value))
+                            }
+                        },
+                        onVintedUrlChange = { value ->
+                            productViewModel.updateSelected { copy(vintedUrl = value) }
+                        },
+                        onImagesPicked = productViewModel::addImages,
+                        onSync = productViewModel::syncSelected,
+                        onPublish = productViewModel::publishSelected,
+                        onMarkSold = productViewModel::markSelectedSold,
+                        onDisable = productViewModel::disableSelected,
+                        onMessageShown = productViewModel::consumeMessage,
+                    ),
                 )
             }
         }
@@ -97,6 +157,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 internal fun ArmbandCalculatorScreen(
     state: AppUiState,
+    productState: ProductUiState? = null,
     onRefresh: () -> Unit,
     onQuantityChange: (String, Int) -> Unit,
     onWorkMinutesChange: (String) -> Unit,
@@ -105,12 +166,20 @@ internal fun ArmbandCalculatorScreen(
     onMarkupChange: (String) -> Unit,
     onNewCalculation: () -> Unit,
     onNoticeShown: () -> Unit,
+    productActions: ProductUiActions = ProductUiActions.noop(),
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(state.notice) {
         state.notice?.let {
             snackbarHostState.showSnackbar(it)
             onNoticeShown()
+        }
+    }
+    LaunchedEffect(productState?.message, productState?.error) {
+        val message = productState?.message ?: productState?.error
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            productActions.onMessageShown()
         }
     }
 
@@ -234,6 +303,16 @@ internal fun ArmbandCalculatorScreen(
                         .testTag("new-calculation"),
                 ) {
                     Text("Neue Kalkulation")
+                }
+            }
+
+            if (productState != null) {
+                item {
+                    HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
+                    ProductManagementSection(
+                        state = productState,
+                        actions = productActions,
+                    )
                 }
             }
         }
@@ -544,7 +623,7 @@ private fun CostRow(
 }
 
 @Composable
-private fun SectionHeading(
+internal fun SectionHeading(
     text: String,
     modifier: Modifier = Modifier,
 ) {

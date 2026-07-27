@@ -1,0 +1,10 @@
+Options -Indexes
+RewriteEngine On
+
+# Frühere Designrouten direkt auf die kanonische Hauptadresse umleiten.
+RewriteRule ^(?:v2|verspielt)/?$ https://www.carmaja-perlen.de/ [R=301,L,NE,QSD]
+
+# HTTPS und die kanonische www-Domain erzwingen; Pfade und Query-Strings bleiben erhalten.
+RewriteCond %{HTTPS} !=on [OR]
+RewriteCond %{HTTP_HOST} !^www\.carmaja-perlen\.de$ [NC]
+RewriteRule ^ https://www.carmaja-perlen.de%{REQUEST_URI} [R=301,L,NE]

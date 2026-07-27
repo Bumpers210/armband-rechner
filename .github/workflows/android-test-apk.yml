@@ -1,0 +1,75 @@
+name: Build Android test APK
+
+on:
+  push:
+    branches:
+      - test/product-management-beta
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-test-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Run Android lint
+        run: ./gradlew lintDebug
+
+      - name: Build parallel-installable test APK
+        run: ./gradlew assembleBeta
+
+      - name: Prepare test artifact
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p artifact
+          cp app/build/outputs/apk/beta/app-beta.apk artifact/Carmaja-Produktverwaltung-Test-1.1.0-beta.1.apk
+          sha256sum artifact/Carmaja-Produktverwaltung-Test-1.1.0-beta.1.apk > artifact/Carmaja-Produktverwaltung-Test-1.1.0-beta.1.apk.sha256
+          cat > artifact/INSTALLATION.txt <<'EOF'
+          Carmaja Produktverwaltung Test
+
+          App-Name: Carmaja Produktverwaltung Test
+          Paketname: de.steinhart.armbandrechner.test
+          Version: 1.1.0-beta.1
+          API: https://test-api.carmaja-perlen.de/
+
+          Diese APK ist debug-signiert und parallel zur Produktions-App installierbar.
+          Sie nutzt die getrennte Test-API und loest kein produktives IONOS-Deployment aus.
+
+          Installation:
+          1. APK aus diesem GitHub-Actions-Artefakt herunterladen.
+          2. SHA-256-Datei optional pruefen.
+          3. APK auf dem Test-Smartphone installieren.
+          EOF
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Carmaja-Produktverwaltung-Test-1.1.0-beta.1
+          path: artifact/*
+          if-no-files-found: error
+          retention-days: 30

@@ -1,0 +1,89 @@
+name: Deploy website to IONOS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "website/**"
+      - ".github/workflows/deploy-website.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ionos-website-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build static export
+        run: npm run build
+
+      - name: Prepare SSH
+        env:
+          IONOS_SSH_PRIVATE_KEY: ${{ secrets.IONOS_SSH_PRIVATE_KEY }}
+          IONOS_SSH_HOST: ${{ secrets.IONOS_SSH_HOST }}
+          IONOS_SSH_PORT: ${{ secrets.IONOS_SSH_PORT }}
+        run: |
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$IONOS_SSH_PRIVATE_KEY" > "$HOME/.ssh/ionos_deploy_key"
+          chmod 600 "$HOME/.ssh/ionos_deploy_key"
+          ssh-keyscan -p "${IONOS_SSH_PORT:-22}" "$IONOS_SSH_HOST" >> "$HOME/.ssh/known_hosts"
+
+      - name: Deploy without deleting private data
+        env:
+          IONOS_SSH_HOST: ${{ secrets.IONOS_SSH_HOST }}
+          IONOS_SSH_PORT: ${{ secrets.IONOS_SSH_PORT }}
+          IONOS_SSH_USER: ${{ secrets.IONOS_SSH_USER }}
+          IONOS_WEBROOT: ${{ secrets.IONOS_WEBROOT }}
+        run: |
+          set -eu
+          REMOTE="${IONOS_SSH_USER}@${IONOS_SSH_HOST}"
+          SSH="ssh -i $HOME/.ssh/ionos_deploy_key -p ${IONOS_SSH_PORT:-22}"
+          RSYNC_RSH="$SSH"
+
+          mkdir -p out/images/products
+          $SSH "$REMOTE" "mkdir -p '$IONOS_WEBROOT/armbaender' '$IONOS_WEBROOT/images/products'"
+
+          rsync -az --delete --chmod=D755,F644 \
+            -e "$RSYNC_RSH" \
+            out/armbaender/ "$REMOTE:$IONOS_WEBROOT/armbaender/"
+
+          rsync -az --delete --chmod=D755,F644 \
+            -e "$RSYNC_RSH" \
+            out/images/products/ "$REMOTE:$IONOS_WEBROOT/images/products/"
+
+          rsync -az --chmod=D755,F644 \
+            --exclude='/armbaender/***' \
+            --exclude='/images/products/***' \
+            --exclude='/private-data/***' \
+            --exclude='/statistik/.htaccess' \
+            --exclude='**/.htpasswd' \
+            --exclude='/api/config.php' \
+            -e "$RSYNC_RSH" \
+            out/ "$REMOTE:$IONOS_WEBROOT/"

@@ -1,0 +1,6 @@
+Options -Indexes
+
+AuthType Basic
+AuthName "Carmaja-Perlen Statistik"
+AuthUserFile /ABSOLUTER/PFAD/AUSSERHALB/DES/WEBROOTS/.htpasswd
+Require valid-user

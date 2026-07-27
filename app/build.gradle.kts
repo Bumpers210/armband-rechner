@@ -6,6 +6,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val betaVersionCode = 2
+val betaVersionName = "1.1.0-beta.1"
 val signingPropertiesFile = rootProject.file(".signing/keystore.properties")
 val signingProperties = Properties().apply {
     if (signingPropertiesFile.isFile) {
@@ -25,6 +27,8 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["appLabel"] = "Armband-Rechner"
+        buildConfigField("String", "DEFAULT_PRODUCT_API_BASE_URL", "\"\"")
     }
 
     signingConfigs {
@@ -39,6 +43,24 @@ android {
     }
 
     buildTypes {
+        debug {
+            manifestPlaceholders["appLabel"] = "Armband-Rechner"
+        }
+
+        create("beta") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".test"
+            isDebuggable = true
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("debug")
+            manifestPlaceholders["appLabel"] = "Carmaja Produktverwaltung Test"
+            buildConfigField(
+                "String",
+                "DEFAULT_PRODUCT_API_BASE_URL",
+                "\"https://test-api.carmaja-perlen.de/\"",
+            )
+        }
+
         release {
             isMinifyEnabled = false
             if (signingPropertiesFile.isFile) {
@@ -52,6 +74,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 
@@ -68,6 +91,15 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("beta")) { variant ->
+        variant.outputs.forEach { output ->
+            output.versionCode.set(betaVersionCode)
+            output.versionName.set(betaVersionName)
+        }
     }
 }
 

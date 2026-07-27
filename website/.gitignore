@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Local tooling and test output
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local environment files
+.env*
+!.env.example
+
+# IONOS credentials and generated first-party statistics
+**/.htpasswd
+hosting/private-data/*.json
+
+# Logs and operating-system files
+npm-debug.log*
+.DS_Store
