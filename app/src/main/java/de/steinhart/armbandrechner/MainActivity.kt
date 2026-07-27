@@ -107,40 +107,46 @@ class MainActivity : ComponentActivity() {
                         onDeviceNameChange = productViewModel::updateDeviceName,
                         onLogin = productViewModel::login,
                         onNameChange = { value ->
-                            productViewModel.updateSelected { copy(name = value) }
+                            productViewModel.updateSelectedEditor(ProductEditorField.Name, value)
                         },
                         onMaterialsChange = { value ->
-                            productViewModel.updateSelected {
-                                copy(materials = multilineTextToList(value))
-                            }
+                            productViewModel.updateSelectedEditor(ProductEditorField.Materials, value)
                         },
                         onMetalElementsChange = { value ->
-                            productViewModel.updateSelected {
-                                copy(metalElements = multilineTextToList(value))
-                            }
+                            productViewModel.updateSelectedEditor(
+                                ProductEditorField.MetalElements,
+                                value,
+                            )
                         },
                         onBraceletSizeChange = { value ->
-                            productViewModel.updateSelected { copy(braceletSize = value) }
+                            productViewModel.updateSelectedEditor(
+                                ProductEditorField.BraceletSize,
+                                value,
+                            )
                         },
                         onStockChange = { value ->
-                            value.toIntOrNull()?.let { stock ->
-                                productViewModel.updateSelected {
-                                    copy(stock = stock.coerceIn(0, 99))
-                                }
-                            }
+                            productViewModel.updateSelectedEditor(ProductEditorField.Stock, value)
                         },
                         onShortDescriptionChange = { value ->
-                            productViewModel.updateSelected { copy(shortDescription = value) }
+                            productViewModel.updateSelectedEditor(
+                                ProductEditorField.ShortDescription,
+                                value,
+                            )
                         },
                         onCareInstructionsChange = { value ->
-                            productViewModel.updateSelected {
-                                copy(careInstructions = multilineTextToList(value))
-                            }
+                            productViewModel.updateSelectedEditor(
+                                ProductEditorField.CareInstructions,
+                                value,
+                            )
                         },
                         onVintedUrlChange = { value ->
-                            productViewModel.updateSelected { copy(vintedUrl = value) }
+                            productViewModel.updateSelectedEditor(
+                                ProductEditorField.VintedUrl,
+                                value,
+                            )
                         },
                         onImagesPicked = productViewModel::addImages,
+                        onSave = productViewModel::saveSelected,
                         onSync = productViewModel::syncSelected,
                         onPublish = productViewModel::publishSelected,
                         onMarkSold = productViewModel::markSelectedSold,

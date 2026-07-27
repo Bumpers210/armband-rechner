@@ -23,34 +23,38 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 data class ProductUiActions(
     val onCreateFromCalculation: () -> Unit = {},
     val onSelectDraft: (String) -> Unit = {},
-    val onApiBaseUrlChange: (String) -> Unit = {},
-    val onUsernameChange: (String) -> Unit = {},
-    val onPasswordChange: (String) -> Unit = {},
-    val onDeviceNameChange: (String) -> Unit = {},
+    val onApiBaseUrlChange: (TextFieldValue) -> Unit = {},
+    val onUsernameChange: (TextFieldValue) -> Unit = {},
+    val onPasswordChange: (TextFieldValue) -> Unit = {},
+    val onDeviceNameChange: (TextFieldValue) -> Unit = {},
     val onLogin: () -> Unit = {},
-    val onNameChange: (String) -> Unit = {},
-    val onMaterialsChange: (String) -> Unit = {},
-    val onMetalElementsChange: (String) -> Unit = {},
-    val onBraceletSizeChange: (String) -> Unit = {},
-    val onStockChange: (String) -> Unit = {},
-    val onShortDescriptionChange: (String) -> Unit = {},
-    val onCareInstructionsChange: (String) -> Unit = {},
-    val onVintedUrlChange: (String) -> Unit = {},
+    val onNameChange: (TextFieldValue) -> Unit = {},
+    val onMaterialsChange: (TextFieldValue) -> Unit = {},
+    val onMetalElementsChange: (TextFieldValue) -> Unit = {},
+    val onBraceletSizeChange: (TextFieldValue) -> Unit = {},
+    val onStockChange: (TextFieldValue) -> Unit = {},
+    val onShortDescriptionChange: (TextFieldValue) -> Unit = {},
+    val onCareInstructionsChange: (TextFieldValue) -> Unit = {},
+    val onVintedUrlChange: (TextFieldValue) -> Unit = {},
     val onImagesPicked: (List<Uri>) -> Unit = {},
+    val onSave: () -> Unit = {},
     val onSync: () -> Unit = {},
     val onPublish: () -> Unit = {},
     val onMarkSold: () -> Unit = {},
@@ -101,24 +105,30 @@ internal fun ProductManagementSection(
         } else {
             DraftList(
                 drafts = state.drafts,
+                editors = state.editors,
                 selectedDraftId = state.selectedDraftId,
                 onSelectDraft = actions.onSelectDraft,
                 busy = state.busy,
             )
         }
 
-        state.selectedDraft?.let { draft ->
-            ProductDraftForm(
-                draft = draft,
-                fieldErrors = state.fieldErrors,
-                busy = state.busy,
-                actions = actions,
-                onPickImages = {
-                    imagePicker.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                    )
-                },
-            )
+        val draft = state.selectedDraft
+        val editor = state.selectedEditor
+        if (draft != null && editor != null) {
+            key(draft.draftId) {
+                ProductDraftForm(
+                    draft = draft,
+                    editor = editor,
+                    fieldErrors = state.fieldErrors,
+                    busy = state.busy,
+                    actions = actions,
+                    onPickImages = {
+                        imagePicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                        )
+                    },
+                )
+            }
         }
     }
 }
@@ -143,7 +153,7 @@ private fun ServerLoginPanel(
                 fontWeight = FontWeight.SemiBold,
             )
             OutlinedTextField(
-                value = state.apiBaseUrl,
+                value = state.loginEditor.apiBaseUrl,
                 onValueChange = actions.onApiBaseUrlChange,
                 label = { Text("API-URL") },
                 singleLine = true,
@@ -152,7 +162,7 @@ private fun ServerLoginPanel(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
-                    value = state.username,
+                    value = state.loginEditor.username,
                     onValueChange = actions.onUsernameChange,
                     label = { Text("Benutzer") },
                     singleLine = true,
@@ -160,7 +170,7 @@ private fun ServerLoginPanel(
                     modifier = Modifier.weight(1f),
                 )
                 OutlinedTextField(
-                    value = state.deviceName,
+                    value = state.loginEditor.deviceName,
                     onValueChange = actions.onDeviceNameChange,
                     label = { Text("Gerät") },
                     singleLine = true,
@@ -169,7 +179,7 @@ private fun ServerLoginPanel(
                 )
             }
             OutlinedTextField(
-                value = state.password,
+                value = state.loginEditor.password,
                 onValueChange = actions.onPasswordChange,
                 label = { Text("Passwort") },
                 visualTransformation = PasswordVisualTransformation(),
@@ -179,7 +189,7 @@ private fun ServerLoginPanel(
             )
             OutlinedButton(
                 onClick = actions.onLogin,
-                enabled = !state.busy && state.apiBaseUrl.isNotBlank(),
+                enabled = !state.busy && state.loginEditor.apiBaseUrl.text.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Anmelden")
@@ -191,6 +201,7 @@ private fun ServerLoginPanel(
 @Composable
 private fun DraftList(
     drafts: List<ProductDraft>,
+    editors: Map<String, ProductDraftEditorState>,
     selectedDraftId: String?,
     onSelectDraft: (String) -> Unit,
     busy: Boolean,
@@ -212,7 +223,9 @@ private fun DraftList(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(
-                        text = draft.displayName,
+                        text = editors[draft.draftId]?.name?.text
+                            ?.ifBlank { "Unbenannter Entwurf" }
+                            ?: draft.displayName,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -229,14 +242,15 @@ private fun DraftList(
 }
 
 @Composable
-private fun ProductDraftForm(
+internal fun ProductDraftForm(
     draft: ProductDraft,
+    editor: ProductDraftEditorState,
     fieldErrors: Map<String, String>,
     busy: Boolean,
     actions: ProductUiActions,
     onPickImages: () -> Unit,
 ) {
-    var showPublishConfirmation by remember { mutableStateOf(false) }
+    var showPublishConfirmation by remember(draft.draftId) { mutableStateOf(false) }
 
     if (showPublishConfirmation) {
         AlertDialog(
@@ -287,64 +301,73 @@ private fun ProductDraftForm(
             )
 
             ProductTextField(
-                value = draft.name,
+                value = editor.name,
                 onValueChange = actions.onNameChange,
                 label = "Produktname",
+                testTag = "product-name",
                 error = fieldErrors["name"],
                 busy = busy,
             )
             ProductTextField(
-                value = draft.materials.toMultilineText(),
+                value = editor.materials,
                 onValueChange = actions.onMaterialsChange,
                 label = "Materialien",
+                testTag = "product-materials",
                 error = fieldErrors["materials"],
                 busy = busy,
                 singleLine = false,
             )
             ProductTextField(
-                value = draft.metalElements.toMultilineText(),
+                value = editor.metalElements,
                 onValueChange = actions.onMetalElementsChange,
                 label = "Metallelemente",
+                testTag = "product-metal-elements",
                 busy = busy,
                 singleLine = false,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ProductTextField(
-                    value = draft.braceletSize,
+                    value = editor.braceletSize,
                     onValueChange = actions.onBraceletSizeChange,
                     label = "Größe",
+                    testTag = "product-size",
                     error = fieldErrors["braceletSize"],
                     busy = busy,
                     modifier = Modifier.weight(1f),
                 )
                 ProductTextField(
-                    value = draft.stock.toString(),
+                    value = editor.stock,
                     onValueChange = actions.onStockChange,
                     label = "Bestand",
+                    testTag = "product-stock",
+                    error = fieldErrors["stock"],
                     busy = busy,
                     keyboardType = KeyboardType.Number,
                     modifier = Modifier.weight(1f),
                 )
             }
             ProductTextField(
-                value = draft.shortDescription,
+                value = editor.shortDescription,
                 onValueChange = actions.onShortDescriptionChange,
                 label = "Kurzbeschreibung",
+                testTag = "product-short-description",
                 error = fieldErrors["shortDescription"],
                 busy = busy,
                 singleLine = false,
             )
             ProductTextField(
-                value = draft.careInstructions.toMultilineText(),
+                value = editor.careInstructions,
                 onValueChange = actions.onCareInstructionsChange,
                 label = "Pflegehinweise",
+                testTag = "product-care-instructions",
                 busy = busy,
                 singleLine = false,
             )
             ProductTextField(
-                value = draft.vintedUrl,
+                value = editor.vintedUrl,
                 onValueChange = actions.onVintedUrlChange,
                 label = "Vinted-Angebotslink",
+                testTag = "product-vinted-url",
                 error = fieldErrors["vintedUrl"],
                 busy = busy,
             )
@@ -374,6 +397,13 @@ private fun ProductDraftForm(
 
             Spacer(Modifier.height(4.dp))
 
+            OutlinedButton(
+                onClick = actions.onSave,
+                enabled = !busy,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Speichern")
+            }
             Button(
                 onClick = actions.onSync,
                 enabled = !busy,
@@ -410,9 +440,10 @@ private fun ProductDraftForm(
 
 @Composable
 private fun ProductTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: TextFieldValue,
+    onValueChange: (TextFieldValue) -> Unit,
     label: String,
+    testTag: String,
     busy: Boolean,
     modifier: Modifier = Modifier,
     error: String? = null,
@@ -428,7 +459,9 @@ private fun ProductTextField(
         enabled = !busy,
         singleLine = singleLine,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag(testTag),
     )
 }
 

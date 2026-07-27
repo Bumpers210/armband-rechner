@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.lifecycle.viewModelScope
+import androidx.compose.ui.text.input.TextFieldValue
 import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
@@ -19,10 +20,8 @@ import kotlinx.coroutines.withContext
 data class ProductUiState(
     val drafts: List<ProductDraft> = emptyList(),
     val selectedDraftId: String? = null,
-    val apiBaseUrl: String = "",
-    val username: String = "",
-    val password: String = "",
-    val deviceName: String = "Android",
+    val editors: Map<String, ProductDraftEditorState> = emptyMap(),
+    val loginEditor: ProductLoginEditorState = ProductLoginEditorState(),
     val authenticated: Boolean = false,
     val busy: Boolean = false,
     val message: String? = null,
@@ -31,6 +30,9 @@ data class ProductUiState(
 ) {
     val selectedDraft: ProductDraft?
         get() = drafts.firstOrNull { it.draftId == selectedDraftId }
+
+    val selectedEditor: ProductDraftEditorState?
+        get() = selectedDraftId?.let(editors::get)
 }
 
 class ProductViewModel(
@@ -47,17 +49,19 @@ class ProductViewModel(
         viewModelScope.launch {
             apiToken = tokenStore.loadToken()
             val drafts = repository.loadDrafts()
+            val apiBaseUrl = tokenStore.loadPlainSetting(
+                SecureTokenStore.SETTING_API_BASE_URL,
+                BuildConfig.DEFAULT_PRODUCT_API_BASE_URL,
+            )
+            val deviceName = tokenStore.loadPlainSetting(
+                SecureTokenStore.SETTING_DEVICE_NAME,
+                "Android",
+            )
             _uiState.value = _uiState.value.copy(
                 drafts = drafts,
                 selectedDraftId = drafts.firstOrNull()?.draftId,
-                apiBaseUrl = tokenStore.loadPlainSetting(
-                    SecureTokenStore.SETTING_API_BASE_URL,
-                    BuildConfig.DEFAULT_PRODUCT_API_BASE_URL,
-                ),
-                deviceName = tokenStore.loadPlainSetting(
-                    SecureTokenStore.SETTING_DEVICE_NAME,
-                    "Android",
-                ),
+                editors = drafts.associate { it.draftId to ProductDraftEditorState.fromDraft(it) },
+                loginEditor = ProductLoginEditorState.fromStored(apiBaseUrl, deviceName),
                 authenticated = apiToken != null,
             )
         }
@@ -71,6 +75,9 @@ class ProductViewModel(
             _uiState.value = _uiState.value.copy(
                 drafts = listOf(draft) + _uiState.value.drafts,
                 selectedDraftId = draft.draftId,
+                editors = _uiState.value.editors + (
+                    draft.draftId to ProductDraftEditorState.fromDraft(draft)
+                ),
                 message = "Produktentwurf aus Kalkulation erstellt.",
                 error = null,
             )
@@ -81,37 +88,57 @@ class ProductViewModel(
         _uiState.value = _uiState.value.copy(selectedDraftId = draftId, fieldErrors = emptyMap())
     }
 
-    fun updateApiBaseUrl(value: String) {
-        _uiState.value = _uiState.value.copy(apiBaseUrl = value)
-        tokenStore.savePlainSetting(SecureTokenStore.SETTING_API_BASE_URL, value)
+    fun updateApiBaseUrl(value: TextFieldValue) {
+        val editor = _uiState.value.loginEditor.copy(apiBaseUrl = value)
+        _uiState.value = _uiState.value.copy(loginEditor = editor)
     }
 
-    fun updateUsername(value: String) {
-        _uiState.value = _uiState.value.copy(username = value)
+    fun updateUsername(value: TextFieldValue) {
+        val editor = _uiState.value.loginEditor.copy(username = value)
+        _uiState.value = _uiState.value.copy(loginEditor = editor)
     }
 
-    fun updatePassword(value: String) {
-        _uiState.value = _uiState.value.copy(password = value)
+    fun updatePassword(value: TextFieldValue) {
+        val editor = _uiState.value.loginEditor.copy(password = value)
+        _uiState.value = _uiState.value.copy(loginEditor = editor)
     }
 
-    fun updateDeviceName(value: String) {
-        _uiState.value = _uiState.value.copy(deviceName = value)
-        tokenStore.savePlainSetting(SecureTokenStore.SETTING_DEVICE_NAME, value)
+    fun updateDeviceName(value: TextFieldValue) {
+        val editor = _uiState.value.loginEditor.copy(deviceName = value)
+        _uiState.value = _uiState.value.copy(loginEditor = editor)
     }
 
-    fun updateSelected(transform: ProductDraft.() -> ProductDraft) {
-        val draft = _uiState.value.selectedDraft ?: return
-        viewModelScope.launch {
-            val updated = repository.saveDraft(draft.transform())
-            replaceDraft(updated)
+    fun updateSelectedEditor(field: ProductEditorField, value: TextFieldValue) {
+        val editor = _uiState.value.selectedEditor ?: return
+        _uiState.value = _uiState.value.copy(
+            editors = _uiState.value.editors + (
+                editor.draftId to editor.update(field, value)
+            ),
+            fieldErrors = _uiState.value.fieldErrors - field.errorKey,
+        )
+    }
+
+    fun saveSelected() {
+        val snapshot = selectedDraftSnapshot() ?: return
+        runBusy {
+            val saved = repository.saveDraft(snapshot)
+            replaceDraft(saved)
+            _uiState.value = _uiState.value.copy(
+                message = "Produktentwurf lokal gespeichert.",
+                fieldErrors = emptyMap(),
+            )
         }
     }
 
     fun addImages(uris: List<Uri>) {
         val draft = _uiState.value.selectedDraft ?: return
+        val editorName = _uiState.value.selectedEditor?.name?.text?.trim().orEmpty()
         if (uris.isEmpty()) return
         runBusy {
-            val updated = repository.storeImages(draft, uris.take(5))
+            val updated = repository.storeImages(
+                draft.copy(name = editorName.ifBlank { draft.name }),
+                uris.take(5),
+            )
             replaceDraft(updated)
             _uiState.value = _uiState.value.copy(message = "Bilder wurden vorbereitet.")
         }
@@ -119,36 +146,46 @@ class ProductViewModel(
 
     fun login() {
         val state = _uiState.value
+        val editor = state.loginEditor
+        val baseUrl = editor.apiBaseUrl.text.trim()
+        val deviceName = editor.deviceName.text.trim().ifBlank { "Android" }
         runBusy {
             val token = withContext(Dispatchers.IO) {
                 apiClient.login(
-                    baseUrl = state.apiBaseUrl,
-                    username = state.username,
-                    password = state.password,
-                    deviceName = state.deviceName.ifBlank { "Android" },
+                    baseUrl = baseUrl,
+                    username = editor.username.text,
+                    password = editor.password.text,
+                    deviceName = deviceName,
                 )
             }
             apiToken = token
             tokenStore.saveToken(token)
+            tokenStore.savePlainSetting(SecureTokenStore.SETTING_API_BASE_URL, baseUrl)
+            tokenStore.savePlainSetting(SecureTokenStore.SETTING_DEVICE_NAME, deviceName)
             _uiState.value = _uiState.value.copy(
                 authenticated = true,
-                password = "",
+                loginEditor = editor.copy(password = TextFieldValue()),
                 message = "Anmeldung erfolgreich.",
             )
         }
     }
 
     fun syncSelected() {
-        val draft = _uiState.value.selectedDraft ?: return
+        val draft = selectedDraftSnapshot() ?: return
         runBusy {
-            val updated = syncDraft(draft)
+            val local = repository.saveDraft(draft)
+            replaceDraft(local)
+            val updated = syncDraft(local)
             replaceDraft(updated)
-            _uiState.value = _uiState.value.copy(message = "Produktentwurf synchronisiert.")
+            _uiState.value = _uiState.value.copy(
+                message = "Produktentwurf synchronisiert.",
+                fieldErrors = emptyMap(),
+            )
         }
     }
 
     fun publishSelected() {
-        val draft = _uiState.value.selectedDraft ?: return
+        val draft = selectedDraftSnapshot() ?: return
         val validation = draft.validateForPublish()
         if (validation.isNotEmpty()) {
             _uiState.value = _uiState.value.copy(fieldErrors = validation)
@@ -156,7 +193,8 @@ class ProductViewModel(
         }
 
         runBusy {
-            var current = draft
+            var current = repository.saveDraft(draft)
+            replaceDraft(current)
             val operationId = current.pendingPublishOperationId ?: UUID.randomUUID().toString()
             current = repository.saveDraft(current.copy(pendingPublishOperationId = operationId))
             replaceDraft(current)
@@ -271,8 +309,22 @@ class ProductViewModel(
         )
     }
 
+    private fun selectedDraftSnapshot(): ProductDraft? {
+        val state = _uiState.value
+        val draft = state.selectedDraft ?: return null
+        val editor = state.selectedEditor ?: return null
+        val validation = editor.validateForSave()
+
+        if (validation.isNotEmpty()) {
+            _uiState.value = state.copy(fieldErrors = validation)
+            return null
+        }
+
+        return editor.applyTo(draft)
+    }
+
     private fun requireBaseUrl(): String {
-        val baseUrl = _uiState.value.apiBaseUrl.trim().trimEnd('/')
+        val baseUrl = _uiState.value.loginEditor.apiBaseUrl.text.trim().trimEnd('/')
         if (!baseUrl.startsWith("https://")) {
             throw ProductApiException(0, "API-URL muss mit https:// beginnen.")
         }
