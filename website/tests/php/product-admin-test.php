@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/scripts/product-admin.php';
+require_once dirname(__DIR__, 2) . '/test-api-private/program/product-admin.php';
 
 final class CarmajaAdminTestFailure extends RuntimeException
 {
@@ -70,6 +70,20 @@ function carmaja_admin_test_write_json(string $path, array $data): void
     }
 }
 
+function carmaja_admin_test_write_config(string $path, array $config): void
+{
+    $written = file_put_contents(
+        $path,
+        "<?php\n\ndeclare(strict_types=1);\n\nreturn "
+            . var_export($config, true)
+            . ";\n"
+    );
+
+    if ($written === false) {
+        throw new CarmajaAdminTestFailure('Testkonfiguration konnte nicht geschrieben werden.');
+    }
+}
+
 function carmaja_admin_test_remove_tree(string $path): void
 {
     if (!file_exists($path)) {
@@ -109,12 +123,23 @@ function carmaja_admin_test_fixture(
         . 'carmaja-admin-test-'
         . bin2hex(random_bytes(6));
     $private = $root . DIRECTORY_SEPARATOR . 'private';
-    $webroot = $root . DIRECTORY_SEPARATOR . 'webroot';
+    $webroot = $root . DIRECTORY_SEPARATOR . 'test-api';
+    $websiteWebroot = $root . DIRECTORY_SEPARATOR . 'test-site';
+    $configDirectory = $private . DIRECTORY_SEPARATOR . 'config';
     $auth = $private . DIRECTORY_SEPARATOR . 'auth';
     $audit = $private . DIRECTORY_SEPARATOR . 'audit';
     $locks = $private . DIRECTORY_SEPARATOR . 'locks';
 
-    foreach ([$root, $private, $webroot, $auth, $audit, $locks] as $directory) {
+    foreach ([
+        $root,
+        $private,
+        $webroot,
+        $websiteWebroot,
+        $configDirectory,
+        $auth,
+        $audit,
+        $locks,
+    ] as $directory) {
         if (!is_dir($directory) && !mkdir($directory, 0750, true)) {
             throw new CarmajaAdminTestFailure('Testverzeichnis konnte nicht angelegt werden.');
         }
@@ -135,15 +160,28 @@ function carmaja_admin_test_fixture(
         ]);
     }
 
-    putenv('CARMAJA_PUBLISH_TARGET=test');
-    putenv('CARMAJA_PRIVATE_DIR=' . $private);
-    putenv('CARMAJA_PUBLIC_WEBROOT=' . $webroot);
-    putenv('CARMAJA_API_USERS_FILE=' . $usersFile);
+    $configFile = $configDirectory . DIRECTORY_SEPARATOR . 'runtime-config.php';
+    carmaja_admin_test_write_config($configFile, [
+        'environment' => 'test',
+        'publishTarget' => 'test',
+        'productionPublishEnabled' => false,
+        'privateDir' => $private,
+        'testPrivateDir' => $private,
+        'testApiWebroot' => $webroot,
+        'testWebsiteWebroot' => $websiteWebroot,
+        'productionPrivateDir' => null,
+        'productionApiWebroot' => null,
+        'productionWebsiteWebroot' => null,
+        'usersFile' => $usersFile,
+        'tokenPepper' => str_repeat('p', 48),
+    ]);
+    putenv('CARMAJA_CONFIG_FILE=' . $configFile);
 
     return [
         'root' => $root,
         'private' => $private,
         'webroot' => $webroot,
+        'configFile' => $configFile,
         'usersFile' => $usersFile,
         'devicesFile' => $auth . DIRECTORY_SEPARATOR . 'device-tokens.json',
         'audit' => $audit,
@@ -237,14 +275,14 @@ carmaja_admin_test('HTTP-Ausführung wird verweigert', static function (): void 
     );
 });
 
-carmaja_admin_test('Fehlende Benutzerdatei-Konfiguration', static function (): void {
+carmaja_admin_test('Fehlende private Laufzeitkonfiguration', static function (): void {
     carmaja_admin_test_fixture();
-    putenv('CARMAJA_API_USERS_FILE');
+    putenv('CARMAJA_CONFIG_FILE');
 
     carmaja_admin_test_exception(
         'carmaja_admin_build_config',
         CARMAJA_ADMIN_EXIT_IO,
-        'Fehlende CARMAJA_API_USERS_FILE muss Exit-Code 5 ergeben.'
+        'Fehlende CARMAJA_CONFIG_FILE muss Exit-Code 5 ergeben.'
     );
 });
 
@@ -636,7 +674,7 @@ carmaja_admin_test('Korrekte CLI-Exit-Codes', static function (): void {
         'user:password',
         '--username=unbekannt',
     ]);
-    putenv('CARMAJA_API_USERS_FILE');
+    putenv('CARMAJA_CONFIG_FILE');
     $io = carmaja_admin_test_run_cli([
         'product-admin.php',
         'device:list',

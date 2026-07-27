@@ -1,406 +1,276 @@
-# Produktverwaltung: Testumgebung, Admin-CLI und Restore
+# Carmaja-Perlen Test-API auf IONOS
 
-Zugangsdaten, Token, Hashes, Auditdaten und Backups dürfen weder in Git noch
-in APKs oder in den öffentlichen Webroot gelangen. Das Admin-CLI dieser
-Beta-Version arbeitet ausschließlich mit der Zielumgebung `test`.
+Diese Anleitung gilt ausschließlich für die Test-API aus Phase 3.1.
+Sie installiert keine Testwebsite, führt keinen GitHub-Commit aus und
+verändert weder `main` noch `www.carmaja-perlen.de`.
 
-## 1. Tatsächliche IONOS-Pfade prüfen
+## Verbindliche IONOS-Pfade
 
-Vor der ersten Serverinstallation müssen im tatsächlichen IONOS-Konto per SSH
-zwei getrennte, absolute Pfade ermittelt werden:
+- Test-API-Webroot: `/home/www/carmaja-test-api`
+- Testwebsite-Webroot: `/home/www/carmaja-test-site`
+- Privater Testbereich: `/home/www/carmaja-private-test`
+- Private Programme: `/home/www/carmaja-private-test/program`
+- Private Konfiguration: `/home/www/carmaja-private-test/config/runtime-config.php`
 
-- öffentlicher Webroot der Test-API, vorgesehen für
-  `https://test-api.carmaja-perlen.de/`
-- privater, von PHP les- und schreibbarer Datenpfad außerhalb dieses Webroots
+Produktionspfade bleiben im Testmodus ungesetzt. Der Testmodus akzeptiert
+das nur bei `publishTarget=test` und `productionPublishEnabled=false`.
 
-Die konkrete Verzeichnisstruktur darf nicht aus lokalen Pfaden oder aus einer
-IONOS-Standardstruktur abgeleitet werden. In der SSH-Sitzung sind mindestens
-folgende Punkte zu prüfen:
+## Quelldateien und Ziele
+
+| Repository-Datei | IONOS-Zieldatei | Rechte |
+| --- | --- | --- |
+| `website/test-api-public/index.php` | `/home/www/carmaja-test-api/index.php` | `0644` |
+| `website/test-api-public/.htaccess` | `/home/www/carmaja-test-api/.htaccess` | `0644` |
+| `website/test-api-private/program/bootstrap.php` | `/home/www/carmaja-private-test/program/bootstrap.php` | `0640` |
+| `website/test-api-private/program/product-api.php` | `/home/www/carmaja-private-test/program/product-api.php` | `0640` |
+| `website/test-api-private/program/product-admin.php` | `/home/www/carmaja-private-test/program/product-admin.php` | `0640` |
+| `website/test-api-private/program/product-api-diagnostics.php` | `/home/www/carmaja-private-test/program/product-api-diagnostics.php` | `0640` |
+
+`website/test-api-private/config/runtime-config.example.php` ist nur eine
+Vorlage. Sie wird nicht als aktive Konfiguration hochgeladen. Die echte
+`runtime-config.php` wird direkt über SSH angelegt und niemals committed.
+
+Tests, README-Dateien, GitHub-Token und Dateien aus `website/hosting/` gehören
+nicht zur Test-API-Installation.
+
+## Include-Beziehungen
+
+1. Der öffentliche `index.php` liest den nicht geheimen
+   `CARMAJA_BOOTSTRAP_FILE` aus der öffentlichen `.htaccess`.
+2. Fehlt die Übergabe durch `SetEnv`, verwendet der Einstiegspunkt den
+   fest geprüften Pfad `/home/www/carmaja-private-test/program/bootstrap.php`.
+3. `bootstrap.php` lädt ausschließlich die private
+   `/home/www/carmaja-private-test/config/runtime-config.php`.
+4. Der Bootstrap validiert und aktiviert die Konfiguration, lädt
+   `product-api.php` aus demselben privaten Programmverzeichnis und startet
+   den Router.
+5. Admin-CLI und Diagnose laden denselben Bootstrap über
+   `CARMAJA_CONFIG_FILE`.
+
+Fehler vor dem Router ergeben nur eine generische JSON-Antwort mit HTTP 503.
+Absolute Pfade, Stacktraces und Geheimnisse werden nicht ausgegeben.
+
+## PHP-CLI bestimmen
+
+Auf IONOS darf nicht der Befehl `php` verwendet werden. Nach dem SSH-Login:
 
 ```bash
-pwd
-php -r 'echo PHP_VERSION, PHP_EOL;'
-php -r 'echo getcwd(), PHP_EOL;'
+if [ -x /usr/bin/php8.4-cli ]; then
+  export CARMAJA_PHP_CLI=/usr/bin/php8.4-cli
+elif [ -x /usr/bin/php8.4 ]; then
+  export CARMAJA_PHP_CLI=/usr/bin/php8.4
+else
+  echo 'Kein unterstütztes PHP-8.4-CLI gefunden.' >&2
+  exit 1
+fi
+
+"$CARMAJA_PHP_CLI" -v
+"$CARMAJA_PHP_CLI" -m | grep -E '^(exif|gd|json|mbstring)$'
 ```
 
-Anschließend müssen der konfigurierte Test-Webroot im IONOS-Konto und der
-private Pfad anhand ihrer absoluten Pfade verglichen werden. Der private Pfad
-darf weder der Webroot selbst noch ein Unterordner des Webroots sein. PHP muss
-dort Verzeichnisse anlegen sowie Dateien lesen, schreiben und atomar umbenennen
-können.
+Die Modulliste muss `exif`, `gd`, `json` und `mbstring` enthalten.
 
-Wenn die Subdomain, der private Pfad oder die Schreibrechte nicht eindeutig
-bestätigt werden können, wird die Einrichtung an dieser Stelle beendet. Es
-darf dann weder eine Benutzerdatei angelegt noch die Test-API aktiviert werden.
-
-## 2. Private Teststruktur
-
-Die folgenden Befehle werden erst ausgeführt, nachdem
-`CARMAJA_PRIVATE_DIR` auf den tatsächlich geprüften privaten Pfad gesetzt
-wurde:
+## Verzeichnisse anlegen
 
 ```bash
 mkdir -p \
-  "$CARMAJA_PRIVATE_DIR/auth" \
-  "$CARMAJA_PRIVATE_DIR/audit" \
-  "$CARMAJA_PRIVATE_DIR/locks" \
-  "$CARMAJA_PRIVATE_DIR/products" \
-  "$CARMAJA_PRIVATE_DIR/idempotency" \
-  "$CARMAJA_PRIVATE_DIR/uploads" \
-  "$CARMAJA_PRIVATE_DIR/publishing" \
-  "$CARMAJA_PRIVATE_DIR/backups"
+  /home/www/carmaja-test-api \
+  /home/www/carmaja-private-test/program \
+  /home/www/carmaja-private-test/config \
+  /home/www/carmaja-private-test/auth \
+  /home/www/carmaja-private-test/products/operations \
+  /home/www/carmaja-private-test/drafts \
+  /home/www/carmaja-private-test/uploads \
+  /home/www/carmaja-private-test/uploads-temp \
+  /home/www/carmaja-private-test/audit \
+  /home/www/carmaja-private-test/idempotency \
+  /home/www/carmaja-private-test/backups \
+  /home/www/carmaja-private-test/sku-counter \
+  /home/www/carmaja-private-test/locks
+
+chmod 0755 /home/www/carmaja-test-api
 chmod 0750 \
-  "$CARMAJA_PRIVATE_DIR" \
-  "$CARMAJA_PRIVATE_DIR/auth" \
-  "$CARMAJA_PRIVATE_DIR/audit" \
-  "$CARMAJA_PRIVATE_DIR/locks" \
-  "$CARMAJA_PRIVATE_DIR/products" \
-  "$CARMAJA_PRIVATE_DIR/idempotency" \
-  "$CARMAJA_PRIVATE_DIR/uploads" \
-  "$CARMAJA_PRIVATE_DIR/publishing" \
-  "$CARMAJA_PRIVATE_DIR/backups"
+  /home/www/carmaja-private-test \
+  /home/www/carmaja-private-test/program \
+  /home/www/carmaja-private-test/config \
+  /home/www/carmaja-private-test/auth \
+  /home/www/carmaja-private-test/products \
+  /home/www/carmaja-private-test/products/operations \
+  /home/www/carmaja-private-test/drafts \
+  /home/www/carmaja-private-test/uploads \
+  /home/www/carmaja-private-test/uploads-temp \
+  /home/www/carmaja-private-test/audit \
+  /home/www/carmaja-private-test/idempotency \
+  /home/www/carmaja-private-test/backups \
+  /home/www/carmaja-private-test/sku-counter \
+  /home/www/carmaja-private-test/locks
+```
+
+## Umgebungsmarkierung
+
+```bash
 umask 027
 printf '%s\n' '{"environment":"test"}' \
-  > "$CARMAJA_PRIVATE_DIR/environment.json"
-chmod 0640 "$CARMAJA_PRIVATE_DIR/environment.json"
+  > /home/www/carmaja-private-test/environment.json
+chmod 0640 /home/www/carmaja-private-test/environment.json
 ```
 
-Die Benutzerdatei wird nicht manuell vorbereitet. Der erste Aufruf von
-`user:create` legt sie mit der festen Kennung `"environment": "test"` an.
-Es werden keine Standardbenutzer und keine Standardpasswörter erzeugt.
+## Laufzeitkonfiguration
 
-Vorgesehene private Dateien:
-
-```text
-environment.json
-auth/api-users.json
-auth/device-tokens.json
-audit/admin-actions-YYYY-MM.jsonl
-locks/device-tokens.lock
-products/
-idempotency/
-uploads/
-publishing/
-backups/
-```
-
-Benutzer- und Gerätedateien erhalten nach Möglichkeit Modus `0640`.
-Verzeichnisse erhalten Modus `0750`. Die API und die SSH-Sitzung müssen unter
-einem Benutzer beziehungsweise einer Gruppe laufen, die diese Rechte
-tatsächlich verwenden kann.
-
-## 3. Testvariablen für die SSH-Sitzung
-
-Die Platzhalter werden durch die zuvor tatsächlich ermittelten absoluten Pfade
-ersetzt:
+Nach dem Upload der Programmdateien wird der Pepper direkt auf IONOS erzeugt.
+Der Wert wird weder angezeigt noch in der Shell-Historie gespeichert:
 
 ```bash
-export CARMAJA_PUBLISH_TARGET='test'
-export CARMAJA_PRIVATE_DIR='/ABSOLUTER/GEPRUEFTER/PRIVATER/TESTPFAD'
-export CARMAJA_TEST_PRIVATE_DIR="$CARMAJA_PRIVATE_DIR"
-export CARMAJA_PRODUCTION_PRIVATE_DIR='/ABSOLUTER/GETRENNTER/PRIVATER/PRODUKTIONSPFAD'
-export CARMAJA_PUBLIC_WEBROOT='/ABSOLUTER/GEPRUEFTER/TEST-API-WEBROOT'
-export CARMAJA_TEST_API_WEBROOT="$CARMAJA_PUBLIC_WEBROOT"
-export CARMAJA_TEST_WEBSITE_WEBROOT='/ABSOLUTER/GEPRUEFTER/TESTWEBSITE-WEBROOT'
-export CARMAJA_PRODUCTION_API_WEBROOT='/ABSOLUTER/GETRENNTER/PRODUKTIONS-API-WEBROOT'
-export CARMAJA_PRODUCTION_WEBSITE_WEBROOT='/ABSOLUTER/GETRENNTER/PRODUKTIONSWEBSITE-WEBROOT'
-export CARMAJA_API_USERS_FILE="$CARMAJA_PRIVATE_DIR/auth/api-users.json"
-export CARMAJA_ADMIN_SCRIPT='/ABSOLUTER/GEPRUEFTER/PRIVATER/PROGRAMMPFAD/product-admin.php'
-export CARMAJA_PRODUCTION_PUBLISH_ENABLED='false'
-unset CARMAJA_PRODUCTION_DEPLOY_ENABLED
+set +x
+TOKEN_PEPPER="$("$CARMAJA_PHP_CLI" -r 'echo bin2hex(random_bytes(32));')"
+umask 027
+
+cat > /home/www/carmaja-private-test/config/runtime-config.php <<EOF
+<?php
+
+declare(strict_types=1);
+
+return [
+    'environment' => 'test',
+    'publishTarget' => 'test',
+    'productionPublishEnabled' => false,
+    'privateDir' => '/home/www/carmaja-private-test',
+    'testPrivateDir' => '/home/www/carmaja-private-test',
+    'testApiWebroot' => '/home/www/carmaja-test-api',
+    'testWebsiteWebroot' => '/home/www/carmaja-test-site',
+    'productionPrivateDir' => null,
+    'productionApiWebroot' => null,
+    'productionWebsiteWebroot' => null,
+    'usersFile' => '/home/www/carmaja-private-test/auth/api-users.json',
+    'tokenPepper' => '${TOKEN_PEPPER}',
+];
+EOF
+
+unset TOKEN_PEPPER
+chmod 0640 /home/www/carmaja-private-test/config/runtime-config.php
 ```
 
-Das CLI bricht mit Exit-Code `5` ab, wenn eine Variable fehlt, ein Pfad nicht
-absolut ist, Webroot und privater Bereich nicht getrennt sind oder eine
-Umgebungsmarkierung nicht exakt `test` lautet.
+In Phase 3.1 werden keine `CARMAJA_GITHUB_*`-Variablen und kein GitHub-Token
+konfiguriert. `CARMAJA_PRODUCTION_DEPLOY_ENABLED` bleibt ungesetzt.
 
-Für die getrennte Test-API werden zusätzlich eigene Werte benötigt:
-
-```apache
-SetEnv CARMAJA_PRIVATE_DIR "/ABSOLUTER/GEPRUEFTER/PRIVATER/TESTPFAD"
-SetEnv CARMAJA_TEST_PRIVATE_DIR "/ABSOLUTER/GEPRUEFTER/PRIVATER/TESTPFAD"
-SetEnv CARMAJA_PRODUCTION_PRIVATE_DIR "/ABSOLUTER/GETRENNTER/PRIVATER/PRODUKTIONSPFAD"
-SetEnv CARMAJA_PUBLIC_WEBROOT "/ABSOLUTER/GEPRUEFTER/TEST-API-WEBROOT"
-SetEnv CARMAJA_TEST_API_WEBROOT "/ABSOLUTER/GEPRUEFTER/TEST-API-WEBROOT"
-SetEnv CARMAJA_TEST_WEBSITE_WEBROOT "/ABSOLUTER/GEPRUEFTER/TESTWEBSITE-WEBROOT"
-SetEnv CARMAJA_PRODUCTION_API_WEBROOT "/ABSOLUTER/GETRENNTER/PRODUKTIONS-API-WEBROOT"
-SetEnv CARMAJA_PRODUCTION_WEBSITE_WEBROOT "/ABSOLUTER/GETRENNTER/PRODUKTIONSWEBSITE-WEBROOT"
-SetEnv CARMAJA_API_USERS_FILE "/ABSOLUTER/GEPRUEFTER/PRIVATER/TESTPFAD/auth/api-users.json"
-SetEnv CARMAJA_TOKEN_PEPPER "EIGENER_LANGER_ZUFAELLIGER_TESTWERT"
-SetEnv CARMAJA_GITHUB_REPOSITORY "Bumpers210/armband-rechner"
-SetEnv CARMAJA_GITHUB_BRANCH "test/product-management-beta"
-SetEnv CARMAJA_GITHUB_TOKEN_FILE "/ABSOLUTER/GEPRUEFTER/PRIVATER/TESTPFAD/github-token.txt"
-SetEnv CARMAJA_PRODUCTION_PUBLISH_ENABLED "false"
-```
-
-`CARMAJA_TOKEN_PEPPER`, GitHub-Token und weitere Zugangsdaten werden nur auf
-dem Server gesetzt und in keiner Dokumentation mit realen Werten abgelegt.
-Der Testbereich verwendet keine produktiven Benutzer, Tokens, SKU-Zähler,
-Auditlogs oder sonstigen privaten Daten.
-
-Die Pfade für Test und Produktion müssen auch dann verschieden konfiguriert
-sein, wenn Produktion noch nicht eingerichtet oder freigeschaltet ist. Der
-Produktionspfad wird in Phase 3 nicht beschrieben und nicht aktiviert.
-
-## 4. Admin-CLI installieren
-
-Die Quelldatei ist `website/scripts/product-admin.php`. Auf dem Server wird sie
-in den geprüften privaten Programmpfad außerhalb des Webroots kopiert:
+## Rechte nach dem Upload
 
 ```bash
-chmod 0750 "$CARMAJA_ADMIN_SCRIPT"
-php -l "$CARMAJA_ADMIN_SCRIPT"
+chmod 0644 \
+  /home/www/carmaja-test-api/index.php \
+  /home/www/carmaja-test-api/.htaccess
+
+chmod 0640 \
+  /home/www/carmaja-private-test/program/bootstrap.php \
+  /home/www/carmaja-private-test/program/product-api.php \
+  /home/www/carmaja-private-test/program/product-admin.php \
+  /home/www/carmaja-private-test/program/product-api-diagnostics.php
 ```
 
-Ein HTTP-Aufruf wird ohne Antwortinhalt abgewiesen. Passwörter werden niemals
-als Option akzeptiert. Die verdeckte Passworteingabe ist für eine interaktive
-Linux-/IONOS-SSH-Sitzung implementiert und benötigt `/dev/tty` sowie `stty`.
-Eine nicht interaktive Pipe oder die lokale Windows-Eingabe wird für
-Passwortbefehle bewusst nicht unterstützt.
-
-Verbindliche Exit-Codes:
-
-- `0`: Erfolg
-- `2`: falscher Aufruf, fehlende Bestätigung oder Bedienfehler
-- `3`: ungültige Eingabe
-- `4`: Konflikt oder Datensatz nicht gefunden
-- `5`: Konfigurations-, Datei-, Audit- oder I/O-Fehler
-
-Fehlermeldungen werden auf STDERR geschrieben.
-
-## 4a. API-Diagnose vor der Inbetriebnahme
-
-Nach dem Export aller Pfadvariablen wird die Diagnose ausschließlich per SSH
-ausgeführt:
+## Syntax und Diagnose
 
 ```bash
-php website/scripts/product-api-diagnostics.php
+export CARMAJA_CONFIG_FILE=/home/www/carmaja-private-test/config/runtime-config.php
+
+"$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/bootstrap.php
+"$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/product-api.php
+"$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/product-admin.php
+"$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/product-api-diagnostics.php
+
+"$CARMAJA_PHP_CLI" \
+  /home/www/carmaja-private-test/program/product-api-diagnostics.php
 ```
 
-Sie prüft ohne Ausgabe realer Pfade oder Secrets:
-
-- unveränderliche Umgebungsmarkierung
-- Trennung der privaten Test- und Produktionspfade
-- Trennung von Test-API-, Testwebsite- und Produktions-Webroots
-- Lese- und Schreibrechte aller privaten Unterordner
-- atomare Umbenennung
-- `flock`
-- Lage der Benutzer- und Konfigurationsdateien außerhalb aller Webroots
-
-Nur eine Ausgabe mit `"ok": true` erlaubt die weitere Inbetriebnahme. Jeder
-Fehler beendet die Diagnose mit Exit-Code `5`; die API darf dann nicht
-aktiviert werden.
-
-## 4b. Phase-3-API-Vertrag
-
-Die Test-App sendet bei der Anmeldung fest `publishTarget: "test"`. Die API
-gibt ihr konfiguriertes Ziel zurück. Eine Abweichung wird vor der Ausgabe eines
-Gerätetokens abgelehnt.
-
-Erfolgreiche Antworten verwenden:
+Erwartete Diagnose:
 
 ```json
 {
   "ok": true,
-  "data": {}
-}
-```
-
-Fehler verwenden:
-
-```json
-{
-  "ok": false,
-  "error": {
-    "code": "machine_readable_code",
-    "message": "Verständliche Meldung",
-    "fields": {}
+  "publishTarget": "test",
+  "checks": {
+    "privatePath": "ok",
+    "environmentMarker": "ok",
+    "directoryPermissions": "ok",
+    "phpExtensions": "ok",
+    "atomicRename": "ok",
+    "flock": "ok",
+    "webrootSeparation": "ok",
+    "environmentPathSeparation": "ok",
+    "privateConfigurationExposure": "ok"
   }
 }
 ```
 
-Verfügbare geschützte Bereiche sind Produktliste, Produktdetail, Speichern,
-Bild-Upload, Publish, Verkauft, Deaktivieren, Backups und
-`GET /api/operations/<operationId>` für den Verarbeitungsstatus.
+Jeder Diagnosefehler stoppt die Installation. Die Ausgabe darf keine
+absoluten Pfade und keine Konfigurationswerte enthalten.
 
-Der Vinted-Link ist im Testziel optional. Ein leerer Wert wird nicht in den
-öffentlichen Datensatz geschrieben. Ist ein Link vorhanden, sind nur direkte
-HTTPS-URLs auf `vinted.de` oder `www.vinted.de` ohne Port, Benutzerinformation
-oder Redirect-Parameter erlaubt. Im vorbereiteten Produktionsziel ist der
-Link beim Publish Pflicht.
+## Ersten Benutzer anlegen
 
-Phase 3 führt keine GitHub-Anfrage und kein Deployment aus. Der idempotente
-Publish-Adapter schreibt ausschließlich einen privaten, umgebungsmarkierten
-Zwischenstand unter `publishing/`. Echte Git- und Deploymentadapter folgen
-erst in späteren Phasen.
-
-## 5. Ersten Testbenutzer anlegen
-
-Nach dem Export der Variablen ist dies der konkrete SSH-Befehl:
+Erst nach erfolgreicher Diagnose:
 
 ```bash
-php "$CARMAJA_ADMIN_SCRIPT" user:create
+export CARMAJA_CONFIG_FILE=/home/www/carmaja-private-test/config/runtime-config.php
+export CARMAJA_ADMIN_SCRIPT=/home/www/carmaja-private-test/program/product-admin.php
+
+"$CARMAJA_PHP_CLI" "$CARMAJA_ADMIN_SCRIPT" user:create
 ```
 
-Alternativ darf der nicht geheime Benutzername als Option angegeben werden:
+Benutzername und Passwort werden interaktiv abgefragt. Das Passwort muss
+mindestens 14 Zeichen lang sein und wird nicht angezeigt. Die Datei
+`/home/www/carmaja-private-test/auth/api-users.json` wird mit `0640` erzeugt.
 
-```bash
-php "$CARMAJA_ADMIN_SCRIPT" user:create --username 'BENUTZERNAME'
+## HTTP-Prüfung unter Windows
+
+Die Basisadresse ist `https://test-api.carmaja-perlen.de/`.
+
+```powershell
+$Api = 'https://test-api.carmaja-perlen.de'
+
+try {
+    Invoke-WebRequest -Uri "$Api/products" -Method Get -ErrorAction Stop
+} catch {
+    $_.Exception.Response.StatusCode.value__
+    $_.ErrorDetails.Message
+}
 ```
 
-Benutzernamen werden außen getrimmt und in Kleinschreibung gespeichert. Sie
-müssen 3 bis 64 Zeichen lang sein, mit Buchstabe oder Zahl beginnen und enden
-und dürfen nur `a-z`, `0-9`, Punkt, Bindestrich und Unterstrich enthalten.
-Doppelte normalisierte Benutzernamen werden abgelehnt.
+Ohne Token werden HTTP 401 und eine JSON-Antwort mit `ok=false` erwartet.
 
-Das Passwort wird verdeckt zweimal abgefragt. Es muss mindestens 14 Zeichen
-lang sein, darf den vollständigen Benutzernamen nicht enthalten und darf kein
-offensichtlich schwaches Muster sein. Gespeichert wird ausschließlich ein mit
-`password_hash(..., PASSWORD_DEFAULT)` erzeugter Hash.
+Für einen Login ohne Passwort in der PowerShell-Historie:
 
-## 6. Passwort ändern
+```powershell
+$Username = Read-Host 'Benutzername'
+$SecurePassword = Read-Host 'Passwort' -AsSecureString
+$Credential = [pscredential]::new($Username, $SecurePassword)
 
-```bash
-php "$CARMAJA_ADMIN_SCRIPT" user:password --username 'BENUTZERNAME'
+try {
+    $Body = @{
+        username = $Username
+        password = $Credential.GetNetworkCredential().Password
+        deviceName = 'Windows API-Prüfung'
+        publishTarget = 'test'
+    } | ConvertTo-Json
+
+    $Login = Invoke-RestMethod `
+        -Uri "$Api/login" `
+        -Method Post `
+        -ContentType 'application/json' `
+        -Body $Body
+} finally {
+    Remove-Variable Body, Credential, SecurePassword -ErrorAction SilentlyContinue
+}
 ```
 
-Nach erfolgreicher Änderung fragt das CLI, ob alle bestehenden Geräte des
-Benutzers widerrufen werden sollen. Die dokumentierte Standardantwort ist
-`N`: Eine leere Eingabe oder `N` lässt vorhandene Geräte aktiv. Nur eine
-ausdrückliche Antwort `j`, `ja`, `y` oder `yes` widerruft sie.
+Ein erfolgreicher Login liefert `ok=true`, `data.publishTarget=test` und ein
+einmalig ausgegebenes Gerätetoken. Das Token nicht auf dem Bildschirm
+ausgeben und nach der Prüfung aus der PowerShell-Variable entfernen.
 
-## 7. Geräte verwalten
+## Sicherheitsgrenzen
 
-Alle Geräte auflisten:
-
-```bash
-php "$CARMAJA_ADMIN_SCRIPT" device:list
-```
-
-Nach Benutzer filtern:
-
-```bash
-php "$CARMAJA_ADMIN_SCRIPT" device:list --username 'BENUTZERNAME'
-```
-
-Die Ausgabe enthält ausschließlich Geräte-ID, Benutzer, Erstellungszeit,
-letzte Nutzung, Widerrufszeit und Status. Token, Token-Hash und sonstige
-Geheimnisse werden nicht ausgegeben.
-
-Ein einzelnes Gerät idempotent widerrufen:
-
-```bash
-php "$CARMAJA_ADMIN_SCRIPT" device:revoke --device-id 'GERAETE_ID'
-```
-
-Alle aktiven Geräte genau eines Benutzers widerrufen:
-
-```bash
-php "$CARMAJA_ADMIN_SCRIPT" device:revoke-user --username 'BENUTZERNAME'
-```
-
-Das CLI zeigt zuerst die Zahl der aktiven Geräte. Die Änderung erfolgt nur,
-wenn anschließend exakt `WIDERRUFEN` eingegeben wird. Token-Datensätze werden
-nicht gelöscht; stattdessen wird `revokedAt` mit Serverzeit gesetzt.
-
-Das CLI und die API verwenden für Gerätedaten dieselbe Sperrdatei
-`locks/device-tokens.lock`. Schreibvorgänge verwenden eine vollständige
-temporäre JSON-Datei, erneute JSON-Prüfung, Modus `0640` und atomare
-Umbenennung. Ein Fehler lässt die bisherige Datendatei unverändert.
-
-## 8. Auditlog
-
-Administrative Aktionen schreiben in
-`audit/admin-actions-YYYY-MM.jsonl`. Jeder Eintrag enthält Zeit, Aktion,
-betroffenen Benutzer, gegebenenfalls Geräte-ID und Ergebnis. Passwörter,
-Hashes, Tokens und Umgebungsgeheimnisse werden nicht protokolliert.
-
-Kann das Auditlog nicht geschrieben werden, meldet das CLI den Fehler und
-beendet sich mit Exit-Code `5`.
-
-## 9. Private Dateien sichern
-
-Der Backup-Zielpfad muss ebenfalls privat, außerhalb des Webroots und
-außerhalb von `CARMAJA_PRIVATE_DIR` liegen:
-
-```bash
-export CARMAJA_BACKUP_DIR='/ABSOLUTER/GEPRUEFTER/PRIVATER/BACKUPPFAD'
-mkdir -p "$CARMAJA_BACKUP_DIR"
-chmod 0700 "$CARMAJA_BACKUP_DIR"
-umask 077
-backup_file="$CARMAJA_BACKUP_DIR/carmaja-test-private-$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
-tar \
-  --exclude='./uploads/*' \
-  --exclude='./locks/*.lock' \
-  -C "$CARMAJA_PRIVATE_DIR" \
-  -czf "$backup_file" \
-  .
-chmod 0600 "$backup_file"
-sha256sum "$backup_file" > "$backup_file.sha256"
-chmod 0600 "$backup_file.sha256"
-```
-
-Das Archiv enthält dadurch insbesondere Umgebungsmarkierung, Benutzer,
-Geräte, Produkt-/Kalkulationsdaten, Idempotency-Daten und Auditlogs, aber
-keine unvollständigen Uploads oder aktiven Lockdateien.
-
-Für eine einfache Rotation dürfen ausschließlich Dateien im bestätigten
-Backup-Ziel gelöscht werden, zum Beispiel nach 30 Tagen:
-
-```bash
-find "$CARMAJA_BACKUP_DIR" -maxdepth 1 -type f \
-  \( -name 'carmaja-test-private-*.tar.gz' -o -name 'carmaja-test-private-*.tar.gz.sha256' \) \
-  -mtime +30 -delete
-```
-
-## 10. Aus einem Backup wiederherstellen
-
-Ein Restore wird zuerst mit Testdaten und niemals direkt im öffentlichen
-Webroot durchgeführt:
-
-1. Test-API auf IONOS in Wartung setzen und prüfen, dass keine mutierenden
-   Anfragen mehr möglich sind.
-2. Aktuellen privaten Datenbereich nochmals wie oben sichern.
-3. Prüfsumme mit `sha256sum -c DATEI.tar.gz.sha256` validieren.
-4. Archiv in ein neues temporäres Verzeichnis auf demselben Dateisystem
-   entpacken.
-5. `environment.json` und alle JSON-Dateien prüfen; die Umgebung muss exakt
-   `test` sein.
-6. Rechte auf Verzeichnissen auf `0750` und auf privaten Dateien auf `0640`
-   setzen.
-7. Bisherigen privaten Ordner als Rückfallstand atomar umbenennen und den
-   geprüften Restore-Ordner an seine Stelle verschieben.
-8. Mit `device:list` die Lesbarkeit prüfen, anschließend einen Test-Login
-   durchführen und das Auditlog kontrollieren.
-9. Erst danach die Test-API wieder freigeben.
-
-Beispiel für die isolierte Prüfung der Umgebungsmarkierung im Restore-Ordner:
-
-```bash
-php -r '$d=json_decode(file_get_contents($argv[1]),true,512,JSON_THROW_ON_ERROR);exit(($d["environment"]??null)==="test"?0:1);' \
-  '/ABSOLUTER/PFAD/ZUM/RESTORE/environment.json'
-```
-
-Der erste reale Restore-Test bleibt bis zur bestätigten IONOS-Pfad- und
-Rechteprüfung offen. Ein Restore darf weder produktive Daten noch
-`www.carmaja-perlen.de` verändern.
-
-## GitHub- und Deploymentgrenzen
-
-Das Fine-grained GitHub-Token der Test-API darf ausschließlich auf
-`Bumpers210/armband-rechner` zugreifen und nur `Contents: write` besitzen.
-Workflow-, Admin-, Secret- und weitere Rechte sind verboten.
-
-Produktänderungen der Test-API dürfen nur auf
-`test/product-management-beta` und nur in den fest erlaubten öffentlichen
-Produktdaten- und Produktbildpfaden erfolgen. `.github/`, Workflows,
-App-Quellcode, Website-Komponenten, Rechtstexte, Hosting-Konfiguration und
-alle sonstigen Pfade bleiben gesperrt.
-
-Die Phase-2-Einrichtung löst weder ein IONOS-Deployment noch eine öffentliche
-Produktveröffentlichung aus. Produktion bleibt deaktiviert:
-
-- `CARMAJA_PRODUCTION_PUBLISH_ENABLED=false`
-- `CARMAJA_PRODUCTION_DEPLOY_ENABLED` ist nicht `true`
-- kein produktiver Commit
-- kein produktives Website-Deployment
+- Im öffentlichen Test-API-Webroot liegen nur `index.php` und `.htaccess`.
+- Keine private PHP-Datei, Konfiguration oder Datendatei liegt im Webroot.
+- Verzeichnisauflistung ist durch `Options -Indexes` deaktiviert.
+- Der öffentliche Einstiegspunkt enthält keine Secrets.
+- Produktion bleibt deaktiviert und unkonfiguriert.
+- Der lokale Publish-Adapter führt weder GitHub-Commits noch Deployments aus.
+- `/home/www/carmaja-test-site` bleibt in Phase 3.1 unverändert.

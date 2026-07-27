@@ -12,6 +12,12 @@ if (!carmaja_admin_sapi_allowed(PHP_SAPI)) {
     exit;
 }
 
+if (!defined('CARMAJA_BOOTSTRAP_NO_RUN')) {
+    define('CARMAJA_BOOTSTRAP_NO_RUN', true);
+}
+
+require_once __DIR__ . '/bootstrap.php';
+
 const CARMAJA_ADMIN_EXIT_SUCCESS = 0;
 const CARMAJA_ADMIN_EXIT_USAGE = 2;
 const CARMAJA_ADMIN_EXIT_INPUT = 3;
@@ -282,10 +288,32 @@ function carmaja_admin_write_json_atomic(
 
 function carmaja_admin_build_config(): array
 {
-    $usersFile = carmaja_admin_environment_value('CARMAJA_API_USERS_FILE');
-    $target = carmaja_admin_environment_value('CARMAJA_PUBLISH_TARGET');
-    $privatePath = carmaja_admin_environment_value('CARMAJA_PRIVATE_DIR');
-    $webrootPath = carmaja_admin_environment_value('CARMAJA_PUBLIC_WEBROOT');
+    try {
+        $runtimeConfig = carmaja_bootstrap_prepare(
+            carmaja_admin_environment_value('CARMAJA_CONFIG_FILE')
+        );
+    } catch (CarmajaBootstrapException $error) {
+        throw new CarmajaAdminException(
+            CARMAJA_ADMIN_EXIT_IO,
+            $error->getMessage(),
+            $error
+        );
+    } catch (Throwable $error) {
+        throw new CarmajaAdminException(
+            CARMAJA_ADMIN_EXIT_IO,
+            'Private Laufzeitkonfiguration konnte nicht geladen werden.',
+            $error
+        );
+    }
+
+    $usersFile = (string) $runtimeConfig['usersFile'];
+    $target = (string) $runtimeConfig['publishTarget'];
+    $privatePath = (string) $runtimeConfig['privateDir'];
+    $webrootPath = (string) (
+        $target === 'test'
+            ? $runtimeConfig['testApiWebroot']
+            : $runtimeConfig['productionApiWebroot']
+    );
 
     if ($target !== 'test') {
         throw new CarmajaAdminException(
@@ -1114,11 +1142,11 @@ function carmaja_admin_usage(): string
 {
     return implode(PHP_EOL, [
         'Verwendung:',
-        '  php product-admin.php user:create [--username NAME]',
-        '  php product-admin.php user:password [--username NAME]',
-        '  php product-admin.php device:list [--username NAME]',
-        '  php product-admin.php device:revoke [--device-id ID]',
-        '  php product-admin.php device:revoke-user [--username NAME]',
+        '  "$CARMAJA_PHP_CLI" product-admin.php user:create [--username NAME]',
+        '  "$CARMAJA_PHP_CLI" product-admin.php user:password [--username NAME]',
+        '  "$CARMAJA_PHP_CLI" product-admin.php device:list [--username NAME]',
+        '  "$CARMAJA_PHP_CLI" product-admin.php device:revoke [--device-id ID]',
+        '  "$CARMAJA_PHP_CLI" product-admin.php device:revoke-user [--username NAME]',
     ]) . PHP_EOL;
 }
 

@@ -100,8 +100,12 @@ function carmaja_api_publish_target(): string
 
 function carmaja_api_path_is_absolute(string $path): bool
 {
-    return str_starts_with($path, '/')
-        || preg_match('/^[A-Za-z]:[\\\\\/]/', $path) === 1;
+    $normalized = str_replace('\\', '/', $path);
+
+    return !str_contains($path, "\0")
+        && !in_array('..', explode('/', $normalized), true)
+        && (str_starts_with($normalized, '/')
+            || preg_match('/^[A-Za-z]:\//', $normalized) === 1);
 }
 
 function carmaja_api_normalize_path(string $path): string
@@ -125,6 +129,26 @@ function carmaja_api_required_path_setting(string $name): string
     $path = getenv($name);
 
     if (!is_string($path) || trim($path) === '' || !carmaja_api_path_is_absolute(trim($path))) {
+        throw new CarmajaApiException(
+            503,
+            $name . ' ist nicht sicher konfiguriert.',
+            [],
+            'environment_configuration_invalid'
+        );
+    }
+
+    return rtrim(trim($path), "\\/");
+}
+
+function carmaja_api_optional_path_setting(string $name): ?string
+{
+    $path = getenv($name);
+
+    if ($path === false || (is_string($path) && trim($path) === '')) {
+        return null;
+    }
+
+    if (!is_string($path) || !carmaja_api_path_is_absolute(trim($path))) {
         throw new CarmajaApiException(
             503,
             $name . ' ist nicht sicher konfiguriert.',
@@ -195,10 +219,14 @@ function carmaja_api_private_dir(): string
     $target = carmaja_api_publish_target();
     $configuredPath = carmaja_api_required_path_setting('CARMAJA_PRIVATE_DIR');
     $testPath = carmaja_api_required_path_setting('CARMAJA_TEST_PRIVATE_DIR');
-    $productionPath = carmaja_api_required_path_setting('CARMAJA_PRODUCTION_PRIVATE_DIR');
+    $productionPath = $target === 'production'
+        ? carmaja_api_required_path_setting('CARMAJA_PRODUCTION_PRIVATE_DIR')
+        : carmaja_api_optional_path_setting('CARMAJA_PRODUCTION_PRIVATE_DIR');
     $publicWebroot = carmaja_api_required_path_setting('CARMAJA_PUBLIC_WEBROOT');
 
-    if (carmaja_api_normalize_path($testPath) === carmaja_api_normalize_path($productionPath)) {
+    if ($productionPath !== null
+        && carmaja_api_normalize_path($testPath)
+            === carmaja_api_normalize_path($productionPath)) {
         throw new CarmajaApiException(
             503,
             'Test- und Produktionsdatenpfad dürfen nicht identisch sein.',
@@ -207,7 +235,7 @@ function carmaja_api_private_dir(): string
         );
     }
 
-    $expectedPath = $target === 'test' ? $testPath : $productionPath;
+    $expectedPath = $target === 'test' ? $testPath : (string) $productionPath;
 
     if (carmaja_api_normalize_path($configuredPath) !== carmaja_api_normalize_path($expectedPath)) {
         throw new CarmajaApiException(
@@ -439,7 +467,7 @@ function carmaja_api_validate_operation_id(string $operationId): void
 function carmaja_api_draft_path(string $draftId): string
 {
     carmaja_api_validate_draft_id($draftId);
-    return carmaja_api_path('products/drafts/' . $draftId . '.json');
+    return carmaja_api_path('drafts/' . $draftId . '.json');
 }
 
 function carmaja_api_load_draft(string $draftId): ?array
@@ -465,16 +493,44 @@ function carmaja_api_tokens_path(): string
     return carmaja_api_path('auth/device-tokens.json');
 }
 
-function carmaja_api_users_file(): string
+function carmaja_api_configured_users_file(): string
 {
     $path = carmaja_api_required_path_setting('CARMAJA_API_USERS_FILE');
-    $realPath = realpath($path);
+    $parentPath = realpath(dirname($path));
     $privatePath = carmaja_api_private_dir();
 
-    if (!is_string($realPath)
-        || !is_file($realPath)
-        || !is_readable($realPath)
-        || !carmaja_api_path_is_inside($realPath, $privatePath)) {
+    if (!is_string($parentPath)
+        || !is_dir($parentPath)
+        || !is_readable($parentPath)
+        || !is_writable($parentPath)) {
+        throw new CarmajaApiException(
+            503,
+            'Benutzerdatei ist nicht sicher erreichbar.',
+            [],
+            'users_file_unavailable'
+        );
+    }
+
+    $realPath = $parentPath . DIRECTORY_SEPARATOR . basename($path);
+
+    if (!carmaja_api_path_is_inside($realPath, $privatePath)) {
+        throw new CarmajaApiException(
+            503,
+            'Benutzerdatei liegt nicht im privaten Datenbereich.',
+            [],
+            'users_file_exposed'
+        );
+    }
+
+    return $realPath;
+}
+
+function carmaja_api_users_file(): string
+{
+    $path = carmaja_api_configured_users_file();
+    $realPath = realpath($path);
+
+    if (!is_string($realPath) || !is_file($realPath) || !is_readable($realPath)) {
         throw new CarmajaApiException(
             503,
             'Benutzerdatei ist nicht sicher erreichbar.',
@@ -1390,7 +1446,7 @@ function carmaja_api_allocate_sku(string $operationId): string
 {
     return carmaja_api_with_lock('sku-counter', function () use ($operationId): string {
         $year = gmdate('Y');
-        $path = carmaja_api_path('products/sku-counter.json');
+        $path = carmaja_api_path('sku-counter/counter.json');
         $counter = carmaja_api_read_target_json(
             $path,
             ['years' => [], 'reservations' => []],
@@ -1656,7 +1712,7 @@ function carmaja_api_local_publish_adapter(
 ): array {
     $operationId = (string) $operation['operationId'];
     $adapterPath = carmaja_api_path(
-        'publishing/operations/' . hash('sha256', $operationId) . '.json'
+        'products/operations/' . hash('sha256', $operationId) . '.json'
     );
 
     return carmaja_api_with_lock(
@@ -1686,7 +1742,7 @@ function carmaja_api_local_publish_adapter(
                     ];
             }
 
-            $publicPath = carmaja_api_path('publishing/public-products.json');
+            $publicPath = carmaja_api_path('products/public-products.json');
             $publicData = carmaja_api_read_target_json(
                 $publicPath,
                 ['version' => 1, 'products' => []],
@@ -2574,7 +2630,7 @@ function carmaja_api_upload_images(string $draftId, array $body, array $actor): 
 
     $processed = [];
     $temporaryDirectory = carmaja_api_path(
-        'uploads/' . $draftId . '/' . bin2hex(random_bytes(8))
+        'uploads-temp/' . $draftId . '/' . bin2hex(random_bytes(8))
     );
     carmaja_api_ensure_directory($temporaryDirectory);
 
@@ -2658,7 +2714,7 @@ function carmaja_api_upload_images(string $draftId, array $body, array $actor): 
                 );
             }
 
-            $imageDirectory = carmaja_api_path('products/images/' . $draftId);
+            $imageDirectory = carmaja_api_path('uploads/' . $draftId);
             $imageParent = dirname($imageDirectory);
             carmaja_api_ensure_directory($imageParent);
             $backupDirectory = $imageDirectory . '.backup.' . bin2hex(random_bytes(6));
@@ -2740,7 +2796,7 @@ function carmaja_api_upload_images(string $draftId, array $body, array $actor): 
 
 function carmaja_api_list_products(): array
 {
-    $directory = carmaja_api_path('products/drafts');
+    $directory = carmaja_api_path('drafts');
 
     if (!is_dir($directory)) {
         return ['products' => []];
@@ -2775,30 +2831,40 @@ function carmaja_api_diagnose_environment(): array
     $target = carmaja_api_publish_target();
     $private = carmaja_api_private_dir();
     $publicWebroot = carmaja_api_required_directory_setting('CARMAJA_PUBLIC_WEBROOT');
+    $testPrivateDir = carmaja_api_required_directory_setting('CARMAJA_TEST_PRIVATE_DIR');
     $testApiWebroot = carmaja_api_required_directory_setting('CARMAJA_TEST_API_WEBROOT');
     $testWebsiteWebroot = carmaja_api_required_directory_setting(
         'CARMAJA_TEST_WEBSITE_WEBROOT'
     );
-    $productionApiWebroot = carmaja_api_required_directory_setting(
-        'CARMAJA_PRODUCTION_API_WEBROOT'
-    );
-    $productionWebsiteWebroot = carmaja_api_required_directory_setting(
-        'CARMAJA_PRODUCTION_WEBSITE_WEBROOT'
-    );
+    $productionPrivateDir = $target === 'production'
+        ? carmaja_api_required_directory_setting('CARMAJA_PRODUCTION_PRIVATE_DIR')
+        : carmaja_api_optional_path_setting('CARMAJA_PRODUCTION_PRIVATE_DIR');
+    $productionApiWebroot = $target === 'production'
+        ? carmaja_api_required_directory_setting('CARMAJA_PRODUCTION_API_WEBROOT')
+        : carmaja_api_optional_path_setting('CARMAJA_PRODUCTION_API_WEBROOT');
+    $productionWebsiteWebroot = $target === 'production'
+        ? carmaja_api_required_directory_setting('CARMAJA_PRODUCTION_WEBSITE_WEBROOT')
+        : carmaja_api_optional_path_setting('CARMAJA_PRODUCTION_WEBSITE_WEBROOT');
     $expectedApiWebroot = $target === 'test' ? $testApiWebroot : $productionApiWebroot;
-    $normalizedWebroots = array_map(
-        'carmaja_api_normalize_path',
+    $configuredRoots = array_values(array_filter(
         [
+            $testPrivateDir,
             $testApiWebroot,
             $testWebsiteWebroot,
+            $productionPrivateDir,
             $productionApiWebroot,
             $productionWebsiteWebroot,
-        ]
+        ],
+        static fn (?string $path): bool => $path !== null
+    ));
+    $normalizedRoots = array_map(
+        'carmaja_api_normalize_path',
+        $configuredRoots
     );
 
     if (carmaja_api_normalize_path($publicWebroot)
-            !== carmaja_api_normalize_path($expectedApiWebroot)
-        || count(array_unique($normalizedWebroots)) !== count($normalizedWebroots)) {
+            !== carmaja_api_normalize_path((string) $expectedApiWebroot)
+        || count(array_unique($normalizedRoots)) !== count($normalizedRoots)) {
         throw new CarmajaApiException(
             503,
             'API- und Website-Webroots sind nicht sicher getrennt.',
@@ -2807,15 +2873,35 @@ function carmaja_api_diagnose_environment(): array
         );
     }
 
+    foreach ($configuredRoots as $leftIndex => $leftPath) {
+        foreach ($configuredRoots as $rightIndex => $rightPath) {
+            if ($leftIndex >= $rightIndex) {
+                continue;
+            }
+
+            if (carmaja_api_path_is_inside($leftPath, $rightPath)
+                || carmaja_api_path_is_inside($rightPath, $leftPath)) {
+                throw new CarmajaApiException(
+                    503,
+                    'Test- und Produktionspfade sind nicht sicher getrennt.',
+                    [],
+                    'environment_paths_not_separated'
+                );
+            }
+        }
+    }
+
     $requiredDirectories = [
         'auth',
         'audit',
         'locks',
         'products',
+        'drafts',
         'idempotency',
         'uploads',
-        'publishing',
+        'uploads-temp',
         'backups',
+        'sku-counter',
     ];
 
     foreach ($requiredDirectories as $relative) {
@@ -2833,18 +2919,38 @@ function carmaja_api_diagnose_environment(): array
         }
     }
 
-    $usersFile = carmaja_api_users_file();
-    $allWebroots = [
+    foreach (['json', 'mbstring', 'gd', 'exif'] as $extension) {
+        if (!extension_loaded($extension)) {
+            throw new CarmajaApiException(
+                503,
+                'Benötigte PHP-Erweiterung ist nicht verfügbar.',
+                ['check' => $extension],
+                'php_extension_missing'
+            );
+        }
+    }
+
+    $usersFile = carmaja_api_configured_users_file();
+    $allWebroots = array_values(array_filter([
         $testApiWebroot,
         $testWebsiteWebroot,
         $productionApiWebroot,
         $productionWebsiteWebroot,
-    ];
+    ], static fn (?string $path): bool => $path !== null));
     $sensitiveFiles = [
         $usersFile,
         $private . DIRECTORY_SEPARATOR . 'environment.json',
+        __FILE__,
+        __DIR__ . DIRECTORY_SEPARATOR . 'bootstrap.php',
+        __DIR__ . DIRECTORY_SEPARATOR . 'product-admin.php',
+        __DIR__ . DIRECTORY_SEPARATOR . 'product-api-diagnostics.php',
     ];
+    $configFile = getenv('CARMAJA_CONFIG_FILE');
     $githubTokenFile = getenv('CARMAJA_GITHUB_TOKEN_FILE');
+
+    if (is_string($configFile) && trim($configFile) !== '') {
+        $sensitiveFiles[] = trim($configFile);
+    }
 
     if (is_string($githubTokenFile) && trim($githubTokenFile) !== '') {
         $sensitiveFiles[] = trim($githubTokenFile);
@@ -2852,8 +2958,14 @@ function carmaja_api_diagnose_environment(): array
 
     foreach ($sensitiveFiles as $file) {
         $realFile = realpath($file);
+        $isPendingUsersFile = $file === $usersFile && !file_exists($usersFile);
 
-        if (!is_string($realFile) || !is_file($realFile)) {
+        if ($isPendingUsersFile) {
+            $realFile = $usersFile;
+        }
+
+        if (!is_string($realFile)
+            || (!$isPendingUsersFile && !is_file($realFile))) {
             throw new CarmajaApiException(
                 503,
                 'Private Konfigurationsdatei ist nicht sicher erreichbar.',
@@ -2920,6 +3032,7 @@ function carmaja_api_diagnose_environment(): array
             'privatePath' => 'ok',
             'environmentMarker' => 'ok',
             'directoryPermissions' => 'ok',
+            'phpExtensions' => 'ok',
             'atomicRename' => 'ok',
             'flock' => 'ok',
             'webrootSeparation' => 'ok',
@@ -2944,10 +3057,12 @@ function carmaja_api_create_backup(): array
         );
         @chmod($target . DIRECTORY_SEPARATOR . 'environment.json', 0640);
         carmaja_api_copy_tree($source . DIRECTORY_SEPARATOR . 'products', $target . DIRECTORY_SEPARATOR . 'products');
+        carmaja_api_copy_tree($source . DIRECTORY_SEPARATOR . 'drafts', $target . DIRECTORY_SEPARATOR . 'drafts');
+        carmaja_api_copy_tree($source . DIRECTORY_SEPARATOR . 'uploads', $target . DIRECTORY_SEPARATOR . 'uploads');
+        carmaja_api_copy_tree($source . DIRECTORY_SEPARATOR . 'sku-counter', $target . DIRECTORY_SEPARATOR . 'sku-counter');
         carmaja_api_copy_tree($source . DIRECTORY_SEPARATOR . 'auth', $target . DIRECTORY_SEPARATOR . 'auth');
         carmaja_api_copy_tree($source . DIRECTORY_SEPARATOR . 'audit', $target . DIRECTORY_SEPARATOR . 'audit');
         carmaja_api_copy_tree($source . DIRECTORY_SEPARATOR . 'idempotency', $target . DIRECTORY_SEPARATOR . 'idempotency');
-        carmaja_api_copy_tree($source . DIRECTORY_SEPARATOR . 'publishing', $target . DIRECTORY_SEPARATOR . 'publishing');
         carmaja_api_prune_backups($backupRoot);
         carmaja_api_audit('backup_created', ['backup' => $name]);
 

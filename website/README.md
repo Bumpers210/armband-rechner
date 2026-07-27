@@ -91,12 +91,14 @@ verwendet.
 
 ## Produktverwaltung
 
-Die Android-App kann Produktentwürfe an eine geschützte PHP-API unter `/api/`
-übertragen. Entwürfe verwenden eine unveränderliche `draftId`; die öffentliche
-SKU wird erst beim ersten erfolgreichen Publish vergeben. Mutierende Anfragen
-verwenden `expectedVersion` und erhalten bei veraltetem Stand HTTP 409.
-Publish- und Statusaktionen sind über eine clientseitige `operationId`
-idempotent.
+Die Android-Test-App überträgt Produktentwürfe ausschließlich an
+`https://test-api.carmaja-perlen.de/`. Im öffentlichen API-Webroot liegen nur
+der Einstiegspunkt und die Rewrite-Konfiguration. Bootstrap, Router, CLI,
+Diagnose, Laufzeitkonfiguration und Daten bleiben außerhalb des Webroots.
+Entwürfe verwenden eine unveränderliche `draftId`; die öffentliche SKU wird
+erst beim ersten erfolgreichen Publish vergeben. Mutierende Anfragen verwenden
+`expectedVersion` und erhalten bei veraltetem Stand HTTP 409. Publish- und
+Statusaktionen sind über eine clientseitige `operationId` idempotent.
 
 Öffentliche Produktdaten liegen in `content/products.json`. Die Website zeigt
 keine Verkaufspreise; Vinted bleibt die verbindliche Quelle für Preis und Kauf.
@@ -116,11 +118,11 @@ Benutzer und widerrufbare Geräte der getrennten Testumgebung werden
 ausschließlich per PHP-CLI verwaltet:
 
 ```bash
-php scripts/product-admin.php user:create
-php scripts/product-admin.php user:password --username 'BENUTZERNAME'
-php scripts/product-admin.php device:list
-php scripts/product-admin.php device:revoke --device-id 'GERAETE_ID'
-php scripts/product-admin.php device:revoke-user --username 'BENUTZERNAME'
+"$CARMAJA_PHP_CLI" "$CARMAJA_ADMIN_SCRIPT" user:create
+"$CARMAJA_PHP_CLI" "$CARMAJA_ADMIN_SCRIPT" user:password --username 'BENUTZERNAME'
+"$CARMAJA_PHP_CLI" "$CARMAJA_ADMIN_SCRIPT" device:list
+"$CARMAJA_PHP_CLI" "$CARMAJA_ADMIN_SCRIPT" device:revoke --device-id 'GERAETE_ID'
+"$CARMAJA_PHP_CLI" "$CARMAJA_ADMIN_SCRIPT" device:revoke-user --username 'BENUTZERNAME'
 ```
 
 Das CLI akzeptiert keine Passwörter als Argument und verweigert HTTP-Aufrufe.
@@ -128,9 +130,10 @@ Es benötigt die im Setup-Dokument beschriebenen privaten Testpfade und
 Umgebungsmarkierungen.
 
 Vor Aktivierung der Test-API prüft
-`php scripts/product-api-diagnostics.php` die Zielmarkierung, getrennte
-Webroots und private Pfade, Schreibrechte, atomare Umbenennung und `flock`.
-Phase 3 erzeugt noch keine GitHub-Commits und startet kein Deployment.
+`"$CARMAJA_PHP_CLI" /home/www/carmaja-private-test/program/product-api-diagnostics.php`
+die Zielmarkierung, getrennte Webroots und private Pfade, PHP-Erweiterungen,
+Schreibrechte, atomare Umbenennung und `flock`. Phase 3.1 erzeugt noch keine
+GitHub-Commits und startet kein Deployment.
 
 Ohne weitere Konfiguration liegt die Datei unter
 `out/private-data/clicks.json`. Dieses Verzeichnis wird durch eine aktive

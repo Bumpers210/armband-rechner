@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__, 2) . '/hosting/_internal/product-api.php';
+require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api.php';
 
 final class CarmajaApiTestFailure extends RuntimeException
 {
@@ -119,13 +119,13 @@ function carmaja_api_test_private_structure(string $path, string $environment): 
         'audit',
         'locks',
         'products',
-        'products/drafts',
-        'products/images',
+        'products/operations',
+        'drafts',
         'idempotency',
         'uploads',
-        'publishing',
-        'publishing/operations',
+        'uploads-temp',
         'backups',
+        'sku-counter',
     ];
 
     foreach ($directories as $relative) {
@@ -279,7 +279,7 @@ function carmaja_api_test_ready_draft(
     ?string $vintedUrl = null,
     array $internalCalculation = []
 ): array {
-    $imageDirectory = carmaja_api_path('products/images/' . $draftId);
+    $imageDirectory = carmaja_api_path('uploads/' . $draftId);
     $imagePath = $imageDirectory . DIRECTORY_SEPARATOR . '01.jpg';
     carmaja_api_test_create_jpeg($imagePath);
 
@@ -577,7 +577,7 @@ carmaja_api_test('Test-Publish ohne Vinted-Link ist erfolgreich', static functio
     carmaja_api_test_same(null, $result['commitSha'], 'Phase 3 darf keinen Commit erzeugen.');
 
     $public = carmaja_api_read_target_json(
-        $fixture['testPrivate'] . '/publishing/public-products.json',
+        $fixture['testPrivate'] . '/products/public-products.json',
         [],
         'Öffentliche Testproduktdaten'
     );
@@ -677,7 +677,7 @@ carmaja_api_test('Deaktivierter Produktions-Publish hat keine Nebenwirkungen', s
         'Produktionssperre darf keine Idempotency-Nebenwirkung erzeugen.'
     );
     carmaja_api_test_assert(
-        !is_file($fixture['productionPrivate'] . '/publishing/public-products.json'),
+        !is_file($fixture['productionPrivate'] . '/products/public-products.json'),
         'Produktionssperre darf keinen öffentlichen Datensatz erzeugen.'
     );
 });
@@ -855,7 +855,7 @@ carmaja_api_test('Retrybarer Fehler wird mit derselben SKU fortgesetzt', static 
     carmaja_api_test_same(2, $attempts, 'Retry muss Adapter erneut versuchen.');
     carmaja_api_test_same(1, $sideEffects, 'Externe Nebenwirkung darf einmal erfolgen.');
     $counter = carmaja_api_read_target_json(
-        $fixture['testPrivate'] . '/products/sku-counter.json',
+        $fixture['testPrivate'] . '/sku-counter/counter.json',
         [],
         'SKU-Zähler'
     );
@@ -1088,7 +1088,7 @@ carmaja_api_test('Öffentliche Daten enthalten keine internen Werte', static fun
         'published'
     );
     $publicRaw = (string) file_get_contents(
-        $fixture['testPrivate'] . '/publishing/public-products.json'
+        $fixture['testPrivate'] . '/products/public-products.json'
     );
 
     foreach ([
@@ -1106,7 +1106,7 @@ carmaja_api_test('Öffentliche Daten enthalten keine internen Werte', static fun
     }
 });
 
-carmaja_api_test('IONOS-Diagnose prüft getrennte Pfade ohne Ausgabe von Pfaden', static function (): void {
+carmaja_api_test('IONOS-Diagnose erlaubt fehlende Produktionspfade im Testmodus', static function (): void {
     $fixture = carmaja_api_test_fixture();
     $result = carmaja_api_diagnose_environment();
     $encoded = json_encode($result, JSON_THROW_ON_ERROR);
@@ -1118,6 +1118,27 @@ carmaja_api_test('IONOS-Diagnose prüft getrennte Pfade ohne Ausgabe von Pfaden'
         'Diagnoseausgabe darf keine privaten Pfade enthalten.'
     );
 
+    putenv('CARMAJA_PRODUCTION_PRIVATE_DIR');
+    putenv('CARMAJA_PRODUCTION_API_WEBROOT');
+    putenv('CARMAJA_PRODUCTION_WEBSITE_WEBROOT');
+    $withoutProductionPaths = carmaja_api_diagnose_environment();
+    carmaja_api_test_same(
+        true,
+        $withoutProductionPaths['ok'],
+        'Im Testmodus dürfen Produktionspfade vollständig fehlen.'
+    );
+
+    unlink($fixture['testUsers']);
+    $beforeFirstUser = carmaja_api_diagnose_environment();
+    carmaja_api_test_same(
+        true,
+        $beforeFirstUser['ok'],
+        'Diagnose muss vor dem ersten per CLI erzeugten Benutzer möglich sein.'
+    );
+
+    putenv('CARMAJA_PRODUCTION_PRIVATE_DIR=' . $fixture['productionPrivate']);
+    putenv('CARMAJA_PRODUCTION_API_WEBROOT=' . $fixture['productionApi']);
+    putenv('CARMAJA_PRODUCTION_WEBSITE_WEBROOT=' . $fixture['productionWebsite']);
     putenv('CARMAJA_TEST_WEBSITE_WEBROOT=' . $fixture['testApi']);
 
     try {

@@ -44,8 +44,6 @@ const requiredFiles = [
   "icon.svg",
   ".htaccess",
   "click.php",
-  "api/index.php",
-  "api/.htaccess",
   "statistik/index.php",
   "statistik/.htaccess.example",
   "private-data/.htaccess",
@@ -398,6 +396,12 @@ async function findPasswordFiles(directory) {
 assert(
   (await findPasswordFiles(outputDirectory)).length === 0,
   "Eine .htpasswd darf nicht im Export enthalten sein.",
+);
+assert(
+  !(await outputPathExists("api/index.php")) &&
+    !(await outputPathExists("api/.htaccess")) &&
+    !(await outputPathExists("_internal/product-api.php")),
+  "Die getrennte Test-API darf nicht in den öffentlichen Website-Export gelangen.",
 );
 assert(
   !(await outputPathExists("v2")) &&
