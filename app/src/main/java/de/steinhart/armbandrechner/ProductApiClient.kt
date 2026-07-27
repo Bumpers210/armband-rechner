@@ -2,6 +2,7 @@ package de.steinhart.armbandrechner
 
 import java.io.File
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 import java.util.UUID
 import org.json.JSONArray
@@ -19,17 +20,31 @@ data class PublishResult(
     val sku: String?,
     val version: Int,
     val operationId: String,
-    val commitSha: String,
+    val commitSha: String?,
     val deploymentStatus: String,
     val status: ProductStatus,
 )
 
+data class ProductLoginResult(
+    val token: String,
+    val publishTarget: String,
+)
+
 open class ProductApiException(
     val statusCode: Int,
+    val errorCode: String,
+    val fields: Map<String, String> = emptyMap(),
     message: String,
 ) : Exception(message)
 
-class ProductConflictException(message: String) : ProductApiException(409, message)
+class ProductConflictException(
+    errorCode: String,
+    fields: Map<String, String>,
+    message: String,
+) : ProductApiException(409, errorCode, fields, message)
+
+class ProductTargetMismatchException(message: String) :
+    ProductApiException(409, "publish_target_mismatch", message = message)
 
 class ProductApiClient {
     fun login(
@@ -37,7 +52,8 @@ class ProductApiClient {
         username: String,
         password: String,
         deviceName: String,
-    ): String {
+        expectedPublishTarget: String,
+    ): ProductLoginResult {
         val response = requestJson(
             baseUrl = baseUrl,
             path = "login",
@@ -46,9 +62,15 @@ class ProductApiClient {
             body = JSONObject()
                 .put("username", username)
                 .put("password", password)
-                .put("deviceName", deviceName),
+                .put("deviceName", deviceName)
+                .put("publishTarget", expectedPublishTarget),
         )
-        return response.getString("token")
+        val actualTarget = response.getString("publishTarget")
+        requireMatchingPublishTarget(expectedPublishTarget, actualTarget)
+        return ProductLoginResult(
+            token = response.getString("token"),
+            publishTarget = actualTarget,
+        )
     }
 
     fun saveDraft(baseUrl: String, token: String, draft: ProductDraft): ProductServerUpdate {
@@ -136,7 +158,7 @@ class ProductApiClient {
             sku = response.optStringOrNull("sku"),
             version = response.getInt("version"),
             operationId = response.getString("operationId"),
-            commitSha = response.getString("commitSha"),
+            commitSha = response.optStringOrNull("commitSha"),
             deploymentStatus = response.getString("deploymentStatus"),
             status = ProductStatus.fromWireName(response.optString("status")),
         )
@@ -164,7 +186,7 @@ class ProductApiClient {
         method: String,
         token: String?,
     ): HttpURLConnection {
-        val normalizedBase = baseUrl.trim().trimEnd('/')
+        val normalizedBase = requireTestApiBaseUrl(baseUrl).trimEnd('/')
         val connection = (URL("$normalizedBase/$path").openConnection() as HttpURLConnection)
         connection.connectTimeout = 15_000
         connection.readTimeout = 30_000
@@ -186,16 +208,67 @@ class ProductApiClient {
         val json = text.takeIf { it.isNotBlank() }?.let(::JSONObject) ?: JSONObject()
 
         if (statusCode !in 200..299) {
-            val message = json.optJSONObject("error")?.optString("message")
+            val error = json.optJSONObject("error")
+            val message = error?.optString("message")
                 ?: "Produktserver antwortet mit HTTP $statusCode"
+            val errorCode = error?.optString("code").orEmpty().ifBlank { "http_error" }
+            val fieldsJson = error?.optJSONObject("fields")
+            val fields = fieldsJson?.keys()?.asSequence()?.associateWith {
+                fieldsJson.optString(it)
+            }.orEmpty()
             if (statusCode == 409) {
-                throw ProductConflictException(message)
+                throw ProductConflictException(errorCode, fields, message)
             }
-            throw ProductApiException(statusCode, message)
+            throw ProductApiException(statusCode, errorCode, fields, message)
         }
 
-        return json
+        if (!json.optBoolean("ok", false) || !json.has("data")) {
+            throw ProductApiException(
+                0,
+                "invalid_api_response",
+                message = "Produktserver liefert eine ungültige Antwort.",
+            )
+        }
+
+        return json.optJSONObject("data")
+            ?: throw ProductApiException(
+                0,
+                "invalid_api_response",
+                message = "Produktserver liefert keine Daten.",
+            )
     }
+}
+
+internal fun requireMatchingPublishTarget(expected: String, actual: String) {
+    if (expected != "test" || actual != expected) {
+        throw ProductTargetMismatchException(
+            "Test-App und API verwenden unterschiedliche Veröffentlichungsziele.",
+        )
+    }
+}
+
+internal fun requireTestApiBaseUrl(value: String): String {
+    val normalized = value.trim().trimEnd('/')
+    val valid = runCatching {
+        val uri = URI(normalized)
+        uri.scheme == "https" &&
+            uri.host == "test-api.carmaja-perlen.de" &&
+            uri.port == -1 &&
+            uri.userInfo == null &&
+            uri.path.orEmpty().isEmpty() &&
+            uri.query == null &&
+            uri.fragment == null
+    }.getOrDefault(false)
+
+    if (!valid) {
+        throw ProductApiException(
+            0,
+            "test_api_endpoint_required",
+            message = "Die Test-App darf ausschließlich die konfigurierte Test-API verwenden.",
+        )
+    }
+
+    return "$normalized/"
 }
 
 private fun ProductDraft.toSaveJson(): JSONObject {
@@ -203,7 +276,7 @@ private fun ProductDraft.toSaveJson(): JSONObject {
         ProductStatus.Draft -> ProductStatus.Draft
         else -> ProductStatus.Ready
     }
-    return JSONObject()
+    val payload = JSONObject()
         .put("draftId", draftId)
         .put("expectedVersion", version)
         .put("status", saveStatus.wireName)
@@ -214,8 +287,13 @@ private fun ProductDraft.toSaveJson(): JSONObject {
         .put("stock", stock)
         .put("shortDescription", shortDescription)
         .put("careInstructions", JSONArray(careInstructions))
-        .put("vintedUrl", vintedUrl)
         .put("internalCalculation", internalCalculation.toJson())
+
+    if (vintedUrl.isNotBlank()) {
+        payload.put("vintedUrl", vintedUrl.trim())
+    }
+
+    return payload
 }
 
 private fun CalculationSnapshot.toJson(): JSONObject {

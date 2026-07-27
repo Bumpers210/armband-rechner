@@ -18,7 +18,18 @@ function carmaja_api_send(int $statusCode, array $payload): never
     exit;
 }
 
+function carmaja_api_success_payload(array $data): array
+{
+    return carmaja_api_success_response($data);
+}
+
+function carmaja_api_error_payload(CarmajaApiException $error): array
+{
+    return carmaja_api_error_response($error);
+}
+
 try {
+    carmaja_api_private_dir();
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     $path = trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '/api/', PHP_URL_PATH), '/');
     $segments = explode('/', $path);
@@ -27,14 +38,22 @@ try {
         array_shift($segments);
     }
 
-    if ($method === 'POST' && ($segments[0] ?? null) === 'login') {
-        carmaja_api_send(200, carmaja_api_login(carmaja_api_json_body()));
+    if ($method === 'POST'
+        && ($segments[0] ?? null) === 'login'
+        && count($segments) === 1) {
+        carmaja_api_send(
+            200,
+            carmaja_api_success_payload(carmaja_api_login(carmaja_api_json_body()))
+        );
     }
 
     $actor = carmaja_api_authorize();
 
     if ($method === 'GET' && ($segments[0] ?? null) === 'products' && count($segments) === 1) {
-        carmaja_api_send(200, carmaja_api_list_products());
+        carmaja_api_send(
+            200,
+            carmaja_api_success_payload(carmaja_api_list_products())
+        );
     }
 
     if (($segments[0] ?? null) === 'products' && isset($segments[1])) {
@@ -47,62 +66,129 @@ try {
                 throw new CarmajaApiException(404, 'Entwurf wurde nicht gefunden.');
             }
 
-            carmaja_api_send(200, ['product' => $draft]);
+            carmaja_api_send(
+                200,
+                carmaja_api_success_payload(['product' => $draft])
+            );
         }
 
         if ($method === 'PUT' && count($segments) === 2) {
             carmaja_api_send(
                 200,
-                ['product' => carmaja_api_save_product($draftId, carmaja_api_json_body(), $actor)]
+                carmaja_api_success_payload([
+                    'product' => carmaja_api_save_product(
+                        $draftId,
+                        carmaja_api_json_body(),
+                        $actor
+                    ),
+                ])
             );
         }
 
-        if ($method === 'POST' && ($segments[2] ?? null) === 'images') {
+        if ($method === 'POST'
+            && ($segments[2] ?? null) === 'images'
+            && count($segments) === 3) {
             carmaja_api_send(
                 200,
-                ['product' => carmaja_api_upload_images($draftId, $_POST, $actor)]
+                carmaja_api_success_payload([
+                    'product' => carmaja_api_upload_images($draftId, $_POST, $actor),
+                ])
             );
         }
 
-        if ($method === 'POST' && ($segments[2] ?? null) === 'publish') {
+        if ($method === 'POST'
+            && ($segments[2] ?? null) === 'publish'
+            && count($segments) === 3) {
             carmaja_api_send(
                 200,
-                carmaja_api_publish($draftId, carmaja_api_json_body(), $actor, 'published')
+                carmaja_api_success_payload(
+                    carmaja_api_publish(
+                        $draftId,
+                        carmaja_api_json_body(),
+                        $actor,
+                        'published'
+                    )
+                )
             );
         }
 
-        if ($method === 'POST' && ($segments[2] ?? null) === 'sold') {
+        if ($method === 'POST'
+            && ($segments[2] ?? null) === 'sold'
+            && count($segments) === 3) {
             carmaja_api_send(
                 200,
-                carmaja_api_publish($draftId, carmaja_api_json_body(), $actor, 'sold')
+                carmaja_api_success_payload(
+                    carmaja_api_publish(
+                        $draftId,
+                        carmaja_api_json_body(),
+                        $actor,
+                        'sold'
+                    )
+                )
             );
         }
 
-        if ($method === 'POST' && ($segments[2] ?? null) === 'disable') {
+        if ($method === 'POST'
+            && ($segments[2] ?? null) === 'disable'
+            && count($segments) === 3) {
             carmaja_api_send(
                 200,
-                carmaja_api_publish($draftId, carmaja_api_json_body(), $actor, 'disabled')
+                carmaja_api_success_payload(
+                    carmaja_api_publish(
+                        $draftId,
+                        carmaja_api_json_body(),
+                        $actor,
+                        'disabled'
+                    )
+                )
             );
         }
     }
 
-    if ($method === 'POST' && ($segments[0] ?? null) === 'backups') {
-        carmaja_api_send(200, carmaja_api_create_backup());
+    if ($method === 'GET'
+        && ($segments[0] ?? null) === 'operations'
+        && isset($segments[1])
+        && count($segments) === 2) {
+        carmaja_api_send(
+            200,
+            carmaja_api_success_payload([
+                'operation' => carmaja_api_operation_status((string) $segments[1]),
+            ])
+        );
     }
 
-    throw new CarmajaApiException(404, 'API-Endpunkt wurde nicht gefunden.');
+    if ($method === 'POST'
+        && ($segments[0] ?? null) === 'backups'
+        && count($segments) === 1) {
+        carmaja_api_send(
+            200,
+            carmaja_api_success_payload(carmaja_api_create_backup())
+        );
+    }
+
+    throw new CarmajaApiException(
+        404,
+        'API-Endpunkt wurde nicht gefunden.',
+        [],
+        'endpoint_not_found'
+    );
 } catch (CarmajaApiException $error) {
-    carmaja_api_send($error->statusCode, [
-        'error' => [
-            'message' => $error->getMessage(),
-            'details' => $error->details,
-        ],
-    ]);
-} catch (Throwable $error) {
-    carmaja_api_audit('api_error', ['message' => $error->getMessage()]);
-    carmaja_api_send(500, [
-        'error' => [
-            'message' => 'Interner API-Fehler.',
-        ],
-    ]);
+    if ($error->statusCode === 429) {
+        header('Retry-After: ' . CARMAJA_LOGIN_WINDOW_SECONDS);
+    }
+
+    carmaja_api_send($error->statusCode, carmaja_api_error_payload($error));
+} catch (Throwable) {
+    carmaja_api_audit_best_effort('api_error', ['result' => 'internal_error']);
+    carmaja_api_send(
+        500,
+        carmaja_api_error_payload(
+            new CarmajaApiException(
+                500,
+                'Interner API-Fehler.',
+                [],
+                'internal_error'
+            )
+        )
+    );
 }

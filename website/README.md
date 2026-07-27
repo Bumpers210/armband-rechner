@@ -127,6 +127,11 @@ Das CLI akzeptiert keine Passwörter als Argument und verweigert HTTP-Aufrufe.
 Es benötigt die im Setup-Dokument beschriebenen privaten Testpfade und
 Umgebungsmarkierungen.
 
+Vor Aktivierung der Test-API prüft
+`php scripts/product-api-diagnostics.php` die Zielmarkierung, getrennte
+Webroots und private Pfade, Schreibrechte, atomare Umbenennung und `flock`.
+Phase 3 erzeugt noch keine GitHub-Commits und startet kein Deployment.
+
 Ohne weitere Konfiguration liegt die Datei unter
 `out/private-data/clicks.json`. Dieses Verzeichnis wird durch eine aktive
 `.htaccess` vollständig gegen Webzugriffe gesperrt. Bevorzugt wird ein

@@ -1,6 +1,7 @@
 package de.steinhart.armbandrechner
 
 import java.math.BigDecimal
+import java.net.URI
 import java.util.UUID
 
 enum class ProductStatus(val wireName: String) {
@@ -73,7 +74,9 @@ data class ProductDraft(
             if (materials.isEmpty()) put("materials", "Mindestens ein Material ist erforderlich.")
             if (braceletSize.isBlank()) put("braceletSize", "Armbandgröße ist erforderlich.")
             if (shortDescription.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
-            if (!isValidVintedUrl(vintedUrl)) put("vintedUrl", "Vinted-Link ist erforderlich.")
+            if (vintedUrl.isNotBlank() && !isValidVintedUrl(vintedUrl)) {
+                put("vintedUrl", "Vinted-Link ist ungültig.")
+            }
             if (images.isEmpty()) put("images", "Mindestens ein Hauptfoto ist erforderlich.")
         }
     }
@@ -115,8 +118,17 @@ data class ProductDraft(
 }
 
 fun isValidVintedUrl(value: String): Boolean {
-    return value.startsWith("https://www.vinted.de/") ||
-        value.startsWith("https://vinted.de/")
+    return runCatching {
+        val uri = URI(value.trim())
+        uri.scheme == "https" &&
+            uri.host?.lowercase() in setOf("vinted.de", "www.vinted.de") &&
+            uri.port == -1 &&
+            uri.userInfo == null &&
+            uri.query.orEmpty()
+                .split("&")
+                .mapNotNull { it.substringBefore("=", "").lowercase().takeIf(String::isNotBlank) }
+                .none { it in setOf("url", "redirect", "redirect_url", "redirect_uri", "next", "target") }
+    }.getOrDefault(false)
 }
 
 fun List<String>.toMultilineText(): String = joinToString("\n")

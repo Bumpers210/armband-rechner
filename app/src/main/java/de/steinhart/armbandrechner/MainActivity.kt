@@ -194,7 +194,11 @@ internal fun ArmbandCalculatorScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Armband-Rechner",
+                        text = if (BuildConfig.PRODUCT_PUBLISH_TARGET == "test") {
+                            "Carmaja Test"
+                        } else {
+                            "Armband-Rechner"
+                        },
                         fontWeight = FontWeight.SemiBold,
                     )
                 },

@@ -29,6 +29,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["appLabel"] = "Armband-Rechner"
         buildConfigField("String", "DEFAULT_PRODUCT_API_BASE_URL", "\"\"")
+        buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"\"")
     }
 
     signingConfigs {
@@ -59,6 +60,7 @@ android {
                 "DEFAULT_PRODUCT_API_BASE_URL",
                 "\"https://test-api.carmaja-perlen.de/\"",
             )
+            buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"test\"")
         }
 
         release {

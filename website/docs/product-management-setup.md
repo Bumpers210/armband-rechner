@@ -46,7 +46,9 @@ mkdir -p \
   "$CARMAJA_PRIVATE_DIR/locks" \
   "$CARMAJA_PRIVATE_DIR/products" \
   "$CARMAJA_PRIVATE_DIR/idempotency" \
-  "$CARMAJA_PRIVATE_DIR/uploads"
+  "$CARMAJA_PRIVATE_DIR/uploads" \
+  "$CARMAJA_PRIVATE_DIR/publishing" \
+  "$CARMAJA_PRIVATE_DIR/backups"
 chmod 0750 \
   "$CARMAJA_PRIVATE_DIR" \
   "$CARMAJA_PRIVATE_DIR/auth" \
@@ -54,7 +56,9 @@ chmod 0750 \
   "$CARMAJA_PRIVATE_DIR/locks" \
   "$CARMAJA_PRIVATE_DIR/products" \
   "$CARMAJA_PRIVATE_DIR/idempotency" \
-  "$CARMAJA_PRIVATE_DIR/uploads"
+  "$CARMAJA_PRIVATE_DIR/uploads" \
+  "$CARMAJA_PRIVATE_DIR/publishing" \
+  "$CARMAJA_PRIVATE_DIR/backups"
 umask 027
 printf '%s\n' '{"environment":"test"}' \
   > "$CARMAJA_PRIVATE_DIR/environment.json"
@@ -76,6 +80,8 @@ locks/device-tokens.lock
 products/
 idempotency/
 uploads/
+publishing/
+backups/
 ```
 
 Benutzer- und Gerätedateien erhalten nach Möglichkeit Modus `0640`.
@@ -91,7 +97,13 @@ ersetzt:
 ```bash
 export CARMAJA_PUBLISH_TARGET='test'
 export CARMAJA_PRIVATE_DIR='/ABSOLUTER/GEPRUEFTER/PRIVATER/TESTPFAD'
+export CARMAJA_TEST_PRIVATE_DIR="$CARMAJA_PRIVATE_DIR"
+export CARMAJA_PRODUCTION_PRIVATE_DIR='/ABSOLUTER/GETRENNTER/PRIVATER/PRODUKTIONSPFAD'
 export CARMAJA_PUBLIC_WEBROOT='/ABSOLUTER/GEPRUEFTER/TEST-API-WEBROOT'
+export CARMAJA_TEST_API_WEBROOT="$CARMAJA_PUBLIC_WEBROOT"
+export CARMAJA_TEST_WEBSITE_WEBROOT='/ABSOLUTER/GEPRUEFTER/TESTWEBSITE-WEBROOT'
+export CARMAJA_PRODUCTION_API_WEBROOT='/ABSOLUTER/GETRENNTER/PRODUKTIONS-API-WEBROOT'
+export CARMAJA_PRODUCTION_WEBSITE_WEBROOT='/ABSOLUTER/GETRENNTER/PRODUKTIONSWEBSITE-WEBROOT'
 export CARMAJA_API_USERS_FILE="$CARMAJA_PRIVATE_DIR/auth/api-users.json"
 export CARMAJA_ADMIN_SCRIPT='/ABSOLUTER/GEPRUEFTER/PRIVATER/PROGRAMMPFAD/product-admin.php'
 export CARMAJA_PRODUCTION_PUBLISH_ENABLED='false'
@@ -106,6 +118,13 @@ Für die getrennte Test-API werden zusätzlich eigene Werte benötigt:
 
 ```apache
 SetEnv CARMAJA_PRIVATE_DIR "/ABSOLUTER/GEPRUEFTER/PRIVATER/TESTPFAD"
+SetEnv CARMAJA_TEST_PRIVATE_DIR "/ABSOLUTER/GEPRUEFTER/PRIVATER/TESTPFAD"
+SetEnv CARMAJA_PRODUCTION_PRIVATE_DIR "/ABSOLUTER/GETRENNTER/PRIVATER/PRODUKTIONSPFAD"
+SetEnv CARMAJA_PUBLIC_WEBROOT "/ABSOLUTER/GEPRUEFTER/TEST-API-WEBROOT"
+SetEnv CARMAJA_TEST_API_WEBROOT "/ABSOLUTER/GEPRUEFTER/TEST-API-WEBROOT"
+SetEnv CARMAJA_TEST_WEBSITE_WEBROOT "/ABSOLUTER/GEPRUEFTER/TESTWEBSITE-WEBROOT"
+SetEnv CARMAJA_PRODUCTION_API_WEBROOT "/ABSOLUTER/GETRENNTER/PRODUKTIONS-API-WEBROOT"
+SetEnv CARMAJA_PRODUCTION_WEBSITE_WEBROOT "/ABSOLUTER/GETRENNTER/PRODUKTIONSWEBSITE-WEBROOT"
 SetEnv CARMAJA_API_USERS_FILE "/ABSOLUTER/GEPRUEFTER/PRIVATER/TESTPFAD/auth/api-users.json"
 SetEnv CARMAJA_TOKEN_PEPPER "EIGENER_LANGER_ZUFAELLIGER_TESTWERT"
 SetEnv CARMAJA_GITHUB_REPOSITORY "Bumpers210/armband-rechner"
@@ -118,6 +137,10 @@ SetEnv CARMAJA_PRODUCTION_PUBLISH_ENABLED "false"
 dem Server gesetzt und in keiner Dokumentation mit realen Werten abgelegt.
 Der Testbereich verwendet keine produktiven Benutzer, Tokens, SKU-Zähler,
 Auditlogs oder sonstigen privaten Daten.
+
+Die Pfade für Test und Produktion müssen auch dann verschieden konfiguriert
+sein, wenn Produktion noch nicht eingerichtet oder freigeschaltet ist. Der
+Produktionspfad wird in Phase 3 nicht beschrieben und nicht aktiviert.
 
 ## 4. Admin-CLI installieren
 
@@ -144,6 +167,72 @@ Verbindliche Exit-Codes:
 - `5`: Konfigurations-, Datei-, Audit- oder I/O-Fehler
 
 Fehlermeldungen werden auf STDERR geschrieben.
+
+## 4a. API-Diagnose vor der Inbetriebnahme
+
+Nach dem Export aller Pfadvariablen wird die Diagnose ausschließlich per SSH
+ausgeführt:
+
+```bash
+php website/scripts/product-api-diagnostics.php
+```
+
+Sie prüft ohne Ausgabe realer Pfade oder Secrets:
+
+- unveränderliche Umgebungsmarkierung
+- Trennung der privaten Test- und Produktionspfade
+- Trennung von Test-API-, Testwebsite- und Produktions-Webroots
+- Lese- und Schreibrechte aller privaten Unterordner
+- atomare Umbenennung
+- `flock`
+- Lage der Benutzer- und Konfigurationsdateien außerhalb aller Webroots
+
+Nur eine Ausgabe mit `"ok": true` erlaubt die weitere Inbetriebnahme. Jeder
+Fehler beendet die Diagnose mit Exit-Code `5`; die API darf dann nicht
+aktiviert werden.
+
+## 4b. Phase-3-API-Vertrag
+
+Die Test-App sendet bei der Anmeldung fest `publishTarget: "test"`. Die API
+gibt ihr konfiguriertes Ziel zurück. Eine Abweichung wird vor der Ausgabe eines
+Gerätetokens abgelehnt.
+
+Erfolgreiche Antworten verwenden:
+
+```json
+{
+  "ok": true,
+  "data": {}
+}
+```
+
+Fehler verwenden:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "machine_readable_code",
+    "message": "Verständliche Meldung",
+    "fields": {}
+  }
+}
+```
+
+Verfügbare geschützte Bereiche sind Produktliste, Produktdetail, Speichern,
+Bild-Upload, Publish, Verkauft, Deaktivieren, Backups und
+`GET /api/operations/<operationId>` für den Verarbeitungsstatus.
+
+Der Vinted-Link ist im Testziel optional. Ein leerer Wert wird nicht in den
+öffentlichen Datensatz geschrieben. Ist ein Link vorhanden, sind nur direkte
+HTTPS-URLs auf `vinted.de` oder `www.vinted.de` ohne Port, Benutzerinformation
+oder Redirect-Parameter erlaubt. Im vorbereiteten Produktionsziel ist der
+Link beim Publish Pflicht.
+
+Phase 3 führt keine GitHub-Anfrage und kein Deployment aus. Der idempotente
+Publish-Adapter schreibt ausschließlich einen privaten, umgebungsmarkierten
+Zwischenstand unter `publishing/`. Echte Git- und Deploymentadapter folgen
+erst in späteren Phasen.
 
 ## 5. Ersten Testbenutzer anlegen
 

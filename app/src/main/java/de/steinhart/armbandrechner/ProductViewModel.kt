@@ -48,11 +48,9 @@ class ProductViewModel(
     init {
         viewModelScope.launch {
             apiToken = tokenStore.loadToken()
+                .takeIf { BuildConfig.PRODUCT_PUBLISH_TARGET == "test" }
             val drafts = repository.loadDrafts()
-            val apiBaseUrl = tokenStore.loadPlainSetting(
-                SecureTokenStore.SETTING_API_BASE_URL,
-                BuildConfig.DEFAULT_PRODUCT_API_BASE_URL,
-            )
+            val apiBaseUrl = BuildConfig.DEFAULT_PRODUCT_API_BASE_URL
             val deviceName = tokenStore.loadPlainSetting(
                 SecureTokenStore.SETTING_DEVICE_NAME,
                 "Android",
@@ -89,8 +87,7 @@ class ProductViewModel(
     }
 
     fun updateApiBaseUrl(value: TextFieldValue) {
-        val editor = _uiState.value.loginEditor.copy(apiBaseUrl = value)
-        _uiState.value = _uiState.value.copy(loginEditor = editor)
+        // The beta app has no environment switch; the endpoint comes from BuildConfig.
     }
 
     fun updateUsername(value: TextFieldValue) {
@@ -147,20 +144,27 @@ class ProductViewModel(
     fun login() {
         val state = _uiState.value
         val editor = state.loginEditor
-        val baseUrl = editor.apiBaseUrl.text.trim()
         val deviceName = editor.deviceName.text.trim().ifBlank { "Android" }
         runBusy {
-            val token = withContext(Dispatchers.IO) {
-                apiClient.login(
-                    baseUrl = baseUrl,
-                    username = editor.username.text,
-                    password = editor.password.text,
-                    deviceName = deviceName,
-                )
+            val baseUrl = requireBaseUrl()
+            val login = try {
+                withContext(Dispatchers.IO) {
+                    apiClient.login(
+                        baseUrl = baseUrl,
+                        username = editor.username.text,
+                        password = editor.password.text,
+                        deviceName = deviceName,
+                        expectedPublishTarget = BuildConfig.PRODUCT_PUBLISH_TARGET,
+                    )
+                }
+            } catch (error: ProductTargetMismatchException) {
+                apiToken = null
+                tokenStore.clearToken()
+                _uiState.value = _uiState.value.copy(authenticated = false)
+                throw error
             }
-            apiToken = token
-            tokenStore.saveToken(token)
-            tokenStore.savePlainSetting(SecureTokenStore.SETTING_API_BASE_URL, baseUrl)
+            apiToken = login.token
+            tokenStore.saveToken(login.token)
             tokenStore.savePlainSetting(SecureTokenStore.SETTING_DEVICE_NAME, deviceName)
             _uiState.value = _uiState.value.copy(
                 authenticated = true,
@@ -212,7 +216,11 @@ class ProductViewModel(
             )
             replaceDraft(published)
             _uiState.value = _uiState.value.copy(
-                message = "Veröffentlichung gestartet: ${result.commitSha.take(7)} (${result.deploymentStatus}).",
+                message = if (result.commitSha == null) {
+                    "Für Testwebsite bereitgestellt (${result.deploymentStatus})."
+                } else {
+                    "Veröffentlichung gestartet: ${result.commitSha.take(7)} (${result.deploymentStatus})."
+                },
                 fieldErrors = emptyMap(),
             )
         }
@@ -268,7 +276,8 @@ class ProductViewModel(
             )
             replaceDraft(updated)
             _uiState.value = _uiState.value.copy(
-                message = "$successMessage Commit ${result.commitSha.take(7)}.",
+                message = result.commitSha?.let { "$successMessage Commit ${it.take(7)}." }
+                    ?: "$successMessage Verarbeitung: ${result.deploymentStatus}.",
             )
         }
     }
@@ -324,15 +333,22 @@ class ProductViewModel(
     }
 
     private fun requireBaseUrl(): String {
-        val baseUrl = _uiState.value.loginEditor.apiBaseUrl.text.trim().trimEnd('/')
-        if (!baseUrl.startsWith("https://")) {
-            throw ProductApiException(0, "API-URL muss mit https:// beginnen.")
+        if (BuildConfig.PRODUCT_PUBLISH_TARGET != "test") {
+            throw ProductApiException(
+                0,
+                "test_build_required",
+                message = "Produktverwaltung ist nur im Test-Build verfügbar.",
+            )
         }
-        return baseUrl
+        return requireTestApiBaseUrl(BuildConfig.DEFAULT_PRODUCT_API_BASE_URL)
     }
 
     private fun requireToken(): String {
-        return apiToken ?: throw ProductApiException(401, "Bitte zuerst anmelden.")
+        return apiToken ?: throw ProductApiException(
+            401,
+            "authentication_required",
+            message = "Bitte zuerst anmelden.",
+        )
     }
 
     private fun runBusy(block: suspend () -> Unit) {
@@ -341,9 +357,17 @@ class ProductViewModel(
         viewModelScope.launch {
             runCatching { block() }
                 .onFailure { error ->
+                    val fieldErrors = (error as? ProductApiException)
+                        ?.fields
+                        .orEmpty()
                     _uiState.value = _uiState.value.copy(
                         error = readableError(error),
                         busy = false,
+                        fieldErrors = if (fieldErrors.isEmpty()) {
+                            _uiState.value.fieldErrors
+                        } else {
+                            fieldErrors
+                        },
                     )
                 }
                 .onSuccess {
@@ -356,6 +380,8 @@ class ProductViewModel(
         return when (error) {
             is ProductConflictException ->
                 "Der Serverstand ist neuer. Bitte Entwurf erneut laden und Änderungen prüfen."
+            is ProductTargetMismatchException ->
+                "Anmeldung abgelehnt: Die API ist nicht als Testumgebung konfiguriert."
             is ProductApiException -> error.message ?: "Produktserverfehler"
             is IOException -> "Keine Verbindung zur Produktverwaltung"
             is IllegalArgumentException -> error.message ?: "Ungültige Eingabe"

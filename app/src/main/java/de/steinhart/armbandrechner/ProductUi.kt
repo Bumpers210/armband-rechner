@@ -85,6 +85,15 @@ internal fun ProductManagementSection(
             .padding(horizontal = 16.dp, vertical = 20.dp),
     ) {
         SectionHeading(text = "Produktverwaltung")
+        if (BuildConfig.PRODUCT_PUBLISH_TARGET == "test") {
+            Text(
+                text = "TEST · Carmaja Produktverwaltung",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("product-test-environment"),
+            )
+        }
 
         Button(
             onClick = actions.onCreateFromCalculation,
@@ -152,13 +161,10 @@ private fun ServerLoginPanel(
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
-            OutlinedTextField(
-                value = state.loginEditor.apiBaseUrl,
-                onValueChange = actions.onApiBaseUrlChange,
-                label = { Text("API-URL") },
-                singleLine = true,
-                enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth(),
+            Text(
+                text = "Test-API: test-api.carmaja-perlen.de",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -189,7 +195,7 @@ private fun ServerLoginPanel(
             )
             OutlinedButton(
                 onClick = actions.onLogin,
-                enabled = !state.busy && state.loginEditor.apiBaseUrl.text.isNotBlank(),
+                enabled = !state.busy,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Anmelden")
@@ -255,11 +261,11 @@ internal fun ProductDraftForm(
     if (showPublishConfirmation) {
         AlertDialog(
             onDismissRequest = { showPublishConfirmation = false },
-            title = { Text("Produkt veröffentlichen?") },
+            title = { Text("Auf Testwebsite veröffentlichen?") },
             text = {
                 Text(
-                    "Nach der Veröffentlichung wird ein Website-Build gestartet. " +
-                        "Der Vinted-Link muss das verbindliche Angebot enthalten.",
+                    "Das Produkt wird für die geschützte Testwebsite bereitgestellt. " +
+                        "Ein Vinted-Link ist in dieser Testphase optional.",
                 )
             },
             confirmButton = {
@@ -269,7 +275,7 @@ internal fun ProductDraftForm(
                         actions.onPublish()
                     },
                 ) {
-                    Text("Veröffentlichen")
+                    Text("Auf Testwebsite veröffentlichen")
                 }
             },
             dismissButton = {
@@ -366,7 +372,7 @@ internal fun ProductDraftForm(
             ProductTextField(
                 value = editor.vintedUrl,
                 onValueChange = actions.onVintedUrlChange,
-                label = "Vinted-Angebotslink",
+                label = "Vinted-Angebotslink (optional)",
                 testTag = "product-vinted-url",
                 error = fieldErrors["vintedUrl"],
                 busy = busy,
@@ -416,7 +422,7 @@ internal fun ProductDraftForm(
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Veröffentlichen")
+                Text("Auf Testwebsite veröffentlichen")
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(

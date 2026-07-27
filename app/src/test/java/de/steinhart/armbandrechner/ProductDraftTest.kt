@@ -62,11 +62,21 @@ class ProductDraftTest {
             materials = listOf("Rosenquarz"),
             braceletSize = "17 cm",
             shortDescription = "Zartes Armband aus Rosenquarz.",
-            vintedUrl = "https://www.vinted.de/items/123",
             images = listOf(ProductImage("image.jpg", 1600, 1200, "Foto", true)),
         )
 
         assertTrue(ready.canPublish)
         assertNotEquals("", ready.internalCalculation.recommendedSalePrice)
+    }
+
+    @Test
+    fun optionalVintedUrlUsesExactHttpsHostValidation() {
+        assertTrue(isValidVintedUrl("https://vinted.de/items/123"))
+        assertTrue(isValidVintedUrl("https://www.vinted.de/items/123"))
+        assertFalse(isValidVintedUrl("http://vinted.de/items/123"))
+        assertFalse(isValidVintedUrl("https://vinted.de.fremd.example/items/123"))
+        assertFalse(isValidVintedUrl("https://user@vinted.de/items/123"))
+        assertFalse(isValidVintedUrl("https://vinted.de:443/items/123"))
+        assertFalse(isValidVintedUrl("https://vinted.de/redirect?url=https://example.org"))
     }
 }
