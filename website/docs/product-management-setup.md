@@ -150,8 +150,18 @@ unset TOKEN_PEPPER
 chmod 0640 /home/www/carmaja-private-test/config/runtime-config.php
 ```
 
-In Phase 3.1 werden keine `CARMAJA_GITHUB_*`-Variablen und kein GitHub-Token
-konfiguriert. `CARMAJA_PRODUCTION_DEPLOY_ENABLED` bleibt ungesetzt.
+Die bestehende IONOS-Testinstallation bleibt auch nach Phase 4 beim lokalen
+Publish-Adapter. Es werden keine `CARMAJA_GITHUB_*`-Variablen und kein
+GitHub-Token konfiguriert. `CARMAJA_PRODUCTION_DEPLOY_ENABLED` bleibt
+ungesetzt. Die neue Example-Konfiguration enthält ausschließlich
+`githubAdapterEnabled=false`; eine Aktivierung ist erst in einer später
+freigegebenen Phase zulässig.
+
+Der statische Phase-4-Testkatalog wird lokal mit `npm run build:test` nach
+`website/out-test/` gebaut. In Phase 4 wird dieser Ordner nicht zu IONOS
+übertragen. Die später zu verwendende Test-`.htaccess` liegt unter
+`website/hosting-test/.htaccess`; eine `.htpasswd` ist ausdrücklich nicht Teil
+des Repositories oder Exports.
 
 ## Rechte nach dem Upload
 

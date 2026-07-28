@@ -1512,16 +1512,15 @@ function carmaja_api_public_product_from_draft(array $draft): array
     }
 
     $publicProduct = [
-        'draftId' => (string) $draft['draftId'],
         'sku' => $sku,
         'slug' => $slug,
         'status' => (string) $draft['status'],
-        'name' => (string) $draft['name'],
+        'title' => (string) $draft['name'],
+        'description' => (string) $draft['shortDescription'],
         'materials' => array_values($draft['materials'] ?? []),
         'metalElements' => array_values($draft['metalElements'] ?? []),
-        'braceletSize' => (string) $draft['braceletSize'],
+        'size' => (string) $draft['braceletSize'],
         'stock' => (int) ($draft['stock'] ?? 1),
-        'shortDescription' => (string) $draft['shortDescription'],
         'careInstructions' => array_values($draft['careInstructions'] ?? []),
         'images' => array_map(
             static fn (array $image): array => array_diff_key($image, [
@@ -1530,10 +1529,7 @@ function carmaja_api_public_product_from_draft(array $draft): array
             ]),
             $publicImages
         ),
-        'createdAt' => (string) $draft['createdAt'],
         'updatedAt' => (string) $draft['updatedAt'],
-        'publishedAt' => (string) ($draft['publishedAt'] ?? carmaja_api_now()),
-        'soldAt' => $draft['soldAt'] ?? null,
         '_imageBlobs' => $publicImages,
     ];
 
@@ -1758,14 +1754,18 @@ function carmaja_api_local_publish_adapter(
 
             foreach ($products as $index => $product) {
                 if (is_array($product)
-                    && ($product['draftId'] ?? null) === $cleanProduct['draftId']) {
-                    $products[$index] = $cleanProduct;
+                    && ($product['sku'] ?? null) === $cleanProduct['sku']) {
+                    if (($cleanProduct['status'] ?? null) === 'disabled') {
+                        unset($products[$index]);
+                    } else {
+                        $products[$index] = $cleanProduct;
+                    }
                     $replaced = true;
                     break;
                 }
             }
 
-            if (!$replaced) {
+            if (!$replaced && ($cleanProduct['status'] ?? null) !== 'disabled') {
                 $products[] = $cleanProduct;
             }
 
@@ -2157,8 +2157,28 @@ function carmaja_api_operation_status(string $operationId): array
     ];
 }
 
+function carmaja_api_github_adapter_enabled(): bool
+{
+    return getenv('CARMAJA_GITHUB_ADAPTER_ENABLED') === 'true';
+}
+
+function carmaja_api_require_github_adapter_enabled(): void
+{
+    if (!carmaja_api_github_adapter_enabled()
+        || carmaja_api_publish_target() !== 'test'
+        || carmaja_api_production_publish_enabled()) {
+        throw new CarmajaApiException(
+            503,
+            'GitHub-Testadapter ist deaktiviert.',
+            [],
+            'github_adapter_disabled'
+        );
+    }
+}
+
 function carmaja_api_github_token(): string
 {
+    carmaja_api_require_github_adapter_enabled();
     $tokenFile = getenv('CARMAJA_GITHUB_TOKEN_FILE');
 
     if (!is_string($tokenFile) || trim($tokenFile) === '') {
@@ -2167,7 +2187,9 @@ function carmaja_api_github_token(): string
 
     $realPath = realpath(trim($tokenFile));
 
-    if ($realPath === false || !is_file($realPath)) {
+    if ($realPath === false
+        || !is_file($realPath)
+        || !carmaja_api_path_is_inside($realPath, carmaja_api_private_dir())) {
         throw new CarmajaApiException(503, 'GitHub-Token-Datei ist nicht erreichbar.');
     }
 
@@ -2182,6 +2204,7 @@ function carmaja_api_github_token(): string
 
 function carmaja_api_github_repository(): string
 {
+    carmaja_api_require_github_adapter_enabled();
     $repository = getenv('CARMAJA_GITHUB_REPOSITORY');
 
     if (!is_string($repository)
@@ -2194,26 +2217,16 @@ function carmaja_api_github_repository(): string
 
 function carmaja_api_github_branch(): string
 {
+    carmaja_api_require_github_adapter_enabled();
     $branch = getenv('CARMAJA_GITHUB_BRANCH');
     $branch = is_string($branch) ? trim($branch) : '';
-    $target = carmaja_api_publish_target();
-    $expected = $target === 'test' ? CARMAJA_TEST_BRANCH : 'main';
 
-    if ($branch !== $expected) {
+    if ($branch !== CARMAJA_TEST_BRANCH) {
         throw new CarmajaApiException(
             503,
-            'GitHub-Zielbranch passt nicht zur Umgebung.',
+            'GitHub-Zielbranch ist für den Testadapter nicht erlaubt.',
             [],
             'github_branch_mismatch'
-        );
-    }
-
-    if ($target === 'production' && !carmaja_api_production_publish_enabled()) {
-        throw new CarmajaApiException(
-            403,
-            'Produktionsveröffentlichung ist deaktiviert.',
-            [],
-            'production_publish_disabled'
         );
     }
 
@@ -2222,6 +2235,24 @@ function carmaja_api_github_branch(): string
 
 function carmaja_api_github_request(string $method, string $path, ?array $body = null): array
 {
+    carmaja_api_require_github_adapter_enabled();
+    $mock = $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] ?? null;
+
+    if (is_callable($mock)) {
+        $result = $mock($method, $path, $body);
+
+        if (!is_array($result)) {
+            throw new CarmajaApiException(
+                500,
+                'GitHub-Testadapter hat ein ungültiges Mock-Ergebnis geliefert.',
+                [],
+                'github_mock_invalid'
+            );
+        }
+
+        return $result;
+    }
+
     $url = 'https://api.github.com' . $path;
     $headers = [
         'Accept: application/vnd.github+json',
@@ -2268,7 +2299,7 @@ function carmaja_api_assert_repo_path_allowed(string $path): void
 {
     $normalized = str_replace('\\', '/', $path);
     $isAllowed = $normalized === 'website/content/products.json'
-        || preg_match('/^website\/public\/images\/products\/CP-\d{4}-\d{4}\/\d{2}\.jpg$/', $normalized) === 1;
+        || preg_match('/^website\/public\/images\/products\/CP-\d{4}-\d{4}\/0[1-5]\.jpg$/', $normalized) === 1;
 
     if (!$isAllowed
         || str_contains($normalized, '..')
@@ -2278,17 +2309,99 @@ function carmaja_api_assert_repo_path_allowed(string $path): void
     }
 }
 
+function carmaja_api_github_publish_adapter(
+    array $publicProduct,
+    array $operation
+): array {
+    carmaja_api_require_github_adapter_enabled();
+    $operationId = (string) ($operation['operationId'] ?? '');
+    carmaja_api_validate_operation_id($operationId);
+    $adapterPath = carmaja_api_path(
+        'products/operations/github-' . hash('sha256', $operationId) . '.json'
+    );
+
+    return carmaja_api_with_lock(
+        'github-publish-' . hash('sha256', $operationId),
+        function () use ($adapterPath, $publicProduct, $operation): array {
+            if (is_file($adapterPath)) {
+                $stored = carmaja_api_read_target_json(
+                    $adapterPath,
+                    [],
+                    'GitHub-Publishstatus'
+                );
+
+                if (($stored['requestHash'] ?? null)
+                    !== ($operation['requestHash'] ?? null)) {
+                    throw new CarmajaApiException(
+                        409,
+                        'GitHub-Publish wurde mit anderem Inhalt wiederholt.',
+                        [],
+                        'publish_adapter_conflict'
+                    );
+                }
+
+                if (is_array($stored['result'] ?? null)
+                    && is_string($stored['result']['commitSha'] ?? null)) {
+                    return $stored['result'];
+                }
+            }
+
+            $commitSha = carmaja_api_commit_public_product($publicProduct);
+            $result = [
+                'commitSha' => $commitSha,
+                'deploymentStatus' => 'not_started',
+            ];
+            carmaja_api_write_json_atomic(
+                $adapterPath,
+                carmaja_api_target_document([
+                    'operationId' => $operation['operationId'],
+                    'requestHash' => $operation['requestHash'],
+                    'createdAt' => carmaja_api_now(),
+                    'result' => $result,
+                ])
+            );
+
+            return $result;
+        }
+    );
+}
+
 function carmaja_api_commit_public_product(array $publicProduct): string
 {
     $repository = carmaja_api_github_repository();
     $branch = carmaja_api_github_branch();
     $repoPathPrefix = '/repos/' . $repository;
+    $sku = is_string($publicProduct['sku'] ?? null)
+        ? $publicProduct['sku']
+        : '';
+    $ownedImagePattern = '/^website\/public\/images\/products\/'
+        . preg_quote($sku, '/')
+        . '\/0[1-5]\.jpg$/';
+
+    if (preg_match('/^CP-\d{4}-\d{4}$/', $sku) !== 1) {
+        throw new CarmajaApiException(
+            500,
+            'Öffentliche Produkt-SKU ist für GitHub ungültig.',
+            [],
+            'github_product_sku_invalid'
+        );
+    }
 
     $ref = carmaja_api_github_request(
         'GET',
         $repoPathPrefix . '/git/ref/heads/' . rawurlencode($branch)
     );
     $headSha = (string) ($ref['object']['sha'] ?? '');
+
+    if (preg_match('/^[0-9a-f]{40}$/', $headSha) !== 1) {
+        throw new CarmajaApiException(
+            502,
+            'GitHub-Remote-HEAD ist ungültig.',
+            [],
+            'github_head_invalid'
+        );
+    }
+
     $headCommit = carmaja_api_github_request('GET', $repoPathPrefix . '/git/commits/' . $headSha);
     $baseTree = (string) ($headCommit['tree']['sha'] ?? '');
     $content = carmaja_api_github_request(
@@ -2310,15 +2423,19 @@ function carmaja_api_commit_public_product(array $publicProduct): string
     $existingPublicProduct = null;
 
     foreach ($products as $index => $product) {
-        if (is_array($product) && ($product['draftId'] ?? null) === $publicProduct['draftId']) {
+        if (is_array($product) && ($product['sku'] ?? null) === $publicProduct['sku']) {
             $existingPublicProduct = $product;
-            $products[$index] = $publicProductForJson;
+            if (($publicProductForJson['status'] ?? null) === 'disabled') {
+                unset($products[$index]);
+            } else {
+                $products[$index] = $publicProductForJson;
+            }
             $replaced = true;
             break;
         }
     }
 
-    if (!$replaced) {
+    if (!$replaced && ($publicProductForJson['status'] ?? null) !== 'disabled') {
         $products[] = $publicProductForJson;
     }
 
@@ -2340,14 +2457,44 @@ function carmaja_api_commit_public_product(array $publicProduct): string
         'content' => $productsJson,
     ];
 
-    if (($publicProduct['status'] ?? null) === 'disabled') {
-        foreach (($existingPublicProduct['images'] ?? []) as $existingImage) {
-            if (!is_array($existingImage) || !is_string($existingImage['src'] ?? null)) {
-                continue;
+    $newImagePaths = [];
+
+    foreach (($publicProduct['_imageBlobs'] ?? []) as $imageBlob) {
+        if (is_array($imageBlob) && is_string($imageBlob['_repoPath'] ?? null)) {
+            carmaja_api_assert_repo_path_allowed($imageBlob['_repoPath']);
+
+            if (preg_match($ownedImagePattern, $imageBlob['_repoPath']) !== 1) {
+                throw new CarmajaApiException(
+                    500,
+                    'Produktbild gehört nicht zum verwalteten SKU-Verzeichnis.',
+                    [],
+                    'github_image_ownership_invalid'
+                );
             }
 
-            $repoPath = 'website/public' . $existingImage['src'];
-            carmaja_api_assert_repo_path_allowed($repoPath);
+            $newImagePaths[] = $imageBlob['_repoPath'];
+        }
+    }
+
+    foreach (($existingPublicProduct['images'] ?? []) as $existingImage) {
+        if (!is_array($existingImage) || !is_string($existingImage['src'] ?? null)) {
+            continue;
+        }
+
+        $repoPath = 'website/public' . $existingImage['src'];
+        carmaja_api_assert_repo_path_allowed($repoPath);
+
+        if (preg_match($ownedImagePattern, $repoPath) !== 1) {
+            throw new CarmajaApiException(
+                500,
+                'Bestehendes Produktbild gehört nicht zum verwalteten SKU-Verzeichnis.',
+                [],
+                'github_image_ownership_invalid'
+            );
+        }
+
+        if (($publicProduct['status'] ?? null) === 'disabled'
+            || !in_array($repoPath, $newImagePaths, true)) {
             $tree[] = [
                 'path' => $repoPath,
                 'mode' => '100644',
@@ -2355,7 +2502,9 @@ function carmaja_api_commit_public_product(array $publicProduct): string
                 'sha' => null,
             ];
         }
-    } else {
+    }
+
+    if (($publicProduct['status'] ?? null) !== 'disabled') {
         foreach (($publicProduct['_imageBlobs'] ?? []) as $imageBlob) {
             if (!is_array($imageBlob)) {
                 continue;
@@ -2392,6 +2541,21 @@ function carmaja_api_commit_public_product(array $publicProduct): string
         'parents' => [$headSha],
     ]);
     $commitSha = (string) $commit['sha'];
+    $latestRef = carmaja_api_github_request(
+        'GET',
+        $repoPathPrefix . '/git/ref/heads/' . rawurlencode($branch)
+    );
+    $latestHeadSha = (string) ($latestRef['object']['sha'] ?? '');
+
+    if ($latestHeadSha !== $headSha) {
+        throw new CarmajaApiException(
+            409,
+            'GitHub-Remote-HEAD wurde zwischenzeitlich geändert.',
+            [],
+            'github_head_changed'
+        );
+    }
+
     carmaja_api_github_request('PATCH', $repoPathPrefix . '/git/refs/heads/' . rawurlencode($branch), [
         'sha' => $commitSha,
         'force' => false,

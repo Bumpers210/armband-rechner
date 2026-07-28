@@ -207,6 +207,7 @@ function carmaja_api_test_fixture(): array
     $carmajaApiTestRoots[] = $root;
     carmaja_api_test_use_target($fixture, 'test');
     unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']);
+    unset($GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER']);
     $_SERVER['HTTP_AUTHORIZATION'] = '';
     $_SERVER['REMOTE_ADDR'] = '203.0.113.10';
     $_SERVER['HTTP_USER_AGENT'] = 'Should-Not-Be-Audited';
@@ -235,6 +236,8 @@ function carmaja_api_test_use_target(array $fixture, string $target): void
     putenv('CARMAJA_API_USERS_FILE=' . $users);
     putenv('CARMAJA_TOKEN_PEPPER=' . str_repeat('p', 48));
     putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=false');
+    putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=false');
+    putenv('CARMAJA_GITHUB_REPOSITORY');
     putenv(
         'CARMAJA_GITHUB_BRANCH='
             . ($isTest ? CARMAJA_TEST_BRANCH : 'main')
@@ -334,6 +337,19 @@ function carmaja_api_test_ready_draft(
         'createdAt' => carmaja_api_now(),
         'updatedAt' => carmaja_api_now(),
     ]);
+}
+
+function carmaja_api_test_public_product(
+    string $draftId,
+    string $sku = 'CP-2026-0001'
+): array {
+    $draft = carmaja_api_test_ready_draft($draftId);
+    $draft['sku'] = $sku;
+    $draft['slug'] = strtolower($sku) . '-rosenquarz-armband';
+    $draft['status'] = 'published';
+    $draft['updatedAt'] = '2026-07-28T10:00:00+00:00';
+
+    return carmaja_api_public_product_from_draft($draft);
 }
 
 function carmaja_api_test_save_payload(int $expectedVersion): array
@@ -610,6 +626,28 @@ carmaja_api_test('Test-Publish ohne Vinted-Link ist erfolgreich', static functio
     carmaja_api_test_assert(
         !array_key_exists('vintedUrl', $public['products'][0]),
         'Öffentliches Testprodukt darf keinen leeren Vinted-Link enthalten.'
+    );
+    $publicKeys = array_keys($public['products'][0]);
+    sort($publicKeys);
+    $expectedKeys = [
+        'careInstructions',
+        'description',
+        'images',
+        'materials',
+        'metalElements',
+        'size',
+        'sku',
+        'slug',
+        'status',
+        'stock',
+        'title',
+        'updatedAt',
+    ];
+    sort($expectedKeys);
+    carmaja_api_test_same(
+        $expectedKeys,
+        $publicKeys,
+        'Öffentliches Produktmodell enthält nicht exakt die Feld-Allowlist.'
     );
 });
 
@@ -1251,6 +1289,273 @@ carmaja_api_test('Öffentliche Daten enthalten keine internen Werte', static fun
             'Öffentliche Produktdaten enthalten privaten Wert: ' . $forbidden
         );
     }
+});
+
+carmaja_api_test('GitHub-Adapter bleibt standardmäßig deaktiviert', static function (): void {
+    carmaja_api_test_fixture();
+
+    carmaja_api_test_exception(
+        static fn (): bool => carmaja_api_github_adapter_enabled()
+            ? true
+            : throw new CarmajaApiException(
+                503,
+                'GitHub-Testadapter ist deaktiviert.',
+                [],
+                'github_adapter_disabled'
+            ),
+        503,
+        'github_adapter_disabled'
+    );
+});
+
+carmaja_api_test('GitHub-Testbranch und Pfad-Allowlist sind fest', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+    putenv('CARMAJA_GITHUB_REPOSITORY=Bumpers210/armband-rechner');
+    putenv('CARMAJA_GITHUB_BRANCH=main');
+
+    carmaja_api_test_exception(
+        static fn (): string => carmaja_api_github_branch(),
+        503,
+        'github_branch_mismatch'
+    );
+
+    putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_TEST_BRANCH);
+    carmaja_api_test_same(
+        CARMAJA_TEST_BRANCH,
+        carmaja_api_github_branch(),
+        'Erlaubter Testbranch wurde abgelehnt.'
+    );
+
+    foreach ([
+        '.github/workflows/deploy.yml',
+        'app/src/main/AndroidManifest.xml',
+        'website/app/page.tsx',
+        'website/impressum/page.tsx',
+        'website/public/images/products/CP-2026-0001/06.jpg',
+        'website/public/images/products/CP-2026-0001/../01.jpg',
+    ] as $path) {
+        carmaja_api_test_exception(
+            static function () use ($path): void {
+                carmaja_api_assert_repo_path_allowed($path);
+            },
+            500,
+            'internal_error'
+        );
+    }
+
+    carmaja_api_assert_repo_path_allowed('website/content/products.json');
+    carmaja_api_assert_repo_path_allowed(
+        'website/public/images/products/CP-2026-0001/01.jpg'
+    );
+});
+
+carmaja_api_test(
+    'GitHub-Adapter ist mit Mocks idempotent und entfernt nur veraltete SKU-Bilder',
+    static function (): void {
+        carmaja_api_test_fixture();
+        putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+        putenv('CARMAJA_GITHUB_REPOSITORY=Bumpers210/armband-rechner');
+        putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_TEST_BRANCH);
+        $publicProduct = carmaja_api_test_public_product(
+            '019fa2e6-cf3c-7073-9275-7d3b566f5490'
+        );
+        $headSha = str_repeat('a', 40);
+        $treeSha = str_repeat('b', 40);
+        $newTreeSha = str_repeat('c', 40);
+        $commitSha = str_repeat('d', 40);
+        $calls = [];
+        $treeBody = null;
+        $existingProduct = array_diff_key($publicProduct, ['_imageBlobs' => true]);
+        $existingProduct['images'][] = [
+            'src' => '/images/products/CP-2026-0001/02.jpg',
+            'alt' => 'Veraltetes Bild',
+            'width' => 120,
+            'height' => 80,
+            'isMain' => false,
+        ];
+        $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] =
+            static function (
+                string $method,
+                string $path,
+                ?array $body
+            ) use (
+                &$calls,
+                &$treeBody,
+                $headSha,
+                $treeSha,
+                $newTreeSha,
+                $commitSha,
+                $existingProduct
+            ): array {
+                $calls[] = [$method, $path];
+
+                if ($method === 'GET' && str_contains($path, '/git/ref/heads/')) {
+                    return ['object' => ['sha' => $headSha]];
+                }
+
+                if ($method === 'GET' && str_contains($path, '/git/commits/')) {
+                    return ['tree' => ['sha' => $treeSha]];
+                }
+
+                if ($method === 'GET' && str_contains($path, '/contents/')) {
+                    return [
+                        'content' => base64_encode(json_encode([
+                            'version' => 1,
+                            'products' => [$existingProduct],
+                        ], JSON_THROW_ON_ERROR)),
+                    ];
+                }
+
+                if ($method === 'POST' && str_ends_with($path, '/git/blobs')) {
+                    return ['sha' => str_repeat('e', 40)];
+                }
+
+                if ($method === 'POST' && str_ends_with($path, '/git/trees')) {
+                    $treeBody = $body;
+                    return ['sha' => $newTreeSha];
+                }
+
+                if ($method === 'POST' && str_ends_with($path, '/git/commits')) {
+                    return ['sha' => $commitSha];
+                }
+
+                if ($method === 'PATCH' && str_contains($path, '/git/refs/heads/')) {
+                    carmaja_api_test_same(
+                        false,
+                        $body['force'] ?? null,
+                        'GitHub-Ref darf niemals mit Force aktualisiert werden.'
+                    );
+                    return ['object' => ['sha' => $commitSha]];
+                }
+
+                throw new CarmajaApiTestFailure(
+                    'Unerwarteter GitHub-Mock-Aufruf: ' . $method . ' ' . $path
+                );
+            };
+        $operation = [
+            'operationId' => 'github-mock-operation-0001',
+            'requestHash' => hash('sha256', 'github-mock-operation-0001'),
+        ];
+
+        $first = carmaja_api_github_publish_adapter($publicProduct, $operation);
+        $firstCallCount = count($calls);
+        $second = carmaja_api_github_publish_adapter($publicProduct, $operation);
+
+        carmaja_api_test_same($first, $second, 'Idempotente Antwort weicht ab.');
+        carmaja_api_test_same(
+            $firstCallCount,
+            count($calls),
+            'Idempotente Wiederholung hat weitere GitHub-Aufrufe erzeugt.'
+        );
+        carmaja_api_test_same(
+            $commitSha,
+            $first['commitSha'],
+            'Commit-SHA des Mock-Adapters fehlt.'
+        );
+        carmaja_api_test_assert(
+            is_array($treeBody['tree'] ?? null),
+            'GitHub-Tree wurde nicht erzeugt.'
+        );
+
+        $treeEntries = $treeBody['tree'];
+        $paths = array_column($treeEntries, 'path');
+        carmaja_api_test_assert(
+            in_array('website/content/products.json', $paths, true)
+                && in_array(
+                    'website/public/images/products/CP-2026-0001/01.jpg',
+                    $paths,
+                    true
+                )
+                && in_array(
+                    'website/public/images/products/CP-2026-0001/02.jpg',
+                    $paths,
+                    true
+                ),
+            'GitHub-Tree enthält nicht exakt Produktdaten, aktuelles und veraltetes Bild.'
+        );
+
+        foreach ($treeEntries as $entry) {
+            carmaja_api_assert_repo_path_allowed((string) $entry['path']);
+
+            if (($entry['path'] ?? null)
+                === 'website/public/images/products/CP-2026-0001/02.jpg') {
+                carmaja_api_test_assert(
+                    array_key_exists('sha', $entry),
+                    'Bildlöschung benötigt einen expliziten null-SHA.'
+                );
+                carmaja_api_test_same(
+                    null,
+                    $entry['sha'],
+                    'Veraltetes Bild muss als Löschung markiert sein.'
+                );
+            }
+        }
+    }
+);
+
+carmaja_api_test('GitHub-Adapter lehnt geänderten Remote-HEAD ab', static function (): void {
+    carmaja_api_test_fixture();
+    putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+    putenv('CARMAJA_GITHUB_REPOSITORY=Bumpers210/armband-rechner');
+    putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_TEST_BRANCH);
+    $publicProduct = carmaja_api_test_public_product(
+        '019fa2e6-cf3c-7073-9275-7d3b566f5491',
+        'CP-2026-0002'
+    );
+    $headCalls = 0;
+    $patchCalls = 0;
+    $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] =
+        static function (
+            string $method,
+            string $path,
+            ?array $body
+        ) use (&$headCalls, &$patchCalls): array {
+            if ($method === 'GET' && str_contains($path, '/git/ref/heads/')) {
+                $headCalls++;
+                return [
+                    'object' => [
+                        'sha' => str_repeat($headCalls === 1 ? 'a' : 'f', 40),
+                    ],
+                ];
+            }
+
+            if ($method === 'GET' && str_contains($path, '/git/commits/')) {
+                return ['tree' => ['sha' => str_repeat('b', 40)]];
+            }
+
+            if ($method === 'GET' && str_contains($path, '/contents/')) {
+                return [
+                    'content' => base64_encode('{"version":1,"products":[]}'),
+                ];
+            }
+
+            if ($method === 'POST' && str_ends_with($path, '/git/blobs')) {
+                return ['sha' => str_repeat('c', 40)];
+            }
+
+            if ($method === 'POST' && str_ends_with($path, '/git/trees')) {
+                return ['sha' => str_repeat('d', 40)];
+            }
+
+            if ($method === 'POST' && str_ends_with($path, '/git/commits')) {
+                return ['sha' => str_repeat('e', 40)];
+            }
+
+            if ($method === 'PATCH') {
+                $patchCalls++;
+                return [];
+            }
+
+            throw new CarmajaApiTestFailure('Unerwarteter GitHub-Mock-Aufruf.');
+        };
+
+    carmaja_api_test_exception(
+        static fn (): string => carmaja_api_commit_public_product($publicProduct),
+        409,
+        'github_head_changed'
+    );
+    carmaja_api_test_same(0, $patchCalls, 'Geänderter Remote-HEAD darf nicht gepatcht werden.');
 });
 
 carmaja_api_test('IONOS-Diagnose erlaubt fehlende Produktionspfade im Testmodus', static function (): void {

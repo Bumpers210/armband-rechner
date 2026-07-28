@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
 
 import "./globals.css";
@@ -16,8 +17,9 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   robots: {
-    index: true,
-    follow: true,
+    index: !siteTarget.isTest,
+    follow: !siteTarget.isTest,
+    noimageindex: siteTarget.isTest,
   },
   openGraph: {
     type: "website",

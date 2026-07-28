@@ -114,6 +114,24 @@ function carmaja_bootstrap_optional_path(array $config, string $key): ?string
     return rtrim(trim($value), "\\/");
 }
 
+function carmaja_bootstrap_optional_string(array $config, string $key): ?string
+{
+    $value = $config[$key] ?? null;
+
+    if ($value === null || (is_string($value) && trim($value) === '')) {
+        return null;
+    }
+
+    if (!is_string($value)) {
+        throw new CarmajaBootstrapException(
+            'config_value_invalid',
+            'Private Laufzeitkonfiguration enthält einen ungültigen optionalen Wert.'
+        );
+    }
+
+    return trim($value);
+}
+
 function carmaja_bootstrap_validate_config(array $config, string $configFile): array
 {
     $allowedKeys = [
@@ -129,6 +147,10 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'productionWebsiteWebroot',
         'usersFile',
         'tokenPepper',
+        'githubAdapterEnabled',
+        'githubRepository',
+        'githubBranch',
+        'githubTokenFile',
     ];
     $unknownKeys = array_diff(array_keys($config), $allowedKeys);
 
@@ -171,11 +193,45 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     );
     $usersFile = carmaja_bootstrap_required_path($config, 'usersFile');
     $tokenPepper = carmaja_bootstrap_required_string($config, 'tokenPepper');
+    $githubAdapterEnabled = $config['githubAdapterEnabled'] ?? false;
+    $githubRepository = carmaja_bootstrap_optional_string(
+        $config,
+        'githubRepository'
+    );
+    $githubBranch = carmaja_bootstrap_optional_string($config, 'githubBranch');
+    $githubTokenFile = carmaja_bootstrap_optional_path($config, 'githubTokenFile');
 
-    if (strlen($tokenPepper) < 32) {
+    if (strlen($tokenPepper) < 32 || !is_bool($githubAdapterEnabled)) {
         throw new CarmajaBootstrapException(
             'config_secret_invalid',
-            'Token-Geheimnis ist nicht sicher konfiguriert.'
+            'Private Laufzeitkonfiguration ist nicht sicher konfiguriert.'
+        );
+    }
+
+    if ($githubBranch !== null && $githubBranch !== 'test/product-management-beta') {
+        throw new CarmajaBootstrapException(
+            'github_branch_invalid',
+            'GitHub-Testbranch ist nicht sicher konfiguriert.'
+        );
+    }
+
+    if ($githubRepository !== null
+        && preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $githubRepository) !== 1) {
+        throw new CarmajaBootstrapException(
+            'github_repository_invalid',
+            'GitHub-Zielrepository ist nicht sicher konfiguriert.'
+        );
+    }
+
+    if ($githubAdapterEnabled
+        && ($publishTarget !== 'test'
+            || $productionPublishEnabled
+            || $githubRepository === null
+            || $githubBranch !== 'test/product-management-beta'
+            || $githubTokenFile === null)) {
+        throw new CarmajaBootstrapException(
+            'github_adapter_configuration_invalid',
+            'GitHub-Testadapter ist nicht sicher konfiguriert.'
         );
     }
 
@@ -261,7 +317,9 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     }
 
     if (!carmaja_bootstrap_path_is_inside($usersFile, $privateDir)
-        || !carmaja_bootstrap_path_is_inside($configFile, $privateDir)) {
+        || !carmaja_bootstrap_path_is_inside($configFile, $privateDir)
+        || ($githubTokenFile !== null
+            && !carmaja_bootstrap_path_is_inside($githubTokenFile, $privateDir))) {
         throw new CarmajaBootstrapException(
             'config_private_file_exposed',
             'Private Konfigurationsdateien liegen nicht im privaten Datenbereich.'
@@ -281,6 +339,10 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'productionWebsiteWebroot' => $productionWebsiteWebroot,
         'usersFile' => $usersFile,
         'tokenPepper' => $tokenPepper,
+        'githubAdapterEnabled' => $githubAdapterEnabled,
+        'githubRepository' => $githubRepository,
+        'githubBranch' => $githubBranch,
+        'githubTokenFile' => $githubTokenFile,
         'configFile' => $configFile,
     ];
 }
@@ -347,6 +409,11 @@ function carmaja_bootstrap_apply_config(array $config): void
         'CARMAJA_PRODUCTION_WEBSITE_WEBROOT' => $config['productionWebsiteWebroot'],
         'CARMAJA_API_USERS_FILE' => $config['usersFile'],
         'CARMAJA_TOKEN_PEPPER' => $config['tokenPepper'],
+        'CARMAJA_GITHUB_ADAPTER_ENABLED' =>
+            $config['githubAdapterEnabled'] ? 'true' : 'false',
+        'CARMAJA_GITHUB_REPOSITORY' => $config['githubRepository'],
+        'CARMAJA_GITHUB_BRANCH' => $config['githubBranch'],
+        'CARMAJA_GITHUB_TOKEN_FILE' => $config['githubTokenFile'],
     ];
 
     foreach ($environment as $name => $value) {
@@ -359,6 +426,13 @@ function carmaja_bootstrap_prepare(?string $configPath = null): array
     $config = carmaja_bootstrap_load_config($configPath);
     carmaja_bootstrap_apply_config($config);
     require_once __DIR__ . '/product-api.php';
+
+    if ($config['githubAdapterEnabled']) {
+        $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER'] =
+            'carmaja_api_github_publish_adapter';
+    } else {
+        unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']);
+    }
 
     return $config;
 }

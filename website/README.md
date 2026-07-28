@@ -102,6 +102,10 @@ Statusaktionen sind über eine clientseitige `operationId` idempotent.
 
 Öffentliche Produktdaten liegen in `content/products.json`. Die Website zeigt
 keine Verkaufspreise; Vinted bleibt die verbindliche Quelle für Preis und Kauf.
+Die Produktdatei ist ausschließlich eine Build-Quelle und wird im geschützten
+Testexport weder als JSON noch unter einem internen Ersatzpfad ausgeliefert.
+Das öffentliche Produktmodell akzeptiert nur Darstellungsfelder; unbekannte
+oder interne Felder brechen den Build ab.
 Statuswirkung:
 
 - `published`: Übersicht, Detailseite und Sitemap
@@ -134,6 +138,67 @@ Vor Aktivierung der Test-API prüft
 die Zielmarkierung, getrennte Webroots und private Pfade, PHP-Erweiterungen,
 Schreibrechte, atomare Umbenennung und `flock`. Phase 3.1 erzeugt noch keine
 GitHub-Commits und startet kein Deployment.
+
+## Geschützter statischer Testkatalog
+
+Der Phase-4-Testbuild wird ausschließlich mit folgendem Befehl erzeugt:
+
+```bash
+npm run build:test
+```
+
+Das Skript setzt `CARMAJA_SITE_TARGET=test` und die Basisadresse
+`https://test.carmaja-perlen.de` verbindlich und schreibt ausschließlich nach
+`out-test/`. Es bricht ab, wenn Produktions-Publish oder Produktions-Deploy
+aktiviert sind. Der normale Produktionsbuild und `out/` werden nicht
+überschrieben.
+
+Der Testexport enthält keine Produktquelldatei, kein Klicktracking, keine
+Statistikdateien und keine PHP-Laufzeitkonfiguration. Vinted-Links werden im
+Testziel nach strenger URL-Prüfung direkt ausgegeben. Fehlt der Link oder ist
+das Produkt verkauft, wird kein Link gerendert.
+
+Der spätere Passwortschutz referenziert ausschließlich:
+
+```text
+/home/www/carmaja-private-test/auth/test-website.htpasswd
+```
+
+Die Datei wird interaktiv auf IONOS erzeugt und niemals hochgeladen oder
+committed:
+
+```bash
+htpasswd -Bc \
+  /home/www/carmaja-private-test/auth/test-website.htpasswd \
+  TESTBENUTZER
+chmod 0640 /home/www/carmaja-private-test/auth/test-website.htpasswd
+```
+
+Nach einem erst in Phase 5 erlaubten Upload sind diese Prüfungen verbindlich:
+
+```bash
+# Erwartet: HTTP 302 auf HTTPS, noch kein WWW-Authenticate.
+curl -sS -D - -o /dev/null http://test.carmaja-perlen.de/
+
+# Erwartet: HTTP 401 und WWW-Authenticate: Basic.
+curl -sS -D - -o /dev/null https://test.carmaja-perlen.de/
+
+# curl fragt das Passwort interaktiv ab. Erwartet: HTTP 200 plus Schutzheader.
+curl --user "$CARMAJA_TEST_USER" -sS -D - -o /dev/null \
+  https://test.carmaja-perlen.de/
+
+# Ohne Anmeldung müssen auch Robots, Bilder und Fehlerpfade HTTP 401 liefern.
+curl -sS -D - -o /dev/null https://test.carmaja-perlen.de/robots.txt
+curl -sS -D - -o /dev/null \
+  https://test.carmaja-perlen.de/images/bracelets/hero-dunkelrot-braun-holz.jpg
+curl -sS -D - -o /dev/null \
+  https://test.carmaja-perlen.de/nicht-vorhanden
+```
+
+Bei authentifizierten Antworten müssen mindestens diese Header vorhanden sein:
+`X-Robots-Tag: noindex, nofollow, noimageindex`,
+`Cache-Control: private, no-store`, `X-Content-Type-Options: nosniff` und
+`Referrer-Policy: no-referrer`.
 
 Ohne weitere Konfiguration liegt die Datei unter
 `out/private-data/clicks.json`. Dieses Verzeichnis wird durch eine aktive

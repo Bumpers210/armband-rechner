@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { ProductVintedLink } from "@/components/product-vinted-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { siteTarget } from "@/config/site-target";
 import {
   detailProducts,
   findDetailProduct,
@@ -44,13 +45,18 @@ export async function generateMetadata({
   const image = mainProductImage(product);
 
   return {
-    title: product.name,
-    description: product.shortDescription,
+    title: product.title,
+    description: product.description,
     alternates: {
       canonical: `/armbaender/${product.slug}/`,
     },
-    robots:
-      product.status === "sold"
+    robots: siteTarget.isTest
+      ? {
+          index: false,
+          follow: false,
+          noimageindex: true,
+        }
+      : product.status === "sold"
         ? {
             index: false,
             follow: true,
@@ -61,8 +67,9 @@ export async function generateMetadata({
           },
     openGraph: image
       ? {
-          title: product.name,
-          description: product.shortDescription,
+          title: product.title,
+          description: product.description,
+          url: `/armbaender/${product.slug}/`,
           images: [
             {
               url: image.src,
@@ -131,11 +138,11 @@ export default async function ProductDetailPage({
               Zur Übersicht
             </Link>
             <p className="product-sku">{product.sku}</p>
-            <h1>{product.name}</h1>
+            <h1>{product.title}</h1>
             {isSold ? (
               <p className="product-status product-status--sold">Verkauft</p>
             ) : null}
-            <p className="product-lede">{product.shortDescription}</p>
+            <p className="product-lede">{product.description}</p>
 
             <dl className="product-detail-facts">
               <div>
@@ -150,7 +157,7 @@ export default async function ProductDetailPage({
               ) : null}
               <div>
                 <dt>Größe</dt>
-                <dd>{product.braceletSize}</dd>
+                <dd>{product.size}</dd>
               </div>
               <div>
                 <dt>Bestand</dt>

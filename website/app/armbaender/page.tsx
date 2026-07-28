@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ProductVintedLink } from "@/components/product-vinted-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { siteTarget } from "@/config/site-target";
 import { mainProductImage, visibleProducts } from "@/content/products";
 
 export const metadata: Metadata = {
@@ -14,6 +15,13 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/armbaender/",
   },
+  robots: siteTarget.isTest
+    ? {
+        index: false,
+        follow: false,
+        noimageindex: true,
+      }
+    : undefined,
 };
 
 export default function ProductsPage() {
@@ -49,7 +57,7 @@ export default function ProductsPage() {
                   const image = mainProductImage(product);
 
                   return (
-                    <article className="product-card" key={product.draftId}>
+                    <article className="product-card" key={product.sku}>
                       {image ? (
                         <Link
                           className="product-card-media"
@@ -70,10 +78,10 @@ export default function ProductsPage() {
                         <p className="product-sku">{product.sku}</p>
                         <h2>
                           <Link href={`/armbaender/${product.slug}/`}>
-                            {product.name}
+                            {product.title}
                           </Link>
                         </h2>
-                        <p>{product.shortDescription}</p>
+                        <p>{product.description}</p>
                         <dl className="product-facts">
                           <div>
                             <dt>Material</dt>
@@ -81,7 +89,7 @@ export default function ProductsPage() {
                           </div>
                           <div>
                             <dt>Größe</dt>
-                            <dd>{product.braceletSize}</dd>
+                            <dd>{product.size}</dd>
                           </div>
                         </dl>
                         <ProductVintedLink product={product} />

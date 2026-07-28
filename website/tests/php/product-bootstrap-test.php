@@ -162,6 +162,15 @@ carmaja_bootstrap_test(
         carmaja_bootstrap_test_same('test', $config['publishTarget'], 'Falsches Ziel.');
         carmaja_bootstrap_test_same(
             false,
+            $config['githubAdapterEnabled'],
+            'GitHub-Adapter muss ohne ausdrückliche Konfiguration deaktiviert sein.'
+        );
+        carmaja_bootstrap_test_assert(
+            !isset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']),
+            'Deaktivierter GitHub-Adapter darf nicht als Publish-Adapter gesetzt sein.'
+        );
+        carmaja_bootstrap_test_same(
+            false,
             getenv('CARMAJA_PRODUCTION_PRIVATE_DIR'),
             'Fehlender Produktionspfad darf nicht erfunden werden.'
         );
@@ -169,6 +178,64 @@ carmaja_bootstrap_test(
             realpath($fixture['private']),
             carmaja_api_private_dir(),
             'Aktiver privater Pfad stimmt nicht.'
+        );
+    }
+);
+
+carmaja_bootstrap_test(
+    'GitHub-Adapter akzeptiert ausschließlich private Testkonfiguration',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $tokenFile = $fixture['private'] . DIRECTORY_SEPARATOR . 'github-token.txt';
+        file_put_contents($tokenFile, 'test-token-placeholder');
+        $config = $fixture['config'];
+        $config['githubAdapterEnabled'] = true;
+        $config['githubRepository'] = 'Bumpers210/armband-rechner';
+        $config['githubBranch'] = 'test/product-management-beta';
+        $config['githubTokenFile'] = $tokenFile;
+        carmaja_bootstrap_test_write_config($fixture['configFile'], $config);
+        $loaded = carmaja_bootstrap_prepare($fixture['configFile']);
+
+        carmaja_bootstrap_test_same(
+            true,
+            $loaded['githubAdapterEnabled'],
+            'Sichere Testkonfiguration wurde nicht aktiviert.'
+        );
+        carmaja_bootstrap_test_same(
+            'carmaja_api_github_publish_adapter',
+            $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER'] ?? null,
+            'GitHub-Testadapter wurde nicht eindeutig verdrahtet.'
+        );
+        unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']);
+    }
+);
+
+carmaja_bootstrap_test(
+    'GitHub-Adapter lehnt main und öffentliche Tokenpfade ab',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $config = $fixture['config'];
+        $config['githubBranch'] = 'main';
+        carmaja_bootstrap_test_write_config($fixture['configFile'], $config);
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config(
+                $fixture['configFile']
+            ),
+            'github_branch_invalid'
+        );
+
+        $publicToken = $fixture['apiWebroot'] . DIRECTORY_SEPARATOR . 'token.txt';
+        file_put_contents($publicToken, 'test-token-placeholder');
+        $config['githubAdapterEnabled'] = true;
+        $config['githubRepository'] = 'Bumpers210/armband-rechner';
+        $config['githubBranch'] = 'test/product-management-beta';
+        $config['githubTokenFile'] = $publicToken;
+        carmaja_bootstrap_test_write_config($fixture['configFile'], $config);
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config(
+                $fixture['configFile']
+            ),
+            'config_private_file_exposed'
         );
     }
 );

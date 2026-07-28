@@ -1,10 +1,20 @@
 import type { MetadataRoute } from "next";
 
+import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
 
 export const dynamic = "force-static";
 
 export default function robots(): MetadataRoute.Robots {
+  if (siteTarget.isTest) {
+    return {
+      rules: {
+        userAgent: "*",
+        disallow: "/",
+      },
+    };
+  }
+
   return {
     rules: {
       userAgent: "*",

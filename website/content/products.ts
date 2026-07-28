@@ -1,56 +1,53 @@
-import productsData from "./products.json";
+import path from "node:path";
 
-export type ProductStatus = "draft" | "ready" | "published" | "sold" | "disabled";
+import {
+  loadPublicProducts,
+  type ProductImage,
+  type ProductStatus,
+  type PublicProduct,
+} from "@/lib/public-products.mjs";
 
-export type ProductImage = {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-  isMain: boolean;
-};
+export type { ProductImage, ProductStatus, PublicProduct };
 
-export type PublicProduct = {
-  draftId: string;
-  sku: string;
-  slug: string;
-  status: ProductStatus;
-  name: string;
-  materials: string[];
-  metalElements: string[];
-  braceletSize: string;
-  stock: number;
-  shortDescription: string;
-  careInstructions: string[];
-  images: ProductImage[];
-  vintedUrl: string;
-  createdAt: string;
-  updatedAt: string;
-  publishedAt: string;
-  soldAt?: string;
-};
+const fixtureMode = process.env.CARMAJA_TEST_FIXTURES === "true";
+const configuredProductsFile = process.env.CARMAJA_PRODUCTS_FILE;
+const configuredImagesDirectory = process.env.CARMAJA_PRODUCT_IMAGES_DIR;
 
-type ProductsFile = {
-  version: number;
-  products: PublicProduct[];
-};
+if (
+  !fixtureMode &&
+  (configuredProductsFile !== undefined ||
+    configuredImagesDirectory !== undefined)
+) {
+  throw new Error(
+    "Alternative Produktquellen sind ausschließlich für isolierte Testfixtures erlaubt.",
+  );
+}
 
-const typedProductsData = productsData as ProductsFile;
+const projectRoot = process.cwd();
+const productsFile = configuredProductsFile
+  ? path.resolve(configuredProductsFile)
+  : path.join(projectRoot, "content", "products.json");
+const imagesDirectory = configuredImagesDirectory
+  ? path.resolve(configuredImagesDirectory)
+  : path.join(projectRoot, "public", "images", "products");
+const productsData = loadPublicProducts(productsFile, imagesDirectory);
 
-export const publicProducts = typedProductsData.products;
+export const publicProducts = productsData.products;
 
 export const visibleProducts = publicProducts
   .filter((product) => product.status === "published")
-  .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+  .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
 export const detailProducts = publicProducts
   .filter((product) => product.status === "published" || product.status === "sold")
-  .sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+  .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
 export function findDetailProduct(slug: string): PublicProduct | undefined {
   return detailProducts.find((product) => product.slug === slug);
 }
 
-export function mainProductImage(product: PublicProduct): ProductImage | undefined {
+export function mainProductImage(
+  product: PublicProduct,
+): ProductImage | undefined {
   return product.images.find((image) => image.isMain) ?? product.images[0];
 }

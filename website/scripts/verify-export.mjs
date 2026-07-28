@@ -290,7 +290,7 @@ for (const product of publishedProducts) {
   const detailHtml = await readOutputFile(`armbaender/${product.slug}/index.html`);
 
   assert(
-    detailHtml.includes(product.name) &&
+    detailHtml.includes(product.title) &&
       detailHtml.includes(`product=${product.slug}`) &&
       !detailHtml.toLowerCase().includes("verkaufspreis") &&
       !detailHtml.toLowerCase().includes("materialkosten"),

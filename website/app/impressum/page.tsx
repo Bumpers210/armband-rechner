@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
 
 export const metadata: Metadata = {
@@ -11,7 +12,8 @@ export const metadata: Metadata = {
   },
   robots: {
     index: false,
-    follow: true,
+    follow: !siteTarget.isTest,
+    noimageindex: siteTarget.isTest,
   },
 };
 

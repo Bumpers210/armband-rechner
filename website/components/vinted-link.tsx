@@ -1,3 +1,4 @@
+import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
 
 export type TrackedLinkPosition =
@@ -11,7 +12,9 @@ type VintedLinkProps = {
 };
 
 export function VintedLink({ position }: VintedLinkProps) {
-  const href = `${siteContent.tracking.endpoint}?target=vinted&position=${position}`;
+  const href = siteTarget.isTest
+    ? siteContent.vinted.url
+    : `${siteContent.tracking.endpoint}?target=vinted&position=${position}`;
 
   return (
     <a

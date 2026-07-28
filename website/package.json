@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build && node scripts/copy-hosting-files.mjs && node scripts/verify-export.mjs",
+    "build:test": "node scripts/build-test.mjs",
+    "test": "node --test tests/node/*.test.mjs",
     "start": "next start",
     "lint": "eslint ."
   },

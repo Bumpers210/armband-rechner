@@ -129,7 +129,7 @@ export type SiteContent = {
 export const siteContent: SiteContent = {
   brandName: "Carmaja-Perlen",
   metadata: {
-    siteUrl: "https://www.carmaja-perlen.de/",
+    siteUrl: siteTarget.baseUrl,
     title: "Handgefertigte Edelsteinarmbänder | Carmaja-Perlen",
     description:
       "Handgefertigte Edelsteinarmbänder aus Rosenquarz, Amazonit, Achat und weiteren echten Edelsteinen – in kleinen Stückzahlen gefertigt von Carmaja-Perlen.",
@@ -565,3 +565,4 @@ export const siteContent: SiteContent = {
     tagline: "Handgefertigte Perlenarmbänder aus echten Edelsteinen",
   },
 };
+import { siteTarget } from "@/config/site-target";

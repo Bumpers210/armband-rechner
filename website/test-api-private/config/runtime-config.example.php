@@ -17,4 +17,10 @@ return [
 
     // In runtime-config.php durch einen zufälligen Wert mit mindestens 32 Zeichen ersetzen.
     'tokenPepper' => null,
+
+    // Phase 4: bleibt bis zur getrennten Testdeployment-Freigabe deaktiviert.
+    'githubAdapterEnabled' => false,
+    'githubRepository' => null,
+    'githubBranch' => null,
+    'githubTokenFile' => null,
 ];
