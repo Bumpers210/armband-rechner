@@ -307,11 +307,11 @@ jobs:
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
           )
           "${SCP[@]}" .test-deploy-package/site.tar.gz \
-            "$REMOTE:/home/www/carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.tar.gz"
+            "$REMOTE:carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.tar.gz"
           "${SCP[@]}" .test-deploy-package/site.tar.gz.sha256 \
-            "$REMOTE:/home/www/carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.tar.gz.sha256"
+            "$REMOTE:carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.tar.gz.sha256"
           "${SCP[@]}" .test-deploy-package/manifest.tsv \
-            "$REMOTE:/home/www/carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.manifest.tsv"
+            "$REMOTE:carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.manifest.tsv"
 
       - name: Activate, smoke-test and mark verified
         shell: bash

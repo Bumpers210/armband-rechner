@@ -34,6 +34,53 @@ test("Testwebsite-Workflow besitzt nur Push-Trigger und feste Zielguards", async
   assert.match(workflow, /tar -C out-test -czf \.test-deploy-package\/site\.tar\.gz \./);
 });
 
+test("SFTP-Uploads verwenden ausschliesslich den relativen IONOS-Namensraum", async () => {
+  const workflow = await readRepositoryFile(".github/workflows/deploy-test-website.yml");
+  const uploadStart = workflow.indexOf(
+    "- name: Upload test export into isolated incoming directory",
+  );
+  const activationStart = workflow.indexOf(
+    "- name: Activate, smoke-test and mark verified",
+  );
+  const upload = workflow.slice(uploadStart, activationStart);
+  const remoteTargets = [...upload.matchAll(/"\$REMOTE:([^"]+)"/g)].map(
+    (match) => match[1],
+  );
+
+  assert.ok(uploadStart >= 0);
+  assert.ok(activationStart > uploadStart);
+  assert.deepEqual(remoteTargets, [
+    "carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.tar.gz",
+    "carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.tar.gz.sha256",
+    "carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.manifest.tsv",
+  ]);
+  assert.doesNotMatch(upload, /\$REMOTE:\/home\/www/);
+  assert.doesNotMatch(upload, /(?:^|\s)-O(?:\s|$)/m);
+  assert.doesNotMatch(upload, /sshpass|PasswordAuthentication=yes|StrictHostKeyChecking=no/);
+  assert.match(upload, /-o BatchMode=yes/);
+  assert.match(upload, /-o IdentitiesOnly=yes/);
+  assert.match(upload, /-o StrictHostKeyChecking=yes/);
+});
+
+test("SSH-Dateisystem, Aktivierung und Rollback bleiben absolut gebunden", async () => {
+  const workflow = await readRepositoryFile(".github/workflows/deploy-test-website.yml");
+  const activationStart = workflow.indexOf(
+    "- name: Activate, smoke-test and mark verified",
+  );
+  const activation = workflow.slice(activationStart);
+
+  for (const directory of ["incoming", "releases", "backups", "state", "locks"]) {
+    assert.match(workflow, new RegExp(`/home/www/carmaja-test-deploy/${directory}`));
+  }
+
+  assert.match(workflow, /CARMAJA_TEST_WEBROOT: \/home\/www\/carmaja-test-site/);
+  assert.match(workflow, /CARMAJA_TEST_DEPLOY_WORKSPACE: \/home\/www\/carmaja-test-deploy/);
+  assert.match(activation, /run_remote_script deploy/);
+  assert.match(activation, /run_remote_script rollback/);
+  assert.match(activation, /run_remote_script mark_verified/);
+  assert.match(activation, /sh -s" < scripts\/deploy-test-site\.sh/);
+});
+
 test("Android-Testworkflow reagiert nicht auf Produkt- oder Websiteaenderungen", async () => {
   const workflow = await readRepositoryFile(".github/workflows/android-test-apk.yml");
   const pushSection = workflow.slice(workflow.indexOf("push:"), workflow.indexOf("workflow_dispatch:"));
