@@ -216,7 +216,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     }
 
     if ($githubRepository !== null
-        && preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', $githubRepository) !== 1) {
+        && $githubRepository !== 'Bumpers210/armband-rechner') {
         throw new CarmajaBootstrapException(
             'github_repository_invalid',
             'GitHub-Zielrepository ist nicht sicher konfiguriert.'
@@ -226,7 +226,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     if ($githubAdapterEnabled
         && ($publishTarget !== 'test'
             || $productionPublishEnabled
-            || $githubRepository === null
+            || $githubRepository !== 'Bumpers210/armband-rechner'
             || $githubBranch !== 'test/product-management-beta'
             || $githubTokenFile === null)) {
         throw new CarmajaBootstrapException(

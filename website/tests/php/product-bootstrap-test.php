@@ -224,6 +224,16 @@ carmaja_bootstrap_test(
             'github_branch_invalid'
         );
 
+        $config['githubBranch'] = 'test/product-management-beta';
+        $config['githubRepository'] = 'other/example';
+        carmaja_bootstrap_test_write_config($fixture['configFile'], $config);
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config(
+                $fixture['configFile']
+            ),
+            'github_repository_invalid'
+        );
+
         $publicToken = $fixture['apiWebroot'] . DIRECTORY_SEPARATOR . 'token.txt';
         file_put_contents($publicToken, 'test-token-placeholder');
         $config['githubAdapterEnabled'] = true;

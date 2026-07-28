@@ -16,7 +16,9 @@ const CARMAJA_LOGIN_LIMIT = 5;
 const CARMAJA_LOGIN_WINDOW_SECONDS = 900;
 const CARMAJA_OPERATION_LEASE_SECONDS = 900;
 const CARMAJA_OPERATION_RETENTION_SECONDS = 2592000;
+const CARMAJA_TEST_REPOSITORY = 'Bumpers210/armband-rechner';
 const CARMAJA_TEST_BRANCH = 'test/product-management-beta';
+const CARMAJA_TEST_DEPLOY_WORKFLOW = 'deploy-test-website.yml';
 
 class CarmajaApiException extends RuntimeException
 {
@@ -2137,6 +2139,35 @@ function carmaja_api_operation_status(string $operationId): array
 
     $operation = carmaja_api_read_target_json($path, [], 'Idempotency-Datensatz');
 
+    $storedResponse = is_array($operation['savedResponse'] ?? null)
+        ? $operation['savedResponse']
+        : [];
+    $deployment = [
+        'deploymentStatus' => $storedResponse['deploymentStatus'] ?? null,
+        'workflowRunId' => null,
+        'workflowRunUrl' => null,
+        'workflowConclusion' => null,
+        'deploymentError' => null,
+    ];
+    $commitSha = is_string($operation['commitSha'] ?? null)
+        ? $operation['commitSha']
+        : null;
+
+    if (($operation['status'] ?? null) === 'succeeded'
+        && ($operation['publishTarget'] ?? null) === 'test'
+        && $commitSha !== null
+        && carmaja_api_github_adapter_enabled()) {
+        try {
+            $deployment = array_merge(
+                $deployment,
+                carmaja_api_github_deployment_status($commitSha)
+            );
+        } catch (CarmajaApiException $error) {
+            $deployment['deploymentStatus'] = 'status_unavailable';
+            $deployment['deploymentError'] = $error->errorCode;
+        }
+    }
+
     return [
         'operationId' => $operation['operationId'] ?? $operationId,
         'productId' => $operation['productId'] ?? null,
@@ -2145,7 +2176,12 @@ function carmaja_api_operation_status(string $operationId): array
         'status' => $operation['status'] ?? null,
         'updatedAt' => $operation['updatedAt'] ?? null,
         'expiresAt' => $operation['expiresAt'] ?? null,
-        'commitSha' => $operation['commitSha'] ?? null,
+        'commitSha' => $commitSha,
+        'deploymentStatus' => $deployment['deploymentStatus'],
+        'workflowRunId' => $deployment['workflowRunId'],
+        'workflowRunUrl' => $deployment['workflowRunUrl'],
+        'workflowConclusion' => $deployment['workflowConclusion'],
+        'deploymentError' => $deployment['deploymentError'],
         'response' => $operation['status'] === 'succeeded'
             ? ($operation['savedResponse'] ?? null)
             : null,
@@ -2162,9 +2198,11 @@ function carmaja_api_github_adapter_enabled(): bool
     return getenv('CARMAJA_GITHUB_ADAPTER_ENABLED') === 'true';
 }
 
-function carmaja_api_require_github_adapter_enabled(): void
+function carmaja_api_require_github_test_configuration(
+    bool $requireEnabled = true
+): void
 {
-    if (!carmaja_api_github_adapter_enabled()
+    if (($requireEnabled && !carmaja_api_github_adapter_enabled())
         || carmaja_api_publish_target() !== 'test'
         || carmaja_api_production_publish_enabled()) {
         throw new CarmajaApiException(
@@ -2176,9 +2214,14 @@ function carmaja_api_require_github_adapter_enabled(): void
     }
 }
 
-function carmaja_api_github_token(): string
+function carmaja_api_require_github_adapter_enabled(): void
 {
-    carmaja_api_require_github_adapter_enabled();
+    carmaja_api_require_github_test_configuration(true);
+}
+
+function carmaja_api_github_token(bool $requireEnabled = true): string
+{
+    carmaja_api_require_github_test_configuration($requireEnabled);
     $tokenFile = getenv('CARMAJA_GITHUB_TOKEN_FILE');
 
     if (!is_string($tokenFile) || trim($tokenFile) === '') {
@@ -2202,22 +2245,22 @@ function carmaja_api_github_token(): string
     return $token;
 }
 
-function carmaja_api_github_repository(): string
+function carmaja_api_github_repository(bool $requireEnabled = true): string
 {
-    carmaja_api_require_github_adapter_enabled();
+    carmaja_api_require_github_test_configuration($requireEnabled);
     $repository = getenv('CARMAJA_GITHUB_REPOSITORY');
+    $repository = is_string($repository) ? trim($repository) : '';
 
-    if (!is_string($repository)
-        || preg_match('/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/', trim($repository)) !== 1) {
+    if ($repository !== CARMAJA_TEST_REPOSITORY) {
         throw new CarmajaApiException(503, 'CARMAJA_GITHUB_REPOSITORY ist nicht korrekt konfiguriert.');
     }
 
-    return trim($repository);
+    return $repository;
 }
 
-function carmaja_api_github_branch(): string
+function carmaja_api_github_branch(bool $requireEnabled = true): string
 {
-    carmaja_api_require_github_adapter_enabled();
+    carmaja_api_require_github_test_configuration($requireEnabled);
     $branch = getenv('CARMAJA_GITHUB_BRANCH');
     $branch = is_string($branch) ? trim($branch) : '';
 
@@ -2233,9 +2276,14 @@ function carmaja_api_github_branch(): string
     return $branch;
 }
 
-function carmaja_api_github_request(string $method, string $path, ?array $body = null): array
+function carmaja_api_github_request(
+    string $method,
+    string $path,
+    ?array $body = null,
+    bool $requireEnabled = true
+): array
 {
-    carmaja_api_require_github_adapter_enabled();
+    carmaja_api_require_github_test_configuration($requireEnabled);
     $mock = $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] ?? null;
 
     if (is_callable($mock)) {
@@ -2256,7 +2304,7 @@ function carmaja_api_github_request(string $method, string $path, ?array $body =
     $url = 'https://api.github.com' . $path;
     $headers = [
         'Accept: application/vnd.github+json',
-        'Authorization: Bearer ' . carmaja_api_github_token(),
+        'Authorization: Bearer ' . carmaja_api_github_token($requireEnabled),
         'User-Agent: Carmaja-Perlen-Product-API',
         'X-GitHub-Api-Version: 2022-11-28',
     ];
@@ -2295,6 +2343,129 @@ function carmaja_api_github_request(string $method, string $path, ?array $body =
     return $decoded;
 }
 
+function carmaja_api_github_readonly_diagnostic(): array
+{
+    $repository = carmaja_api_github_repository(false);
+    $branch = carmaja_api_github_branch(false);
+    $prefix = '/repos/' . $repository;
+    $ref = carmaja_api_github_request(
+        'GET',
+        $prefix . '/git/ref/heads/' . rawurlencode($branch),
+        null,
+        false
+    );
+    $headSha = (string) ($ref['object']['sha'] ?? '');
+
+    if (preg_match('/^[0-9a-f]{40}$/', $headSha) !== 1) {
+        throw new CarmajaApiException(
+            502,
+            'GitHub-Remote-HEAD ist ungültig.',
+            [],
+            'github_head_invalid'
+        );
+    }
+
+    $content = carmaja_api_github_request(
+        'GET',
+        $prefix . '/contents/website/content/products.json?ref='
+            . rawurlencode($branch),
+        null,
+        false
+    );
+
+    if (!is_string($content['content'] ?? null)) {
+        throw new CarmajaApiException(
+            502,
+            'GitHub-Produktdatei ist nicht lesbar.',
+            [],
+            'github_products_unreadable'
+        );
+    }
+
+    return [
+        'repository' => $repository,
+        'branch' => $branch,
+        'headSha' => $headSha,
+        'productsReadable' => true,
+        'writePerformed' => false,
+    ];
+}
+
+function carmaja_api_github_deployment_status(string $commitSha): array
+{
+    if (preg_match('/^[0-9a-f]{40}$/', $commitSha) !== 1) {
+        throw new CarmajaApiException(
+            500,
+            'Commit-SHA für Deploymentstatus ist ungültig.',
+            [],
+            'github_commit_sha_invalid'
+        );
+    }
+
+    $repository = carmaja_api_github_repository();
+    $branch = carmaja_api_github_branch();
+    $path = '/repos/' . $repository
+        . '/actions/workflows/' . rawurlencode(CARMAJA_TEST_DEPLOY_WORKFLOW)
+        . '/runs?branch=' . rawurlencode($branch)
+        . '&event=push&head_sha=' . rawurlencode($commitSha)
+        . '&per_page=10';
+    $response = carmaja_api_github_request('GET', $path);
+    $runs = is_array($response['workflow_runs'] ?? null)
+        ? $response['workflow_runs']
+        : [];
+    $matchingRuns = array_values(array_filter(
+        $runs,
+        static fn (mixed $run): bool =>
+            is_array($run)
+            && ($run['head_sha'] ?? null) === $commitSha
+            && ($run['head_branch'] ?? null) === CARMAJA_TEST_BRANCH
+            && ($run['event'] ?? null) === 'push'
+    ));
+
+    usort(
+        $matchingRuns,
+        static fn (array $left, array $right): int =>
+            (int) ($right['id'] ?? 0) <=> (int) ($left['id'] ?? 0)
+    );
+    $run = $matchingRuns[0] ?? null;
+
+    if (!is_array($run)) {
+        return [
+            'deploymentStatus' => 'queued',
+            'workflowRunId' => null,
+            'workflowRunUrl' => null,
+            'workflowConclusion' => null,
+        ];
+    }
+
+    $status = (string) ($run['status'] ?? '');
+    $conclusion = is_string($run['conclusion'] ?? null)
+        ? $run['conclusion']
+        : null;
+    $deploymentStatus = match ($status) {
+        'queued', 'requested', 'waiting', 'pending' => 'queued',
+        'in_progress' => 'in_progress',
+        'completed' => $conclusion === 'success' ? 'succeeded' : 'failed',
+        default => 'status_unknown',
+    };
+    $runUrl = is_string($run['html_url'] ?? null) ? $run['html_url'] : null;
+
+    if ($runUrl !== null
+        && preg_match(
+            '#^https://github\.com/Bumpers210/armband-rechner/actions/runs/\d+$#',
+            $runUrl
+        ) !== 1) {
+        $runUrl = null;
+    }
+
+    return [
+        'deploymentStatus' => $deploymentStatus,
+        'workflowRunId' => is_int($run['id'] ?? null) ? $run['id'] : null,
+        'workflowRunUrl' => $runUrl,
+        'workflowConclusion' => $conclusion,
+    ];
+}
+
 function carmaja_api_assert_repo_path_allowed(string $path): void
 {
     $normalized = str_replace('\\', '/', $path);
@@ -2323,6 +2494,8 @@ function carmaja_api_github_publish_adapter(
     return carmaja_api_with_lock(
         'github-publish-' . hash('sha256', $operationId),
         function () use ($adapterPath, $publicProduct, $operation): array {
+            $stored = [];
+
             if (is_file($adapterPath)) {
                 $stored = carmaja_api_read_target_json(
                     $adapterPath,
@@ -2346,17 +2519,40 @@ function carmaja_api_github_publish_adapter(
                 }
             }
 
-            $commitSha = carmaja_api_commit_public_product($publicProduct);
+            $persistPrepared = static function (
+                string $baseHeadSha,
+                string $preparedCommitSha
+            ) use ($adapterPath, $operation, &$stored): void {
+                $stored = carmaja_api_target_document([
+                    'operationId' => $operation['operationId'],
+                    'requestHash' => $operation['requestHash'],
+                    'createdAt' => $stored['createdAt'] ?? carmaja_api_now(),
+                    'phase' => 'commit_prepared',
+                    'baseHeadSha' => $baseHeadSha,
+                    'preparedCommitSha' => $preparedCommitSha,
+                    'result' => null,
+                ]);
+                carmaja_api_write_json_atomic($adapterPath, $stored);
+            };
+            $commitSha = carmaja_api_commit_public_product(
+                $publicProduct,
+                $operation,
+                $stored,
+                $persistPrepared
+            );
             $result = [
                 'commitSha' => $commitSha,
-                'deploymentStatus' => 'not_started',
+                'deploymentStatus' => 'queued',
             ];
             carmaja_api_write_json_atomic(
                 $adapterPath,
                 carmaja_api_target_document([
                     'operationId' => $operation['operationId'],
                     'requestHash' => $operation['requestHash'],
-                    'createdAt' => carmaja_api_now(),
+                    'createdAt' => $stored['createdAt'] ?? carmaja_api_now(),
+                    'phase' => 'completed',
+                    'baseHeadSha' => $stored['baseHeadSha'] ?? null,
+                    'preparedCommitSha' => $commitSha,
                     'result' => $result,
                 ])
             );
@@ -2366,7 +2562,91 @@ function carmaja_api_github_publish_adapter(
     );
 }
 
-function carmaja_api_commit_public_product(array $publicProduct): string
+function carmaja_api_github_ref_head(string $repoPathPrefix, string $branch): string
+{
+    $ref = carmaja_api_github_request(
+        'GET',
+        $repoPathPrefix . '/git/ref/heads/' . rawurlencode($branch)
+    );
+    $headSha = (string) ($ref['object']['sha'] ?? '');
+
+    if (preg_match('/^[0-9a-f]{40}$/', $headSha) !== 1) {
+        throw new CarmajaApiException(
+            502,
+            'GitHub-Remote-HEAD ist ungültig.',
+            [],
+            'github_head_invalid'
+        );
+    }
+
+    return $headSha;
+}
+
+function carmaja_api_complete_prepared_github_commit(
+    string $repoPathPrefix,
+    string $branch,
+    string $baseHeadSha,
+    string $preparedCommitSha
+): string {
+    foreach ([$baseHeadSha, $preparedCommitSha] as $sha) {
+        if (preg_match('/^[0-9a-f]{40}$/', $sha) !== 1) {
+            throw new CarmajaApiException(
+                500,
+                'Gespeicherter GitHub-Commitstatus ist ungültig.',
+                [],
+                'github_prepared_commit_invalid'
+            );
+        }
+    }
+
+    $currentHeadSha = carmaja_api_github_ref_head($repoPathPrefix, $branch);
+
+    if ($currentHeadSha === $preparedCommitSha) {
+        return $preparedCommitSha;
+    }
+
+    if ($currentHeadSha === $baseHeadSha) {
+        carmaja_api_github_request(
+            'PATCH',
+            $repoPathPrefix . '/git/refs/heads/' . rawurlencode($branch),
+            [
+                'sha' => $preparedCommitSha,
+                'force' => false,
+            ]
+        );
+
+        return $preparedCommitSha;
+    }
+
+    $comparison = carmaja_api_github_request(
+        'GET',
+        $repoPathPrefix . '/compare/'
+            . rawurlencode($preparedCommitSha)
+            . '...'
+            . rawurlencode($currentHeadSha)
+    );
+    $mergeBaseSha = (string) ($comparison['merge_base_commit']['sha'] ?? '');
+    $comparisonStatus = (string) ($comparison['status'] ?? '');
+
+    if ($mergeBaseSha === $preparedCommitSha
+        && in_array($comparisonStatus, ['ahead', 'identical'], true)) {
+        return $preparedCommitSha;
+    }
+
+    throw new CarmajaApiException(
+        409,
+        'GitHub-Remote-HEAD wurde zwischenzeitlich geändert.',
+        [],
+        'github_head_changed'
+    );
+}
+
+function carmaja_api_commit_public_product(
+    array $publicProduct,
+    array $operation,
+    array $adapterState,
+    callable $persistPrepared
+): string
 {
     $repository = carmaja_api_github_repository();
     $branch = carmaja_api_github_branch();
@@ -2387,21 +2667,23 @@ function carmaja_api_commit_public_product(array $publicProduct): string
         );
     }
 
-    $ref = carmaja_api_github_request(
-        'GET',
-        $repoPathPrefix . '/git/ref/heads/' . rawurlencode($branch)
-    );
-    $headSha = (string) ($ref['object']['sha'] ?? '');
+    $preparedCommitSha = is_string($adapterState['preparedCommitSha'] ?? null)
+        ? $adapterState['preparedCommitSha']
+        : '';
+    $preparedBaseHeadSha = is_string($adapterState['baseHeadSha'] ?? null)
+        ? $adapterState['baseHeadSha']
+        : '';
 
-    if (preg_match('/^[0-9a-f]{40}$/', $headSha) !== 1) {
-        throw new CarmajaApiException(
-            502,
-            'GitHub-Remote-HEAD ist ungültig.',
-            [],
-            'github_head_invalid'
+    if ($preparedCommitSha !== '' || $preparedBaseHeadSha !== '') {
+        return carmaja_api_complete_prepared_github_commit(
+            $repoPathPrefix,
+            $branch,
+            $preparedBaseHeadSha,
+            $preparedCommitSha
         );
     }
 
+    $headSha = carmaja_api_github_ref_head($repoPathPrefix, $branch);
     $headCommit = carmaja_api_github_request('GET', $repoPathPrefix . '/git/commits/' . $headSha);
     $baseTree = (string) ($headCommit['tree']['sha'] ?? '');
     $content = carmaja_api_github_request(
@@ -2535,33 +2817,45 @@ function carmaja_api_commit_public_product(array $publicProduct): string
         'base_tree' => $baseTree,
         'tree' => $tree,
     ]);
+    $operationId = (string) ($operation['operationId'] ?? '');
+    $requestHash = (string) ($operation['requestHash'] ?? '');
+    carmaja_api_validate_operation_id($operationId);
+
+    if (preg_match('/^[0-9a-f]{64}$/', $requestHash) !== 1) {
+        throw new CarmajaApiException(
+            500,
+            'GitHub-Publish-Hash ist ungültig.',
+            [],
+            'github_request_hash_invalid'
+        );
+    }
+
     $commit = carmaja_api_github_request('POST', $repoPathPrefix . '/git/commits', [
-        'message' => 'Publish product ' . $publicProduct['sku'],
+        'message' => 'Publish product ' . $publicProduct['sku']
+            . "\n\nCarmaja-Operation: " . $operationId
+            . "\nCarmaja-Request-SHA256: " . $requestHash,
         'tree' => (string) $newTree['sha'],
         'parents' => [$headSha],
     ]);
     $commitSha = (string) $commit['sha'];
-    $latestRef = carmaja_api_github_request(
-        'GET',
-        $repoPathPrefix . '/git/ref/heads/' . rawurlencode($branch)
-    );
-    $latestHeadSha = (string) ($latestRef['object']['sha'] ?? '');
 
-    if ($latestHeadSha !== $headSha) {
+    if (preg_match('/^[0-9a-f]{40}$/', $commitSha) !== 1) {
         throw new CarmajaApiException(
-            409,
-            'GitHub-Remote-HEAD wurde zwischenzeitlich geändert.',
+            502,
+            'GitHub hat keinen gültigen Commit geliefert.',
             [],
-            'github_head_changed'
+            'github_commit_invalid'
         );
     }
 
-    carmaja_api_github_request('PATCH', $repoPathPrefix . '/git/refs/heads/' . rawurlencode($branch), [
-        'sha' => $commitSha,
-        'force' => false,
-    ]);
+    $persistPrepared($headSha, $commitSha);
 
-    return $commitSha;
+    return carmaja_api_complete_prepared_github_commit(
+        $repoPathPrefix,
+        $branch,
+        $headSha,
+        $commitSha
+    );
 }
 
 function carmaja_api_image_orientation(string $path): int

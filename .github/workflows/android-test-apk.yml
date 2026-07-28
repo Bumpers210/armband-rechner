@@ -4,6 +4,15 @@ on:
   push:
     branches:
       - test/product-management-beta
+    paths:
+      - ".github/workflows/android-test-apk.yml"
+      - "app/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
   workflow_dispatch:
 
 permissions:

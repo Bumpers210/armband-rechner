@@ -1326,6 +1326,13 @@ carmaja_api_test('GitHub-Testbranch und Pfad-Allowlist sind fest', static functi
         carmaja_api_github_branch(),
         'Erlaubter Testbranch wurde abgelehnt.'
     );
+    putenv('CARMAJA_GITHUB_REPOSITORY=other/example');
+    carmaja_api_test_exception(
+        static fn (): string => carmaja_api_github_repository(),
+        503,
+        'service_unavailable'
+    );
+    putenv('CARMAJA_GITHUB_REPOSITORY=' . CARMAJA_TEST_REPOSITORY);
 
     foreach ([
         '.github/workflows/deploy.yml',
@@ -1453,6 +1460,11 @@ carmaja_api_test(
             $first['commitSha'],
             'Commit-SHA des Mock-Adapters fehlt.'
         );
+        carmaja_api_test_same(
+            'queued',
+            $first['deploymentStatus'],
+            'GitHub-Commit muss den Testdeploy als wartend markieren.'
+        );
         carmaja_api_test_assert(
             is_array($treeBody['tree'] ?? null),
             'GitHub-Tree wurde nicht erzeugt.'
@@ -1547,16 +1559,186 @@ carmaja_api_test('GitHub-Adapter lehnt geänderten Remote-HEAD ab', static funct
                 return [];
             }
 
+            if ($method === 'GET' && str_contains($path, '/compare/')) {
+                return [
+                    'status' => 'diverged',
+                    'merge_base_commit' => ['sha' => str_repeat('a', 40)],
+                ];
+            }
+
             throw new CarmajaApiTestFailure('Unerwarteter GitHub-Mock-Aufruf.');
         };
 
+    $operation = [
+        'operationId' => 'github-head-change-0001',
+        'requestHash' => hash('sha256', 'github-head-change-0001'),
+    ];
     carmaja_api_test_exception(
-        static fn (): string => carmaja_api_commit_public_product($publicProduct),
+        static fn (): string => carmaja_api_commit_public_product(
+            $publicProduct,
+            $operation,
+            [],
+            static function (string $baseHeadSha, string $commitSha): void {
+            }
+        ),
         409,
         'github_head_changed'
     );
     carmaja_api_test_same(0, $patchCalls, 'Geänderter Remote-HEAD darf nicht gepatcht werden.');
 });
+
+carmaja_api_test(
+    'GitHub-Adapter setzt nach verlorener PATCH-Antwort keinen zweiten Commit',
+    static function (): void {
+        carmaja_api_test_fixture();
+        putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+        putenv('CARMAJA_GITHUB_REPOSITORY=' . CARMAJA_TEST_REPOSITORY);
+        putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_TEST_BRANCH);
+        $publicProduct = carmaja_api_test_public_product(
+            '019fa2e6-cf3c-7073-9275-7d3b566f5492',
+            'CP-2026-0003'
+        );
+        $baseHeadSha = str_repeat('a', 40);
+        $commitSha = str_repeat('d', 40);
+        $remoteHeadSha = $baseHeadSha;
+        $commitCalls = 0;
+        $patchCalls = 0;
+        $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] =
+            static function (
+                string $method,
+                string $path,
+                ?array $body
+            ) use (
+                &$remoteHeadSha,
+                &$commitCalls,
+                &$patchCalls,
+                $commitSha
+            ): array {
+                if ($method === 'GET' && str_contains($path, '/git/ref/heads/')) {
+                    return ['object' => ['sha' => $remoteHeadSha]];
+                }
+
+                if ($method === 'GET' && str_contains($path, '/git/commits/')) {
+                    return ['tree' => ['sha' => str_repeat('b', 40)]];
+                }
+
+                if ($method === 'GET' && str_contains($path, '/contents/')) {
+                    return [
+                        'content' => base64_encode('{"version":1,"products":[]}'),
+                    ];
+                }
+
+                if ($method === 'POST' && str_ends_with($path, '/git/blobs')) {
+                    return ['sha' => str_repeat('c', 40)];
+                }
+
+                if ($method === 'POST' && str_ends_with($path, '/git/trees')) {
+                    return ['sha' => str_repeat('e', 40)];
+                }
+
+                if ($method === 'POST' && str_ends_with($path, '/git/commits')) {
+                    $commitCalls++;
+                    return ['sha' => $commitSha];
+                }
+
+                if ($method === 'PATCH' && str_contains($path, '/git/refs/heads/')) {
+                    $patchCalls++;
+                    $remoteHeadSha = $commitSha;
+                    throw new CarmajaApiException(
+                        502,
+                        'Simulierter Verbindungsabbruch.',
+                        [],
+                        'github_response_lost'
+                    );
+                }
+
+                throw new CarmajaApiTestFailure(
+                    'Unerwarteter GitHub-Mock-Aufruf: ' . $method . ' ' . $path
+                );
+            };
+        $operation = [
+            'operationId' => 'github-lost-response-0001',
+            'requestHash' => hash('sha256', 'github-lost-response-0001'),
+        ];
+
+        carmaja_api_test_exception(
+            static fn (): array =>
+                carmaja_api_github_publish_adapter($publicProduct, $operation),
+            502,
+            'github_response_lost'
+        );
+        $result = carmaja_api_github_publish_adapter($publicProduct, $operation);
+
+        carmaja_api_test_same($commitSha, $result['commitSha'], 'Commit wurde nicht wiedererkannt.');
+        carmaja_api_test_same(1, $commitCalls, 'Retry hat einen zweiten Commit erzeugt.');
+        carmaja_api_test_same(1, $patchCalls, 'Retry hat den Ref erneut geschrieben.');
+    }
+);
+
+carmaja_api_test(
+    'GitHub-Diagnose bleibt lesend und Actions-Status wird fest zugeordnet',
+    static function (): void {
+        carmaja_api_test_fixture();
+        putenv('CARMAJA_GITHUB_REPOSITORY=' . CARMAJA_TEST_REPOSITORY);
+        putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_TEST_BRANCH);
+        $commitSha = str_repeat('f', 40);
+        $calls = [];
+        $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] =
+            static function (
+                string $method,
+                string $path,
+                ?array $body
+            ) use (&$calls, $commitSha): array {
+                $calls[] = [$method, $path, $body];
+
+                if (str_contains($path, '/git/ref/heads/')) {
+                    return ['object' => ['sha' => $commitSha]];
+                }
+
+                if (str_contains($path, '/contents/website/content/products.json')) {
+                    return ['content' => base64_encode('{"version":1,"products":[]}')];
+                }
+
+                if (str_contains($path, '/actions/workflows/')) {
+                    return [
+                        'workflow_runs' => [[
+                            'id' => 123456,
+                            'head_sha' => $commitSha,
+                            'head_branch' => CARMAJA_TEST_BRANCH,
+                            'event' => 'push',
+                            'status' => 'completed',
+                            'conclusion' => 'success',
+                            'html_url' =>
+                                'https://github.com/Bumpers210/armband-rechner/actions/runs/123456',
+                        ]],
+                    ];
+                }
+
+                throw new CarmajaApiTestFailure('Unerwarteter Diagnoseaufruf.');
+            };
+
+        $diagnostic = carmaja_api_github_readonly_diagnostic();
+        carmaja_api_test_same(false, $diagnostic['writePerformed'], 'Diagnose darf nicht schreiben.');
+        carmaja_api_test_assert(
+            array_reduce(
+                $calls,
+                static fn (bool $onlyGet, array $call): bool =>
+                    $onlyGet && $call[0] === 'GET',
+                true
+            ),
+            'Lesende Diagnose hat eine mutierende GitHub-Anfrage erzeugt.'
+        );
+
+        putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+        $status = carmaja_api_github_deployment_status($commitSha);
+        carmaja_api_test_same('succeeded', $status['deploymentStatus'], 'Actions-Status ist falsch.');
+        carmaja_api_test_same(123456, $status['workflowRunId'], 'Run-ID fehlt.');
+        carmaja_api_test_assert(
+            str_contains($calls[array_key_last($calls)][1], CARMAJA_TEST_DEPLOY_WORKFLOW),
+            'Statusabfrage verwendet nicht den festen Testworkflow.'
+        );
+    }
+);
 
 carmaja_api_test('IONOS-Diagnose erlaubt fehlende Produktionspfade im Testmodus', static function (): void {
     $fixture = carmaja_api_test_fixture();

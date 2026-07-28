@@ -1,0 +1,418 @@
+name: Deploy protected test website
+
+on:
+  push:
+    branches:
+      - test/product-management-beta
+    paths:
+      - ".github/workflows/deploy-test-website.yml"
+      - "website/app/**"
+      - "website/components/**"
+      - "website/config/**"
+      - "website/content/products.json"
+      - "website/content/products.ts"
+      - "website/content/site-content.ts"
+      - "website/hosting-test/**"
+      - "website/lib/**"
+      - "website/public/images/bracelets/**"
+      - "website/public/images/products/**"
+      - "website/scripts/build-test.mjs"
+      - "website/scripts/copy-hosting-files.mjs"
+      - "website/scripts/deploy-test-site.sh"
+      - "website/scripts/prepare-test-deploy.mjs"
+      - "website/scripts/verify-test-export.mjs"
+      - "website/tests/node/**"
+      - "website/.gitignore"
+      - "website/eslint.config.mjs"
+      - "website/next.config.ts"
+      - "website/package.json"
+      - "website/package-lock.json"
+      - "website/tsconfig.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carmaja-protected-test-website
+  cancel-in-progress: false
+
+env:
+  CARMAJA_REPOSITORY: Bumpers210/armband-rechner
+  CARMAJA_BRANCH: test/product-management-beta
+  CARMAJA_SITE_TARGET: test
+  CARMAJA_SITE_DOMAIN: test.carmaja-perlen.de
+  CARMAJA_SITE_URL: https://test.carmaja-perlen.de
+  CARMAJA_TEST_WEBROOT: /home/www/carmaja-test-site
+  CARMAJA_TEST_DEPLOY_WORKSPACE: /home/www/carmaja-test-deploy
+  CARMAJA_PRODUCTION_PUBLISH_ENABLED: "false"
+  CARMAJA_PRODUCTION_DEPLOY_ENABLED: "false"
+
+jobs:
+  build-test-site:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: website
+    outputs:
+      release-id: ${{ steps.release.outputs.release-id }}
+      archive-sha256: ${{ steps.package.outputs.archive-sha256 }}
+
+    steps:
+      - name: Check out exact test commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Guard repository, branch, target and production locks
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
+          test "$GITHUB_REF" = "refs/heads/$CARMAJA_BRANCH"
+          test "$GITHUB_REF_NAME" = "$CARMAJA_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$CARMAJA_SITE_TARGET" = "test"
+          test "$CARMAJA_SITE_DOMAIN" = "test.carmaja-perlen.de"
+          test "$CARMAJA_TEST_WEBROOT" = "/home/www/carmaja-test-site"
+          test "$CARMAJA_TEST_DEPLOY_WORKSPACE" = "/home/www/carmaja-test-deploy"
+          test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
+          test "$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "false"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Lint test website sources
+        run: npm run lint:test
+
+      - name: Run website and deployment tests
+        run: npm test
+
+      - name: Build and verify protected test export
+        run: npm run build:test
+
+      - name: Bind release to workflow commit
+        id: release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          RELEASE_ID="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          printf 'release-id=%s\n' "$RELEASE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Scan sources and create deployment manifest
+        env:
+          CARMAJA_RELEASE_ID: ${{ steps.release.outputs.release-id }}
+        run: npm run prepare:test-deploy
+
+      - name: Package only out-test
+        id: package
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          tar -C out-test -czf .test-deploy-package/site.tar.gz .
+          ARCHIVE_SHA256="$(sha256sum .test-deploy-package/site.tar.gz | awk '{print $1}')"
+          printf '%s  site.tar.gz\n' "$ARCHIVE_SHA256" \
+            > .test-deploy-package/site.tar.gz.sha256
+          printf 'archive-sha256=%s\n' "$ARCHIVE_SHA256" >> "$GITHUB_OUTPUT"
+
+      - name: Upload verified test deployment artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Carmaja-Testwebsite-${{ github.sha }}
+          path: |
+            website/.test-deploy-package/manifest.tsv
+            website/.test-deploy-package/site.tar.gz
+            website/.test-deploy-package/site.tar.gz.sha256
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+  deploy-test-site:
+    needs: build-test-site
+    if: ${{ vars.CARMAJA_TEST_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: carmaja-test
+      url: https://test.carmaja-perlen.de/
+    defaults:
+      run:
+        working-directory: website
+    env:
+      CARMAJA_TEST_DEPLOY_ENABLED: ${{ vars.CARMAJA_TEST_DEPLOY_ENABLED }}
+      CARMAJA_TEST_SSH_HOST: ${{ secrets.CARMAJA_TEST_SSH_HOST }}
+      CARMAJA_TEST_SSH_USER: ${{ secrets.CARMAJA_TEST_SSH_USER }}
+      CARMAJA_TEST_SSH_PORT: ${{ secrets.CARMAJA_TEST_SSH_PORT }}
+      CARMAJA_TEST_SSH_PRIVATE_KEY: ${{ secrets.CARMAJA_TEST_SSH_PRIVATE_KEY }}
+      CARMAJA_TEST_SSH_KNOWN_HOSTS: ${{ secrets.CARMAJA_TEST_SSH_KNOWN_HOSTS }}
+      CARMAJA_TEST_BASIC_AUTH_USER: ${{ secrets.CARMAJA_TEST_BASIC_AUTH_USER }}
+      CARMAJA_TEST_BASIC_AUTH_PASSWORD: ${{ secrets.CARMAJA_TEST_BASIC_AUTH_PASSWORD }}
+
+    steps:
+      - name: Check out exact deployment script
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download verified test artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Carmaja-Testwebsite-${{ github.sha }}
+          path: website/.test-deploy-package
+
+      - name: Guard every deployment target before server access
+        shell: bash
+        env:
+          CARMAJA_RELEASE_ID: ${{ needs.build-test-site.outputs.release-id }}
+          CARMAJA_ARCHIVE_SHA256: ${{ needs.build-test-site.outputs.archive-sha256 }}
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REPOSITORY" = "Bumpers210/armband-rechner"
+          test "$GITHUB_REF" = "refs/heads/test/product-management-beta"
+          test "$GITHUB_REF_NAME" = "test/product-management-beta"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$CARMAJA_SITE_TARGET" = "test"
+          test "$CARMAJA_SITE_DOMAIN" = "test.carmaja-perlen.de"
+          test "$CARMAJA_TEST_WEBROOT" = "/home/www/carmaja-test-site"
+          test "$CARMAJA_TEST_DEPLOY_WORKSPACE" = "/home/www/carmaja-test-deploy"
+          test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
+          test "$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "false"
+          test "$CARMAJA_TEST_DEPLOY_ENABLED" = "true"
+          test "$CARMAJA_RELEASE_ID" = "${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test "${#CARMAJA_ARCHIVE_SHA256}" -eq 64
+          test -n "$CARMAJA_TEST_SSH_HOST"
+          test -n "$CARMAJA_TEST_SSH_USER"
+          test -n "$CARMAJA_TEST_SSH_PRIVATE_KEY"
+          test -n "$CARMAJA_TEST_SSH_KNOWN_HOSTS"
+          test -n "$CARMAJA_TEST_BASIC_AUTH_USER"
+          test -n "$CARMAJA_TEST_BASIC_AUTH_PASSWORD"
+          [[ "$CARMAJA_TEST_SSH_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$CARMAJA_TEST_SSH_USER" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "${CARMAJA_TEST_SSH_PORT:-22}" =~ ^[0-9]{1,5}$ ]]
+          test "$((10#${CARMAJA_TEST_SSH_PORT:-22}))" -ge 1
+          test "$((10#${CARMAJA_TEST_SSH_PORT:-22}))" -le 65535
+          test "$(find .test-deploy-package -maxdepth 1 -type f | wc -l)" -eq 3
+          (
+            cd .test-deploy-package
+            sha256sum -c site.tar.gz.sha256
+          )
+          test "$(sha256sum .test-deploy-package/site.tar.gz | awk '{print $1}')" \
+            = "$CARMAJA_ARCHIVE_SHA256"
+          grep -Fx "meta	repository	Bumpers210/armband-rechner" \
+            .test-deploy-package/manifest.tsv
+          grep -Fx "meta	branch	test/product-management-beta" \
+            .test-deploy-package/manifest.tsv
+          grep -Fx "meta	target	test" .test-deploy-package/manifest.tsv
+          grep -Fx "meta	domain	test.carmaja-perlen.de" \
+            .test-deploy-package/manifest.tsv
+          grep -Fx "meta	webroot	/home/www/carmaja-test-site" \
+            .test-deploy-package/manifest.tsv
+          grep -Fx "meta	workspace	/home/www/carmaja-test-deploy" \
+            .test-deploy-package/manifest.tsv
+
+      - name: Prepare pinned SSH client
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$CARMAJA_TEST_SSH_PRIVATE_KEY" > "$HOME/.ssh/carmaja_test_deploy"
+          printf '%s\n' "$CARMAJA_TEST_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/carmaja_test_deploy" "$HOME/.ssh/known_hosts"
+          ssh-keygen -y -f "$HOME/.ssh/carmaja_test_deploy" > /dev/null
+          ssh-keygen -F "$CARMAJA_TEST_SSH_HOST" -f "$HOME/.ssh/known_hosts" > /dev/null \
+            || ssh-keygen -F "[$CARMAJA_TEST_SSH_HOST]:${CARMAJA_TEST_SSH_PORT:-22}" \
+              -f "$HOME/.ssh/known_hosts" > /dev/null
+
+      - name: Verify remote test paths and required tools without writes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PORT="${CARMAJA_TEST_SSH_PORT:-22}"
+          REMOTE="${CARMAJA_TEST_SSH_USER}@${CARMAJA_TEST_SSH_HOST}"
+          ssh \
+            -i "$HOME/.ssh/carmaja_test_deploy" \
+            -p "$PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$REMOTE" \
+            'set -eu
+             for cmd in awk cmp cp date dirname find grep head ls mkdir mv realpath rm rmdir sed sha256sum sort tar tr uniq wc; do
+               command -v "$cmd" >/dev/null
+             done
+             test "$(realpath /home/www/carmaja-test-site)" = /home/www/carmaja-test-site
+             test -d /home/www/carmaja-test-site
+             test -w /home/www/carmaja-test-site
+             test "$(realpath /home/www)" = /home/www
+             if test -e /home/www/carmaja-test-deploy; then
+               test "$(realpath /home/www/carmaja-test-deploy)" = /home/www/carmaja-test-deploy
+             fi'
+
+      - name: Create isolated test deployment workspace
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PORT="${CARMAJA_TEST_SSH_PORT:-22}"
+          REMOTE="${CARMAJA_TEST_SSH_USER}@${CARMAJA_TEST_SSH_HOST}"
+          ssh \
+            -i "$HOME/.ssh/carmaja_test_deploy" \
+            -p "$PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            "$REMOTE" \
+            'set -eu
+             umask 027
+             mkdir -p \
+               /home/www/carmaja-test-deploy/incoming \
+               /home/www/carmaja-test-deploy/releases \
+               /home/www/carmaja-test-deploy/backups \
+               /home/www/carmaja-test-deploy/state \
+               /home/www/carmaja-test-deploy/locks
+             chmod 0750 \
+               /home/www/carmaja-test-deploy \
+               /home/www/carmaja-test-deploy/incoming \
+               /home/www/carmaja-test-deploy/releases \
+               /home/www/carmaja-test-deploy/backups \
+               /home/www/carmaja-test-deploy/state \
+               /home/www/carmaja-test-deploy/locks
+             test "$(realpath /home/www/carmaja-test-deploy)" = /home/www/carmaja-test-deploy'
+
+      - name: Upload test export into isolated incoming directory
+        shell: bash
+        env:
+          CARMAJA_RELEASE_ID: ${{ needs.build-test-site.outputs.release-id }}
+        run: |
+          set -Eeuo pipefail
+          PORT="${CARMAJA_TEST_SSH_PORT:-22}"
+          REMOTE="${CARMAJA_TEST_SSH_USER}@${CARMAJA_TEST_SSH_HOST}"
+          SCP=(
+            scp
+            -i "$HOME/.ssh/carmaja_test_deploy"
+            -P "$PORT"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+          )
+          "${SCP[@]}" .test-deploy-package/site.tar.gz \
+            "$REMOTE:/home/www/carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.tar.gz"
+          "${SCP[@]}" .test-deploy-package/site.tar.gz.sha256 \
+            "$REMOTE:/home/www/carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.tar.gz.sha256"
+          "${SCP[@]}" .test-deploy-package/manifest.tsv \
+            "$REMOTE:/home/www/carmaja-test-deploy/incoming/${CARMAJA_RELEASE_ID}.manifest.tsv"
+
+      - name: Activate, smoke-test and mark verified
+        shell: bash
+        env:
+          CARMAJA_RELEASE_ID: ${{ needs.build-test-site.outputs.release-id }}
+          CARMAJA_ARCHIVE_SHA256: ${{ needs.build-test-site.outputs.archive-sha256 }}
+        run: |
+          set -Eeuo pipefail
+          PORT="${CARMAJA_TEST_SSH_PORT:-22}"
+          REMOTE="${CARMAJA_TEST_SSH_USER}@${CARMAJA_TEST_SSH_HOST}"
+          SSH=(
+            ssh
+            -i "$HOME/.ssh/carmaja_test_deploy"
+            -p "$PORT"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+          )
+
+          run_remote_script() {
+            local action="$1"
+            "${SSH[@]}" "$REMOTE" \
+              "CARMAJA_REPOSITORY='Bumpers210/armband-rechner' \
+               CARMAJA_BRANCH='test/product-management-beta' \
+               CARMAJA_SITE_TARGET='test' \
+               CARMAJA_SITE_DOMAIN='test.carmaja-perlen.de' \
+               CARMAJA_TEST_WEBROOT='/home/www/carmaja-test-site' \
+               CARMAJA_TEST_DEPLOY_WORKSPACE='/home/www/carmaja-test-deploy' \
+               CARMAJA_PRODUCTION_PUBLISH_ENABLED='false' \
+               CARMAJA_PRODUCTION_DEPLOY_ENABLED='false' \
+               CARMAJA_COMMIT_SHA='$GITHUB_SHA' \
+               CARMAJA_RELEASE_ID='$CARMAJA_RELEASE_ID' \
+               CARMAJA_ARCHIVE_SHA256='$CARMAJA_ARCHIVE_SHA256' \
+               CARMAJA_DEPLOY_ACTION='$action' \
+               sh -s" < scripts/deploy-test-site.sh
+          }
+
+          rollback_after_failure() {
+            run_remote_script rollback || true
+          }
+
+          if ! run_remote_script deploy; then
+            rollback_after_failure
+            exit 1
+          fi
+
+          smoke_directory="$(mktemp -d)"
+          trap 'rm -rf "$smoke_directory"' EXIT
+
+          if ! {
+            http_code="$(curl -sS -D "$smoke_directory/http.headers" -o /dev/null \
+              -w '%{http_code}' http://test.carmaja-perlen.de/)"
+            test "$http_code" = "302"
+            grep -Eiq '^Location: https://test\.carmaja-perlen\.de/' \
+              "$smoke_directory/http.headers"
+            ! grep -Eiq '^WWW-Authenticate:' "$smoke_directory/http.headers"
+
+            unauthenticated_code="$(curl -sS -D "$smoke_directory/unauth.headers" \
+              -o /dev/null -w '%{http_code}' https://test.carmaja-perlen.de/)"
+            test "$unauthenticated_code" = "401"
+            grep -Eiq '^WWW-Authenticate: Basic' "$smoke_directory/unauth.headers"
+
+            wrong_code="$(curl -sS --user 'carmaja-invalid:carmaja-invalid' \
+              -o /dev/null -w '%{http_code}' https://test.carmaja-perlen.de/)"
+            test "$wrong_code" = "401"
+
+            authenticated_code="$(curl -sS \
+              --user "$CARMAJA_TEST_BASIC_AUTH_USER:$CARMAJA_TEST_BASIC_AUTH_PASSWORD" \
+              -D "$smoke_directory/auth.headers" \
+              -o "$smoke_directory/index.html" \
+              -w '%{http_code}' https://test.carmaja-perlen.de/)"
+            test "$authenticated_code" = "200"
+            grep -Eiq '^X-Robots-Tag: noindex, nofollow, noimageindex' \
+              "$smoke_directory/auth.headers"
+            grep -Eiq '^Cache-Control: private, no-store' "$smoke_directory/auth.headers"
+            grep -Eiq '^X-Content-Type-Options: nosniff' "$smoke_directory/auth.headers"
+            grep -Eiq '^Referrer-Policy: no-referrer' "$smoke_directory/auth.headers"
+
+            robots_code="$(curl -sS \
+              --user "$CARMAJA_TEST_BASIC_AUTH_USER:$CARMAJA_TEST_BASIC_AUTH_PASSWORD" \
+              -o "$smoke_directory/robots.txt" \
+              -w '%{http_code}' https://test.carmaja-perlen.de/robots.txt)"
+            test "$robots_code" = "200"
+            test "$(tr -d '\r' < "$smoke_directory/robots.txt")" \
+              = $'User-agent: *\nDisallow: /'
+
+            image_code="$(curl -sS \
+              --user "$CARMAJA_TEST_BASIC_AUTH_USER:$CARMAJA_TEST_BASIC_AUTH_PASSWORD" \
+              -o /dev/null -w '%{http_code}' \
+              https://test.carmaja-perlen.de/images/bracelets/hero-dunkelrot-braun-holz.jpg)"
+            test "$image_code" = "200"
+          }; then
+            rollback_after_failure
+            exit 1
+          fi
+
+          if ! run_remote_script mark_verified; then
+            rollback_after_failure
+            exit 1
+          fi
+
+          trap - EXIT
+          rm -rf "$smoke_directory"

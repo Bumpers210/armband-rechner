@@ -11,6 +11,16 @@ define('CARMAJA_BOOTSTRAP_NO_RUN', true);
 require_once __DIR__ . '/bootstrap.php';
 
 try {
+    $arguments = array_slice($_SERVER['argv'] ?? [], 1);
+    $githubReadonly = $arguments === ['--github-readonly'];
+
+    if ($arguments !== [] && !$githubReadonly) {
+        throw new CarmajaBootstrapException(
+            'diagnostic_arguments_invalid',
+            'Unbekannte Diagnoseoption.'
+        );
+    }
+
     $configFile = getenv('CARMAJA_CONFIG_FILE');
 
     if (!is_string($configFile) || trim($configFile) === '') {
@@ -22,6 +32,11 @@ try {
 
     carmaja_bootstrap_prepare(trim($configFile));
     $result = carmaja_api_diagnose_environment();
+
+    if ($githubReadonly) {
+        $result['github'] = carmaja_api_github_readonly_diagnostic();
+    }
+
     echo json_encode(
         $result,
         JSON_PRETTY_PRINT

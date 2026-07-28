@@ -158,7 +158,7 @@ Statistikdateien und keine PHP-Laufzeitkonfiguration. Vinted-Links werden im
 Testziel nach strenger URL-Prüfung direkt ausgegeben. Fehlt der Link oder ist
 das Produkt verkauft, wird kein Link gerendert.
 
-Der spätere Passwortschutz referenziert ausschließlich:
+Der Passwortschutz des Testexports referenziert ausschließlich:
 
 ```text
 /home/www/carmaja-private-test/auth/test-website.htpasswd
@@ -199,6 +199,42 @@ Bei authentifizierten Antworten müssen mindestens diese Header vorhanden sein:
 `X-Robots-Tag: noindex, nofollow, noimageindex`,
 `Cache-Control: private, no-store`, `X-Content-Type-Options: nosniff` und
 `Referrer-Policy: no-referrer`.
+
+## Deaktivierte Phase-5-Pipeline
+
+Der Workflow `.github/workflows/deploy-test-website.yml` reagiert ausschließlich
+auf Pushes nach `test/product-management-beta` und auf eine feste Allowlist von
+Testwebsite-, Produkt- und Workflowpfaden. Es gibt keinen manuellen Trigger.
+Der Buildjob führt `npm ci`, den auf Testquellen begrenzten Lintlauf,
+Website- und Deploymenttests sowie `npm run build:test` aus. Als Artefakt
+werden ausschließlich Manifest, Prüfsumme und das Archiv aus `out-test/`
+gespeichert.
+
+Der Deploymentjob bleibt deaktiviert, solange die nicht geheime
+Repository-Variable `CARMAJA_TEST_DEPLOY_ENABLED` nicht exakt `true` ist.
+Die Deployment-Secrets sind zusätzlich ausschließlich dem GitHub-Environment
+`carmaja-test` zugeordnet. Lokal wird kein Aktivierungswert gesetzt. Der
+API-Adapter bleibt unabhängig davon mit `githubAdapterEnabled=false`
+deaktiviert.
+
+Das spätere Deployment verwendet keinen Symlink. Jede Exportdatei ist im
+Manifest an Repository, Branch, Testziel, Domain, Commit und Release gebunden.
+Der Server sichert den zuvor manifestverwalteten Stand, übernimmt neue Dateien
+atomar, entfernt nur alte manifestverwaltete Pfade und rollt bei einem Fehler
+zurück. Verwendet werden ausschließlich:
+
+```text
+/home/www/carmaja-test-site
+/home/www/carmaja-test-deploy/incoming
+/home/www/carmaja-test-deploy/releases
+/home/www/carmaja-test-deploy/backups
+/home/www/carmaja-test-deploy/state
+/home/www/carmaja-test-deploy/locks
+```
+
+`website/hosting/**` wird vom Testworkflow weder ausgelöst, gelintet, kopiert
+noch deployt. Insbesondere ist `website/hosting/_internal/tracking.php` nicht
+Teil des Testexports.
 
 Ohne weitere Konfiguration liegt die Datei unter
 `out/private-data/clicks.json`. Dieses Verzeichnis wird durch eine aktive

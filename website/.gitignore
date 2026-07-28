@@ -5,6 +5,7 @@ node_modules/
 .next/
 out/
 out-test/
+.test-deploy-package/
 
 # Local tooling and test output
 coverage/

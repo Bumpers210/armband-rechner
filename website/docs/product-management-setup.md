@@ -1,13 +1,16 @@
 # Carmaja-Perlen Test-API auf IONOS
 
-Diese Anleitung gilt ausschließlich für die Test-API aus Phase 3.1.
-Sie installiert keine Testwebsite, führt keinen GitHub-Commit aus und
-verändert weder `main` noch `www.carmaja-perlen.de`.
+Diese Anleitung gilt ausschließlich für die getrennte Testumgebung. Die
+Phase-5-Dateien richten lokal den geschützten Build-, Publish- und
+Deploymentweg ein, aktivieren ihn aber nicht. Es werden keine Secrets
+eingerichtet, keine Dateien hochgeladen und weder `main` noch
+`www.carmaja-perlen.de` verändert.
 
 ## Verbindliche IONOS-Pfade
 
 - Test-API-Webroot: `/home/www/carmaja-test-api`
 - Testwebsite-Webroot: `/home/www/carmaja-test-site`
+- Testwebsite-Deployworkspace: `/home/www/carmaja-test-deploy`
 - Privater Testbereich: `/home/www/carmaja-private-test`
 - Private Programme: `/home/www/carmaja-private-test/program`
 - Private Konfiguration: `/home/www/carmaja-private-test/config/runtime-config.php`
@@ -150,12 +153,33 @@ unset TOKEN_PEPPER
 chmod 0640 /home/www/carmaja-private-test/config/runtime-config.php
 ```
 
-Die bestehende IONOS-Testinstallation bleibt auch nach Phase 4 beim lokalen
-Publish-Adapter. Es werden keine `CARMAJA_GITHUB_*`-Variablen und kein
-GitHub-Token konfiguriert. `CARMAJA_PRODUCTION_DEPLOY_ENABLED` bleibt
-ungesetzt. Die neue Example-Konfiguration enthält ausschließlich
-`githubAdapterEnabled=false`; eine Aktivierung ist erst in einer später
-freigegebenen Phase zulässig.
+Die bestehende IONOS-Testinstallation bleibt nach der lokalen
+Phase-5-Implementierung beim lokalen Publish-Adapter. Die aktive
+`runtime-config.php` bleibt zunächst bei:
+
+```php
+'githubAdapterEnabled' => false,
+'githubRepository' => 'Bumpers210/armband-rechner',
+'githubBranch' => 'test/product-management-beta',
+'githubTokenFile' => null,
+```
+
+`CARMAJA_PRODUCTION_DEPLOY_ENABLED` ist nicht `true`. Ein später auf IONOS
+anzulegender Fine-grained Token darf nur auf
+`Bumpers210/armband-rechner` zugreifen und ausschließlich `Contents: write`
+sowie `Actions: read` besitzen. Er liegt als einzelne private Datei
+außerhalb aller Webroots, beispielsweise unter
+`/home/www/carmaja-private-test/config/github-token`, mit Modus `0640`.
+Der Tokenwert wird weder in die Runtime-PHP-Datei noch in die Shell-Historie
+geschrieben.
+
+Vor einer späteren Aktivierung werden nur die drei geänderten privaten
+Programme `bootstrap.php`, `product-api.php` und
+`product-api-diagnostics.php` aktualisiert. Danach werden in der privaten
+Runtime-Konfiguration `githubTokenFile` auf die geprüfte Token-Datei gesetzt
+und erst nach erfolgreicher Nur-Lese-Diagnose
+`githubAdapterEnabled=true` gesetzt. Öffentliche API-Dateien, Benutzer- und
+Gerätedaten, Entwürfe, Uploads, Auditlogs und SKU-Zähler bleiben unverändert.
 
 Der statische Phase-4-Testkatalog wird lokal mit `npm run build:test` nach
 `website/out-test/` gebaut. In Phase 4 wird dieser Ordner nicht zu IONOS
@@ -213,6 +237,86 @@ Erwartete Diagnose:
 
 Jeder Diagnosefehler stoppt die Installation. Die Ausgabe darf keine
 absoluten Pfade und keine Konfigurationswerte enthalten.
+
+Die spätere GitHub-Prüfung erfolgt bei weiterhin deaktiviertem Adapter:
+
+```bash
+"$CARMAJA_PHP_CLI" \
+  /home/www/carmaja-private-test/program/product-api-diagnostics.php \
+  --github-readonly
+```
+
+Sie liest ausschließlich den festen Branch und
+`website/content/products.json`. Erst wenn Repository, Branch, Remote-HEAD
+und Produktdatei bestätigt sind, darf der Adapter in einem gesondert
+freigegebenen IONOS-Schritt aktiviert werden.
+
+## GitHub-Environment für das Testdeployment
+
+Der Workflow verwendet für Geheimwerte ausschließlich das GitHub-Environment
+`carmaja-test`. Solange die folgende nicht geheime Repository-Variable fehlt
+oder nicht exakt `true` ist, wird nur gebaut und ein geprüftes Artefakt
+erzeugt:
+
+```text
+CARMAJA_TEST_DEPLOY_ENABLED
+```
+
+Für eine spätere Freigabe benötigt das Environment diese Secrets:
+
+```text
+CARMAJA_TEST_SSH_HOST
+CARMAJA_TEST_SSH_USER
+CARMAJA_TEST_SSH_PORT
+CARMAJA_TEST_SSH_PRIVATE_KEY
+CARMAJA_TEST_SSH_KNOWN_HOSTS
+CARMAJA_TEST_BASIC_AUTH_USER
+CARMAJA_TEST_BASIC_AUTH_PASSWORD
+```
+
+Die beiden Basic-Auth-Secrets werden ausschließlich für Smoke-Tests
+verwendet. Der Workflow schreibt weder sie noch eine `.htpasswd` auf den
+Server. Der SSH-Host-Key wird fest in `CARMAJA_TEST_SSH_KNOWN_HOSTS`
+hinterlegt; ein ungeprüftes `ssh-keyscan` findet nicht statt.
+
+## Privates Deploymentworkspace
+
+Vor der ersten späteren Aktivierung sind per SSH die tatsächlichen Pfade,
+Werkzeuge und Schreibrechte zu prüfen. Der Workflow prüft zunächst
+`awk`, `cmp`, `cp`, `date`, `dirname`, `find`, `grep`, `head`, `ls`,
+`mkdir`, `mv`, `realpath`, `rm`, `rmdir`, `sed`, `sha256sum`, `sort`,
+`tar`, `tr`, `uniq` und `wc`, ohne zu schreiben. Erst danach darf er diese
+Struktur anlegen:
+
+```bash
+mkdir -p \
+  /home/www/carmaja-test-deploy/incoming \
+  /home/www/carmaja-test-deploy/releases \
+  /home/www/carmaja-test-deploy/backups \
+  /home/www/carmaja-test-deploy/state \
+  /home/www/carmaja-test-deploy/locks
+
+chmod 0750 \
+  /home/www/carmaja-test-deploy \
+  /home/www/carmaja-test-deploy/incoming \
+  /home/www/carmaja-test-deploy/releases \
+  /home/www/carmaja-test-deploy/backups \
+  /home/www/carmaja-test-deploy/state \
+  /home/www/carmaja-test-deploy/locks
+```
+
+Das erste Deployment akzeptiert nur einen leeren, bisher unverwalteten
+`/home/www/carmaja-test-site`. Spätere Releases sichern den vorherigen
+manifestverwalteten Dateisatz unter `backups/`, schreiben jede neue Datei
+über temporäre Datei plus atomarem `mv` und entfernen nur Pfade des vorherigen
+Manifests. Vier Releases und drei Backups werden aufbewahrt. Ein fehlgeschlagener
+Deploy- oder Smoke-Test stellt den vorherigen Dateisatz wieder her.
+
+Das Deploymentskript wird über den bereits authentifizierten SSH-Kanal
+eingelesen und nicht dauerhaft auf IONOS installiert. Hochgeladen werden
+ausschließlich Archiv, Manifest und Prüfsumme des geprüften
+`website/out-test/` nach `incoming/`. Weder `website/hosting/**` noch private
+API-, Statistik- oder Passwortdateien gehören zum Paket.
 
 ## Ersten Benutzer anlegen
 

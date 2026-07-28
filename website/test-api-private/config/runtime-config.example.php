@@ -18,9 +18,10 @@ return [
     // In runtime-config.php durch einen zufälligen Wert mit mindestens 32 Zeichen ersetzen.
     'tokenPepper' => null,
 
-    // Phase 4: bleibt bis zur getrennten Testdeployment-Freigabe deaktiviert.
+    // Bleibt bis zur manuellen IONOS-Aktivierung deaktiviert.
+    // Fine-grained Token: nur dieses Repository, Contents: write, Actions: read.
     'githubAdapterEnabled' => false,
-    'githubRepository' => null,
-    'githubBranch' => null,
+    'githubRepository' => 'Bumpers210/armband-rechner',
+    'githubBranch' => 'test/product-management-beta',
     'githubTokenFile' => null,
 ];
