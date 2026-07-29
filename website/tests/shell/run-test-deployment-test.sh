@@ -5,6 +5,8 @@ set -Eeuo pipefail
 SOURCE_SCRIPT=${1:?Pfad zum Orchestrierungsskript fehlt.}
 ROOT=$(mktemp -d /tmp/carmaja-smoke-shell-test.XXXXXX)
 MOCK_BIN="$ROOT/bin"
+AUTH_DIRECTORY="$ROOT/external-auth"
+AUTH_FILE="$AUTH_DIRECTORY/test-website.htpasswd"
 SCENARIO_COUNT=0
 SECRET_USER='diagnostic-secret-user'
 SECRET_PASSWORD='diagnostic-secret-password-with-quote-"'
@@ -23,11 +25,18 @@ cleanup()
 }
 
 trap cleanup EXIT HUP INT TERM
-mkdir -p "$MOCK_BIN"
+mkdir -p "$MOCK_BIN" "$AUTH_DIRECTORY"
+printf '%s\n' 'manually-managed-auth-fixture' > "$AUTH_FILE"
+chmod 0711 "$AUTH_DIRECTORY"
+chmod 0604 "$AUTH_FILE"
+AUTH_FILE_HASH=$(sha256sum "$AUTH_FILE" | awk '{ print $1 }')
 
 cat > "$MOCK_BIN/ssh" <<'MOCK_SSH'
 #!/usr/bin/env bash
 set -eu
+
+[ -f "$CARMAJA_MOCK_AUTH_FILE" ]
+[ "$(sha256sum "$CARMAJA_MOCK_AUTH_FILE" | awk '{ print $1 }')" = "$CARMAJA_MOCK_AUTH_HASH" ]
 
 cat > /dev/null
 case "$*" in
@@ -154,9 +163,10 @@ case "$url|$auth" in
         ;;
     'https://test.carmaja-perlen.de/|wrong')
         code='401'
-        if [ "$CARMAJA_MOCK_SCENARIO" = 'wrong_credentials_not_401' ]; then
-            code='200'
-        fi
+        case "$CARMAJA_MOCK_SCENARIO" in
+            wrong_credentials_not_401) code='200' ;;
+            wrong_credentials_500) code='500' ;;
+        esac
         ;;
     'https://test.carmaja-perlen.de/|correct')
         code='200'
@@ -278,6 +288,15 @@ assert_secret_safety()
     fi
 }
 
+assert_auth_file_unchanged()
+{
+    [ -f "$AUTH_FILE" ]
+    [ ! -L "$AUTH_FILE" ]
+    [ "$(stat -c '%a' "$AUTH_DIRECTORY")" = '711' ]
+    [ "$(stat -c '%a' "$AUTH_FILE")" = '604' ]
+    [ "$(sha256sum "$AUTH_FILE" | awk '{ print $1 }')" = "$AUTH_FILE_HASH" ]
+}
+
 run_case()
 {
     local scenario=$1
@@ -300,6 +319,8 @@ run_case()
     RUNNER_TEMP="$runner_temp" \
     CARMAJA_MOCK_STATE="$state_directory" \
     CARMAJA_MOCK_SCENARIO="$scenario" \
+    CARMAJA_MOCK_AUTH_FILE="$AUTH_FILE" \
+    CARMAJA_MOCK_AUTH_HASH="$AUTH_FILE_HASH" \
     GITHUB_REPOSITORY='Bumpers210/armband-rechner' \
     GITHUB_REF='refs/heads/test/product-management-beta' \
     GITHUB_REF_NAME='test/product-management-beta' \
@@ -329,6 +350,7 @@ run_case()
 
     [ "$deploy_count" -eq 1 ]
     assert_secret_safety "$output_file" "$state_directory"
+    assert_auth_file_unchanged
 
     if [ "$expected_result" = 'success' ]; then
         [ "$exit_code" -eq 0 ]
@@ -340,6 +362,9 @@ run_case()
             "$output_file" > /dev/null
         grep -Fx \
             'SMOKE_TEST_OK commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa release=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-123-1' \
+            "$output_file" > /dev/null
+        grep -Fx \
+            'SMOKE_CHECK_OK name=https_wrong_credentials_status status=401' \
             "$output_file" > /dev/null
         grep -Fx \
             'MARK_VERIFIED_OK commit=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa release=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-123-1' \
@@ -366,6 +391,12 @@ run_case()
         grep -F 'ROLLBACK_OK' "$output_file" > /dev/null
     fi
 
+    if [ "$scenario" = 'wrong_credentials_500' ]; then
+        grep -Fx \
+            'SMOKE_CHECK_FAILED name=https_wrong_credentials_status expected=401 actual=500' \
+            "$output_file" > /dev/null
+    fi
+
     if [ "$scenario" = 'query_location' ]; then
         ! grep -Fq 'must-not-be-logged' "$output_file"
     fi
@@ -384,6 +415,7 @@ run_case 'http_empty_challenge' 'failure' 'http_redirect_without_auth_challenge'
 run_case 'unauth_root_not_401' 'failure' 'https_unauthenticated_status'
 run_case 'missing_basic_challenge' 'failure' 'https_basic_challenge'
 run_case 'wrong_credentials_not_401' 'failure' 'https_wrong_credentials_status'
+run_case 'wrong_credentials_500' 'failure' 'https_wrong_credentials_status'
 run_case 'correct_credentials_not_200' 'failure' 'https_authenticated_status'
 run_case 'missing_x_robots' 'failure' 'header_x_robots_tag'
 run_case 'partial_x_robots' 'failure' 'header_x_robots_tag'

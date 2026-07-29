@@ -2,7 +2,7 @@
 
 set -eu
 
-AUTH_FILE='/home/www/carmaja-private-test/auth/test-website.htpasswd'
+AUTH_FILE='/home/www/carmaja-test-auth/test-website.htpasswd'
 TEST_DOMAIN='test.carmaja-perlen.de'
 MODE=${1:-}
 
@@ -221,8 +221,7 @@ run_diagnosis()
     printf 'BASIC_AUTH_HTPASSWD_AVAILABLE=%s\n' \
         "$(yes_no command_available htpasswd)"
 
-    inspect_directory 'AUTH' "$(dirname "$AUTH_FILE")"
-    inspect_directory 'PRIVATE_TEST' '/home/www/carmaja-private-test'
+    inspect_directory 'TEST_AUTH' "$(dirname "$AUTH_FILE")"
     inspect_directory 'WWW' '/home/www'
     inspect_directory 'HOME' '/home'
     inspect_directory 'ROOT' '/'

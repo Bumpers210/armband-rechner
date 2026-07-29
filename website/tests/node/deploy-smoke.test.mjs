@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const websiteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
-test("Smoke-Orchestrierung diagnostiziert 27 sichere Erfolgs- und Fehlerpfade", () => {
+test("Smoke-Orchestrierung diagnostiziert 28 sichere Erfolgs- und Fehlerpfade", () => {
   const output = execFileSync(
     "bash",
     ["tests/shell/run-test-deployment-test.sh", "scripts/run-test-deployment.sh"],
@@ -17,5 +17,5 @@ test("Smoke-Orchestrierung diagnostiziert 27 sichere Erfolgs- und Fehlerpfade", 
     },
   );
 
-  assert.match(output, /Smoke-Orchestrierungs-Test erfolgreich: 27 Szenarien\./);
+  assert.match(output, /Smoke-Orchestrierungs-Test erfolgreich: 28 Szenarien\./);
 });

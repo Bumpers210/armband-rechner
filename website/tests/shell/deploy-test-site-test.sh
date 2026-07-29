@@ -6,6 +6,8 @@ SOURCE_SCRIPT=${1:?Pfad zum Deploymentskript fehlt.}
 ROOT=$(mktemp -d /tmp/carmaja-deploy-shell-test.XXXXXX)
 WEBROOT="$ROOT/webroot"
 WORKSPACE="$ROOT/workspace"
+AUTH_DIRECTORY="$ROOT/external-auth"
+AUTH_FILE="$AUTH_DIRECTORY/test-website.htpasswd"
 PATCHED_SCRIPT="$ROOT/deploy-test-site.sh"
 FAILED_SCRIPT="$ROOT/deploy-test-site-failure.sh"
 LATE_FAILED_SCRIPT="$ROOT/deploy-test-site-late-failure.sh"
@@ -27,17 +29,39 @@ trap cleanup EXIT HUP INT TERM
 
 mkdir -p \
     "$WEBROOT" \
+    "$AUTH_DIRECTORY" \
     "$WORKSPACE/incoming" \
     "$WORKSPACE/releases" \
     "$WORKSPACE/backups" \
     "$WORKSPACE/state" \
     "$WORKSPACE/locks"
 
+printf '%s\n' 'manually-managed-auth-fixture' > "$AUTH_FILE"
+chmod 0711 "$AUTH_DIRECTORY"
+chmod 0604 "$AUTH_FILE"
+AUTH_FILE_HASH=$(sha256sum "$AUTH_FILE" | awk '{ print $1 }')
+
 sed \
     -e "s#^WEBROOT='/home/www/carmaja-test-site'\$#WEBROOT='$WEBROOT'#" \
     -e "s#^WORKSPACE='/home/www/carmaja-test-deploy'\$#WORKSPACE='$WORKSPACE'#" \
     "$SOURCE_SCRIPT" > "$PATCHED_SCRIPT"
 chmod 0700 "$PATCHED_SCRIPT"
+
+assert_auth_file_unchanged()
+{
+    [ -f "$AUTH_FILE" ]
+    [ ! -L "$AUTH_FILE" ]
+    [ "$(stat -c '%a' "$AUTH_DIRECTORY")" = '711' ]
+    [ "$(stat -c '%a' "$AUTH_FILE")" = '604' ]
+    [ "$(sha256sum "$AUTH_FILE" | awk '{ print $1 }')" = "$AUTH_FILE_HASH" ]
+
+    if find "$WEBROOT" "$WORKSPACE" -type f \
+        \( -name '.htpasswd' -o -name 'test-website.htpasswd' \) \
+        -print -quit | grep -q .; then
+        printf '%s\n' 'Deployment hat eine Passwortdatei verwaltet.' >&2
+        exit 1
+    fi
+}
 
 create_package()
 {
@@ -111,6 +135,7 @@ create_package "$COMMIT_ONE" "$RELEASE_ONE" "$SOURCE_ONE"
 HASH_ONE=$(sha256sum "$WORKSPACE/incoming/$RELEASE_ONE.tar.gz" | awk '{ print $1 }')
 run_action "$PATCHED_SCRIPT" deploy "$COMMIT_ONE" "$RELEASE_ONE" "$HASH_ONE"
 run_action "$PATCHED_SCRIPT" mark_verified "$COMMIT_ONE" "$RELEASE_ONE"
+assert_auth_file_unchanged
 
 grep -Fx 'version-one' "$WEBROOT/index.html" > /dev/null
 grep -Fx 'AuthType Basic' "$WEBROOT/.htaccess" > /dev/null
@@ -128,6 +153,7 @@ printf '%s\n' 'new-product' > "$SOURCE_TWO/armbaender/neu/index.html"
 create_package "$COMMIT_TWO" "$RELEASE_TWO" "$SOURCE_TWO"
 HASH_TWO=$(sha256sum "$WORKSPACE/incoming/$RELEASE_TWO.tar.gz" | awk '{ print $1 }')
 run_action "$PATCHED_SCRIPT" deploy "$COMMIT_TWO" "$RELEASE_TWO" "$HASH_TWO"
+assert_auth_file_unchanged
 
 grep -Fx 'version-two' "$WEBROOT/index.html" > /dev/null
 grep -Fx 'new-product' "$WEBROOT/armbaender/neu/index.html" > /dev/null
@@ -135,6 +161,7 @@ grep -Fx 'new-product' "$WEBROOT/armbaender/neu/index.html" > /dev/null
 [ -f "$WORKSPACE/backups/before-$RELEASE_TWO/files/index.html" ]
 
 run_action "$PATCHED_SCRIPT" rollback "$COMMIT_TWO" "$RELEASE_TWO"
+assert_auth_file_unchanged
 grep -Fx 'version-one' "$WEBROOT/index.html" > /dev/null
 grep -Fx 'old-product' "$WEBROOT/armbaender/alt/index.html" > /dev/null
 grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
@@ -166,6 +193,7 @@ grep -Fx 'old-product' "$WEBROOT/armbaender/alt/index.html" > /dev/null
 grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
 [ ! -e "$WEBROOT/armbaender/fehler/index.html" ]
 grep -Fx 'status=failed_rolled_back' "$WORKSPACE/state/status.env" > /dev/null
+assert_auth_file_unchanged
 
 sed \
     's/^# CARMAJA_TEST_POST_STATE_ROLLBACK_POINT$/false # simulated late activation failure/' \
@@ -194,5 +222,6 @@ grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
 grep -Fx 'status=failed_rolled_back' "$WORKSPACE/state/status.env" > /dev/null
 grep -Fx "meta	commit	$COMMIT_ONE" "$WORKSPACE/state/current-manifest.tsv" > /dev/null
 [ ! -e "$WORKSPACE/state/rollback-$RELEASE_FOUR.txt" ]
+assert_auth_file_unchanged
 
 printf '%s\n' 'Deployment-Shell-Test erfolgreich.'

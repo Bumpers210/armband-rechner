@@ -161,17 +161,23 @@ das Produkt verkauft, wird kein Link gerendert.
 Der Passwortschutz des Testexports referenziert ausschließlich:
 
 ```text
-/home/www/carmaja-private-test/auth/test-website.htpasswd
+/home/www/carmaja-test-auth/test-website.htpasswd
 ```
 
 Die Datei wird interaktiv auf IONOS erzeugt und niemals hochgeladen oder
 committed:
 
 ```bash
-htpasswd -Bc \
-  /home/www/carmaja-private-test/auth/test-website.htpasswd \
-  TESTBENUTZER
-chmod 0640 /home/www/carmaja-private-test/auth/test-website.htpasswd
+AUTH_FILE='/home/www/carmaja-test-auth/test-website.htpasswd'
+mkdir -p /home/www/carmaja-test-auth
+chmod 0711 /home/www/carmaja-test-auth
+if [ ! -e "$AUTH_FILE" ]; then
+  read -r -p 'Basic-Auth-Benutzername: ' AUTH_USER
+  htpasswd -Bc "$AUTH_FILE" "$AUTH_USER"
+  unset AUTH_USER
+fi
+chmod 0604 "$AUTH_FILE"
+unset AUTH_FILE
 ```
 
 Nach einem erst in Phase 5 erlaubten Upload sind diese Prüfungen verbindlich:

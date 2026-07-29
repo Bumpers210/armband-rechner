@@ -94,3 +94,24 @@ test("Deploymentmanifest lehnt private Dateien und ungebundene Releases ab", asy
     /nicht an Commit/,
   );
 });
+
+test("Deploymentmanifest lehnt eine Passwortdatei im Testexport ab", async () => {
+  const { outputDirectory, packageDirectory } = await fixture();
+  const commitSha = "d".repeat(40);
+  await writeFile(
+    path.join(outputDirectory, ".htpasswd"),
+    "manuelle-passwortdatei-darf-nicht-verpackt-werden\n",
+  );
+
+  assert.throws(
+    () =>
+      createDeployManifest({
+        outputDirectory,
+        packageDirectory,
+        repositoryRoot,
+        commitSha,
+        releaseId: `${commitSha}-12345-1`,
+      }),
+    /Private oder unerlaubte Datei/,
+  );
+});

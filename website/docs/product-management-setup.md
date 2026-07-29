@@ -330,6 +330,12 @@ bash ./diagnose-test-basic-auth.sh --diagnose
 
 Das Skript wird separat und manuell per SSH/SFTP bereitgestellt. Es gehört
 nicht zum Websiteartefakt und wird nicht durch GitHub Actions ausgeführt.
+Es benötigt Bash; die Syntaxprüfung erfolgt deshalb ausschließlich mit:
+
+```bash
+bash -n website/scripts/diagnose-test-basic-auth.sh
+```
+
 `--diagnose` verändert keine Datei und gibt weder Benutzernamen noch Hashes
 oder vollständige Logzeilen aus. Es prüft:
 
@@ -398,7 +404,7 @@ keinen Batch-, stdin- oder Klartextmodus.
 Auch dieser erstmalige Vorgang bleibt manuell und interaktiv:
 
 ```bash
-AUTH_FILE='/home/www/carmaja-private-test/auth/test-website.htpasswd'
+AUTH_FILE='/home/www/carmaja-test-auth/test-website.htpasswd'
 if [ ! -e "$AUTH_FILE" ]; then
   read -r -p 'Basic-Auth-Benutzername: ' AUTH_USER
   htpasswd -Bc "$AUTH_FILE" "$AUTH_USER"
@@ -412,6 +418,14 @@ unset AUTH_FILE
 Dieser Block darf erst verwendet werden, wenn die Diagnose
 `BASIC_AUTH_FILE_EXISTS=no` bestätigt. Eine bestehende Datei darf niemals mit
 `-c` neu erzeugt werden.
+
+Der bestätigte separate Auth-Bereich `/home/www/carmaja-test-auth` besitzt
+Modus `0711`; die manuell verwaltete Passwortdatei
+`/home/www/carmaja-test-auth/test-website.htpasswd` besitzt Modus `0604`.
+Sie liegt außerhalb von Test-Webroot und Deploymentworkspace. GitHub Actions,
+Deployment und Rollback dürfen sie weder erzeugen noch lesen, kopieren,
+ersetzen oder löschen. Die bisherige Datei im privaten API-Bereich bleibt bis
+zur erfolgreichen Liveabnahme manuell bestehen.
 
 ### Technische Korrektur erst nach Klassifikation
 
@@ -430,12 +444,10 @@ ausgeführt:
 - `unknown`: Keine Konfigurationsänderung vornehmen; die gefilterte
   Diagnoseausgabe zur weiteren Analyse verwenden.
 
-Nur wenn IONOS nachweislich eine Passwortdatei im Test-Webroot erfordert,
-darf der feste Pfad `/home/www/carmaja-test-site/.htpasswd` gesondert geplant
-werden. Zuvor müssen Export-, Manifest-, HTTP-Sperr- sowie
-Deployment-/Rollbacktests erweitert werden. Die Datei bliebe manuell,
-unversioniert und außerhalb jedes Buildartefakts. Phase 5.3 setzt diese
-Alternative nicht um.
+Eine Passwortdatei im Test-Webroot wird nicht verwendet. Die bestätigte,
+Apache-lesbare Ablage bleibt der separate Auth-Bereich außerhalb von Webroot
+und Deploymentworkspace. Direkter HTTP-Zugriff, Aufnahme in Export oder
+Manifest sowie jede Verwaltung durch GitHub Actions bleiben ausgeschlossen.
 
 Verboten bleiben insbesondere `chmod 777`, `chmod -R`, `chown -R`, das
 Kopieren der Passwortdatei in den Webroot und jede Ausgabe ihres Inhalts.

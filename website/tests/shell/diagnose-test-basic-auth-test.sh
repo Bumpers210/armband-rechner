@@ -30,7 +30,7 @@ trap cleanup EXIT HUP INT TERM
 mkdir -p "$MOCK_BIN" "$AUTH_DIRECTORY" "$STATE_DIRECTORY"
 
 sed \
-    "s#^AUTH_FILE='/home/www/carmaja-private-test/auth/test-website.htpasswd'\$#AUTH_FILE='$AUTH_FILE'#" \
+    "s#^AUTH_FILE='[^']*'\$#AUTH_FILE='$AUTH_FILE'#" \
     "$SOURCE_SCRIPT" > "$PATCHED_SCRIPT"
 chmod 0700 "$PATCHED_SCRIPT"
 
@@ -118,8 +118,11 @@ NOT_FOUND_OUTPUT="$ROOT/not-found.log"
 run_diagnosis 'not_found' "$NOT_FOUND_OUTPUT"
 grep -Fx 'BASIC_AUTH_FILE_EXISTS=yes' "$NOT_FOUND_OUTPUT" > /dev/null
 grep -Fx 'BASIC_AUTH_FILE_SYMLINK=no' "$NOT_FOUND_OUTPUT" > /dev/null
+grep -Fx 'BASIC_AUTH_FILE_REALPATH=expected' "$NOT_FOUND_OUTPUT" > /dev/null
 grep -Fx 'BASIC_AUTH_FILE_FORMAT=ok' "$NOT_FOUND_OUTPUT" > /dev/null
 grep -Fx 'BASIC_AUTH_ENTRY_COUNT=1' "$NOT_FOUND_OUTPUT" > /dev/null
+grep -Eq '^BASIC_AUTH_FILE_MODE=[0-7]+$' "$NOT_FOUND_OUTPUT"
+grep -Eq '^BASIC_AUTH_PARENT_TEST_AUTH_MODE=[0-7]+$' "$NOT_FOUND_OUTPUT"
 grep -Fx 'BASIC_AUTH_HTPASSWD_AVAILABLE=yes' "$NOT_FOUND_OUTPUT" > /dev/null
 grep -Fx 'BASIC_AUTH_LOG_CAT_AVAILABLE=yes' "$NOT_FOUND_OUTPUT" > /dev/null
 grep -Fx 'BASIC_AUTH_LOG_CLASSIFICATION=auth_file_not_found' "$NOT_FOUND_OUTPUT" > /dev/null

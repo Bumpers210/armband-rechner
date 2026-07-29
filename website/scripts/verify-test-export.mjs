@@ -141,7 +141,7 @@ assert(
 
 for (const requiredRule of [
   "https://test.carmaja-perlen.de%{REQUEST_URI}",
-  'AuthUserFile "/home/www/carmaja-private-test/auth/test-website.htpasswd"',
+  'AuthUserFile "/home/www/carmaja-test-auth/test-website.htpasswd"',
   "Require valid-user",
   'X-Robots-Tag "noindex, nofollow, noimageindex"',
   'Cache-Control "private, no-store"',

@@ -14,6 +14,16 @@ import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 const projectRoot = process.cwd();
+const testAuthPath = ["/home", "www", "carmaja-test-auth", "test-website.htpasswd"].join(
+  "/",
+);
+const previousAuthPath = [
+  "/home",
+  "www",
+  "carmaja-private-test",
+  "auth",
+  "test-website.htpasswd",
+].join("/");
 const sourceImage = path.join(
   projectRoot,
   "public",
@@ -115,6 +125,12 @@ test(
         await readFile(path.join(projectRoot, "out-test", "robots.txt"), "utf8"),
         "User-agent: *\nDisallow: /\n",
       );
+      const htaccess = await readFile(
+        path.join(projectRoot, "out-test", ".htaccess"),
+        "utf8",
+      );
+      assert.ok(htaccess.includes(`AuthUserFile "${testAuthPath}"`));
+      assert.ok(!htaccess.includes(previousAuthPath));
       await assert.rejects(
         access(path.join(projectRoot, "out-test", ".htpasswd")),
       );

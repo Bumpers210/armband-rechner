@@ -31,6 +31,7 @@ const forbiddenRuntimeNames = new Set([
   ".htpasswd",
 ]);
 const forbiddenExportPatterns = [
+  /(?:^|\/)(?:\.htpasswd|test-website\.htpasswd)$/i,
   /(?:^|\/)products\.json$/i,
   /(?:^|\/)public-products\.json$/i,
   /(?:^|\/)runtime-config(?:\.example)?\.php$/i,
