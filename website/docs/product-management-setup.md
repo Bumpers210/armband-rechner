@@ -318,6 +318,156 @@ ausschließlich Archiv, Manifest und Prüfsumme des geprüften
 `website/out-test/` nach `incoming/`. Weder `website/hosting/**` noch private
 API-, Statistik- oder Passwortdateien gehören zum Paket.
 
+## Phase 5.3: Basic Auth auf IONOS sicher diagnostizieren
+
+Ein HTTP-500-Fehler bei der Prüfung konkreter Zugangsdaten ist noch keine
+bestätigte Ursache. Vor einer Änderung an Pfad, Rechten, Passwortdatei oder
+`.htaccess` wird deshalb ausschließlich das manuelle Diagnoseskript verwendet:
+
+```bash
+bash ./diagnose-test-basic-auth.sh --diagnose
+```
+
+Das Skript wird separat und manuell per SSH/SFTP bereitgestellt. Es gehört
+nicht zum Websiteartefakt und wird nicht durch GitHub Actions ausgeführt.
+`--diagnose` verändert keine Datei und gibt weder Benutzernamen noch Hashes
+oder vollständige Logzeilen aus. Es prüft:
+
+- Existenz, Symlinkstatus und kanonischen Pfad der festen Passwortdatei,
+- numerische Besitzer-, Gruppen- und Rechteinformationen,
+- Such- und Leserechte des aktuellen SSH-Benutzers für alle Elternpfade,
+- Struktur und Anzahl der `htpasswd`-Einträge, ohne deren Inhalt auszugeben,
+- Verfügbarkeit von `htpasswd` und `log-cat`,
+- ausschließlich relevante Apache-Meldungen.
+
+IONOS dokumentiert `log-cat` als SSH-Werkzeug für die Webspace-Logs:
+<https://www.ionos.de/hilfe/hosting/log-dateien/webspace-logdateien-herunterladen/>.
+Das Diagnoseskript gibt keine Logzeile aus, sondern nur Anzahl,
+IP-Schwärzungszähler und genau eine Klassifikation:
+
+```text
+auth_file_not_found
+auth_file_permission_denied
+auth_file_invalid_format
+auth_module_error
+htaccess_syntax_error
+unknown
+```
+
+### Passwort interaktiv prüfen
+
+Erst nach der reinen Diagnose wird ein vorhandener Eintrag geprüft:
+
+```bash
+bash ./diagnose-test-basic-auth.sh --verify
+```
+
+Das Skript fragt den Benutzernamen interaktiv ab. Anschließend führt es
+ausschließlich diese Passwortprüfung aus:
+
+```bash
+htpasswd -v "$AUTH_FILE" "$AUTH_USER"
+```
+
+`htpasswd` fragt das Passwort selbst verdeckt ab. Das Skript speichert es
+weder in einem Argument noch in einer Umgebungsvariablen, Pipe oder Datei.
+Ausgaben von `htpasswd` werden um Benutzername und Hash bereinigt.
+`AUTH_USER` wird unmittelbar danach mit `unset AUTH_USER` entfernt.
+
+### Passwort optional interaktiv erneuern
+
+Eine Änderung ist vom Diagnosemodus getrennt:
+
+```bash
+bash ./diagnose-test-basic-auth.sh --reset
+```
+
+Vor der Änderung erscheint exakt die Sicherheitsabfrage
+`Passwort für bestehenden Benutzer interaktiv neu setzen? [y/N]`. Nur `y`
+oder `Y` führt weiter. Das Skript bestätigt zunächst, dass der eingegebene
+Benutzer bereits in der Datei existiert, und ruft danach ohne `-c` auf:
+
+```bash
+htpasswd -B "$AUTH_FILE" "$AUTH_USER"
+```
+
+Das neue Passwort wird zweimal direkt durch `htpasswd` abgefragt. Es gibt
+keinen Batch-, stdin- oder Klartextmodus.
+
+`-c` ist ausschließlich bei einer nachweislich fehlenden Datei zulässig.
+Auch dieser erstmalige Vorgang bleibt manuell und interaktiv:
+
+```bash
+AUTH_FILE='/home/www/carmaja-private-test/auth/test-website.htpasswd'
+if [ ! -e "$AUTH_FILE" ]; then
+  read -r -p 'Basic-Auth-Benutzername: ' AUTH_USER
+  htpasswd -Bc "$AUTH_FILE" "$AUTH_USER"
+  unset AUTH_USER
+else
+  printf '%s\n' 'Abbruch: Passwortdatei existiert bereits.'
+fi
+unset AUTH_FILE
+```
+
+Dieser Block darf erst verwendet werden, wenn die Diagnose
+`BASIC_AUTH_FILE_EXISTS=no` bestätigt. Eine bestehende Datei darf niemals mit
+`-c` neu erzeugt werden.
+
+### Technische Korrektur erst nach Klassifikation
+
+Noch keine der folgenden Maßnahmen wird durch Phase 5.3 automatisch
+ausgeführt:
+
+- `auth_file_not_found`: Nur den festen Testpfad prüfen. Eine spätere
+  Pfadänderung benötigt `realpath`- und Apache-Bestätigung.
+- `auth_file_permission_denied`: Nur die konkret fehlende Traversier- oder
+  Leseberechtigung bestimmen. Keine rekursiven Änderungen und keine Öffnung
+  des privaten API-Verzeichnisses.
+- `auth_file_invalid_format`: Den vorhandenen Eintrag ausschließlich über
+  `--reset` und damit interaktiv mit bcrypt erneuern.
+- `auth_module_error` oder `htaccess_syntax_error`: Zuerst die zugehörige
+  AH-Fehlernummer und die auf IONOS verfügbaren Apache-Module prüfen.
+- `unknown`: Keine Konfigurationsänderung vornehmen; die gefilterte
+  Diagnoseausgabe zur weiteren Analyse verwenden.
+
+Nur wenn IONOS nachweislich eine Passwortdatei im Test-Webroot erfordert,
+darf der feste Pfad `/home/www/carmaja-test-site/.htpasswd` gesondert geplant
+werden. Zuvor müssen Export-, Manifest-, HTTP-Sperr- sowie
+Deployment-/Rollbacktests erweitert werden. Die Datei bliebe manuell,
+unversioniert und außerhalb jedes Buildartefakts. Phase 5.3 setzt diese
+Alternative nicht um.
+
+Verboten bleiben insbesondere `chmod 777`, `chmod -R`, `chown -R`, das
+Kopieren der Passwortdatei in den Webroot und jede Ausgabe ihres Inhalts.
+
+### Manuelle Curl-Abnahme
+
+Nach der bestätigten Serverkorrektur, aber vor einem neuen Workflowlauf:
+
+```bash
+curl --disable -I https://test.carmaja-perlen.de/
+```
+
+Ohne Anmeldung wird HTTP 401 mit einer Basic-Challenge erwartet.
+
+Für einen absichtlich falschen und danach für den korrekten Passwortversuch
+wird derselbe interaktive Ablauf verwendet:
+
+```bash
+read -r -p 'Testbenutzer: ' AUTH_USER
+curl --disable -I -u "$AUTH_USER" https://test.carmaja-perlen.de/
+unset AUTH_USER
+```
+
+`curl` fragt das Passwort interaktiv ab. Das falsche Passwort muss HTTP 401,
+das korrekte Passwort HTTP 200 liefern. HTTP 500 ist in beiden Fällen nicht
+zulässig. Benutzername und Passwort niemals gemeinsam hinter `-u` angeben.
+
+Ein weiterer Deploymentlauf ist erst erlaubt, wenn Diagnoseklassifikation,
+gegebenenfalls minimale manuelle Korrektur und alle drei Curl-Ergebnisse
+vorliegen. `CARMAJA_TEST_DEPLOY_ENABLED` bleibt bis unmittelbar vor diesem
+gesondert freigegebenen Lauf `false`.
+
 ## Ersten Benutzer anlegen
 
 Erst nach erfolgreicher Diagnose:

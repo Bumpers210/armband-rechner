@@ -115,8 +115,45 @@ test(
         await readFile(path.join(projectRoot, "out-test", "robots.txt"), "utf8"),
         "User-agent: *\nDisallow: /\n",
       );
+      await assert.rejects(
+        access(path.join(projectRoot, "out-test", ".htpasswd")),
+      );
       await assert.rejects(access(stalePage));
+
+      const forbiddenPasswordFile = path.join(
+        projectRoot,
+        "out-test",
+        ".htpasswd",
+      );
+      await writeFile(forbiddenPasswordFile, "darf-nicht-exportiert-werden\n");
+      const verification = spawnSync(
+        process.execPath,
+        [path.join(projectRoot, "scripts", "verify-test-export.mjs")],
+        {
+          cwd: projectRoot,
+          env: {
+            ...process.env,
+            CARMAJA_SITE_TARGET: "test",
+            CARMAJA_SITE_URL: "https://test.carmaja-perlen.de",
+            CARMAJA_PRODUCTION_PUBLISH_ENABLED: "false",
+            CARMAJA_PRODUCTION_DEPLOY_ENABLED: "false",
+            CARMAJA_TEST_FIXTURES: "true",
+            CARMAJA_PRODUCTS_FILE: productsFile,
+            CARMAJA_PRODUCT_IMAGES_DIR: imageRoot,
+          },
+          encoding: "utf8",
+        },
+      );
+      assert.notEqual(verification.status, 0);
+      assert.match(
+        `${verification.stdout ?? ""}\n${verification.stderr ?? ""}`,
+        /Unerlaubte Datei im Testexport/,
+      );
+      await rm(forbiddenPasswordFile, { force: true });
     } finally {
+      await rm(path.join(projectRoot, "out-test", ".htpasswd"), {
+        force: true,
+      });
       await rm(fixtureRoot, { recursive: true, force: true });
     }
   },
