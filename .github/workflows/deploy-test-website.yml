@@ -20,8 +20,10 @@ on:
       - "website/scripts/copy-hosting-files.mjs"
       - "website/scripts/deploy-test-site.sh"
       - "website/scripts/prepare-test-deploy.mjs"
+      - "website/scripts/run-test-deployment.sh"
       - "website/scripts/verify-test-export.mjs"
       - "website/tests/node/**"
+      - "website/tests/shell/**"
       - "website/.gitignore"
       - "website/eslint.config.mjs"
       - "website/next.config.ts"
@@ -218,6 +220,12 @@ jobs:
             .test-deploy-package/manifest.tsv
           grep -Fx "meta	workspace	/home/www/carmaja-test-deploy" \
             .test-deploy-package/manifest.tsv
+          awk -F '	' '
+            $1 == "file" && $4 == "images/bracelets/hero-dunkelrot-braun-holz.jpg" {
+              found = 1
+            }
+            END { exit found ? 0 : 1 }
+          ' .test-deploy-package/manifest.tsv
 
       - name: Prepare pinned SSH client
         shell: bash
@@ -318,101 +326,4 @@ jobs:
         env:
           CARMAJA_RELEASE_ID: ${{ needs.build-test-site.outputs.release-id }}
           CARMAJA_ARCHIVE_SHA256: ${{ needs.build-test-site.outputs.archive-sha256 }}
-        run: |
-          set -Eeuo pipefail
-          PORT="${CARMAJA_TEST_SSH_PORT:-22}"
-          REMOTE="${CARMAJA_TEST_SSH_USER}@${CARMAJA_TEST_SSH_HOST}"
-          SSH=(
-            ssh
-            -i "$HOME/.ssh/carmaja_test_deploy"
-            -p "$PORT"
-            -o BatchMode=yes
-            -o IdentitiesOnly=yes
-            -o StrictHostKeyChecking=yes
-            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
-          )
-
-          run_remote_script() {
-            local action="$1"
-            "${SSH[@]}" "$REMOTE" \
-              "CARMAJA_REPOSITORY='Bumpers210/armband-rechner' \
-               CARMAJA_BRANCH='test/product-management-beta' \
-               CARMAJA_SITE_TARGET='test' \
-               CARMAJA_SITE_DOMAIN='test.carmaja-perlen.de' \
-               CARMAJA_TEST_WEBROOT='/home/www/carmaja-test-site' \
-               CARMAJA_TEST_DEPLOY_WORKSPACE='/home/www/carmaja-test-deploy' \
-               CARMAJA_PRODUCTION_PUBLISH_ENABLED='false' \
-               CARMAJA_PRODUCTION_DEPLOY_ENABLED='false' \
-               CARMAJA_COMMIT_SHA='$GITHUB_SHA' \
-               CARMAJA_RELEASE_ID='$CARMAJA_RELEASE_ID' \
-               CARMAJA_ARCHIVE_SHA256='$CARMAJA_ARCHIVE_SHA256' \
-               CARMAJA_DEPLOY_ACTION='$action' \
-               sh -s" < scripts/deploy-test-site.sh
-          }
-
-          rollback_after_failure() {
-            run_remote_script rollback || true
-          }
-
-          if ! run_remote_script deploy; then
-            rollback_after_failure
-            exit 1
-          fi
-
-          smoke_directory="$(mktemp -d)"
-          trap 'rm -rf "$smoke_directory"' EXIT
-
-          if ! {
-            http_code="$(curl -sS -D "$smoke_directory/http.headers" -o /dev/null \
-              -w '%{http_code}' http://test.carmaja-perlen.de/)"
-            test "$http_code" = "302"
-            grep -Eiq '^Location: https://test\.carmaja-perlen\.de/' \
-              "$smoke_directory/http.headers"
-            ! grep -Eiq '^WWW-Authenticate:' "$smoke_directory/http.headers"
-
-            unauthenticated_code="$(curl -sS -D "$smoke_directory/unauth.headers" \
-              -o /dev/null -w '%{http_code}' https://test.carmaja-perlen.de/)"
-            test "$unauthenticated_code" = "401"
-            grep -Eiq '^WWW-Authenticate: Basic' "$smoke_directory/unauth.headers"
-
-            wrong_code="$(curl -sS --user 'carmaja-invalid:carmaja-invalid' \
-              -o /dev/null -w '%{http_code}' https://test.carmaja-perlen.de/)"
-            test "$wrong_code" = "401"
-
-            authenticated_code="$(curl -sS \
-              --user "$CARMAJA_TEST_BASIC_AUTH_USER:$CARMAJA_TEST_BASIC_AUTH_PASSWORD" \
-              -D "$smoke_directory/auth.headers" \
-              -o "$smoke_directory/index.html" \
-              -w '%{http_code}' https://test.carmaja-perlen.de/)"
-            test "$authenticated_code" = "200"
-            grep -Eiq '^X-Robots-Tag: noindex, nofollow, noimageindex' \
-              "$smoke_directory/auth.headers"
-            grep -Eiq '^Cache-Control: private, no-store' "$smoke_directory/auth.headers"
-            grep -Eiq '^X-Content-Type-Options: nosniff' "$smoke_directory/auth.headers"
-            grep -Eiq '^Referrer-Policy: no-referrer' "$smoke_directory/auth.headers"
-
-            robots_code="$(curl -sS \
-              --user "$CARMAJA_TEST_BASIC_AUTH_USER:$CARMAJA_TEST_BASIC_AUTH_PASSWORD" \
-              -o "$smoke_directory/robots.txt" \
-              -w '%{http_code}' https://test.carmaja-perlen.de/robots.txt)"
-            test "$robots_code" = "200"
-            test "$(tr -d '\r' < "$smoke_directory/robots.txt")" \
-              = $'User-agent: *\nDisallow: /'
-
-            image_code="$(curl -sS \
-              --user "$CARMAJA_TEST_BASIC_AUTH_USER:$CARMAJA_TEST_BASIC_AUTH_PASSWORD" \
-              -o /dev/null -w '%{http_code}' \
-              https://test.carmaja-perlen.de/images/bracelets/hero-dunkelrot-braun-holz.jpg)"
-            test "$image_code" = "200"
-          }; then
-            rollback_after_failure
-            exit 1
-          fi
-
-          if ! run_remote_script mark_verified; then
-            rollback_after_failure
-            exit 1
-          fi
-
-          trap - EXIT
-          rm -rf "$smoke_directory"
+        run: bash scripts/run-test-deployment.sh

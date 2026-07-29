@@ -8,6 +8,7 @@ WEBROOT="$ROOT/webroot"
 WORKSPACE="$ROOT/workspace"
 PATCHED_SCRIPT="$ROOT/deploy-test-site.sh"
 FAILED_SCRIPT="$ROOT/deploy-test-site-failure.sh"
+LATE_FAILED_SCRIPT="$ROOT/deploy-test-site-late-failure.sh"
 
 cleanup()
 {
@@ -165,5 +166,33 @@ grep -Fx 'old-product' "$WEBROOT/armbaender/alt/index.html" > /dev/null
 grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
 [ ! -e "$WEBROOT/armbaender/fehler/index.html" ]
 grep -Fx 'status=failed_rolled_back' "$WORKSPACE/state/status.env" > /dev/null
+
+sed \
+    's/^# CARMAJA_TEST_POST_STATE_ROLLBACK_POINT$/false # simulated late activation failure/' \
+    "$PATCHED_SCRIPT" > "$LATE_FAILED_SCRIPT"
+chmod 0700 "$LATE_FAILED_SCRIPT"
+
+COMMIT_FOUR='4444444444444444444444444444444444444444'
+RELEASE_FOUR="$COMMIT_FOUR-4"
+SOURCE_FOUR="$ROOT/source-four"
+mkdir -p "$SOURCE_FOUR/armbaender/spaet"
+printf '%s\n' 'version-four' > "$SOURCE_FOUR/index.html"
+printf '%s\n' 'AuthType Basic' > "$SOURCE_FOUR/.htaccess"
+printf '%s\n' 'late-failed-product' > "$SOURCE_FOUR/armbaender/spaet/index.html"
+create_package "$COMMIT_FOUR" "$RELEASE_FOUR" "$SOURCE_FOUR"
+HASH_FOUR=$(sha256sum "$WORKSPACE/incoming/$RELEASE_FOUR.tar.gz" | awk '{ print $1 }')
+
+if run_action "$LATE_FAILED_SCRIPT" deploy "$COMMIT_FOUR" "$RELEASE_FOUR" "$HASH_FOUR"; then
+    printf '%s\n' 'Spaeter simulierter Aktivierungsfehler wurde nicht erkannt.' >&2
+    exit 1
+fi
+
+grep -Fx 'version-one' "$WEBROOT/index.html" > /dev/null
+grep -Fx 'old-product' "$WEBROOT/armbaender/alt/index.html" > /dev/null
+grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
+[ ! -e "$WEBROOT/armbaender/spaet/index.html" ]
+grep -Fx 'status=failed_rolled_back' "$WORKSPACE/state/status.env" > /dev/null
+grep -Fx "meta	commit	$COMMIT_ONE" "$WORKSPACE/state/current-manifest.tsv" > /dev/null
+[ ! -e "$WORKSPACE/state/rollback-$RELEASE_FOUR.txt" ]
 
 printf '%s\n' 'Deployment-Shell-Test erfolgreich.'

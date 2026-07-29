@@ -81,6 +81,37 @@ manifest_has_path()
     ' "$manifest_path"
 }
 
+log_rollback_state()
+{
+    restored_manifest=$1
+    restored_release=$(manifest_meta "$restored_manifest" release)
+    restored_commit=$(manifest_meta "$restored_manifest" commit)
+
+    case "$restored_release" in
+        initial-empty)
+            restored_kind='initial_empty'
+            ;;
+        *[!0-9A-Za-z._-]*|'')
+            restored_kind='unknown'
+            restored_release='unknown'
+            ;;
+        *)
+            restored_kind='previous_active'
+            ;;
+    esac
+
+    case "$restored_commit" in
+        *[!0-9a-f]*|'')
+            restored_commit='unknown'
+            ;;
+    esac
+
+    printf 'ROLLBACK_STATE restored=%s release=%s commit=%s verified_new_sha=no\n' \
+        "$restored_kind" \
+        "$restored_release" \
+        "$restored_commit"
+}
+
 validate_manifest()
 {
     manifest_path=$1
@@ -322,13 +353,17 @@ rollback_active='false'
 rollback_new_manifest=''
 rollback_old_manifest=''
 rollback_backup_directory=''
+rollback_current_manifest_changed='false'
+rollback_pointer_path=''
 
 on_exit()
 {
     exit_code=$?
     trap - EXIT HUP INT TERM
 
-    if [ "$exit_code" -ne 0 ] && [ "$rollback_active" = 'true' ]; then
+    if [ "$exit_code" -ne 0 ] \
+        && [ "$CARMAJA_DEPLOY_ACTION" = 'deploy' ] \
+        && [ "$rollback_active" = 'true' ]; then
         set +e
         rollback_files \
             "$rollback_new_manifest" \
@@ -337,12 +372,38 @@ on_exit()
             "rollback-$CARMAJA_RELEASE_ID"
         rollback_code=$?
 
+        if [ "$rollback_code" -eq 0 ] && [ "$rollback_current_manifest_changed" = 'true' ]; then
+            rollback_state_temp="$STATE/.current-manifest-rollback-$$"
+            cp "$rollback_old_manifest" "$rollback_state_temp" \
+                && chmod 0640 "$rollback_state_temp" \
+                && mv -f "$rollback_state_temp" "$current_manifest"
+            rollback_code=$?
+        fi
+
+        if [ "$rollback_code" -eq 0 ] && [ -n "$rollback_pointer_path" ]; then
+            rm -f "$rollback_pointer_path"
+            rollback_code=$?
+        fi
+
         if [ "$rollback_code" -eq 0 ]; then
             write_status 'failed_rolled_back' "$CARMAJA_RELEASE_ID" "$CARMAJA_COMMIT_SHA"
+            rollback_code=$?
+        fi
+
+        if [ "$rollback_code" -eq 0 ]; then
+            log_rollback_state "$rollback_old_manifest"
+            rollback_code=$?
+        fi
+
+        if [ "$rollback_code" -eq 0 ]; then
+            printf 'ROLLBACK_OK phase=activation\n'
         else
             write_status 'rollback_failed' "$CARMAJA_RELEASE_ID" "$CARMAJA_COMMIT_SHA"
+            printf 'ROLLBACK_FAILED phase=activation\n' >&2
         fi
         set -e
+    elif [ "$exit_code" -ne 0 ] && [ "$CARMAJA_DEPLOY_ACTION" = 'deploy' ]; then
+        printf 'ROLLBACK_OK phase=activation action=not_required verified_new_sha=no\n'
     fi
 
     rm -f "$lock_directory/owner"
@@ -389,6 +450,7 @@ if [ "$CARMAJA_DEPLOY_ACTION" = 'rollback' ]; then
         'rolled_back' \
         "$(manifest_meta "$previous_manifest" release)" \
         "$(manifest_meta "$previous_manifest" commit)"
+    log_rollback_state "$previous_manifest"
     exit 0
 fi
 
@@ -499,7 +561,7 @@ done < "$old_manifest"
 
 rollback_active='true'
 rollback_new_manifest="$manifest"
-rollback_old_manifest="$old_manifest"
+rollback_old_manifest="$backup_directory/manifest.tsv"
 rollback_backup_directory="$backup_directory"
 write_status 'activating' "$CARMAJA_RELEASE_ID" "$CARMAJA_COMMIT_SHA"
 
@@ -527,13 +589,17 @@ state_temp="$STATE/.current-manifest-$$"
 cp "$manifest" "$state_temp"
 chmod 0640 "$state_temp"
 mv -f "$state_temp" "$current_manifest"
+rollback_current_manifest_changed='true'
 rollback_pointer="$STATE/rollback-$CARMAJA_RELEASE_ID.txt"
+rollback_pointer_path="$rollback_pointer"
 printf '%s\n' "$backup_id" > "$rollback_pointer"
 chmod 0640 "$rollback_pointer"
-rollback_active='false'
 write_status 'deployed_unverified' "$CARMAJA_RELEASE_ID" "$CARMAJA_COMMIT_SHA"
+
+# CARMAJA_TEST_POST_STATE_ROLLBACK_POINT
 
 rm -f "$archive" "$archive_checksum" "$manifest"
 prune_directories "$RELEASES" 4
 prune_directories "$BACKUPS" 3
+rollback_active='false'
 exit 0

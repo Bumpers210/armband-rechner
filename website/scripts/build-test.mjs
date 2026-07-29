@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -62,5 +62,10 @@ run(process.execPath, [
   path.join(projectRoot, "node_modules", "next", "dist", "bin", "next"),
   "build",
 ]);
+await writeFile(
+  path.join(outputDirectory, "robots.txt"),
+  "User-agent: *\nDisallow: /\n",
+  "utf8",
+);
 run(process.execPath, [path.join(projectRoot, "scripts", "copy-hosting-files.mjs")]);
 run(process.execPath, [path.join(projectRoot, "scripts", "verify-test-export.mjs")]);

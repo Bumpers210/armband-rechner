@@ -1,5 +1,13 @@
 import assert from "node:assert/strict";
-import { access, cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -102,6 +110,10 @@ test(
         result.status,
         0,
         `${result.stdout ?? ""}\n${result.stderr ?? ""}`,
+      );
+      assert.equal(
+        await readFile(path.join(projectRoot, "out-test", "robots.txt"), "utf8"),
+        "User-agent: *\nDisallow: /\n",
       );
       await assert.rejects(access(stalePage));
     } finally {
