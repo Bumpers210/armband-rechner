@@ -35,6 +35,14 @@ mkdir -p \
     "$WORKSPACE/backups" \
     "$WORKSPACE/state" \
     "$WORKSPACE/locks"
+chmod 0755 "$WEBROOT"
+chmod 0750 \
+    "$WORKSPACE" \
+    "$WORKSPACE/incoming" \
+    "$WORKSPACE/releases" \
+    "$WORKSPACE/backups" \
+    "$WORKSPACE/state" \
+    "$WORKSPACE/locks"
 
 printf '%s\n' 'manually-managed-auth-fixture' > "$AUTH_FILE"
 chmod 0711 "$AUTH_DIRECTORY"
@@ -61,6 +69,34 @@ assert_auth_file_unchanged()
         printf '%s\n' 'Deployment hat eine Passwortdatei verwaltet.' >&2
         exit 1
     fi
+}
+
+assert_mode()
+{
+    expected_mode=$1
+    checked_path=$2
+    actual_mode=$(stat -c '%a' "$checked_path")
+
+    if [ "$actual_mode" != "$expected_mode" ]; then
+        printf 'Unerwartete Rechte %s statt %s fuer %s\n' \
+            "$actual_mode" \
+            "$expected_mode" \
+            "$checked_path" >&2
+        exit 1
+    fi
+}
+
+assert_deployment_permissions()
+{
+    find "$WEBROOT" -type d -print | while IFS= read -r public_directory; do
+        assert_mode 755 "$public_directory"
+    done
+    find "$WEBROOT" -type f -print | while IFS= read -r public_file; do
+        assert_mode 644 "$public_file"
+    done
+    find "$WORKSPACE" -type d -print | while IFS= read -r private_directory; do
+        assert_mode 750 "$private_directory"
+    done
 }
 
 create_package()
@@ -126,46 +162,61 @@ run_action()
 COMMIT_ONE='1111111111111111111111111111111111111111'
 RELEASE_ONE="$COMMIT_ONE-1"
 SOURCE_ONE="$ROOT/source-one"
-mkdir -p "$SOURCE_ONE/armbaender/alt" "$SOURCE_ONE/_next"
+mkdir -p \
+    "$SOURCE_ONE/armbaender/alt" \
+    "$SOURCE_ONE/images/bracelets/alt/gallery" \
+    "$SOURCE_ONE/_next"
 printf '%s\n' 'version-one' > "$SOURCE_ONE/index.html"
 printf '%s\n' 'AuthType Basic' > "$SOURCE_ONE/.htaccess"
 printf '%s\n' 'old-product' > "$SOURCE_ONE/armbaender/alt/index.html"
+printf '%s\n' 'old-product-image' > "$SOURCE_ONE/images/bracelets/alt/gallery/01.jpg"
 printf '%s\n' 'next-metadata' > "$SOURCE_ONE/_next/chunk\$hash~id.js"
 create_package "$COMMIT_ONE" "$RELEASE_ONE" "$SOURCE_ONE"
 HASH_ONE=$(sha256sum "$WORKSPACE/incoming/$RELEASE_ONE.tar.gz" | awk '{ print $1 }')
 run_action "$PATCHED_SCRIPT" deploy "$COMMIT_ONE" "$RELEASE_ONE" "$HASH_ONE"
 run_action "$PATCHED_SCRIPT" mark_verified "$COMMIT_ONE" "$RELEASE_ONE"
 assert_auth_file_unchanged
+assert_deployment_permissions
 
 grep -Fx 'version-one' "$WEBROOT/index.html" > /dev/null
 grep -Fx 'AuthType Basic' "$WEBROOT/.htaccess" > /dev/null
 grep -Fx 'old-product' "$WEBROOT/armbaender/alt/index.html" > /dev/null
+grep -Fx 'old-product-image' "$WEBROOT/images/bracelets/alt/gallery/01.jpg" > /dev/null
 grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
 grep -Fx 'status=verified' "$WORKSPACE/state/status.env" > /dev/null
 
 COMMIT_TWO='2222222222222222222222222222222222222222'
 RELEASE_TWO="$COMMIT_TWO-2"
 SOURCE_TWO="$ROOT/source-two"
-mkdir -p "$SOURCE_TWO/armbaender/neu"
+mkdir -p \
+    "$SOURCE_TWO/armbaender/neu" \
+    "$SOURCE_TWO/images/bracelets/neu/gallery"
 printf '%s\n' 'version-two' > "$SOURCE_TWO/index.html"
 printf '%s\n' 'AuthType Basic' > "$SOURCE_TWO/.htaccess"
 printf '%s\n' 'new-product' > "$SOURCE_TWO/armbaender/neu/index.html"
+printf '%s\n' 'new-product-image' > "$SOURCE_TWO/images/bracelets/neu/gallery/02.jpg"
 create_package "$COMMIT_TWO" "$RELEASE_TWO" "$SOURCE_TWO"
 HASH_TWO=$(sha256sum "$WORKSPACE/incoming/$RELEASE_TWO.tar.gz" | awk '{ print $1 }')
 run_action "$PATCHED_SCRIPT" deploy "$COMMIT_TWO" "$RELEASE_TWO" "$HASH_TWO"
 assert_auth_file_unchanged
+assert_deployment_permissions
 
 grep -Fx 'version-two' "$WEBROOT/index.html" > /dev/null
 grep -Fx 'new-product' "$WEBROOT/armbaender/neu/index.html" > /dev/null
+grep -Fx 'new-product-image' "$WEBROOT/images/bracelets/neu/gallery/02.jpg" > /dev/null
 [ ! -e "$WEBROOT/armbaender/alt/index.html" ]
+[ ! -e "$WEBROOT/images/bracelets/alt/gallery/01.jpg" ]
 [ -f "$WORKSPACE/backups/before-$RELEASE_TWO/files/index.html" ]
 
 run_action "$PATCHED_SCRIPT" rollback "$COMMIT_TWO" "$RELEASE_TWO"
 assert_auth_file_unchanged
+assert_deployment_permissions
 grep -Fx 'version-one' "$WEBROOT/index.html" > /dev/null
 grep -Fx 'old-product' "$WEBROOT/armbaender/alt/index.html" > /dev/null
+grep -Fx 'old-product-image' "$WEBROOT/images/bracelets/alt/gallery/01.jpg" > /dev/null
 grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
 [ ! -e "$WEBROOT/armbaender/neu/index.html" ]
+[ ! -e "$WEBROOT/images/bracelets/neu/gallery/02.jpg" ]
 grep -Fx 'status=rolled_back' "$WORKSPACE/state/status.env" > /dev/null
 
 sed \
@@ -194,6 +245,7 @@ grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
 [ ! -e "$WEBROOT/armbaender/fehler/index.html" ]
 grep -Fx 'status=failed_rolled_back' "$WORKSPACE/state/status.env" > /dev/null
 assert_auth_file_unchanged
+assert_deployment_permissions
 
 sed \
     's/^# CARMAJA_TEST_POST_STATE_ROLLBACK_POINT$/false # simulated late activation failure/' \
@@ -223,5 +275,32 @@ grep -Fx 'status=failed_rolled_back' "$WORKSPACE/state/status.env" > /dev/null
 grep -Fx "meta	commit	$COMMIT_ONE" "$WORKSPACE/state/current-manifest.tsv" > /dev/null
 [ ! -e "$WORKSPACE/state/rollback-$RELEASE_FOUR.txt" ]
 assert_auth_file_unchanged
+assert_deployment_permissions
+
+COMMIT_FIVE='5555555555555555555555555555555555555555'
+RELEASE_FIVE="$COMMIT_FIVE-5"
+SOURCE_FIVE="$ROOT/source-five"
+OUTSIDE_DIRECTORY="$ROOT/outside-webroot"
+mkdir -p "$SOURCE_FIVE/linked/nested" "$OUTSIDE_DIRECTORY"
+printf '%s\n' 'version-five' > "$SOURCE_FIVE/index.html"
+printf '%s\n' 'AuthType Basic' > "$SOURCE_FIVE/.htaccess"
+printf '%s\n' 'must-not-escape' > "$SOURCE_FIVE/linked/nested/index.html"
+printf '%s\n' 'outside-sentinel' > "$OUTSIDE_DIRECTORY/sentinel.txt"
+ln -s "$OUTSIDE_DIRECTORY" "$WEBROOT/linked"
+create_package "$COMMIT_FIVE" "$RELEASE_FIVE" "$SOURCE_FIVE"
+HASH_FIVE=$(sha256sum "$WORKSPACE/incoming/$RELEASE_FIVE.tar.gz" | awk '{ print $1 }')
+
+if run_action "$PATCHED_SCRIPT" deploy "$COMMIT_FIVE" "$RELEASE_FIVE" "$HASH_FIVE"; then
+    printf '%s\n' 'Symlink im oeffentlichen Zielpfad wurde nicht abgelehnt.' >&2
+    exit 1
+fi
+
+grep -Fx 'outside-sentinel' "$OUTSIDE_DIRECTORY/sentinel.txt" > /dev/null
+[ ! -e "$OUTSIDE_DIRECTORY/nested/index.html" ]
+grep -Fx 'version-one' "$WEBROOT/index.html" > /dev/null
+grep -Fx 'old-product' "$WEBROOT/armbaender/alt/index.html" > /dev/null
+rm -f "$WEBROOT/linked"
+assert_auth_file_unchanged
+assert_deployment_permissions
 
 printf '%s\n' 'Deployment-Shell-Test erfolgreich.'

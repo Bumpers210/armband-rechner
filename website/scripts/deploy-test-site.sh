@@ -191,6 +191,58 @@ write_status()
     mv -f "$status_temp" "$STATE/status.env"
 }
 
+ensure_public_directory()
+{
+    public_directory=$1
+
+    case "$public_directory" in
+        "$WEBROOT"|"$WEBROOT"/*) ;;
+        *) fail 'Oeffentliches Zielverzeichnis liegt ausserhalb des Webroots.' ;;
+    esac
+
+    [ -d "$WEBROOT" ] || fail 'Oeffentlicher Webroot fehlt.'
+    [ ! -L "$WEBROOT" ] || fail 'Oeffentlicher Webroot darf kein Symlink sein.'
+    chmod 0755 "$WEBROOT"
+
+    relative_directory=${public_directory#"$WEBROOT"}
+    relative_directory=${relative_directory#/}
+    current_directory=$WEBROOT
+
+    while [ -n "$relative_directory" ]; do
+        case "$relative_directory" in
+            */*)
+                directory_segment=${relative_directory%%/*}
+                relative_directory=${relative_directory#*/}
+                ;;
+            *)
+                directory_segment=$relative_directory
+                relative_directory=''
+                ;;
+        esac
+
+        case "$directory_segment" in
+            ''|.|..) fail 'Oeffentliches Zielverzeichnis ist ungueltig.' ;;
+        esac
+
+        current_directory="$current_directory/$directory_segment"
+
+        if [ -L "$current_directory" ]; then
+            fail 'Oeffentliches Zielverzeichnis darf keinen Symlink enthalten.'
+        fi
+
+        if [ -e "$current_directory" ]; then
+            [ -d "$current_directory" ] \
+                || fail 'Oeffentlicher Zielpfad kollidiert mit einer Datei.'
+        else
+            mkdir "$current_directory"
+        fi
+
+        [ ! -L "$current_directory" ] \
+            || fail 'Oeffentliches Zielverzeichnis darf keinen Symlink enthalten.'
+        chmod 0755 "$current_directory"
+    done
+}
+
 copy_atomic()
 {
     source_file=$1
@@ -199,7 +251,18 @@ copy_atomic()
     destination_directory=$(dirname "$destination_file")
     temporary_file="${destination_file}.carmaja-new-${release_suffix}"
 
-    mkdir -p "$destination_directory"
+    [ -f "$source_file" ] && [ ! -L "$source_file" ] \
+        || fail 'Quelldatei fuer die Aktivierung ist ungueltig.'
+    ensure_public_directory "$destination_directory"
+    [ ! -L "$destination_file" ] \
+        || fail 'Oeffentliche Zieldatei darf kein Symlink sein.'
+    if [ -e "$destination_file" ] && [ ! -f "$destination_file" ]; then
+        fail 'Oeffentliche Zieldatei kollidiert mit einem Verzeichnis.'
+    fi
+    if [ -e "$temporary_file" ] || [ -L "$temporary_file" ]; then
+        fail 'Temporare Aktivierungsdatei existiert bereits.'
+    fi
+
     cp "$source_file" "$temporary_file"
     chmod 0644 "$temporary_file"
     mv -f "$temporary_file" "$destination_file"
@@ -257,10 +320,15 @@ rollback_files()
         [ "$record_type" = 'file' ] || continue
         validate_relative_path "$relative_path"
         destination="$WEBROOT/$relative_path"
+        ensure_public_directory "$(dirname "$destination")"
 
-        if [ -f "$destination" ] || [ -L "$destination" ]; then
+        [ ! -L "$destination" ] \
+            || fail 'Rollback-Zieldatei darf kein Symlink sein.'
+        if [ -f "$destination" ]; then
             rm -f "$destination"
             remove_empty_parents "$destination"
+        elif [ -e "$destination" ]; then
+            fail 'Rollback-Zieldatei kollidiert mit einem Verzeichnis.'
         fi
     done < "$active_manifest"
 
@@ -337,10 +405,11 @@ esac
 
 for required_directory in "$WEBROOT" "$WORKSPACE" "$INCOMING" "$RELEASES" "$BACKUPS" "$STATE" "$LOCKS"; do
     [ -d "$required_directory" ] || fail 'Erforderliches Deploymentverzeichnis fehlt.'
+    [ ! -L "$required_directory" ] || fail 'Deploymentverzeichnis darf kein Symlink sein.'
+    assert_equal "$(realpath "$required_directory")" "$required_directory" \
+        'Deploymentverzeichnis ist nicht kanonisch.'
 done
 
-assert_equal "$(realpath "$WEBROOT")" "$WEBROOT" 'Webroot ist nicht kanonisch.'
-assert_equal "$(realpath "$WORKSPACE")" "$WORKSPACE" 'Deployworkspace ist nicht kanonisch.'
 [ -w "$WEBROOT" ] || fail 'Webroot ist nicht schreibbar.'
 [ -w "$WORKSPACE" ] || fail 'Deployworkspace ist nicht schreibbar.'
 
@@ -499,6 +568,8 @@ rm -f "$archive_list"
 if [ -n "$(find "$release_directory" -type l -print -quit)" ]; then
     fail 'Release enthaelt einen Symlink.'
 fi
+find "$release_directory" -type d -exec chmod 0750 {} \;
+find "$release_directory" -type f -exec chmod 0640 {} \;
 
 actual_list="$STATE/.actual-paths-$CARMAJA_RELEASE_ID"
 manifest_list="$STATE/.expected-paths-$CARMAJA_RELEASE_ID"
@@ -535,9 +606,13 @@ fi
 while IFS="$TAB" read -r record_type file_hash file_size relative_path; do
     [ "$record_type" = 'file' ] || continue
     destination="$WEBROOT/$relative_path"
+    ensure_public_directory "$(dirname "$destination")"
+    [ ! -L "$destination" ] || fail 'Deploymentziel darf kein Symlink sein.'
 
     if [ -e "$destination" ] && ! manifest_has_path "$old_manifest" "$relative_path"; then
         fail 'Deployment wuerde eine nicht verwaltete Datei ueberschreiben.'
+    elif [ -e "$destination" ] && [ ! -f "$destination" ]; then
+        fail 'Deploymentziel kollidiert mit einem Verzeichnis.'
     fi
 done < "$manifest"
 
@@ -552,12 +627,15 @@ chmod 0640 "$backup_directory/manifest.tsv"
 while IFS="$TAB" read -r record_type file_hash file_size relative_path; do
     [ "$record_type" = 'file' ] || continue
     current_file="$WEBROOT/$relative_path"
+    ensure_public_directory "$(dirname "$current_file")"
+    [ ! -L "$current_file" ] || fail 'Aktive Testdatei darf kein Symlink sein.'
     [ -f "$current_file" ] || fail 'Aktiver Testexport stimmt nicht mit seinem Manifest ueberein.'
     backup_file="$backup_directory/files/$relative_path"
     mkdir -p "$(dirname "$backup_file")"
     cp "$current_file" "$backup_file"
     chmod 0640 "$backup_file"
 done < "$old_manifest"
+find "$backup_directory" -type d -exec chmod 0750 {} \;
 
 rollback_active='true'
 rollback_new_manifest="$manifest"
@@ -580,7 +658,13 @@ while IFS="$TAB" read -r record_type file_hash file_size relative_path; do
 
     if ! manifest_has_path "$manifest" "$relative_path"; then
         stale_file="$WEBROOT/$relative_path"
-        [ ! -e "$stale_file" ] || rm -f "$stale_file"
+        ensure_public_directory "$(dirname "$stale_file")"
+        [ ! -L "$stale_file" ] || fail 'Veraltete Zieldatei darf kein Symlink sein.'
+        if [ -f "$stale_file" ]; then
+            rm -f "$stale_file"
+        elif [ -e "$stale_file" ]; then
+            fail 'Veralteter Zielpfad kollidiert mit einem Verzeichnis.'
+        fi
         remove_empty_parents "$stale_file"
     fi
 done < "$old_manifest"
