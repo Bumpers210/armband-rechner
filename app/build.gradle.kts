@@ -6,42 +6,109 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val signingPropertiesFile = rootProject.file(".signing/keystore.properties")
-val signingProperties = Properties().apply {
-    if (signingPropertiesFile.isFile) {
-        signingPropertiesFile.inputStream().use(::load)
+val betaVersionCode = 4
+val betaVersionName = "1.1.0-beta.3"
+val releaseSigningPropertiesFile = rootProject.file(".signing/keystore.properties")
+val releaseSigningProperties = Properties().apply {
+    if (releaseSigningPropertiesFile.isFile) {
+        releaseSigningPropertiesFile.inputStream().use(::load)
     }
+}
+val betaSigningPropertiesFile = rootProject.file(".signing/beta-keystore.properties")
+val betaSigningProperties = Properties().apply {
+    if (betaSigningPropertiesFile.isFile) {
+        betaSigningPropertiesFile.inputStream().use(::load)
+    }
+}
+val betaSigningStoreFile = System.getenv("CARMAJA_BETA_KEYSTORE_PATH")
+    ?.takeIf(String::isNotBlank)
+    ?.let(rootProject::file)
+    ?: betaSigningProperties.getProperty("storeFile")
+        ?.takeIf(String::isNotBlank)
+        ?.let { rootProject.file(".signing/$it") }
+val betaSigningStorePassword = System.getenv("CARMAJA_BETA_STORE_PASSWORD")
+    ?.takeIf(String::isNotBlank)
+    ?: betaSigningProperties.getProperty("storePassword")?.takeIf(String::isNotBlank)
+val betaSigningKeyPassword = System.getenv("CARMAJA_BETA_KEY_PASSWORD")
+    ?.takeIf(String::isNotBlank)
+    ?: betaSigningProperties.getProperty("keyPassword")?.takeIf(String::isNotBlank)
+val betaSigningKeyAlias = "carmaja-product-management-beta"
+val betaSigningReady = betaSigningStoreFile?.isFile == true &&
+    betaSigningStorePassword != null &&
+    betaSigningKeyPassword != null
+val betaBuildRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.substringAfterLast(':').contains("Beta", ignoreCase = true)
+}
+
+if (betaBuildRequested && !betaSigningReady) {
+    throw GradleException(
+        "Die stabile Beta-Signierung fehlt. Debug-Signierung ist fuer Beta-Builds nicht erlaubt.",
+    )
 }
 
 android {
-    namespace = "de.steinhart.armbandrechner"
+    namespace = "de.carmajaperlen.armbandrechner"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "de.steinhart.armbandrechner"
+        applicationId = "de.carmajaperlen.armbandrechner"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["appLabel"] = "Armband-Rechner"
+        buildConfigField("String", "DEFAULT_PRODUCT_API_BASE_URL", "\"\"")
+        buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"\"")
     }
 
     signingConfigs {
-        if (signingPropertiesFile.isFile) {
+        if (releaseSigningPropertiesFile.isFile) {
             create("release") {
-                storeFile = rootProject.file(".signing/${signingProperties["storeFile"]}")
-                storePassword = signingProperties["storePassword"] as String
-                keyAlias = signingProperties["keyAlias"] as String
-                keyPassword = signingProperties["keyPassword"] as String
+                storeFile = rootProject.file(".signing/${releaseSigningProperties["storeFile"]}")
+                storePassword = releaseSigningProperties["storePassword"] as String
+                keyAlias = releaseSigningProperties["keyAlias"] as String
+                keyPassword = releaseSigningProperties["keyPassword"] as String
+            }
+        }
+        if (betaSigningReady) {
+            create("beta") {
+                storeFile = betaSigningStoreFile
+                storePassword = betaSigningStorePassword
+                keyAlias = betaSigningKeyAlias
+                keyPassword = betaSigningKeyPassword
             }
         }
     }
 
     buildTypes {
+        debug {
+            manifestPlaceholders["appLabel"] = "Armband-Rechner"
+        }
+
+        create("beta") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".test"
+            isDebuggable = true
+            signingConfig = if (betaSigningReady) {
+                signingConfigs.getByName("beta")
+            } else {
+                null
+            }
+            matchingFallbacks += listOf("debug")
+            manifestPlaceholders["appLabel"] = "Carmaja-Perlen Produktverwaltung Test"
+            buildConfigField(
+                "String",
+                "DEFAULT_PRODUCT_API_BASE_URL",
+                "\"https://test-api.carmaja-perlen.de/\"",
+            )
+            buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"test\"")
+        }
+
         release {
             isMinifyEnabled = false
-            if (signingPropertiesFile.isFile) {
+            if (releaseSigningPropertiesFile.isFile) {
                 signingConfig = signingConfigs.getByName("release")
             }
             proguardFiles(
@@ -52,6 +119,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 
@@ -68,6 +136,15 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("beta")) { variant ->
+        variant.outputs.forEach { output ->
+            output.versionCode.set(betaVersionCode)
+            output.versionName.set(betaVersionName)
+        }
     }
 }
 

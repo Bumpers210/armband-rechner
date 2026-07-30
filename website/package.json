@@ -1,0 +1,28 @@
+{
+  "name": "carmaja-perlen-website",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node scripts/copy-hosting-files.mjs && node scripts/verify-export.mjs",
+    "build:test": "node scripts/build-test.mjs",
+    "lint:test": "eslint app components config content lib scripts tests eslint.config.mjs next.config.ts",
+    "prepare:test-deploy": "node scripts/prepare-test-deploy.mjs",
+    "test": "node --test tests/node/*.test.mjs",
+    "start": "next start",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.2.6",
+    "typescript": "5.9.3"
+  }
+}

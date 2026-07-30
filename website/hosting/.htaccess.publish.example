@@ -1,0 +1,19 @@
+Options -Indexes
+RewriteEngine On
+
+# Durch den absoluten privaten Datenpfad auf dem Webspace ersetzen.
+# SetEnv CARMAJA_STATS_FILE "/ABSOLUTER/PFAD/AUSSERHALB/DES/WEBROOTS/clicks.json"
+# SetEnv CARMAJA_PRIVATE_DIR "/ABSOLUTER/PFAD/AUSSERHALB/DES/WEBROOTS/carmaja-private"
+# SetEnv CARMAJA_API_USERS_FILE "/ABSOLUTER/PFAD/AUSSERHALB/DES/WEBROOTS/carmaja-private/api-users.json"
+# SetEnv CARMAJA_TOKEN_PEPPER "MINDESTENS_32_ZEICHEN_LANGER_ZUFAELLIGER_WERT"
+# SetEnv CARMAJA_GITHUB_REPOSITORY "Bumpers210/armband-rechner"
+# SetEnv CARMAJA_GITHUB_BRANCH "main"
+# SetEnv CARMAJA_GITHUB_TOKEN_FILE "/ABSOLUTER/PFAD/AUSSERHALB/DES/WEBROOTS/carmaja-private/github-token.txt"
+
+# Frühere Designrouten direkt auf die kanonische Hauptadresse umleiten.
+RewriteRule ^(?:v2|verspielt)/?$ https://www.carmaja-perlen.de/ [R=301,L,NE,QSD]
+
+# HTTPS und die kanonische www-Domain erzwingen; Pfade und Query-Strings bleiben erhalten.
+RewriteCond %{HTTPS} !=on [OR]
+RewriteCond %{HTTP_HOST} !^www\.carmaja-perlen\.de$ [NC]
+RewriteRule ^ https://www.carmaja-perlen.de%{REQUEST_URI} [R=301,L,NE]
