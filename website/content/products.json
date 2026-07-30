@@ -134,6 +134,52 @@
                 }
             ],
             "updatedAt": "2026-07-30T18:06:32+00:00"
+        },
+        {
+            "sku": "CP-2026-0004",
+            "slug": "cp-2026-0004-test3",
+            "status": "published",
+            "title": "test3",
+            "description": "Test3",
+            "materials": [
+                "Afrikanischer Türkis",
+                "Picasso Jaspis",
+                "Indischer Achat",
+                "Bergkristall",
+                "Black Stone",
+                "Amazonit frosted 8 mm",
+                "Blaue Tigeraugen"
+            ],
+            "metalElements": [
+                "Edelstahlspacer"
+            ],
+            "size": "18",
+            "stock": 1,
+            "careInstructions": [],
+            "images": [
+                {
+                    "src": "/images/products/CP-2026-0004/01.jpg",
+                    "alt": "test3",
+                    "width": 1600,
+                    "height": 1200,
+                    "isMain": true
+                },
+                {
+                    "src": "/images/products/CP-2026-0004/02.jpg",
+                    "alt": "test3",
+                    "width": 1200,
+                    "height": 1600,
+                    "isMain": false
+                },
+                {
+                    "src": "/images/products/CP-2026-0004/03.jpg",
+                    "alt": "test3",
+                    "width": 1200,
+                    "height": 1600,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-07-30T20:26:25+00:00"
         }
     ]
 }
