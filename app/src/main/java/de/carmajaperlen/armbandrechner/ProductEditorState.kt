@@ -98,6 +98,15 @@ data class ProductLoginEditorState(
     val deviceName: TextFieldValue = editorValue("Android"),
     val rememberSession: Boolean = false,
 ) {
+    override fun toString(): String {
+        return "ProductLoginEditorState(" +
+            "apiBaseUrl=$apiBaseUrl, " +
+            "username=$username, " +
+            "password=<redacted>, " +
+            "deviceName=$deviceName, " +
+            "rememberSession=$rememberSession)"
+    }
+
     companion object {
         fun fromStored(
             apiBaseUrl: String,

@@ -25,6 +25,7 @@ data class ProductUiState(
     val sessionChecked: Boolean = false,
     val authenticated: Boolean = false,
     val editingDraftId: String? = null,
+    val unsavedDraftIds: Set<String> = emptySet(),
     val busy: Boolean = false,
     val message: String? = null,
     val error: String? = null,
@@ -36,6 +37,9 @@ data class ProductUiState(
 
     val selectedEditor: ProductDraftEditorState?
         get() = selectedDraftId?.let(editors::get)
+
+    val selectedHasUnsavedChanges: Boolean
+        get() = selectedDraftId in unsavedDraftIds
 }
 
 class ProductViewModel(
@@ -47,6 +51,7 @@ class ProductViewModel(
     val uiState: StateFlow<ProductUiState> = _uiState.asStateFlow()
 
     private var apiToken: String? = null
+    private val draftSession = ProductDraftSession()
 
     init {
         viewModelScope.launch {
@@ -57,6 +62,7 @@ class ProductViewModel(
                 tokenStore.clearSession()
             }
             val drafts = repository.loadDrafts()
+            draftSession.initialize(drafts)
             val apiBaseUrl = BuildConfig.DEFAULT_PRODUCT_API_BASE_URL
             val deviceName = tokenStore.loadPlainSetting(
                 SecureTokenStore.SETTING_DEVICE_NAME,
@@ -78,28 +84,35 @@ class ProductViewModel(
     }
 
     fun createFromCalculation(prices: List<PriceItem>, values: CalculatorValues, totals: CalculatorTotals) {
-        viewModelScope.launch {
-            val draft = repository.saveDraft(
-                repository.createDraftFromCalculation(prices, values, totals),
-            )
+        runBusy {
+            discardSelectedUnsaved()
+            val draft = repository.createDraftFromCalculation(prices, values, totals)
+            draftSession.registerNew(draft)
             _uiState.value = _uiState.value.copy(
                 drafts = listOf(draft) + _uiState.value.drafts,
                 selectedDraftId = draft.draftId,
                 editors = _uiState.value.editors + (
                     draft.draftId to ProductDraftEditorState.fromDraft(draft)
                 ),
-                message = "Produktentwurf aus Kalkulation erstellt.",
+                unsavedDraftIds = draftSession.unsavedDraftIds,
+                message = "Neuer Produktentwurf erstellt. Noch nicht gespeichert.",
                 error = null,
             )
         }
     }
 
     fun selectDraft(draftId: String) {
-        _uiState.value = _uiState.value.copy(
-            selectedDraftId = draftId,
-            editingDraftId = null,
-            fieldErrors = emptyMap(),
-        )
+        if (_uiState.value.selectedDraftId == draftId) return
+        runBusy {
+            discardSelectedUnsaved()
+            if (_uiState.value.drafts.any { it.draftId == draftId }) {
+                _uiState.value = _uiState.value.copy(
+                    selectedDraftId = draftId,
+                    editingDraftId = null,
+                    fieldErrors = emptyMap(),
+                )
+            }
+        }
     }
 
     fun updateUsername(value: TextFieldValue) {
@@ -133,10 +146,12 @@ class ProductViewModel(
 
     fun updateSelectedEditor(field: ProductEditorField, value: TextFieldValue) {
         val editor = _uiState.value.selectedEditor ?: return
+        draftSession.markChanged(editor.draftId)
         _uiState.value = _uiState.value.copy(
             editors = _uiState.value.editors + (
                 editor.draftId to editor.update(field, value)
             ),
+            unsavedDraftIds = draftSession.unsavedDraftIds,
             fieldErrors = _uiState.value.fieldErrors - field.errorKey,
         )
     }
@@ -144,8 +159,7 @@ class ProductViewModel(
     fun saveSelected() {
         val snapshot = selectedDraftSnapshot() ?: return
         runBusy {
-            val saved = repository.saveDraft(snapshot)
-            replaceDraft(saved)
+            saveAndReplace(snapshot)
             _uiState.value = _uiState.value.copy(
                 message = "Produktentwurf lokal gespeichert.",
                 fieldErrors = emptyMap(),
@@ -158,12 +172,16 @@ class ProductViewModel(
         val editorName = _uiState.value.selectedEditor?.name?.text?.trim().orEmpty()
         if (uris.isEmpty()) return
         runBusy {
-            val updated = repository.storeImages(
+            val updated = repository.storeTemporaryImages(
                 draft.copy(name = editorName.ifBlank { draft.name }),
                 uris.take(5),
             )
+            draftSession.markChanged(draft.draftId)
             replaceDraft(updated)
-            _uiState.value = _uiState.value.copy(message = "Bilder wurden vorbereitet.")
+            _uiState.value = _uiState.value.copy(
+                unsavedDraftIds = draftSession.unsavedDraftIds,
+                message = "Bilder wurden vorbereitet. Noch nicht gespeichert.",
+            )
         }
     }
 
@@ -207,6 +225,11 @@ class ProductViewModel(
     fun logout() {
         apiToken = null
         tokenStore.clearSession()
+        discardAllUnsavedFromState().forEach { draftId ->
+            viewModelScope.launch {
+                repository.discardTemporaryImages(draftId)
+            }
+        }
         _uiState.value = _uiState.value.copy(
             authenticated = false,
             editingDraftId = null,
@@ -224,10 +247,9 @@ class ProductViewModel(
     fun syncSelected() {
         val draft = selectedDraftSnapshot() ?: return
         runBusy {
-            val local = repository.saveDraft(draft)
-            replaceDraft(local)
+            val local = saveAndReplace(draft)
             val updated = syncDraft(local)
-            replaceDraft(updated)
+            markSavedAndReplace(updated)
             _uiState.value = _uiState.value.copy(
                 message = "Produktentwurf synchronisiert.",
                 fieldErrors = emptyMap(),
@@ -245,18 +267,16 @@ class ProductViewModel(
         }
 
         runBusy {
-            var current = repository.saveDraft(draft)
-            replaceDraft(current)
-            current = repository.saveDraft(
+            var current = saveAndReplace(draft)
+            current = saveAndReplace(
                 current.prepareForPublish { UUID.randomUUID().toString() },
             )
-            replaceDraft(current)
             val operationId = requireNotNull(current.pendingPublishOperationId)
             current = syncDraft(current)
             val result = withContext(Dispatchers.IO) {
                 apiClient.publish(requireBaseUrl(), requireToken(), current, operationId)
             }
-            val published = repository.saveDraft(
+            saveAndReplace(
                 current.copy(
                     sku = result.sku,
                     version = result.version,
@@ -264,7 +284,6 @@ class ProductViewModel(
                     pendingPublishOperationId = null,
                 ),
             )
-            replaceDraft(published)
             _uiState.value = _uiState.value.copy(
                 message = if (result.commitSha == null) {
                     "Für Testwebsite bereitgestellt (${result.deploymentStatus})."
@@ -299,6 +318,22 @@ class ProductViewModel(
         )
     }
 
+    fun discardSelected() {
+        if (!_uiState.value.selectedHasUnsavedChanges) return
+        runBusy {
+            val result = discardSelectedUnsaved()
+            _uiState.value = _uiState.value.copy(
+                message = when (result) {
+                    is ProductDraftDiscardResult.Remove ->
+                        "Nicht gespeicherter Entwurf verworfen."
+                    is ProductDraftDiscardResult.Restore ->
+                        "Ungespeicherte Änderungen verworfen."
+                    ProductDraftDiscardResult.Unchanged -> null
+                },
+            )
+        }
+    }
+
     fun consumeMessage() {
         if (_uiState.value.message != null || _uiState.value.error != null) {
             _uiState.value = _uiState.value.copy(message = null, error = null)
@@ -314,10 +349,9 @@ class ProductViewModel(
         val draft = _uiState.value.selectedDraft ?: return
         runBusy {
             val operationId = draft.operationSelector() ?: UUID.randomUUID().toString()
-            val withOperation = repository.saveDraft(draft.operationWriter(operationId))
-            replaceDraft(withOperation)
+            val withOperation = saveAndReplace(draft.operationWriter(operationId))
             val result = withContext(Dispatchers.IO) { apiCall(withOperation, operationId) }
-            val updated = repository.saveDraft(
+            val updated = saveAndReplace(
                 withOperation.copy(
                     version = result.version,
                     status = result.status,
@@ -325,7 +359,6 @@ class ProductViewModel(
                     pendingDisableOperationId = null,
                 ),
             )
-            replaceDraft(updated)
             _uiState.value = _uiState.value.copy(
                 message = result.commitSha?.let { "$successMessage Commit ${it.take(7)}." }
                     ?: "$successMessage Verarbeitung: ${result.deploymentStatus}.",
@@ -363,19 +396,94 @@ class ProductViewModel(
         return ProductSynchronizer(
             api = synchronizationApi,
             persist = { candidate ->
-                repository.saveDraft(candidate).also(::replaceDraft)
+                saveAndReplace(candidate)
             },
         ).synchronize(draft)
     }
 
-    private fun replaceDraft(draft: ProductDraft) {
+    private suspend fun saveAndReplace(draft: ProductDraft): ProductDraft {
+        val saved = repository.saveDraft(draft)
+        markSavedAndReplace(saved)
+        return saved
+    }
+
+    private fun markSavedAndReplace(draft: ProductDraft) {
+        draftSession.markSaved(draft)
+        replaceDraft(draft, refreshEditor = true)
+    }
+
+    private fun replaceDraft(draft: ProductDraft, refreshEditor: Boolean = false) {
+        val editors = if (refreshEditor) {
+            _uiState.value.editors + (
+                draft.draftId to ProductDraftEditorState.fromDraft(draft)
+            )
+        } else {
+            _uiState.value.editors
+        }
         _uiState.value = _uiState.value.copy(
             drafts = _uiState.value.drafts
                 .filterNot { it.draftId == draft.draftId }
                 .plus(draft)
                 .sortedByDescending { it.updatedAtMillis },
             selectedDraftId = draft.draftId,
+            editors = editors,
+            unsavedDraftIds = draftSession.unsavedDraftIds,
         )
+    }
+
+    private suspend fun discardSelectedUnsaved(): ProductDraftDiscardResult {
+        val draftId = _uiState.value.selectedDraftId
+            ?: return ProductDraftDiscardResult.Unchanged
+        if (draftId !in draftSession.unsavedDraftIds) {
+            return ProductDraftDiscardResult.Unchanged
+        }
+
+        repository.discardTemporaryImages(draftId)
+        val result = draftSession.discard(draftId)
+        applyDiscardResult(result)
+        return result
+    }
+
+    private fun discardAllUnsavedFromState(): List<String> {
+        val draftIds = draftSession.unsavedDraftIds.toList()
+        draftIds.forEach { draftId ->
+            applyDiscardResult(draftSession.discard(draftId))
+        }
+        return draftIds
+    }
+
+    private fun applyDiscardResult(result: ProductDraftDiscardResult) {
+        when (result) {
+            ProductDraftDiscardResult.Unchanged -> Unit
+            is ProductDraftDiscardResult.Remove -> {
+                val remainingDrafts = _uiState.value.drafts
+                    .filterNot { it.draftId == result.draftId }
+                _uiState.value = _uiState.value.copy(
+                    drafts = remainingDrafts,
+                    selectedDraftId = remainingDrafts.firstOrNull()?.draftId,
+                    editors = _uiState.value.editors - result.draftId,
+                    editingDraftId = null,
+                    unsavedDraftIds = draftSession.unsavedDraftIds,
+                    fieldErrors = emptyMap(),
+                )
+            }
+            is ProductDraftDiscardResult.Restore -> {
+                val restored = result.draft
+                _uiState.value = _uiState.value.copy(
+                    drafts = _uiState.value.drafts
+                        .filterNot { it.draftId == restored.draftId }
+                        .plus(restored)
+                        .sortedByDescending { it.updatedAtMillis },
+                    selectedDraftId = restored.draftId,
+                    editors = _uiState.value.editors + (
+                        restored.draftId to ProductDraftEditorState.fromDraft(restored)
+                    ),
+                    editingDraftId = null,
+                    unsavedDraftIds = draftSession.unsavedDraftIds,
+                    fieldErrors = emptyMap(),
+                )
+            }
+        }
     }
 
     private fun selectedDraftSnapshot(): ProductDraft? {
@@ -466,6 +574,11 @@ class ProductViewModel(
             is IllegalArgumentException -> error.message ?: "Ungültige Eingabe"
             else -> "Produktaktion konnte nicht abgeschlossen werden"
         }
+    }
+
+    override fun onCleared() {
+        repository.clearTemporaryImages()
+        super.onCleared()
     }
 
     companion object {

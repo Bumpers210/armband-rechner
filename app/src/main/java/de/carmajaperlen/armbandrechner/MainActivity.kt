@@ -137,6 +137,7 @@ class MainActivity : ComponentActivity() {
                     onPublish = productViewModel::publishSelected,
                     onMarkSold = productViewModel::markSelectedSold,
                     onDisable = productViewModel::disableSelected,
+                    onDiscardSelected = productViewModel::discardSelected,
                     onMessageShown = productViewModel::consumeMessage,
                 )
                 if (productState.authenticated) {

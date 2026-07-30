@@ -1,6 +1,7 @@
 package de.carmajaperlen.armbandrechner
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -27,19 +28,24 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -66,6 +72,7 @@ data class ProductUiActions(
     val onPublish: () -> Unit = {},
     val onMarkSold: () -> Unit = {},
     val onDisable: () -> Unit = {},
+    val onDiscardSelected: () -> Unit = {},
     val onMessageShown: () -> Unit = {},
 ) {
     companion object {
@@ -79,6 +86,8 @@ internal fun ProductLoginScreen(
     actions: ProductUiActions,
     modifier: Modifier = Modifier,
 ) {
+    var passwordVisible by rememberSaveable { mutableStateOf(false) }
+
     if (!state.sessionChecked) {
         Box(
             contentAlignment = Alignment.Center,
@@ -128,7 +137,20 @@ internal fun ProductLoginScreen(
             value = state.loginEditor.password,
             onValueChange = actions.onPasswordChange,
             label = { Text("Passwort") },
-            visualTransformation = PasswordVisualTransformation(),
+            visualTransformation = if (passwordVisible) {
+                VisualTransformation.None
+            } else {
+                PasswordVisualTransformation()
+            },
+            keyboardOptions = securePasswordKeyboardOptions,
+            trailingIcon = {
+                TextButton(
+                    onClick = { passwordVisible = !passwordVisible },
+                    modifier = Modifier.testTag("login-password-visibility"),
+                ) {
+                    Text(if (passwordVisible) "Verbergen" else "Anzeigen")
+                }
+            },
             singleLine = true,
             enabled = !state.busy,
             modifier = Modifier
@@ -184,6 +206,10 @@ internal fun ProductManagementSection(
     actions: ProductUiActions,
     modifier: Modifier = Modifier,
 ) {
+    BackHandler(enabled = state.selectedHasUnsavedChanges) {
+        actions.onDiscardSelected()
+    }
+
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 5),
     ) { uris ->
@@ -232,6 +258,7 @@ internal fun ProductManagementSection(
                 drafts = state.drafts,
                 editors = state.editors,
                 selectedDraftId = state.selectedDraftId,
+                unsavedDraftIds = state.unsavedDraftIds,
                 onSelectDraft = actions.onSelectDraft,
                 busy = state.busy,
             )
@@ -257,6 +284,7 @@ internal fun ProductManagementSection(
                         busy = state.busy,
                         actions = actions,
                         isPublishedEdit = state.editingDraftId == draft.draftId,
+                        hasUnsavedChanges = state.selectedHasUnsavedChanges,
                         onPickImages = {
                             imagePicker.launch(
                                 PickVisualMediaRequest(
@@ -338,6 +366,7 @@ private fun DraftList(
     drafts: List<ProductDraft>,
     editors: Map<String, ProductDraftEditorState>,
     selectedDraftId: String?,
+    unsavedDraftIds: Set<String>,
     onSelectDraft: (String) -> Unit,
     busy: Boolean,
 ) {
@@ -365,8 +394,11 @@ private fun DraftList(
                         overflow = TextOverflow.Ellipsis,
                     )
                     Text(
-                        text = "${statusLabel(draft.status)} · Version ${draft.version}" +
-                            if (draft.draftId == selectedDraftId) " · ausgewählt" else "",
+                        text = buildString {
+                            append("${statusLabel(draft.status)} · Version ${draft.version}")
+                            if (draft.draftId == selectedDraftId) append(" · ausgewählt")
+                            if (draft.draftId in unsavedDraftIds) append(" · nicht gespeichert")
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -385,6 +417,7 @@ internal fun ProductDraftForm(
     actions: ProductUiActions,
     onPickImages: () -> Unit,
     isPublishedEdit: Boolean = false,
+    hasUnsavedChanges: Boolean = false,
 ) {
     var showPublishConfirmation by remember(draft.draftId) { mutableStateOf(false) }
 
@@ -539,6 +572,17 @@ internal fun ProductDraftForm(
 
             Spacer(Modifier.height(4.dp))
 
+            if (hasUnsavedChanges) {
+                OutlinedButton(
+                    onClick = actions.onDiscardSelected,
+                    enabled = !busy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("product-discard-unsaved"),
+                ) {
+                    Text("Ungespeicherte Änderungen verwerfen")
+                }
+            }
             OutlinedButton(
                 onClick = actions.onSave,
                 enabled = !busy,
@@ -576,6 +620,13 @@ internal fun ProductDraftForm(
         }
     }
 }
+
+internal val securePasswordKeyboardOptions = KeyboardOptions(
+    capitalization = KeyboardCapitalization.None,
+    autoCorrectEnabled = false,
+    keyboardType = KeyboardType.Password,
+    imeAction = ImeAction.Done,
+)
 
 @Composable
 private fun ProductTextField(

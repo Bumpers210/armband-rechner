@@ -9,6 +9,7 @@ import android.media.ExifInterface
 import android.net.Uri
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -20,8 +21,10 @@ class ProductDraftRepository(
 ) {
     private val draftsDirectory = File(context.filesDir, "product-drafts")
     private val imagesDirectory = File(context.filesDir, "product-images")
+    private val temporaryImagesDirectory = File(context.cacheDir, "product-draft-images")
 
     suspend fun loadDrafts(): List<ProductDraft> = withContext(Dispatchers.IO) {
+        clearTemporaryImages()
         draftsDirectory.mkdirs()
         draftsDirectory
             .listFiles { file -> file.extension == "json" }
@@ -34,38 +37,49 @@ class ProductDraftRepository(
 
     suspend fun saveDraft(draft: ProductDraft): ProductDraft = withContext(Dispatchers.IO) {
         draftsDirectory.mkdirs()
-        val updated = draft.copy(updatedAtMillis = currentTimeMillis())
+        val updated = promoteTemporaryImages(draft).copy(updatedAtMillis = currentTimeMillis())
         draftFile(updated.draftId).writeText(encodeDraft(updated).toString(2))
         updated
     }
 
-    suspend fun storeImages(draft: ProductDraft, uris: List<Uri>): ProductDraft =
+    suspend fun storeTemporaryImages(draft: ProductDraft, uris: List<Uri>): ProductDraft =
         withContext(Dispatchers.IO) {
             require(uris.isNotEmpty()) { "Mindestens ein Bild ist erforderlich." }
             require(uris.size <= MAX_IMAGES) { "Es sind höchstens fünf Bilder erlaubt." }
 
-            val targetDirectory = File(imagesDirectory, draft.draftId)
-            if (targetDirectory.exists()) {
-                targetDirectory.listFiles().orEmpty().forEach { it.delete() }
-            }
+            val targetDirectory = temporaryImageDirectory(draft.draftId)
+            targetDirectory.deleteRecursively()
             targetDirectory.mkdirs()
 
-            val images = uris.mapIndexed { index, uri ->
-                val compressed = compressImage(
-                    resolver = context.contentResolver,
-                    uri = uri,
-                    target = File(targetDirectory, "%02d.jpg".format(index + 1)),
-                )
-                ProductImage(
-                    localPath = compressed.file.absolutePath,
-                    width = compressed.width,
-                    height = compressed.height,
-                    alt = draft.name.ifBlank { "Carmaja-Perlen Armband" },
-                    isMain = index == 0,
-                )
+            val images = try {
+                uris.mapIndexed { index, uri ->
+                    val compressed = compressImage(
+                        resolver = context.contentResolver,
+                        uri = uri,
+                        target = File(targetDirectory, "%02d.jpg".format(index + 1)),
+                    )
+                    ProductImage(
+                        localPath = compressed.file.absolutePath,
+                        width = compressed.width,
+                        height = compressed.height,
+                        alt = draft.name.ifBlank { "Carmaja-Perlen Armband" },
+                        isMain = index == 0,
+                    )
+                }
+            } catch (error: Throwable) {
+                targetDirectory.deleteRecursively()
+                throw error
             }
-            saveDraft(draft.copy(images = images))
+            draft.copy(images = images)
         }
+
+    suspend fun discardTemporaryImages(draftId: String) = withContext(Dispatchers.IO) {
+        temporaryImageDirectory(draftId).deleteRecursively()
+    }
+
+    fun clearTemporaryImages() {
+        temporaryImagesDirectory.deleteRecursively()
+    }
 
     fun createDraftFromCalculation(
         prices: List<PriceItem>,
@@ -82,6 +96,56 @@ class ProductDraftRepository(
     }
 
     private fun draftFile(draftId: String): File = File(draftsDirectory, "$draftId.json")
+
+    private fun temporaryImageDirectory(draftId: String): File {
+        return File(temporaryImagesDirectory, draftId)
+    }
+
+    private fun promoteTemporaryImages(draft: ProductDraft): ProductDraft {
+        val temporaryDirectory = temporaryImageDirectory(draft.draftId)
+        if (!temporaryDirectory.isDirectory ||
+            draft.images.none { image -> File(image.localPath).isInside(temporaryDirectory) }
+        ) {
+            return draft
+        }
+
+        require(draft.images.all { image -> File(image.localPath).isInside(temporaryDirectory) }) {
+            "Temporäre und gespeicherte Produktbilder dürfen nicht gemischt werden."
+        }
+
+        imagesDirectory.mkdirs()
+        val stagingDirectory = File(imagesDirectory, ".${draft.draftId}-${UUID.randomUUID()}")
+        val targetDirectory = File(imagesDirectory, draft.draftId)
+        stagingDirectory.mkdirs()
+
+        val promotedImages = try {
+            draft.images.mapIndexed { index, image ->
+                val source = File(image.localPath)
+                require(source.isFile) { "Temporäres Produktbild fehlt." }
+                val staged = File(stagingDirectory, "%02d.jpg".format(index + 1))
+                source.copyTo(staged, overwrite = false)
+                image.copy(localPath = File(targetDirectory, staged.name).absolutePath)
+            }
+        } catch (error: Throwable) {
+            stagingDirectory.deleteRecursively()
+            throw error
+        }
+
+        val backupDirectory = File(imagesDirectory, ".${draft.draftId}-backup-${UUID.randomUUID()}")
+        if (targetDirectory.exists() && !targetDirectory.renameTo(backupDirectory)) {
+            stagingDirectory.deleteRecursively()
+            error("Gespeicherte Produktbilder konnten nicht gesichert werden.")
+        }
+        if (!stagingDirectory.renameTo(targetDirectory)) {
+            backupDirectory.renameTo(targetDirectory)
+            stagingDirectory.deleteRecursively()
+            error("Temporäre Produktbilder konnten nicht übernommen werden.")
+        }
+
+        backupDirectory.deleteRecursively()
+        temporaryDirectory.deleteRecursively()
+        return draft.copy(images = promotedImages)
+    }
 
     private fun encodeDraft(draft: ProductDraft): JSONObject {
         return JSONObject()
@@ -299,6 +363,11 @@ class ProductDraftRepository(
         private const val MAX_IMAGE_EDGE = 1600
         private const val MAX_IMAGE_BYTES = 1_048_576
     }
+}
+
+private fun File.isInside(directory: File): Boolean {
+    val directoryPath = directory.canonicalFile.toPath()
+    return canonicalFile.toPath().startsWith(directoryPath)
 }
 
 private fun JSONObject.optStringList(name: String): List<String> {

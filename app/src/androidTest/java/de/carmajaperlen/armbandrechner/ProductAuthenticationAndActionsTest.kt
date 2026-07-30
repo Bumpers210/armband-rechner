@@ -6,12 +6,18 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+import java.util.concurrent.atomic.AtomicBoolean
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -43,6 +49,79 @@ class ProductAuthenticationAndActionsTest {
         composeRule.onNodeWithTag("login-remember-session").assertIsOff()
         composeRule.onNodeWithTag("login-remember-session").performClick()
         composeRule.onNodeWithTag("login-remember-session").assertIsOn()
+    }
+
+    @Test
+    fun passwordVisibilityTogglePreservesValueCursorAndFocus() {
+        val initialPassword = TextFieldValue(
+            text = "Sicheres Passwort",
+            selection = TextRange(8),
+        )
+        var currentPassword = initialPassword
+        composeRule.setContent {
+            var password by remember { mutableStateOf(initialPassword) }
+            currentPassword = password
+            MaterialTheme {
+                ProductLoginScreen(
+                    state = ProductUiState(
+                        sessionChecked = true,
+                        loginEditor = ProductLoginEditorState(password = password),
+                    ),
+                    actions = ProductUiActions(
+                        onPasswordChange = { password = it },
+                    ),
+                )
+            }
+        }
+
+        val passwordField = composeRule.onNodeWithTag("login-password")
+        passwordField.performClick().assertIsFocused()
+        composeRule.onNodeWithText("Anzeigen").assertIsDisplayed()
+        var valueBeforeToggle = initialPassword
+        composeRule.runOnIdle {
+            valueBeforeToggle = currentPassword
+        }
+
+        composeRule.onNodeWithTag("login-password-visibility").performClick()
+
+        passwordField.assertIsFocused()
+        composeRule.onNodeWithText("Verbergen").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(valueBeforeToggle, currentPassword)
+        }
+
+        composeRule.onNodeWithTag("login-password-visibility").performClick()
+
+        passwordField.assertIsFocused()
+        composeRule.onNodeWithText("Anzeigen").assertIsDisplayed()
+        composeRule.runOnIdle {
+            assertEquals(valueBeforeToggle, currentPassword)
+        }
+    }
+
+    @Test
+    fun unsavedDraftOffersExplicitDiscardAction() {
+        val discarded = AtomicBoolean(false)
+        val draft = publishedDraft().copy(status = ProductStatus.Draft, sku = null)
+        composeRule.setContent {
+            MaterialTheme {
+                ProductDraftForm(
+                    draft = draft,
+                    editor = ProductDraftEditorState.fromDraft(draft),
+                    fieldErrors = emptyMap(),
+                    busy = false,
+                    actions = ProductUiActions(
+                        onDiscardSelected = { discarded.set(true) },
+                    ),
+                    onPickImages = {},
+                    hasUnsavedChanges = true,
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("product-discard-unsaved").performClick()
+
+        assertTrue(discarded.get())
     }
 
     @Test
