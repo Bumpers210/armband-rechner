@@ -43,7 +43,11 @@ test("Token-Installer verwendet keine unsicheren Geheimwertkanaele", async () =>
   assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 403\)/);
   assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 404\)/);
   assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 429\)/);
+  assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 500\)/);
+  assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 502\)/);
+  assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 503\)/);
   assert.match(script, /GitHub-Diagnose fehlgeschlagen \(Produktdatei nicht lesbar\)/);
+  assert.match(script, /GitHub-Diagnose fehlgeschlagen \(interner Diagnosefehler\)/);
   assert.match(script, /GitHub-Diagnose lieferte unvollstaendige Erfolgsdaten/);
   assert.match(script, /chmod 0640 "\$\{TOKEN_TEMP\}"/);
   assert.match(script, /mv -f -- "\$\{TOKEN_TEMP\}" "\$\{TOKEN_FILE\}"/);

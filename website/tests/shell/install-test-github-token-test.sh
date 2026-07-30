@@ -64,6 +64,12 @@ printf '%s\n' \
     '  unset candidate' \
     '  exit 5' \
     'fi' \
+    'if [[ "$mode" == "upstream-500" ]]; then' \
+    '  printf "%s\n" "{\"ok\":false,\"error\":{\"code\":\"upstream_error\",\"fields\":{\"statusCode\":500}}}" >&2' \
+    '  candidate=""' \
+    '  unset candidate' \
+    '  exit 5' \
+    'fi' \
     'if [[ "$mode" == "incomplete-success" ]]; then' \
     '  candidate=""' \
     '  unset candidate' \
@@ -217,5 +223,20 @@ grep -q 'GitHub-Diagnose lieferte unvollstaendige Erfolgsdaten.' \
     || fail "Unvollstaendige Erfolgsdaten wurden nicht sicher klassifiziert."
 [[ ! -e "${CONFIG_DIR}/github-token" ]] \
     || fail "Nach unvollstaendiger Diagnose wurde ein Token gespeichert."
+
+UPSTREAM_OUTPUT="${TEST_ROOT}/upstream-output"
+printf 'upstream-500\n' >"${MOCK_MODE_FILE}"
+rm -f "${MOCK_STATE}" "${CONFIG_DIR}/github-token"
+
+if run_installer 'github_pat_FAKE_UPSTREAM\ny\n' "${UPSTREAM_OUTPUT}"; then
+    fail "HTTP 500 wurde akzeptiert."
+fi
+
+grep -q 'GitHub-Diagnose fehlgeschlagen (HTTP 500).' "${UPSTREAM_OUTPUT}" \
+    || fail "HTTP 500 wurde nicht sicher klassifiziert."
+grep -q 'github_pat_FAKE' "${UPSTREAM_OUTPUT}" \
+    && fail "Token wurde bei HTTP 500 in der Ausgabe offengelegt."
+[[ ! -e "${CONFIG_DIR}/github-token" ]] \
+    || fail "Nach HTTP 500 wurde ein Token gespeichert."
 
 printf 'Sicherer GitHub-Token-Installer-Shell-Test erfolgreich.\n'

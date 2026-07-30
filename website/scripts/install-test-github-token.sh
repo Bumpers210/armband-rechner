@@ -180,6 +180,27 @@ run_readonly_diagnostic()
             return 14
         fi
 
+        if grep -Eq '"statusCode"[[:space:]]*:[[:space:]]*500' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 20
+        fi
+
+        if grep -Eq '"statusCode"[[:space:]]*:[[:space:]]*502' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 21
+        fi
+
+        if grep -Eq '"statusCode"[[:space:]]*:[[:space:]]*503' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 22
+        fi
+
         if grep -Eq '"code"[[:space:]]*:[[:space:]]*"github_head_invalid"' \
             "${DIAGNOSTIC_OUTPUT}"; then
             rm -f -- "${DIAGNOSTIC_OUTPUT}"
@@ -207,6 +228,20 @@ run_readonly_diagnostic()
             rm -f -- "${DIAGNOSTIC_OUTPUT}"
             DIAGNOSTIC_OUTPUT=""
             return 18
+        fi
+
+        if grep -Eq '"code"[[:space:]]*:[[:space:]]*"diagnostic_failed"' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 23
+        fi
+
+        if grep -Eq '"code"[[:space:]]*:[[:space:]]*"upstream_error"' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 24
         fi
 
         rm -f -- "${DIAGNOSTIC_OUTPUT}"
@@ -328,6 +363,26 @@ main()
 
         if [[ "${diagnostic_result}" -eq 19 ]]; then
             fail "GitHub-Diagnose lieferte unvollstaendige Erfolgsdaten. Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 20 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (HTTP 500). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 21 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (HTTP 502). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 22 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (HTTP 503). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 23 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (interner Diagnosefehler). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 24 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (GitHub-Antwort nicht auswertbar). Token wurde nicht gespeichert."
         fi
 
         fail "Read-only-GitHub-Diagnose fehlgeschlagen. Token wurde nicht gespeichert."
