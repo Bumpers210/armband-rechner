@@ -652,6 +652,64 @@ carmaja_api_test('Test-Publish ohne Vinted-Link ist erfolgreich', static functio
     );
 });
 
+carmaja_api_test('Vollständiger Testentwurf wird atomar veröffentlicht', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5421';
+    $draft = carmaja_api_test_ready_draft($draftId);
+    $draft['status'] = 'draft';
+    carmaja_api_save_draft($draft);
+
+    $result = carmaja_api_publish(
+        $draftId,
+        ['expectedVersion' => 1, 'operationId' => 'test-draft-publish-0001'],
+        carmaja_api_test_actor(),
+        'published'
+    );
+    $stored = carmaja_api_load_draft($draftId);
+
+    carmaja_api_test_same('published', $result['status'], 'Testentwurf wurde nicht veröffentlicht.');
+    carmaja_api_test_same(2, $result['version'], 'Publish muss die Version genau einmal erhöhen.');
+    carmaja_api_test_assert(
+        is_string($result['sku']) && $result['sku'] !== '',
+        'Erfolgreicher Publish muss genau eine SKU vergeben.'
+    );
+    carmaja_api_test_same('published', $stored['status'], 'Entwurf blieb im falschen Status.');
+    carmaja_api_test_same($result['sku'], $stored['sku'], 'Gespeicherte SKU weicht ab.');
+    carmaja_api_test_assert(
+        is_file($fixture['testPrivate'] . '/products/public-products.json'),
+        'Öffentliche Testproduktdaten fehlen.'
+    );
+});
+
+carmaja_api_test('Unvollständiger Testentwurf bleibt ohne Nebenwirkungen', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5422';
+    $draft = carmaja_api_test_ready_draft($draftId);
+    $draft['status'] = 'draft';
+    $draft['shortDescription'] = '';
+    carmaja_api_save_draft($draft);
+
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_publish(
+            $draftId,
+            ['expectedVersion' => 1, 'operationId' => 'test-draft-invalid-0001'],
+            carmaja_api_test_actor(),
+            'published'
+        ),
+        422,
+        'product_not_publishable'
+    );
+    $stored = carmaja_api_load_draft($draftId);
+
+    carmaja_api_test_same('draft', $stored['status'], 'Ungültiger Entwurf wurde verändert.');
+    carmaja_api_test_same(null, $stored['sku'], 'Ungültiger Entwurf erhielt eine SKU.');
+    carmaja_api_test_same(
+        [],
+        carmaja_api_test_json_files($fixture['testPrivate'] . '/idempotency'),
+        'Validierungsfehler darf keinen Idempotency-Datensatz erzeugen.'
+    );
+});
+
 carmaja_api_test('Test-Publish mit gültigem Vinted-Link ist erfolgreich', static function (): void {
     $fixture = carmaja_api_test_fixture();
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5402';
@@ -664,6 +722,39 @@ carmaja_api_test('Test-Publish mit gültigem Vinted-Link ist erfolgreich', stati
     );
 
     carmaja_api_test_same('published', $result['status'], 'Test-Publish fehlgeschlagen.');
+});
+
+carmaja_api_test('Produktion lehnt direkten Draft-Publish weiterhin ab', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    carmaja_api_test_use_target($fixture, 'production');
+    putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
+    $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5423';
+    $draft = carmaja_api_test_ready_draft(
+        $draftId,
+        'https://vinted.de/items/123'
+    );
+    $draft['status'] = 'draft';
+    carmaja_api_save_draft($draft);
+
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_publish(
+            $draftId,
+            ['expectedVersion' => 1, 'operationId' => 'production-draft-0001'],
+            carmaja_api_test_actor(),
+            'published'
+        ),
+        422,
+        'invalid_status_transition'
+    );
+    $stored = carmaja_api_load_draft($draftId);
+
+    carmaja_api_test_same('draft', $stored['status'], 'Produktionsentwurf wurde verändert.');
+    carmaja_api_test_same(null, $stored['sku'], 'Produktionsentwurf erhielt eine SKU.');
+    carmaja_api_test_same(
+        [],
+        carmaja_api_test_json_files($fixture['productionPrivate'] . '/idempotency'),
+        'Abgelehnter Produktions-Publish darf keine Operation erzeugen.'
+    );
 });
 
 carmaja_api_test('Produktions-Publish ohne Link erhält HTTP 422', static function (): void {

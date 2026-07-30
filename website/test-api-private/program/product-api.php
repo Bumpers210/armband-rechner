@@ -1616,11 +1616,19 @@ function carmaja_api_validate_status_transition(
     $currentStatus = (string) ($draft['status'] ?? 'draft');
 
     if ($newStatus === 'published') {
-        if (!in_array($currentStatus, ['ready', 'published'], true)) {
+        $allowedCurrentStatuses = $target === 'test'
+            ? ['draft', 'ready', 'published']
+            : ['ready', 'published'];
+
+        if (!in_array($currentStatus, $allowedCurrentStatuses, true)) {
             throw new CarmajaApiException(
                 422,
                 'Statusübergang zu published ist nicht erlaubt.',
-                ['status' => 'Produkt muss ready oder bereits published sein.'],
+                [
+                    'status' => $target === 'test'
+                        ? 'Testprodukt muss draft, ready oder bereits published sein.'
+                        : 'Produkt muss ready oder bereits published sein.',
+                ],
                 'invalid_status_transition'
             );
         }
