@@ -26,7 +26,7 @@ export function ProductVintedLink({ product }: ProductVintedLinkProps) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`${product.title} auf Vinted ansehen - öffnet in einem neuen Tab`}
+      aria-label={`${product.publicTitle} auf Vinted ansehen - öffnet in einem neuen Tab`}
     >
       Auf Vinted ansehen
     </a>

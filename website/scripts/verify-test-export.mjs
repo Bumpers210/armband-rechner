@@ -176,8 +176,35 @@ for (const product of published) {
   const detailHtml = await readOutput(detailPath);
 
   assert(
-    overviewHtml.includes(product.title) && detailHtml.includes(product.title),
+    overviewHtml.includes(product.publicTitle) &&
+      overviewHtml.includes(product.description) &&
+      detailHtml.includes(product.publicTitle) &&
+      detailHtml.includes(product.description),
     `Published-Produkt fehlt: ${product.sku}`,
+  );
+  assert(
+    overviewHtml.includes("<dt>Materialien</dt>") &&
+      overviewHtml.includes("<dt>Metallelemente</dt>") &&
+      detailHtml.includes("<dt>Materialien</dt>") &&
+      detailHtml.includes("<dt>Metallelemente</dt>"),
+    `Materialdarstellung fehlt: ${product.sku}`,
+  );
+  assert(
+    overviewHtml.includes(product.displaySize) &&
+      detailHtml.includes(product.displaySize) &&
+      !detailHtml.includes(`${product.displaySize} cm`),
+    `Zentimeterdarstellung ist ungültig: ${product.sku}`,
+  );
+  assert(
+    detailHtml.includes("Vor dem Duschen und Baden ablegen") &&
+      detailHtml.includes("Kontakt mit Parfüm und Cremes vermeiden") &&
+      detailHtml.includes("Nicht stark auseinanderziehen"),
+    `Zentraler Pflegehinweis fehlt: ${product.sku}`,
+  );
+  assert(
+    [...detailHtml.matchAll(/data-lightbox-open="/g)].length ===
+      product.images.length,
+    `Nicht jedes Produktbild öffnet die Großansicht: ${product.sku}`,
   );
   assert(
     !detailHtml.toLowerCase().includes("verkaufspreis") &&
@@ -204,7 +231,7 @@ for (const product of sold) {
 
   assert(await exists(detailPath), `Sold-Detailseite fehlt: ${product.sku}`);
   assert(
-    !overviewHtml.includes(product.title) &&
+    !overviewHtml.includes(product.description) &&
       detailHtml.includes("Verkauft") &&
       !detailHtml.includes("Auf Vinted ansehen") &&
       !(product.vintedUrl && detailHtml.includes(product.vintedUrl)),
@@ -214,7 +241,7 @@ for (const product of sold) {
 
 for (const product of hidden) {
   assert(
-    !overviewHtml.includes(product.title) &&
+    !overviewHtml.includes(product.description) &&
       !(await exists(`armbaender/${product.slug}/index.html`)) &&
       !sitemapLocations.includes(`${siteUrl}armbaender/${product.slug}/`),
     `Nicht öffentliches Produkt wurde exportiert: ${product.sku}`,
@@ -260,6 +287,10 @@ const forbiddenContent = [
   '"materialCosts"',
   '"recommendedSalePrice"',
   '"salePrice"',
+  "INTERNER-ARTIKELNAME-",
+  "interne-artikelbezeichnung-",
+  "INTERNER-BILDTEXT-",
+  "INTERNER-PFLEGEHINWEIS-",
   "CARMAJA_GITHUB_TOKEN",
   "github_pat_",
   "BEGIN PRIVATE KEY",

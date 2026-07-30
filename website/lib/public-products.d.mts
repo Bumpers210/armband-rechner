@@ -16,19 +16,22 @@ export type ProductImage = {
 export type PublicProduct = {
   sku: string;
   slug: string;
-  title: string;
+  publicTitle: string;
   description: string;
   materials: string[];
   metalElements: string[];
   size: string;
+  displaySize: string;
   stock: number;
   status: ProductStatus;
   images: ProductImage[];
-  careInstructions: string[];
   updatedAt: string;
   vintedUrl?: string;
 };
 
+export const publicProductName: string;
+
+export function formatProductSize(value: unknown, location?: string): string;
 export function validateVintedUrl(value: unknown, location?: string): string;
 export function readJpegDimensions(filePath: string): {
   width: number;

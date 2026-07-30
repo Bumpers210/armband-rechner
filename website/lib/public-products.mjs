@@ -17,7 +17,9 @@ const PRODUCT_KEYS = [
   "updatedAt",
   "vintedUrl",
 ];
-const REQUIRED_PRODUCT_KEYS = PRODUCT_KEYS.filter((key) => key !== "vintedUrl");
+const REQUIRED_PRODUCT_KEYS = PRODUCT_KEYS.filter(
+  (key) => !["careInstructions", "vintedUrl"].includes(key),
+);
 const IMAGE_KEYS = ["alt", "height", "isMain", "src", "width"];
 const PRODUCT_STATUSES = new Set([
   "draft",
@@ -38,6 +40,8 @@ const REDIRECT_PARAMETERS = new Set([
   "next",
   "target",
 ]);
+
+export const publicProductName = "Carmaja-Perlen Armband";
 
 function fail(location, message) {
   throw new Error(`${location}: ${message}`);
@@ -197,7 +201,34 @@ export function readJpegDimensions(filePath) {
   throw new Error("JPEG enthält keine gültigen Bildabmessungen.");
 }
 
-function validateImage(value, product, index, imageRoot) {
+export function formatProductSize(value, location = "size") {
+  const source = requireString(value, location, 60);
+  const match = source.match(/^(\d+(?:[.,]\d+)?)\s*(cm|mm)$/i);
+
+  if (!match) {
+    fail(location, "Größe muss einen eindeutigen Wert in cm oder mm enthalten.");
+  }
+
+  const numericValue = Number(match[1].replace(",", "."));
+
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    fail(location, "Größe muss größer als null sein.");
+  }
+
+  const centimeters = match[2].toLowerCase() === "mm"
+    ? numericValue / 10
+    : numericValue;
+  const rounded = Math.round((centimeters + Number.EPSILON) * 1_000) / 1_000;
+  const formatted = new Intl.NumberFormat("de-DE", {
+    maximumFractionDigits: 3,
+    minimumFractionDigits: 0,
+    useGrouping: false,
+  }).format(rounded);
+
+  return `${formatted} cm`;
+}
+
+function validateImage(value, product, index, imageCount, imageRoot) {
   const location = `products[${product.sku}].images[${index}]`;
   const image = requireObject(value, location);
   requireExactKeys(image, IMAGE_KEYS, IMAGE_KEYS, location);
@@ -264,7 +295,7 @@ function validateImage(value, product, index, imageRoot) {
 
   return {
     src: image.src,
-    alt: image.alt,
+    alt: `${publicProductName}, Bild ${index + 1} von ${imageCount}`,
     width: image.width,
     height: image.height,
     isMain: image.isMain,
@@ -276,13 +307,13 @@ function validateProduct(value, index, imageRoot) {
   const product = requireObject(value, location);
   requireExactKeys(product, PRODUCT_KEYS, REQUIRED_PRODUCT_KEYS, location);
   const sku = requireString(product.sku, `${location}.sku`, 20);
-  const slug = requireString(product.slug, `${location}.slug`, 180);
+  const sourceSlug = requireString(product.slug, `${location}.slug`, 180);
 
   if (!SKU_PATTERN.test(sku)) {
     fail(`${location}.sku`, "Format CP-YYYY-NNNN erwartet.");
   }
 
-  if (!SLUG_PATTERN.test(slug)) {
+  if (!SLUG_PATTERN.test(sourceSlug)) {
     fail(`${location}.slug`, "Ungültiger URL-Slug.");
   }
 
@@ -304,10 +335,20 @@ function validateProduct(value, index, imageRoot) {
     fail(`${location}.updatedAt`, "ISO-Zeitstempel erwartet.");
   }
 
+  requireString(product.title, `${location}.title`, 120);
+  const size = requireString(product.size, `${location}.size`, 60);
+
+  if ("careInstructions" in product) {
+    requireStringList(
+      product.careInstructions,
+      `${location}.careInstructions`,
+    );
+  }
+
   const validated = {
     sku,
-    slug,
-    title: requireString(product.title, `${location}.title`, 120),
+    slug: sku.toLowerCase(),
+    publicTitle: publicProductName,
     description: requireString(
       product.description,
       `${location}.description`,
@@ -320,15 +361,18 @@ function validateProduct(value, index, imageRoot) {
       product.metalElements,
       `${location}.metalElements`,
     ),
-    size: requireString(product.size, `${location}.size`, 60),
+    size,
+    displaySize: formatProductSize(size, `${location}.size`),
     stock: product.stock,
     status: product.status,
     images: product.images.map((image, imageIndex) =>
-      validateImage(image, { sku }, imageIndex, imageRoot),
-    ),
-    careInstructions: requireStringList(
-      product.careInstructions,
-      `${location}.careInstructions`,
+      validateImage(
+        image,
+        { sku },
+        imageIndex,
+        product.images.length,
+        imageRoot,
+      ),
     ),
     updatedAt,
   };

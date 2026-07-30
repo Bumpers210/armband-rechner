@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
+import { ProductImageGallery } from "@/components/product-image-gallery";
 import { ProductVintedLink } from "@/components/product-vinted-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteTarget } from "@/config/site-target";
-import { mainProductImage, visibleProducts } from "@/content/products";
+import { visibleProducts } from "@/content/products";
 
 export const metadata: Metadata = {
   title: "Verfügbare Armbänder",
@@ -53,50 +53,42 @@ export default function ProductsPage() {
               </div>
             ) : (
               <div className="products-grid">
-                {visibleProducts.map((product) => {
-                  const image = mainProductImage(product);
-
-                  return (
-                    <article className="product-card" key={product.sku}>
-                      {image ? (
-                        <Link
-                          className="product-card-media"
-                          href={`/armbaender/${product.slug}/`}
-                        >
-                          <Image
-                            src={image.src}
-                            alt={image.alt}
-                            width={image.width}
-                            height={image.height}
-                            sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1023px) 50vw, 33vw"
-                            className="product-card-image"
-                          />
+                {visibleProducts.map((product) => (
+                  <article className="product-card" key={product.sku}>
+                    <ProductImageGallery
+                      images={product.images}
+                      productName={product.publicTitle}
+                      variant="card"
+                    />
+                    <div className="product-card-copy">
+                      <h2>
+                        <Link href={`/armbaender/${product.slug}/`}>
+                          {product.publicTitle}
                         </Link>
-                      ) : null}
-
-                      <div className="product-card-copy">
-                        <p className="product-sku">{product.sku}</p>
-                        <h2>
-                          <Link href={`/armbaender/${product.slug}/`}>
-                            {product.title}
-                          </Link>
-                        </h2>
-                        <p>{product.description}</p>
-                        <dl className="product-facts">
-                          <div>
-                            <dt>Material</dt>
-                            <dd>{product.materials.join(", ")}</dd>
-                          </div>
-                          <div>
-                            <dt>Größe</dt>
-                            <dd>{product.size}</dd>
-                          </div>
-                        </dl>
-                        <ProductVintedLink product={product} />
-                      </div>
-                    </article>
-                  );
-                })}
+                      </h2>
+                      <p>{product.description}</p>
+                      <dl className="product-facts">
+                        <div>
+                          <dt>Materialien</dt>
+                          <dd>{product.materials.join(", ")}</dd>
+                        </div>
+                        <div>
+                          <dt>Metallelemente</dt>
+                          <dd>
+                            {product.metalElements.length > 0
+                              ? product.metalElements.join(", ")
+                              : "Keine"}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Größe</dt>
+                          <dd>{product.displaySize}</dd>
+                        </div>
+                      </dl>
+                      <ProductVintedLink product={product} />
+                    </div>
+                  </article>
+                ))}
               </div>
             )}
           </div>

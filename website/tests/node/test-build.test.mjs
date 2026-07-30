@@ -34,28 +34,29 @@ const sourceImage = path.join(
 
 function product(sequence, status, vintedUrl) {
   const sku = `CP-2026-${String(sequence).padStart(4, "0")}`;
-  const slug = `${sku.toLowerCase()}-${status}`;
+  const imageCount = sequence === 1 ? 3 : 1;
 
   return {
     sku,
-    slug,
-    title: `${status} Testarmband ${sequence}`,
-    description: `Statische Prüfung für den Status ${status}.`,
+    slug: `interne-artikelbezeichnung-${sequence}`,
+    title: `INTERNER-ARTIKELNAME-${sequence}`,
+    description: `Öffentliche Produktbeschreibung ${sequence}.`,
     materials: ["Rosenquarz"],
-    metalElements: [],
-    size: "17 cm",
+    metalElements: ["Spacer Blume Edelstahl"],
+    size: sequence === 1 ? "175 mm" : "17,50 cm",
     stock: status === "sold" ? 0 : 1,
     status,
-    images: [
-      {
+    images: Array.from({ length: imageCount }, (_, index) => ({
         src: `/images/products/${sku}/01.jpg`,
-        alt: `${status} Testarmband`,
+        alt: `INTERNER-BILDTEXT-${sequence}-${index + 1}`,
         width: 2048,
         height: 1536,
-        isMain: true,
-      },
-    ],
-    careInstructions: ["Vor Wasser schützen"],
+        isMain: index === 0,
+      })).map((image, index) => ({
+        ...image,
+        src: `/images/products/${sku}/${String(index + 1).padStart(2, "0")}.jpg`,
+      })),
+    careInstructions: [`INTERNER-PFLEGEHINWEIS-${sequence}`],
     updatedAt: `2026-07-2${sequence}T10:00:00.000Z`,
     ...(vintedUrl ? { vintedUrl } : {}),
   };
@@ -88,9 +89,15 @@ test(
 
     try {
       for (const current of products) {
-        const target = path.join(imageRoot, current.sku, "01.jpg");
-        await mkdir(path.dirname(target), { recursive: true });
-        await cp(sourceImage, target);
+        for (const image of current.images) {
+          const target = path.join(
+            imageRoot,
+            current.sku,
+            path.basename(image.src),
+          );
+          await mkdir(path.dirname(target), { recursive: true });
+          await cp(sourceImage, target);
+        }
       }
 
       await writeFile(
@@ -135,6 +142,47 @@ test(
         access(path.join(projectRoot, "out-test", ".htpasswd")),
       );
       await assert.rejects(access(stalePage));
+
+      const overviewHtml = await readFile(
+        path.join(projectRoot, "out-test", "armbaender", "index.html"),
+        "utf8",
+      );
+      const detailHtml = await readFile(
+        path.join(
+          projectRoot,
+          "out-test",
+          "armbaender",
+          "cp-2026-0001",
+          "index.html",
+        ),
+        "utf8",
+      );
+
+      assert.ok(overviewHtml.includes("Carmaja-Perlen Armband"));
+      assert.ok(overviewHtml.includes("<dt>Materialien</dt>"));
+      assert.ok(overviewHtml.includes("<dt>Metallelemente</dt>"));
+      assert.ok(overviewHtml.includes("17,5 cm"));
+      assert.ok(detailHtml.includes("17,5 cm"));
+      assert.ok(!detailHtml.includes("cm cm"));
+      assert.ok(detailHtml.includes("Vor dem Duschen und Baden ablegen"));
+      assert.ok(detailHtml.includes("Kontakt mit Parfüm und Cremes vermeiden"));
+      assert.ok(detailHtml.includes("Nicht stark auseinanderziehen"));
+      assert.equal(
+        [...detailHtml.matchAll(/data-lightbox-open="/g)].length,
+        products[0].images.length,
+      );
+
+      for (let sequence = 1; sequence <= products.length; sequence += 1) {
+        for (const internalValue of [
+          `INTERNER-ARTIKELNAME-${sequence}`,
+          `interne-artikelbezeichnung-${sequence}`,
+          `INTERNER-BILDTEXT-${sequence}`,
+          `INTERNER-PFLEGEHINWEIS-${sequence}`,
+        ]) {
+          assert.ok(!overviewHtml.includes(internalValue));
+          assert.ok(!detailHtml.includes(internalValue));
+        }
+      }
 
       const forbiddenPasswordFile = path.join(
         projectRoot,

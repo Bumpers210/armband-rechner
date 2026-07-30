@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ProductImageGallery } from "@/components/product-image-gallery";
 import { ProductVintedLink } from "@/components/product-vinted-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteTarget } from "@/config/site-target";
+import { siteContent } from "@/content/site-content";
 import {
   detailProducts,
   findDetailProduct,
@@ -45,7 +46,7 @@ export async function generateMetadata({
   const image = mainProductImage(product);
 
   return {
-    title: product.title,
+    title: product.publicTitle,
     description: product.description,
     alternates: {
       canonical: `/armbaender/${product.slug}/`,
@@ -67,7 +68,7 @@ export async function generateMetadata({
           },
     openGraph: image
       ? {
-          title: product.title,
+          title: product.publicTitle,
           description: product.description,
           url: `/armbaender/${product.slug}/`,
           images: [
@@ -94,7 +95,6 @@ export default async function ProductDetailPage({
     notFound();
   }
 
-  const mainImage = mainProductImage(product);
   const isSold = product.status === "sold";
 
   return (
@@ -104,41 +104,18 @@ export default async function ProductDetailPage({
       <main id="main-content" className="product-detail-main">
         <article className="content-shell product-detail">
           <div className="product-detail-media">
-            {mainImage ? (
-              <Image
-                src={mainImage.src}
-                alt={mainImage.alt}
-                width={mainImage.width}
-                height={mainImage.height}
-                sizes="(max-width: 767px) calc(100vw - 32px), 50vw"
-                className="product-detail-image"
-                priority
-              />
-            ) : null}
-
-            {product.images.length > 1 ? (
-              <div className="product-detail-thumbs" aria-label="Weitere Fotos">
-                {product.images.slice(1).map((image) => (
-                  <Image
-                    key={image.src}
-                    src={image.src}
-                    alt={image.alt}
-                    width={image.width}
-                    height={image.height}
-                    sizes="8rem"
-                    className="product-detail-thumb"
-                  />
-                ))}
-              </div>
-            ) : null}
+            <ProductImageGallery
+              images={product.images}
+              productName={product.publicTitle}
+              variant="detail"
+            />
           </div>
 
           <div className="product-detail-copy">
             <Link className="product-back-link" href="/armbaender/">
               Zur Übersicht
             </Link>
-            <p className="product-sku">{product.sku}</p>
-            <h1>{product.title}</h1>
+            <h1>{product.publicTitle}</h1>
             {isSold ? (
               <p className="product-status product-status--sold">Verkauft</p>
             ) : null}
@@ -149,15 +126,17 @@ export default async function ProductDetailPage({
                 <dt>Materialien</dt>
                 <dd>{product.materials.join(", ")}</dd>
               </div>
-              {product.metalElements.length > 0 ? (
-                <div>
-                  <dt>Metallelemente</dt>
-                  <dd>{product.metalElements.join(", ")}</dd>
-                </div>
-              ) : null}
+              <div>
+                <dt>Metallelemente</dt>
+                <dd>
+                  {product.metalElements.length > 0
+                    ? product.metalElements.join(", ")
+                    : "Keine"}
+                </dd>
+              </div>
               <div>
                 <dt>Größe</dt>
-                <dd>{product.size}</dd>
+                <dd>{product.displaySize}</dd>
               </div>
               <div>
                 <dt>Bestand</dt>
@@ -165,16 +144,14 @@ export default async function ProductDetailPage({
               </div>
             </dl>
 
-            {product.careInstructions.length > 0 ? (
-              <section className="product-care" aria-labelledby="care-heading">
-                <h2 id="care-heading">Pflege</h2>
-                <ul>
-                  {product.careInstructions.map((instruction) => (
-                    <li key={instruction}>{instruction}</li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
+            <section className="product-care" aria-labelledby="care-heading">
+              <h2 id="care-heading">{siteContent.care.title}</h2>
+              <ul>
+                {siteContent.care.items.map((instruction) => (
+                  <li key={instruction}>{instruction}</li>
+                ))}
+              </ul>
+            </section>
 
             {isSold ? null : <ProductVintedLink product={product} />}
           </div>

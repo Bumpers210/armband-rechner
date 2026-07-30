@@ -4,7 +4,11 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { loadPublicProducts } from "../../lib/public-products.mjs";
+import {
+  formatProductSize,
+  loadPublicProducts,
+  publicProductName,
+} from "../../lib/public-products.mjs";
 
 const projectRoot = process.cwd();
 const sourceImage = path.join(
@@ -105,6 +109,60 @@ test("erlaubte Statuswerte und optionale Vinted-URL werden akzeptiert", async ()
   } finally {
     await rm(withoutLink.root, { recursive: true, force: true });
   }
+});
+
+test("interne Bezeichnungen und Payload-Pflegetexte verlassen die Quelle nicht", async () => {
+  const current = await fixture(
+    product({
+      slug: "nur-interne-zuordnung",
+      title: "INTERNE-ARTIKELBEZEICHNUNG",
+      careInstructions: ["INTERNER-PFLEGEHINWEIS"],
+      images: [
+        {
+          ...product().images[0],
+          alt: "INTERNER-BILDTEXT",
+        },
+      ],
+      size: "175 mm",
+    }),
+  );
+
+  try {
+    const loaded = current.load().products[0];
+
+    assert.equal(loaded.publicTitle, publicProductName);
+    assert.equal(loaded.slug, "cp-2026-0001");
+    assert.equal(loaded.size, "175 mm");
+    assert.equal(loaded.displaySize, "17,5 cm");
+    assert.equal(loaded.images[0].alt, `${publicProductName}, Bild 1 von 1`);
+    assert.equal("title" in loaded, false);
+    assert.equal("careInstructions" in loaded, false);
+  } finally {
+    await rm(current.root, { recursive: true, force: true });
+  }
+});
+
+test("Pflegehinweise aus älteren Payloads sind optional und werden ignoriert", async () => {
+  const value = product();
+  delete value.careInstructions;
+  const current = await fixture(value);
+
+  try {
+    assert.equal("careInstructions" in current.load().products[0], false);
+  } finally {
+    await rm(current.root, { recursive: true, force: true });
+  }
+});
+
+test("Größen werden eindeutig und genau einmal in Zentimetern formatiert", () => {
+  assert.equal(formatProductSize("18 cm"), "18 cm");
+  assert.equal(formatProductSize("18cm"), "18 cm");
+  assert.equal(formatProductSize("17,50 cm"), "17,5 cm");
+  assert.equal(formatProductSize("180 mm"), "18 cm");
+  assert.equal(formatProductSize("175 mm"), "17,5 cm");
+  assert.throws(() => formatProductSize("18"), /eindeutigen Wert in cm oder mm/);
+  assert.throws(() => formatProductSize("18 cm cm"), /eindeutigen Wert/);
+  assert.throws(() => formatProductSize("unbekannt"), /eindeutigen Wert/);
 });
 
 test("unbekannte und interne Produktfelder werden abgelehnt", async () => {
