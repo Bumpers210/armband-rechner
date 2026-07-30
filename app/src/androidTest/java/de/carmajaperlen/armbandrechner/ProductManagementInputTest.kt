@@ -1,4 +1,4 @@
-package de.steinhart.armbandrechner
+package de.carmajaperlen.armbandrechner
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState

@@ -1,4 +1,4 @@
-package de.steinhart.armbandrechner
+package de.carmajaperlen.armbandrechner
 
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals

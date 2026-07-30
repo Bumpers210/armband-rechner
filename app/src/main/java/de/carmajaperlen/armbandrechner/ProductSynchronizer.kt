@@ -1,4 +1,4 @@
-package de.steinhart.armbandrechner
+package de.carmajaperlen.armbandrechner
 
 internal interface ProductSynchronizationApi {
     suspend fun saveDraft(draft: ProductDraft): ProductServerUpdate

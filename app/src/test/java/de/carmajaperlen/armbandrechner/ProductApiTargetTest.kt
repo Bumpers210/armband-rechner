@@ -1,4 +1,4 @@
-package de.steinhart.armbandrechner
+package de.carmajaperlen.armbandrechner
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows

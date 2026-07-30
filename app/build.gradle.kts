@@ -6,8 +6,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val betaVersionCode = 3
-val betaVersionName = "1.1.0-beta.2"
+val betaVersionCode = 4
+val betaVersionName = "1.1.0-beta.3"
 val releaseSigningPropertiesFile = rootProject.file(".signing/keystore.properties")
 val releaseSigningProperties = Properties().apply {
     if (releaseSigningPropertiesFile.isFile) {
@@ -47,11 +47,11 @@ if (betaBuildRequested && !betaSigningReady) {
 }
 
 android {
-    namespace = "de.steinhart.armbandrechner"
+    namespace = "de.carmajaperlen.armbandrechner"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "de.steinhart.armbandrechner"
+        applicationId = "de.carmajaperlen.armbandrechner"
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -97,7 +97,7 @@ android {
                 null
             }
             matchingFallbacks += listOf("debug")
-            manifestPlaceholders["appLabel"] = "Carmaja Produktverwaltung Test"
+            manifestPlaceholders["appLabel"] = "Carmaja-Perlen Produktverwaltung Test"
             buildConfigField(
                 "String",
                 "DEFAULT_PRODUCT_API_BASE_URL",

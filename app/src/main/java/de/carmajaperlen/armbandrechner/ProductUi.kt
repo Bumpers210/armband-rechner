@@ -1,4 +1,4 @@
-package de.steinhart.armbandrechner
+package de.carmajaperlen.armbandrechner
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult

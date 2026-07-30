@@ -1,4 +1,4 @@
-package de.steinhart.armbandrechner
+package de.carmajaperlen.armbandrechner
 
 import android.content.Context
 import androidx.lifecycle.ViewModel

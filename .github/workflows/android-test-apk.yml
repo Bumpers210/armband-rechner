@@ -108,15 +108,15 @@ jobs:
         run: |
           set -eu
           mkdir -p artifact
-          cp app/build/outputs/apk/beta/app-beta.apk artifact/Carmaja-Produktverwaltung-Test-1.1.0-beta.2.apk
-          sha256sum artifact/Carmaja-Produktverwaltung-Test-1.1.0-beta.2.apk > artifact/Carmaja-Produktverwaltung-Test-1.1.0-beta.2.apk.sha256
+          cp app/build/outputs/apk/beta/app-beta.apk artifact/Carmaja-Perlen-Produktverwaltung-Test-1.1.0-beta.3.apk
+          sha256sum artifact/Carmaja-Perlen-Produktverwaltung-Test-1.1.0-beta.3.apk > artifact/Carmaja-Perlen-Produktverwaltung-Test-1.1.0-beta.3.apk.sha256
           printf '%s\n' '235ee4d746fdf5490df3c292f882a76429795e99feaeb58dea37443e944d5d2a' > artifact/BETA-CERTIFICATE-SHA256.txt
           cat > artifact/INSTALLATION.txt <<'EOF'
-          Carmaja Produktverwaltung Test
+          Carmaja-Perlen Produktverwaltung Test
 
-          App-Name: Carmaja Produktverwaltung Test
-          Paketname: de.steinhart.armbandrechner.test
-          Version: 1.1.0-beta.2
+          App-Name: Carmaja-Perlen Produktverwaltung Test
+          Paketname: de.carmajaperlen.armbandrechner.test
+          Version: 1.1.0-beta.3
           API: https://test-api.carmaja-perlen.de/
 
           Diese APK ist mit dem fest gepinnten Carmaja-Beta-Zertifikat signiert
@@ -135,7 +135,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Carmaja-Produktverwaltung-Test-1.1.0-beta.2
+          name: Carmaja-Perlen-Produktverwaltung-Test-1.1.0-beta.3
           path: artifact/*
           if-no-files-found: error
           retention-days: 30
