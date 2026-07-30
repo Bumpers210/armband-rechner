@@ -1,4 +1,47 @@
 {
-  "version": 1,
-  "products": []
+    "version": 1,
+    "products": [
+        {
+            "sku": "CP-2026-0001",
+            "slug": "cp-2026-0001-test",
+            "status": "published",
+            "title": "test",
+            "description": "Test",
+            "materials": [
+                "Sonnenstein",
+                "Amazonit",
+                "Bergkristall"
+            ],
+            "metalElements": [],
+            "size": "18 cm",
+            "stock": 1,
+            "careInstructions": [
+                "HTTP 422 invalid_status_transition: Status Übergang zu published ist nicht erlaubt."
+            ],
+            "images": [
+                {
+                    "src": "/images/products/CP-2026-0001/01.jpg",
+                    "alt": "test",
+                    "width": 1200,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "src": "/images/products/CP-2026-0001/02.jpg",
+                    "alt": "test",
+                    "width": 1200,
+                    "height": 1600,
+                    "isMain": false
+                },
+                {
+                    "src": "/images/products/CP-2026-0001/03.jpg",
+                    "alt": "test",
+                    "width": 1600,
+                    "height": 1200,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-07-30T15:37:26+00:00"
+        }
+    ]
 }
