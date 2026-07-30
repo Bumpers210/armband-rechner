@@ -52,6 +52,12 @@ printf '%s\n' \
     '  unset candidate' \
     '  exit 5' \
     'fi' \
+    'if [[ "$mode" == "always-403" ]]; then' \
+    '  printf "%s\n" "{\"ok\":false,\"error\":{\"fields\":{\"statusCode\":403}}}" >&2' \
+    '  candidate=""' \
+    '  unset candidate' \
+    '  exit 5' \
+    'fi' \
     'candidate=""' \
     'unset candidate' \
     'printf "%s\n" "{\"ok\":true,\"github\":{\"repository\":\"Bumpers210/armband-rechner\",\"branch\":\"test/product-management-beta\",\"productsReadable\":true,\"writePerformed\":false}}"' \
@@ -152,5 +158,22 @@ fi
     || fail "Nach drei HTTP-401-Antworten wurde ein Token gespeichert."
 grep -q 'github_pat_FAKE' "${LIMIT_OUTPUT}" \
     && fail "Abgelehnter Token wurde in der Ausgabe offengelegt."
+
+FORBIDDEN_OUTPUT="${TEST_ROOT}/forbidden-output"
+printf 'always-403\n' >"${MOCK_MODE_FILE}"
+rm -f "${MOCK_STATE}" "${CONFIG_DIR}/github-token"
+
+if run_installer 'github_pat_FAKE_FORBIDDEN\ny\n' "${FORBIDDEN_OUTPUT}"; then
+    fail "HTTP 403 wurde akzeptiert."
+fi
+
+grep -q 'GitHub-Diagnose fehlgeschlagen (HTTP 403).' "${FORBIDDEN_OUTPUT}" \
+    || fail "HTTP 403 wurde nicht sicher klassifiziert."
+grep -q 'github_pat_FAKE' "${FORBIDDEN_OUTPUT}" \
+    && fail "Token wurde bei HTTP 403 in der Ausgabe offengelegt."
+[[ "$(cat "${MOCK_STATE}")" == "1" ]] \
+    || fail "HTTP 403 darf keinen automatischen Wiederholungsversuch starten."
+[[ ! -e "${CONFIG_DIR}/github-token" ]] \
+    || fail "Nach HTTP 403 wurde ein Token gespeichert."
 
 printf 'Sicherer GitHub-Token-Installer-Shell-Test erfolgreich.\n'

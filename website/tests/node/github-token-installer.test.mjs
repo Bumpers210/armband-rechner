@@ -40,6 +40,9 @@ test("Token-Installer verwendet keine unsicheren Geheimwertkanaele", async () =>
   assert.match(script, /Token erkannt: %d Zeichen/);
   assert.match(script, /\[y\/N\]/);
   assert.match(script, /--github-readonly-token-stdin/);
+  assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 403\)/);
+  assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 404\)/);
+  assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 429\)/);
   assert.match(script, /chmod 0640 "\$\{TOKEN_TEMP\}"/);
   assert.match(script, /mv -f -- "\$\{TOKEN_TEMP\}" "\$\{TOKEN_FILE\}"/);
   assert.doesNotMatch(script, /export\s+TOKEN_INPUT/);

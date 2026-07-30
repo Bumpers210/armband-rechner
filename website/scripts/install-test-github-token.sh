@@ -159,6 +159,27 @@ run_readonly_diagnostic()
             return 10
         fi
 
+        if grep -Eq '"statusCode"[[:space:]]*:[[:space:]]*403' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 12
+        fi
+
+        if grep -Eq '"statusCode"[[:space:]]*:[[:space:]]*404' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 13
+        fi
+
+        if grep -Eq '"statusCode"[[:space:]]*:[[:space:]]*429' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 14
+        fi
+
         rm -f -- "${DIAGNOSTIC_OUTPUT}"
         DIAGNOSTIC_OUTPUT=""
         return 11
@@ -246,6 +267,18 @@ main()
             printf 'GitHub hat den Token abgelehnt (HTTP 401). Erneute Eingabe.\n' \
                 >&"${OUTPUT_FD}"
             continue
+        fi
+
+        if [[ "${diagnostic_result}" -eq 12 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (HTTP 403). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 13 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (HTTP 404). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 14 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (HTTP 429). Token wurde nicht gespeichert."
         fi
 
         fail "Read-only-GitHub-Diagnose fehlgeschlagen. Token wurde nicht gespeichert."
