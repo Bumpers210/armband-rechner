@@ -98,6 +98,42 @@
                 }
             ],
             "updatedAt": "2026-07-30T16:41:20+00:00"
+        },
+        {
+            "sku": "CP-2026-0003",
+            "slug": "cp-2026-0003-test2",
+            "status": "published",
+            "title": "Test2",
+            "description": "Test2",
+            "materials": [
+                "Afrikanischer Türkis",
+                "Picasso Jaspis",
+                "Indischer Achat",
+                "Bergkristall"
+            ],
+            "metalElements": [],
+            "size": "20 cm",
+            "stock": 1,
+            "careInstructions": [
+                "Test2"
+            ],
+            "images": [
+                {
+                    "src": "/images/products/CP-2026-0003/01.jpg",
+                    "alt": "Test2",
+                    "width": 1600,
+                    "height": 1200,
+                    "isMain": true
+                },
+                {
+                    "src": "/images/products/CP-2026-0003/02.jpg",
+                    "alt": "Test2",
+                    "width": 1200,
+                    "height": 1600,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-07-30T18:06:32+00:00"
         }
     ]
 }
