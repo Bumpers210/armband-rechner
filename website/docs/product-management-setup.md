@@ -171,11 +171,17 @@ sowie `Actions: read` besitzen. Er liegt als einzelne private Datei
 außerhalb aller Webroots, beispielsweise unter
 `/home/www/carmaja-private-test/config/github-token`, mit Modus `0640`.
 Der Tokenwert wird weder in die Runtime-PHP-Datei noch in die Shell-Historie
-geschrieben.
+geschrieben. Die interaktive Installation erfolgt ausschließlich mit
+`install-test-github-token.sh`: Die Eingabe wird pro Zeichen mit `*` maskiert,
+Backspace wird verarbeitet und nach einer Bestätigung wird der Kandidat nur
+über `stdin` an die Nur-Lese-Diagnose gegeben. Erst eine erfolgreiche Diagnose
+erzeugt die Token-Datei atomar. HTTP 401 verwirft den Kandidaten; nach
+spätestens drei Versuchen endet das Skript.
 
-Vor einer späteren Aktivierung werden nur die drei geänderten privaten
-Programme `bootstrap.php`, `product-api.php` und
-`product-api-diagnostics.php` aktualisiert. Danach werden in der privaten
+Vor einer späteren Aktivierung werden die drei privaten Programme
+`bootstrap.php`, `product-api.php` und `product-api-diagnostics.php` sowie das
+private Installationsskript `install-test-github-token.sh` aktualisiert.
+Danach werden in der privaten
 Runtime-Konfiguration `githubTokenFile` auf die geprüfte Token-Datei gesetzt
 und erst nach erfolgreicher Nur-Lese-Diagnose
 `githubAdapterEnabled=true` gesetzt. Öffentliche API-Dateien, Benutzer- und
@@ -199,6 +205,9 @@ chmod 0640 \
   /home/www/carmaja-private-test/program/product-api.php \
   /home/www/carmaja-private-test/program/product-admin.php \
   /home/www/carmaja-private-test/program/product-api-diagnostics.php
+
+chmod 0750 \
+  /home/www/carmaja-private-test/program/install-test-github-token.sh
 ```
 
 ## Syntax und Diagnose
@@ -238,7 +247,23 @@ Erwartete Diagnose:
 Jeder Diagnosefehler stoppt die Installation. Die Ausgabe darf keine
 absoluten Pfade und keine Konfigurationswerte enthalten.
 
-Die spätere GitHub-Prüfung erfolgt bei weiterhin deaktiviertem Adapter:
+Die sichere Token-Eingabe und erste GitHub-Prüfung erfolgen bei weiterhin
+deaktiviertem Adapter:
+
+```bash
+/home/www/carmaja-private-test/program/install-test-github-token.sh
+```
+
+Das Skript fordert den Token interaktiv und maskiert an, nennt danach nur die
+erkannte Zeichenanzahl und verlangt eine Bestätigung mit `[y/N]`. Es übergibt
+den Kandidaten weder als Argument noch über eine Environment-Variable. Bei
+HTTP 401 wird keine Token-Datei geschrieben und die Eingabe erneut angefordert.
+
+Nach erfolgreicher Installation wird `githubTokenFile` in der privaten
+`runtime-config.php` auf
+`/home/www/carmaja-private-test/config/github-token` gesetzt.
+`githubAdapterEnabled` bleibt dabei `false`. Anschließend kann dieselbe
+Nur-Lese-Prüfung dateibasiert wiederholt werden:
 
 ```bash
 "$CARMAJA_PHP_CLI" \
@@ -250,6 +275,14 @@ Sie liest ausschließlich den festen Branch und
 `website/content/products.json`. Erst wenn Repository, Branch, Remote-HEAD
 und Produktdatei bestätigt sind, darf der Adapter in einem gesondert
 freigegebenen IONOS-Schritt aktiviert werden.
+
+Lokale Syntax- und Regressionstests:
+
+```bash
+bash -n website/scripts/install-test-github-token.sh
+bash website/tests/shell/install-test-github-token-test.sh \
+  website/scripts/install-test-github-token.sh
+```
 
 ## GitHub-Environment für das Testdeployment
 

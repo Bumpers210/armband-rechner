@@ -208,6 +208,7 @@ function carmaja_api_test_fixture(): array
     carmaja_api_test_use_target($fixture, 'test');
     unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']);
     unset($GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER']);
+    unset($GLOBALS['CARMAJA_API_GITHUB_READONLY_TOKEN']);
     $_SERVER['HTTP_AUTHORIZATION'] = '';
     $_SERVER['REMOTE_ADDR'] = '203.0.113.10';
     $_SERVER['HTTP_USER_AGENT'] = 'Should-Not-Be-Audited';
@@ -1307,6 +1308,46 @@ carmaja_api_test('GitHub-Adapter bleibt standardmäßig deaktiviert', static fun
         'github_adapter_disabled'
     );
 });
+
+carmaja_api_test(
+    'Interaktiver GitHub-Token ist nur fuer deaktivierte Nur-Lese-Diagnose verfuegbar',
+    static function (): void {
+        carmaja_api_test_fixture();
+        putenv('CARMAJA_GITHUB_REPOSITORY=' . CARMAJA_TEST_REPOSITORY);
+        putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_TEST_BRANCH);
+        $candidate = 'github_' . 'pat_FAKE_READONLY_TEST_123';
+        $GLOBALS['CARMAJA_API_GITHUB_READONLY_TOKEN'] = $candidate;
+
+        carmaja_api_test_same(
+            $candidate,
+            carmaja_api_github_token(false),
+            'Nur-Lese-Diagnose hat den In-Memory-Token nicht verwendet.'
+        );
+
+        putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+        carmaja_api_test_exception(
+            static fn (): string => carmaja_api_github_token(true),
+            503,
+            'service_unavailable'
+        );
+
+        foreach ([
+            '',
+            'github_pat_FAKE TOKEN',
+            'github_' . 'pat_FAKEgithub_' . 'pat_SECOND',
+            'prefix_github_pat_FAKE',
+        ] as $invalidToken) {
+            carmaja_api_test_exception(
+                static fn (): string =>
+                    carmaja_api_validate_github_token($invalidToken),
+                400,
+                'github_token_invalid'
+            );
+        }
+
+        unset($GLOBALS['CARMAJA_API_GITHUB_READONLY_TOKEN']);
+    }
+);
 
 carmaja_api_test('GitHub-Testbranch und Pfad-Allowlist sind fest', static function (): void {
     $fixture = carmaja_api_test_fixture();

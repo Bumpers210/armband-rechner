@@ -2222,6 +2222,15 @@ function carmaja_api_require_github_adapter_enabled(): void
 function carmaja_api_github_token(bool $requireEnabled = true): string
 {
     carmaja_api_require_github_test_configuration($requireEnabled);
+
+    if (!$requireEnabled) {
+        $readonlyToken = $GLOBALS['CARMAJA_API_GITHUB_READONLY_TOKEN'] ?? null;
+
+        if (is_string($readonlyToken)) {
+            return carmaja_api_validate_github_token($readonlyToken);
+        }
+    }
+
     $tokenFile = getenv('CARMAJA_GITHUB_TOKEN_FILE');
 
     if (!is_string($tokenFile) || trim($tokenFile) === '') {
@@ -2240,6 +2249,25 @@ function carmaja_api_github_token(bool $requireEnabled = true): string
 
     if ($token === '') {
         throw new CarmajaApiException(503, 'GitHub-Token ist leer.');
+    }
+
+    return $token;
+}
+
+function carmaja_api_validate_github_token(string $token): string
+{
+    if ($token === ''
+        || strlen($token) > 512
+        || preg_match('/\s/', $token) === 1
+        || !str_starts_with($token, 'github_pat_')
+        || substr_count($token, 'github_pat_') !== 1
+        || preg_match('/^github_pat_[A-Za-z0-9_]+$/D', $token) !== 1) {
+        throw new CarmajaApiException(
+            400,
+            'GitHub-Token ist ungÃ¼ltig.',
+            [],
+            'github_token_invalid'
+        );
     }
 
     return $token;
