@@ -10,7 +10,6 @@ enum class ProductEditorField {
     BraceletSize,
     Stock,
     ShortDescription,
-    CareInstructions,
     VintedUrl,
 }
 
@@ -22,7 +21,6 @@ val ProductEditorField.errorKey: String
         ProductEditorField.BraceletSize -> "braceletSize"
         ProductEditorField.Stock -> "stock"
         ProductEditorField.ShortDescription -> "shortDescription"
-        ProductEditorField.CareInstructions -> "careInstructions"
         ProductEditorField.VintedUrl -> "vintedUrl"
     }
 
@@ -34,7 +32,6 @@ data class ProductDraftEditorState(
     val braceletSize: TextFieldValue,
     val stock: TextFieldValue,
     val shortDescription: TextFieldValue,
-    val careInstructions: TextFieldValue,
     val vintedUrl: TextFieldValue,
 ) {
     fun update(field: ProductEditorField, value: TextFieldValue): ProductDraftEditorState {
@@ -45,7 +42,6 @@ data class ProductDraftEditorState(
             ProductEditorField.BraceletSize -> copy(braceletSize = value)
             ProductEditorField.Stock -> copy(stock = value)
             ProductEditorField.ShortDescription -> copy(shortDescription = value)
-            ProductEditorField.CareInstructions -> copy(careInstructions = value)
             ProductEditorField.VintedUrl -> copy(vintedUrl = value)
         }
     }
@@ -69,11 +65,12 @@ data class ProductDraftEditorState(
         return draft.copy(
             name = name.text.trim(),
             materials = multilineTextToList(materials.text),
-            metalElements = multilineTextToList(metalElements.text),
+            metalElements = multilineTextToList(metalElements.text)
+                .map(::normalizeSpacerLabel)
+                .distinct(),
             braceletSize = braceletSize.text.trim(),
             stock = parsedStock,
             shortDescription = shortDescription.text.trim(),
-            careInstructions = multilineTextToList(careInstructions.text),
             vintedUrl = vintedUrl.text.trim(),
         )
     }
@@ -88,7 +85,6 @@ data class ProductDraftEditorState(
                 braceletSize = editorValue(draft.braceletSize),
                 stock = editorValue(draft.stock.toString()),
                 shortDescription = editorValue(draft.shortDescription),
-                careInstructions = editorValue(draft.careInstructions.toMultilineText()),
                 vintedUrl = editorValue(draft.vintedUrl),
             )
         }
@@ -100,12 +96,18 @@ data class ProductLoginEditorState(
     val username: TextFieldValue = TextFieldValue(),
     val password: TextFieldValue = TextFieldValue(),
     val deviceName: TextFieldValue = editorValue("Android"),
+    val rememberSession: Boolean = false,
 ) {
     companion object {
-        fun fromStored(apiBaseUrl: String, deviceName: String): ProductLoginEditorState {
+        fun fromStored(
+            apiBaseUrl: String,
+            deviceName: String,
+            rememberSession: Boolean = false,
+        ): ProductLoginEditorState {
             return ProductLoginEditorState(
                 apiBaseUrl = editorValue(apiBaseUrl),
                 deviceName = editorValue(deviceName),
+                rememberSession = rememberSession,
             )
         }
     }

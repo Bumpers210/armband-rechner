@@ -97,10 +97,16 @@ data class ProductDraft(
             totals: CalculatorTotals,
             nowMillis: Long,
         ): ProductDraft {
-            val selectedMaterials = prices.mapNotNull { item ->
+            val selectedItems = prices.filter { item ->
                 val quantity = values.quantities[item.name] ?: 0
-                item.name.takeIf { quantity > 0 }
+                quantity > 0
             }
+            val selectedMaterials = selectedItems
+                .filterNot(PriceItem::isSpacer)
+                .map(PriceItem::name)
+            val selectedSpacers = selectedItems
+                .filter(PriceItem::isSpacer)
+                .map { normalizeSpacerLabel(it.name) }
             val snapshot = CalculationSnapshot(
                 quantities = values.quantities.filterValues { it > 0 },
                 workMinutes = values.workMinutes,
@@ -117,12 +123,24 @@ data class ProductDraft(
             return ProductDraft(
                 draftId = UUID.randomUUID().toString(),
                 materials = selectedMaterials,
+                metalElements = selectedSpacers,
                 stock = 1,
                 internalCalculation = snapshot,
                 createdAtMillis = nowMillis,
                 updatedAtMillis = nowMillis,
             )
         }
+    }
+}
+
+internal fun PriceItem.isSpacer(): Boolean = name.contains("spacer", ignoreCase = true)
+
+internal fun normalizeSpacerLabel(value: String): String {
+    val normalized = value.trim().replace(Regex("\\s+"), " ")
+    return if (normalized.contains("Edelstahl", ignoreCase = true)) {
+        normalized
+    } else {
+        "$normalized Edelstahl".trim()
     }
 }
 

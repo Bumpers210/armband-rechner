@@ -40,6 +40,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
@@ -81,79 +82,83 @@ class MainActivity : ComponentActivity() {
             ArmbandRechnerTheme {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
                 val productState by productViewModel.uiState.collectAsStateWithLifecycle()
-                ArmbandCalculatorScreen(
-                    state = state,
-                    productState = productState,
-                    onRefresh = viewModel::refreshPriceList,
-                    onQuantityChange = viewModel::changeQuantity,
-                    onWorkMinutesChange = viewModel::updateWorkMinutes,
-                    onHourlyRateChange = viewModel::updateHourlyRate,
-                    onOtherCostsChange = viewModel::updateOtherCosts,
-                    onMarkupChange = viewModel::updateMarkup,
-                    onNewCalculation = viewModel::newCalculation,
-                    onNoticeShown = viewModel::consumeNotice,
-                    productActions = ProductUiActions(
-                        onCreateFromCalculation = {
-                            productViewModel.createFromCalculation(
-                                state.prices,
-                                state.calculator,
-                                state.totals,
-                            )
-                        },
-                        onSelectDraft = productViewModel::selectDraft,
-                        onApiBaseUrlChange = productViewModel::updateApiBaseUrl,
-                        onUsernameChange = productViewModel::updateUsername,
-                        onPasswordChange = productViewModel::updatePassword,
-                        onDeviceNameChange = productViewModel::updateDeviceName,
-                        onLogin = productViewModel::login,
-                        onNameChange = { value ->
-                            productViewModel.updateSelectedEditor(ProductEditorField.Name, value)
-                        },
-                        onMaterialsChange = { value ->
-                            productViewModel.updateSelectedEditor(ProductEditorField.Materials, value)
-                        },
-                        onMetalElementsChange = { value ->
-                            productViewModel.updateSelectedEditor(
-                                ProductEditorField.MetalElements,
-                                value,
-                            )
-                        },
-                        onBraceletSizeChange = { value ->
-                            productViewModel.updateSelectedEditor(
-                                ProductEditorField.BraceletSize,
-                                value,
-                            )
-                        },
-                        onStockChange = { value ->
-                            productViewModel.updateSelectedEditor(ProductEditorField.Stock, value)
-                        },
-                        onShortDescriptionChange = { value ->
-                            productViewModel.updateSelectedEditor(
-                                ProductEditorField.ShortDescription,
-                                value,
-                            )
-                        },
-                        onCareInstructionsChange = { value ->
-                            productViewModel.updateSelectedEditor(
-                                ProductEditorField.CareInstructions,
-                                value,
-                            )
-                        },
-                        onVintedUrlChange = { value ->
-                            productViewModel.updateSelectedEditor(
-                                ProductEditorField.VintedUrl,
-                                value,
-                            )
-                        },
-                        onImagesPicked = productViewModel::addImages,
-                        onSave = productViewModel::saveSelected,
-                        onSync = productViewModel::syncSelected,
-                        onPublish = productViewModel::publishSelected,
-                        onMarkSold = productViewModel::markSelectedSold,
-                        onDisable = productViewModel::disableSelected,
-                        onMessageShown = productViewModel::consumeMessage,
-                    ),
+                val productActions = ProductUiActions(
+                    onCreateFromCalculation = {
+                        productViewModel.createFromCalculation(
+                            state.prices,
+                            state.calculator,
+                            state.totals,
+                        )
+                    },
+                    onSelectDraft = productViewModel::selectDraft,
+                    onUsernameChange = productViewModel::updateUsername,
+                    onPasswordChange = productViewModel::updatePassword,
+                    onDeviceNameChange = productViewModel::updateDeviceName,
+                    onRememberSessionChange = productViewModel::updateRememberSession,
+                    onLogin = productViewModel::login,
+                    onLogout = productViewModel::logout,
+                    onEdit = productViewModel::beginEditingSelected,
+                    onNameChange = { value ->
+                        productViewModel.updateSelectedEditor(ProductEditorField.Name, value)
+                    },
+                    onMaterialsChange = { value ->
+                        productViewModel.updateSelectedEditor(ProductEditorField.Materials, value)
+                    },
+                    onMetalElementsChange = { value ->
+                        productViewModel.updateSelectedEditor(
+                            ProductEditorField.MetalElements,
+                            value,
+                        )
+                    },
+                    onBraceletSizeChange = { value ->
+                        productViewModel.updateSelectedEditor(
+                            ProductEditorField.BraceletSize,
+                            value,
+                        )
+                    },
+                    onStockChange = { value ->
+                        productViewModel.updateSelectedEditor(ProductEditorField.Stock, value)
+                    },
+                    onShortDescriptionChange = { value ->
+                        productViewModel.updateSelectedEditor(
+                            ProductEditorField.ShortDescription,
+                            value,
+                        )
+                    },
+                    onVintedUrlChange = { value ->
+                        productViewModel.updateSelectedEditor(
+                            ProductEditorField.VintedUrl,
+                            value,
+                        )
+                    },
+                    onImagesPicked = productViewModel::addImages,
+                    onSave = productViewModel::saveSelected,
+                    onSync = productViewModel::syncSelected,
+                    onPublish = productViewModel::publishSelected,
+                    onMarkSold = productViewModel::markSelectedSold,
+                    onDisable = productViewModel::disableSelected,
+                    onMessageShown = productViewModel::consumeMessage,
                 )
+                if (productState.authenticated) {
+                    ArmbandCalculatorScreen(
+                        state = state,
+                        productState = productState,
+                        onRefresh = viewModel::refreshPriceList,
+                        onQuantityChange = viewModel::changeQuantity,
+                        onWorkMinutesChange = viewModel::updateWorkMinutes,
+                        onHourlyRateChange = viewModel::updateHourlyRate,
+                        onOtherCostsChange = viewModel::updateOtherCosts,
+                        onMarkupChange = viewModel::updateMarkup,
+                        onNewCalculation = viewModel::newCalculation,
+                        onNoticeShown = viewModel::consumeNotice,
+                        productActions = productActions,
+                    )
+                } else {
+                    ProductLoginScreen(
+                        state = productState,
+                        actions = productActions,
+                    )
+                }
             }
         }
     }
@@ -175,6 +180,8 @@ internal fun ArmbandCalculatorScreen(
     productActions: ProductUiActions = ProductUiActions.noop(),
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val pearlPrices = state.prices.filterNot(PriceItem::isSpacer)
+    val spacerPrices = state.prices.filter(PriceItem::isSpacer)
     LaunchedEffect(state.notice) {
         state.notice?.let {
             snackbarHostState.showSnackbar(it)
@@ -203,6 +210,15 @@ internal fun ArmbandCalculatorScreen(
                     )
                 },
                 actions = {
+                    if (productState != null) {
+                        TextButton(
+                            onClick = productActions.onLogout,
+                            enabled = !productState.busy,
+                            modifier = Modifier.testTag("product-logout"),
+                        ) {
+                            Text("Abmelden")
+                        }
+                    }
                     IconButton(
                         onClick = onRefresh,
                         enabled = !state.refreshing,
@@ -260,7 +276,35 @@ internal fun ArmbandCalculatorScreen(
                 }
 
                 else -> items(
-                    items = state.prices,
+                    items = pearlPrices,
+                    key = { it.name },
+                ) { item ->
+                    PriceItemRow(
+                        item = item,
+                        quantity = state.calculator.quantities[item.name] ?: 0,
+                        onQuantityChange = onQuantityChange,
+                        modifier = Modifier.padding(
+                            horizontal = 16.dp,
+                            vertical = 4.dp,
+                        ),
+                    )
+                }
+            }
+
+            if (!state.loadingStoredData && spacerPrices.isNotEmpty()) {
+                item {
+                    SectionHeading(
+                        text = "Spacer",
+                        modifier = Modifier.padding(
+                            start = 16.dp,
+                            top = 20.dp,
+                            end = 16.dp,
+                            bottom = 10.dp,
+                        ),
+                    )
+                }
+                items(
+                    items = spacerPrices,
                     key = { it.name },
                 ) { item ->
                     PriceItemRow(

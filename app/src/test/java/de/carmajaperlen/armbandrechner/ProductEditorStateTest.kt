@@ -30,6 +30,9 @@ class ProductEditorStateTest {
             materials = TextFieldValue(
                 "  Dragon-Veins-Achat  \n\nErdbeerquarz\nDragon-Veins-Achat",
             ),
+            metalElements = TextFieldValue(
+                "Spacer Blume\nEdelstahl Spacer Stern",
+            ),
             braceletSize = TextFieldValue("  Groesse 17 cm  "),
             stock = TextFieldValue(" 2 "),
             shortDescription = TextFieldValue(
@@ -47,6 +50,10 @@ class ProductEditorStateTest {
 
         assertEquals("Handgefertigtes Edelsteinarmband", saved.name)
         assertEquals(listOf("Dragon-Veins-Achat", "Erdbeerquarz"), saved.materials)
+        assertEquals(
+            listOf("Spacer Blume Edelstahl", "Edelstahl Spacer Stern"),
+            saved.metalElements,
+        )
         assertEquals("Groesse 17 cm", saved.braceletSize)
         assertEquals(2, saved.stock)
         assertEquals("Persoenliche Anfertigung  auf Anfrage", saved.shortDescription)
@@ -70,6 +77,18 @@ class ProductEditorStateTest {
 
         assertEquals("Achat-Armband", editor.name.text)
         assertEquals(TextRange("Achat-Armband".length), editor.name.selection)
+    }
+
+    @Test
+    fun legacyCareInstructionsRemainMigrationCompatibleButAreNotEdited() {
+        val draft = testDraft().copy(careInstructions = listOf("Vor Wasser schützen"))
+        val editor = ProductDraftEditorState.fromDraft(draft).copy(
+            name = TextFieldValue("Aktualisierter Name"),
+        )
+
+        val saved = editor.applyTo(draft)
+
+        assertEquals(listOf("Vor Wasser schützen"), saved.careInstructions)
     }
 
     private fun testDraft(): ProductDraft {

@@ -310,7 +310,7 @@ internal fun requireTestApiBaseUrl(value: String): String {
     return "$normalized/"
 }
 
-private fun ProductDraft.toSaveJson(): JSONObject {
+internal fun ProductDraft.toSaveJson(): JSONObject {
     val saveStatus = when (status) {
         ProductStatus.Draft -> ProductStatus.Draft
         else -> ProductStatus.Ready
@@ -325,7 +325,6 @@ private fun ProductDraft.toSaveJson(): JSONObject {
         .put("braceletSize", braceletSize)
         .put("stock", stock)
         .put("shortDescription", shortDescription)
-        .put("careInstructions", JSONArray(careInstructions))
         .put("internalCalculation", internalCalculation.toJson())
 
     if (vintedUrl.isNotBlank()) {

@@ -29,9 +29,39 @@ class ProductDraftTest {
         assertEquals(null, draft.sku)
         assertEquals(0, draft.version)
         assertEquals(ProductStatus.Draft, draft.status)
-        assertEquals(listOf("Rosenquarz", "Edelstahlspacer"), draft.materials)
+        assertEquals(listOf("Rosenquarz"), draft.materials)
+        assertEquals(listOf("Edelstahlspacer"), draft.metalElements)
         assertEquals("1.76", draft.internalCalculation.materialCosts)
         assertEquals("17.50", draft.internalCalculation.recommendedSalePrice)
+    }
+
+    @Test
+    fun spacerWithoutStainlessSteelGetsSuffix() {
+        assertEquals("Spacer Blume Edelstahl", normalizeSpacerLabel("Spacer Blume"))
+    }
+
+    @Test
+    fun spacerWithStainlessSteelSuffixRemainsUnchanged() {
+        assertEquals(
+            "Spacer Blume Edelstahl",
+            normalizeSpacerLabel("Spacer Blume Edelstahl"),
+        )
+    }
+
+    @Test
+    fun spacerWithLeadingStainlessSteelRemainsUnchanged() {
+        assertEquals(
+            "Edelstahl Spacer Blume",
+            normalizeSpacerLabel("Edelstahl Spacer Blume"),
+        )
+    }
+
+    @Test
+    fun spacerWithDifferentlyCasedStainlessSteelRemainsUnchanged() {
+        assertEquals(
+            "Spacer Blume edelstahl",
+            normalizeSpacerLabel("  Spacer   Blume edelstahl  "),
+        )
     }
 
     @Test

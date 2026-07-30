@@ -13,17 +13,20 @@ import javax.crypto.spec.GCMParameterSpec
 class SecureTokenStore(context: Context) {
     private val preferences = context.getSharedPreferences("product_api_auth", Context.MODE_PRIVATE)
 
-    fun saveToken(token: String) {
+    fun saveRememberedSession(token: String) {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         val encrypted = cipher.doFinal(token.toByteArray(Charsets.UTF_8))
         preferences.edit()
             .putString(KEY_TOKEN, Base64.encodeToString(encrypted, Base64.NO_WRAP))
             .putString(KEY_IV, Base64.encodeToString(cipher.iv, Base64.NO_WRAP))
+            .putBoolean(KEY_REMEMBER_SESSION, true)
             .apply()
     }
 
-    fun loadToken(): String? {
+    fun loadRememberedToken(): String? {
+        if (!isRememberedSessionEnabled()) return null
+
         val encodedToken = preferences.getString(KEY_TOKEN, null) ?: return null
         val encodedIv = preferences.getString(KEY_IV, null) ?: return null
 
@@ -41,8 +44,16 @@ class SecureTokenStore(context: Context) {
         }.getOrNull()
     }
 
-    fun clearToken() {
-        preferences.edit().remove(KEY_TOKEN).remove(KEY_IV).apply()
+    fun isRememberedSessionEnabled(): Boolean {
+        return preferences.getBoolean(KEY_REMEMBER_SESSION, false)
+    }
+
+    fun clearSession() {
+        preferences.edit()
+            .remove(KEY_TOKEN)
+            .remove(KEY_IV)
+            .remove(KEY_REMEMBER_SESSION)
+            .apply()
     }
 
     fun savePlainSetting(key: String, value: String) {
@@ -86,6 +97,7 @@ class SecureTokenStore(context: Context) {
         private const val KEY_ALIAS = "carmaja_product_api_token"
         private const val KEY_TOKEN = "encrypted_token"
         private const val KEY_IV = "encrypted_token_iv"
+        private const val KEY_REMEMBER_SESSION = "remember_session"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
     }
 }

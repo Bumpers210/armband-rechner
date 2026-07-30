@@ -22,7 +22,9 @@ data class ProductUiState(
     val selectedDraftId: String? = null,
     val editors: Map<String, ProductDraftEditorState> = emptyMap(),
     val loginEditor: ProductLoginEditorState = ProductLoginEditorState(),
+    val sessionChecked: Boolean = false,
     val authenticated: Boolean = false,
+    val editingDraftId: String? = null,
     val busy: Boolean = false,
     val message: String? = null,
     val error: String? = null,
@@ -48,8 +50,12 @@ class ProductViewModel(
 
     init {
         viewModelScope.launch {
-            apiToken = tokenStore.loadToken()
-                .takeIf { BuildConfig.PRODUCT_PUBLISH_TARGET == "test" }
+            val canRestoreSession = BuildConfig.PRODUCT_PUBLISH_TARGET == "test" &&
+                tokenStore.isRememberedSessionEnabled()
+            apiToken = if (canRestoreSession) tokenStore.loadRememberedToken() else null
+            if (apiToken == null) {
+                tokenStore.clearSession()
+            }
             val drafts = repository.loadDrafts()
             val apiBaseUrl = BuildConfig.DEFAULT_PRODUCT_API_BASE_URL
             val deviceName = tokenStore.loadPlainSetting(
@@ -60,7 +66,12 @@ class ProductViewModel(
                 drafts = drafts,
                 selectedDraftId = drafts.firstOrNull()?.draftId,
                 editors = drafts.associate { it.draftId to ProductDraftEditorState.fromDraft(it) },
-                loginEditor = ProductLoginEditorState.fromStored(apiBaseUrl, deviceName),
+                loginEditor = ProductLoginEditorState.fromStored(
+                    apiBaseUrl = apiBaseUrl,
+                    deviceName = deviceName,
+                    rememberSession = apiToken != null,
+                ),
+                sessionChecked = true,
                 authenticated = apiToken != null,
             )
         }
@@ -84,26 +95,40 @@ class ProductViewModel(
     }
 
     fun selectDraft(draftId: String) {
-        _uiState.value = _uiState.value.copy(selectedDraftId = draftId, fieldErrors = emptyMap())
-    }
-
-    fun updateApiBaseUrl(value: TextFieldValue) {
-        // The beta app has no environment switch; the endpoint comes from BuildConfig.
+        _uiState.value = _uiState.value.copy(
+            selectedDraftId = draftId,
+            editingDraftId = null,
+            fieldErrors = emptyMap(),
+        )
     }
 
     fun updateUsername(value: TextFieldValue) {
         val editor = _uiState.value.loginEditor.copy(username = value)
-        _uiState.value = _uiState.value.copy(loginEditor = editor)
+        _uiState.value = _uiState.value.copy(loginEditor = editor, error = null)
     }
 
     fun updatePassword(value: TextFieldValue) {
         val editor = _uiState.value.loginEditor.copy(password = value)
-        _uiState.value = _uiState.value.copy(loginEditor = editor)
+        _uiState.value = _uiState.value.copy(loginEditor = editor, error = null)
     }
 
     fun updateDeviceName(value: TextFieldValue) {
         val editor = _uiState.value.loginEditor.copy(deviceName = value)
-        _uiState.value = _uiState.value.copy(loginEditor = editor)
+        _uiState.value = _uiState.value.copy(loginEditor = editor, error = null)
+    }
+
+    fun updateRememberSession(value: Boolean) {
+        val editor = _uiState.value.loginEditor.copy(rememberSession = value)
+        _uiState.value = _uiState.value.copy(loginEditor = editor, error = null)
+    }
+
+    fun beginEditingSelected() {
+        val draft = _uiState.value.selectedDraft ?: return
+        if (draft.status != ProductStatus.Published) return
+        _uiState.value = _uiState.value.copy(
+            editingDraftId = draft.draftId,
+            fieldErrors = emptyMap(),
+        )
     }
 
     fun updateSelectedEditor(field: ProductEditorField, value: TextFieldValue) {
@@ -160,12 +185,16 @@ class ProductViewModel(
                 }
             } catch (error: ProductTargetMismatchException) {
                 apiToken = null
-                tokenStore.clearToken()
+                tokenStore.clearSession()
                 _uiState.value = _uiState.value.copy(authenticated = false)
                 throw error
             }
             apiToken = login.token
-            tokenStore.saveToken(login.token)
+            if (editor.rememberSession) {
+                tokenStore.saveRememberedSession(login.token)
+            } else {
+                tokenStore.clearSession()
+            }
             tokenStore.savePlainSetting(SecureTokenStore.SETTING_DEVICE_NAME, deviceName)
             _uiState.value = _uiState.value.copy(
                 authenticated = true,
@@ -173,6 +202,23 @@ class ProductViewModel(
                 message = "Anmeldung erfolgreich.",
             )
         }
+    }
+
+    fun logout() {
+        apiToken = null
+        tokenStore.clearSession()
+        _uiState.value = _uiState.value.copy(
+            authenticated = false,
+            editingDraftId = null,
+            loginEditor = _uiState.value.loginEditor.copy(
+                password = TextFieldValue(),
+                rememberSession = false,
+            ),
+            message = null,
+            error = null,
+            fieldErrors = emptyMap(),
+            conflict = null,
+        )
     }
 
     fun syncSelected() {
@@ -226,6 +272,7 @@ class ProductViewModel(
                     "Veröffentlichung gestartet: ${result.commitSha.take(7)} (${result.deploymentStatus})."
                 },
                 fieldErrors = emptyMap(),
+                editingDraftId = null,
             )
         }
     }
@@ -282,6 +329,7 @@ class ProductViewModel(
             _uiState.value = _uiState.value.copy(
                 message = result.commitSha?.let { "$successMessage Commit ${it.take(7)}." }
                     ?: "$successMessage Verarbeitung: ${result.deploymentStatus}.",
+                editingDraftId = null,
             )
         }
     }
@@ -369,6 +417,11 @@ class ProductViewModel(
         viewModelScope.launch {
             runCatching { block() }
                 .onFailure { error ->
+                    val authenticationFailed = (error as? ProductApiException)?.statusCode == 401
+                    if (authenticationFailed) {
+                        apiToken = null
+                        tokenStore.clearSession()
+                    }
                     val fieldErrors = (error as? ProductApiException)
                         ?.fields
                         .orEmpty()
@@ -377,6 +430,11 @@ class ProductViewModel(
                     _uiState.value = _uiState.value.copy(
                         error = readableError(error),
                         busy = false,
+                        authenticated = if (authenticationFailed) {
+                            false
+                        } else {
+                            _uiState.value.authenticated
+                        },
                         conflict = conflict ?: _uiState.value.conflict,
                         fieldErrors = if (fieldErrors.isEmpty()) {
                             _uiState.value.fieldErrors

@@ -5,10 +5,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,6 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -40,18 +46,19 @@ import androidx.compose.ui.unit.dp
 data class ProductUiActions(
     val onCreateFromCalculation: () -> Unit = {},
     val onSelectDraft: (String) -> Unit = {},
-    val onApiBaseUrlChange: (TextFieldValue) -> Unit = {},
     val onUsernameChange: (TextFieldValue) -> Unit = {},
     val onPasswordChange: (TextFieldValue) -> Unit = {},
     val onDeviceNameChange: (TextFieldValue) -> Unit = {},
+    val onRememberSessionChange: (Boolean) -> Unit = {},
     val onLogin: () -> Unit = {},
+    val onLogout: () -> Unit = {},
+    val onEdit: () -> Unit = {},
     val onNameChange: (TextFieldValue) -> Unit = {},
     val onMaterialsChange: (TextFieldValue) -> Unit = {},
     val onMetalElementsChange: (TextFieldValue) -> Unit = {},
     val onBraceletSizeChange: (TextFieldValue) -> Unit = {},
     val onStockChange: (TextFieldValue) -> Unit = {},
     val onShortDescriptionChange: (TextFieldValue) -> Unit = {},
-    val onCareInstructionsChange: (TextFieldValue) -> Unit = {},
     val onVintedUrlChange: (TextFieldValue) -> Unit = {},
     val onImagesPicked: (List<Uri>) -> Unit = {},
     val onSave: () -> Unit = {},
@@ -63,6 +70,111 @@ data class ProductUiActions(
 ) {
     companion object {
         fun noop() = ProductUiActions()
+    }
+}
+
+@Composable
+internal fun ProductLoginScreen(
+    state: ProductUiState,
+    actions: ProductUiActions,
+    modifier: Modifier = Modifier,
+) {
+    if (!state.sessionChecked) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = modifier.fillMaxSize(),
+        ) {
+            CircularProgressIndicator(modifier = Modifier.testTag("product-session-check"))
+        }
+        return
+    }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 32.dp),
+    ) {
+        Text(
+            text = "Carmaja-Perlen Produktverwaltung Test",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = "TESTUMGEBUNG",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.testTag("login-test-environment"),
+        )
+        Text(
+            text = "Test-API: test-api.carmaja-perlen.de",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.testTag("login-api-environment"),
+        )
+        OutlinedTextField(
+            value = state.loginEditor.username,
+            onValueChange = actions.onUsernameChange,
+            label = { Text("Benutzer") },
+            singleLine = true,
+            enabled = !state.busy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("login-username"),
+        )
+        OutlinedTextField(
+            value = state.loginEditor.password,
+            onValueChange = actions.onPasswordChange,
+            label = { Text("Passwort") },
+            visualTransformation = PasswordVisualTransformation(),
+            singleLine = true,
+            enabled = !state.busy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("login-password"),
+        )
+        OutlinedTextField(
+            value = state.loginEditor.deviceName,
+            onValueChange = actions.onDeviceNameChange,
+            label = { Text("Gerät") },
+            singleLine = true,
+            enabled = !state.busy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("login-device"),
+        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Checkbox(
+                checked = state.loginEditor.rememberSession,
+                onCheckedChange = actions.onRememberSessionChange,
+                enabled = !state.busy,
+                modifier = Modifier.testTag("login-remember-session"),
+            )
+            Text("Dauerhaft eingeloggt bleiben")
+        }
+        state.error?.let { error ->
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.testTag("login-error"),
+            )
+        }
+        Button(
+            onClick = actions.onLogin,
+            enabled = !state.busy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .testTag("login-submit"),
+        ) {
+            Text(if (state.busy) "Anmeldung läuft ..." else "Anmelden")
+        }
     }
 }
 
@@ -93,6 +205,12 @@ internal fun ProductManagementSection(
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.testTag("product-test-environment"),
             )
+            Text(
+                text = "Test-API: test-api.carmaja-perlen.de",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("product-api-environment"),
+            )
         }
 
         Button(
@@ -102,8 +220,6 @@ internal fun ProductManagementSection(
         ) {
             Text("Produkt aus Kalkulation erstellen")
         }
-
-        ServerLoginPanel(state = state, actions = actions)
 
         if (state.drafts.isEmpty()) {
             Text(
@@ -125,26 +241,40 @@ internal fun ProductManagementSection(
         val editor = state.selectedEditor
         if (draft != null && editor != null) {
             key(draft.draftId) {
-                ProductDraftForm(
-                    draft = draft,
-                    editor = editor,
-                    fieldErrors = state.fieldErrors,
-                    busy = state.busy,
-                    actions = actions,
-                    onPickImages = {
-                        imagePicker.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                        )
-                    },
-                )
+                if (draft.status == ProductStatus.Published &&
+                    state.editingDraftId != draft.draftId
+                ) {
+                    PublishedProductView(
+                        draft = draft,
+                        busy = state.busy,
+                        actions = actions,
+                    )
+                } else {
+                    ProductDraftForm(
+                        draft = draft,
+                        editor = editor,
+                        fieldErrors = state.fieldErrors,
+                        busy = state.busy,
+                        actions = actions,
+                        isPublishedEdit = state.editingDraftId == draft.draftId,
+                        onPickImages = {
+                            imagePicker.launch(
+                                PickVisualMediaRequest(
+                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                ),
+                            )
+                        },
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ServerLoginPanel(
-    state: ProductUiState,
+internal fun PublishedProductView(
+    draft: ProductDraft,
+    busy: Boolean,
     actions: ProductUiActions,
 ) {
     Surface(
@@ -157,48 +287,47 @@ private fun ServerLoginPanel(
             modifier = Modifier.padding(12.dp),
         ) {
             Text(
-                text = if (state.authenticated) "Server verbunden" else "Server-Anmeldung",
+                text = draft.name,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "Test-API: test-api.carmaja-perlen.de",
+                text = "${draft.sku.orEmpty()} · veröffentlicht · Version ${draft.version}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Text("Perlen: ${draft.materials.joinToString(", ")}")
+            Text("Spacer: ${draft.metalElements.joinToString(", ")}")
+            Text(draft.shortDescription)
+            Text("Bilder: ${draft.images.size}/5")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = state.loginEditor.username,
-                    onValueChange = actions.onUsernameChange,
-                    label = { Text("Benutzer") },
-                    singleLine = true,
-                    enabled = !state.busy,
-                    modifier = Modifier.weight(1f),
-                )
-                OutlinedTextField(
-                    value = state.loginEditor.deviceName,
-                    onValueChange = actions.onDeviceNameChange,
-                    label = { Text("Gerät") },
-                    singleLine = true,
-                    enabled = !state.busy,
-                    modifier = Modifier.weight(1f),
-                )
+                OutlinedButton(
+                    onClick = actions.onMarkSold,
+                    enabled = !busy,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("published-mark-sold"),
+                ) {
+                    Text("Verkauft")
+                }
+                OutlinedButton(
+                    onClick = actions.onDisable,
+                    enabled = !busy,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag("published-disable"),
+                ) {
+                    Text("Deaktivieren")
+                }
             }
-            OutlinedTextField(
-                value = state.loginEditor.password,
-                onValueChange = actions.onPasswordChange,
-                label = { Text("Passwort") },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
-                enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth(),
-            )
             OutlinedButton(
-                onClick = actions.onLogin,
-                enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth(),
+                onClick = actions.onEdit,
+                enabled = !busy,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("published-edit"),
             ) {
-                Text("Anmelden")
+                Text("Bearbeiten")
             }
         }
     }
@@ -255,13 +384,22 @@ internal fun ProductDraftForm(
     busy: Boolean,
     actions: ProductUiActions,
     onPickImages: () -> Unit,
+    isPublishedEdit: Boolean = false,
 ) {
     var showPublishConfirmation by remember(draft.draftId) { mutableStateOf(false) }
 
     if (showPublishConfirmation) {
         AlertDialog(
             onDismissRequest = { showPublishConfirmation = false },
-            title = { Text("Auf Testwebsite veröffentlichen?") },
+            title = {
+                Text(
+                    if (isPublishedEdit) {
+                        "Änderungen erneut veröffentlichen?"
+                    } else {
+                        "Auf Testwebsite veröffentlichen?"
+                    },
+                )
+            },
             text = {
                 Text(
                     "Das Produkt wird für die geschützte Testwebsite bereitgestellt. " +
@@ -275,7 +413,13 @@ internal fun ProductDraftForm(
                         actions.onPublish()
                     },
                 ) {
-                    Text("Auf Testwebsite veröffentlichen")
+                    Text(
+                        if (isPublishedEdit) {
+                            "Änderungen erneut veröffentlichen"
+                        } else {
+                            "Auf Testwebsite veröffentlichen"
+                        },
+                    )
                 }
             },
             dismissButton = {
@@ -317,8 +461,8 @@ internal fun ProductDraftForm(
             ProductTextField(
                 value = editor.materials,
                 onValueChange = actions.onMaterialsChange,
-                label = "Materialien",
-                testTag = "product-materials",
+                label = "Perlen",
+                testTag = "product-pearls",
                 error = fieldErrors["materials"],
                 busy = busy,
                 singleLine = false,
@@ -326,8 +470,8 @@ internal fun ProductDraftForm(
             ProductTextField(
                 value = editor.metalElements,
                 onValueChange = actions.onMetalElementsChange,
-                label = "Metallelemente",
-                testTag = "product-metal-elements",
+                label = "Spacer",
+                testTag = "product-spacers",
                 busy = busy,
                 singleLine = false,
             )
@@ -358,14 +502,6 @@ internal fun ProductDraftForm(
                 label = "Kurzbeschreibung",
                 testTag = "product-short-description",
                 error = fieldErrors["shortDescription"],
-                busy = busy,
-                singleLine = false,
-            )
-            ProductTextField(
-                value = editor.careInstructions,
-                onValueChange = actions.onCareInstructionsChange,
-                label = "Pflegehinweise",
-                testTag = "product-care-instructions",
                 busy = busy,
                 singleLine = false,
             )
@@ -417,27 +553,24 @@ internal fun ProductDraftForm(
             ) {
                 Text("Speichern und synchronisieren")
             }
-            Button(
-                onClick = { showPublishConfirmation = true },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(),
+            if (isPublishedEdit ||
+                draft.status == ProductStatus.Draft ||
+                draft.status == ProductStatus.Ready
             ) {
-                Text("Auf Testwebsite veröffentlichen")
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = actions.onMarkSold,
-                    enabled = !busy && draft.sku != null,
-                    modifier = Modifier.weight(1f),
+                Button(
+                    onClick = { showPublishConfirmation = true },
+                    enabled = !busy,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("product-publish"),
                 ) {
-                    Text("Verkauft")
-                }
-                OutlinedButton(
-                    onClick = actions.onDisable,
-                    enabled = !busy && draft.sku != null,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text("Deaktivieren")
+                    Text(
+                        if (isPublishedEdit) {
+                            "Änderungen erneut veröffentlichen"
+                        } else {
+                            "Auf Testwebsite veröffentlichen"
+                        },
+                    )
                 }
             }
         }
