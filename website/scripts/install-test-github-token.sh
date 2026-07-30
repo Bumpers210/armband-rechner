@@ -143,7 +143,8 @@ run_readonly_diagnostic()
     chmod 0600 "${DIAGNOSTIC_OUTPUT}"
 
     if printf '%s\n' "${TOKEN_INPUT}" \
-        | "${PHP_CLI}" "${DIAGNOSTIC_PROGRAM}" \
+        | CARMAJA_CONFIG_FILE="${CONFIG_FILE}" \
+            "${PHP_CLI}" "${DIAGNOSTIC_PROGRAM}" \
             --github-readonly-token-stdin \
             >"${DIAGNOSTIC_OUTPUT}" 2>&1; then
         diagnostic_status=0

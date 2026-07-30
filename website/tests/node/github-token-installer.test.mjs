@@ -40,6 +40,7 @@ test("Token-Installer verwendet keine unsicheren Geheimwertkanaele", async () =>
   assert.match(script, /Token erkannt: %d Zeichen/);
   assert.match(script, /\[y\/N\]/);
   assert.match(script, /--github-readonly-token-stdin/);
+  assert.match(script, /CARMAJA_CONFIG_FILE="\$\{CONFIG_FILE\}"/);
   assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 403\)/);
   assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 404\)/);
   assert.match(script, /GitHub-Diagnose fehlgeschlagen \(HTTP 429\)/);
