@@ -126,6 +126,15 @@ data class ProductDraft(
     }
 }
 
+internal fun ProductDraft.prepareForPublish(
+    operationIdFactory: () -> String,
+): ProductDraft {
+    return copy(
+        status = ProductStatus.Ready,
+        pendingPublishOperationId = pendingPublishOperationId ?: operationIdFactory(),
+    )
+}
+
 fun isValidVintedUrl(value: String): Boolean {
     return runCatching {
         val uri = URI(value.trim())

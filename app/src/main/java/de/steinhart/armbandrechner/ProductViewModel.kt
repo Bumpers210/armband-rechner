@@ -201,9 +201,11 @@ class ProductViewModel(
         runBusy {
             var current = repository.saveDraft(draft)
             replaceDraft(current)
-            val operationId = current.pendingPublishOperationId ?: UUID.randomUUID().toString()
-            current = repository.saveDraft(current.copy(pendingPublishOperationId = operationId))
+            current = repository.saveDraft(
+                current.prepareForPublish { UUID.randomUUID().toString() },
+            )
             replaceDraft(current)
+            val operationId = requireNotNull(current.pendingPublishOperationId)
             current = syncDraft(current)
             val result = withContext(Dispatchers.IO) {
                 apiClient.publish(requireBaseUrl(), requireToken(), current, operationId)

@@ -79,4 +79,37 @@ class ProductDraftTest {
         assertFalse(isValidVintedUrl("https://vinted.de:443/items/123"))
         assertFalse(isValidVintedUrl("https://vinted.de/redirect?url=https://example.org"))
     }
+
+    @Test
+    fun publishPreparationMarksDraftReadyAndKeepsStableOperationId() {
+        val draft = ProductDraft(
+            draftId = "019fa2e6-cf3c-7073-9275-7d3b566f54ee",
+            status = ProductStatus.Draft,
+            internalCalculation = CalculationSnapshot(
+                quantities = emptyMap(),
+                workMinutes = "0",
+                hourlyRate = "0",
+                otherCosts = "0",
+                markupPercent = "0",
+                materialCosts = "0.00",
+                laborCosts = "0.00",
+                totalCosts = "0.00",
+                recommendedSalePrice = "0.00",
+                createdAtMillis = 1L,
+            ),
+            createdAtMillis = 1L,
+            updatedAtMillis = 1L,
+        )
+
+        val prepared = draft.prepareForPublish { "operation-1" }
+        val retried = prepared.prepareForPublish {
+            throw AssertionError("Retry darf keine neue operationId erzeugen.")
+        }
+
+        assertEquals(ProductStatus.Ready, prepared.status)
+        assertEquals("operation-1", prepared.pendingPublishOperationId)
+        assertEquals("operation-1", retried.pendingPublishOperationId)
+        assertEquals(draft.draftId, retried.draftId)
+        assertEquals(draft.version, retried.version)
+    }
 }
