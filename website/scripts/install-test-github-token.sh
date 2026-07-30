@@ -180,6 +180,35 @@ run_readonly_diagnostic()
             return 14
         fi
 
+        if grep -Eq '"code"[[:space:]]*:[[:space:]]*"github_head_invalid"' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 15
+        fi
+
+        if grep -Eq '"code"[[:space:]]*:[[:space:]]*"github_products_unreadable"' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 16
+        fi
+
+        if grep -Eq '"code"[[:space:]]*:[[:space:]]*"github_token_invalid"' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 17
+        fi
+
+        if grep -Eq \
+            '"code"[[:space:]]*:[[:space:]]*"(github_readonly_configuration_invalid|service_unavailable)"' \
+            "${DIAGNOSTIC_OUTPUT}"; then
+            rm -f -- "${DIAGNOSTIC_OUTPUT}"
+            DIAGNOSTIC_OUTPUT=""
+            return 18
+        fi
+
         rm -f -- "${DIAGNOSTIC_OUTPUT}"
         DIAGNOSTIC_OUTPUT=""
         return 11
@@ -188,7 +217,7 @@ run_readonly_diagnostic()
     if ! diagnostic_output_is_safe_success; then
         rm -f -- "${DIAGNOSTIC_OUTPUT}"
         DIAGNOSTIC_OUTPUT=""
-        return 11
+        return 19
     fi
 
     rm -f -- "${DIAGNOSTIC_OUTPUT}"
@@ -279,6 +308,26 @@ main()
 
         if [[ "${diagnostic_result}" -eq 14 ]]; then
             fail "GitHub-Diagnose fehlgeschlagen (HTTP 429). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 15 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (Remote-HEAD ungueltig). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 16 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (Produktdatei nicht lesbar). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 17 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (Tokenformat ungueltig). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 18 ]]; then
+            fail "GitHub-Diagnose fehlgeschlagen (Testkonfiguration ungueltig). Token wurde nicht gespeichert."
+        fi
+
+        if [[ "${diagnostic_result}" -eq 19 ]]; then
+            fail "GitHub-Diagnose lieferte unvollstaendige Erfolgsdaten. Token wurde nicht gespeichert."
         fi
 
         fail "Read-only-GitHub-Diagnose fehlgeschlagen. Token wurde nicht gespeichert."

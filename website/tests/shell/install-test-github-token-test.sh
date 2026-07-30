@@ -58,6 +58,18 @@ printf '%s\n' \
     '  unset candidate' \
     '  exit 5' \
     'fi' \
+    'if [[ "$mode" == "products-unreadable" ]]; then' \
+    '  printf "%s\n" "{\"ok\":false,\"error\":{\"code\":\"github_products_unreadable\",\"fields\":{}}}" >&2' \
+    '  candidate=""' \
+    '  unset candidate' \
+    '  exit 5' \
+    'fi' \
+    'if [[ "$mode" == "incomplete-success" ]]; then' \
+    '  candidate=""' \
+    '  unset candidate' \
+    '  printf "%s\n" "{\"ok\":true,\"github\":{\"repository\":\"Bumpers210/armband-rechner\"}}"' \
+    '  exit 0' \
+    'fi' \
     'candidate=""' \
     'unset candidate' \
     'printf "%s\n" "{\"ok\":true,\"github\":{\"repository\":\"Bumpers210/armband-rechner\",\"branch\":\"test/product-management-beta\",\"productsReadable\":true,\"writePerformed\":false}}"' \
@@ -175,5 +187,35 @@ grep -q 'github_pat_FAKE' "${FORBIDDEN_OUTPUT}" \
     || fail "HTTP 403 darf keinen automatischen Wiederholungsversuch starten."
 [[ ! -e "${CONFIG_DIR}/github-token" ]] \
     || fail "Nach HTTP 403 wurde ein Token gespeichert."
+
+UNREADABLE_OUTPUT="${TEST_ROOT}/unreadable-output"
+printf 'products-unreadable\n' >"${MOCK_MODE_FILE}"
+rm -f "${MOCK_STATE}" "${CONFIG_DIR}/github-token"
+
+if run_installer 'github_pat_FAKE_UNREADABLE\ny\n' "${UNREADABLE_OUTPUT}"; then
+    fail "Nicht lesbare Produktdatei wurde akzeptiert."
+fi
+
+grep -q 'GitHub-Diagnose fehlgeschlagen (Produktdatei nicht lesbar).' \
+    "${UNREADABLE_OUTPUT}" \
+    || fail "Sicherer Diagnosecode fuer die Produktdatei fehlt."
+grep -q 'github_pat_FAKE' "${UNREADABLE_OUTPUT}" \
+    && fail "Token wurde beim Diagnosecode in der Ausgabe offengelegt."
+[[ ! -e "${CONFIG_DIR}/github-token" ]] \
+    || fail "Nach nicht lesbarer Produktdatei wurde ein Token gespeichert."
+
+INCOMPLETE_OUTPUT="${TEST_ROOT}/incomplete-output"
+printf 'incomplete-success\n' >"${MOCK_MODE_FILE}"
+rm -f "${MOCK_STATE}" "${CONFIG_DIR}/github-token"
+
+if run_installer 'github_pat_FAKE_INCOMPLETE\ny\n' "${INCOMPLETE_OUTPUT}"; then
+    fail "Unvollstaendige Erfolgsdaten wurden akzeptiert."
+fi
+
+grep -q 'GitHub-Diagnose lieferte unvollstaendige Erfolgsdaten.' \
+    "${INCOMPLETE_OUTPUT}" \
+    || fail "Unvollstaendige Erfolgsdaten wurden nicht sicher klassifiziert."
+[[ ! -e "${CONFIG_DIR}/github-token" ]] \
+    || fail "Nach unvollstaendiger Diagnose wurde ein Token gespeichert."
 
 printf 'Sicherer GitHub-Token-Installer-Shell-Test erfolgreich.\n'
