@@ -137,7 +137,7 @@ function production_api_ready_payload(string $draftId, int $version): array
         'stock' => 1,
         'shortDescription' => 'Handgefertigtes Armband.',
         'careInstructions' => [],
-        'vintedUrl' => null,
+        'vintedUrl' => 'https://www.vinted.de/items/1234567890',
         'internalCalculation' => [],
     ];
 }
