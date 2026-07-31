@@ -6,6 +6,7 @@ on:
       - release/production-product-management
     paths:
       - '.github/workflows/production-website-validation.yml'
+      - '.github/workflows/deploy-website.yml'
       - 'website/app/**'
       - 'website/components/**'
       - 'website/config/**'
@@ -13,7 +14,12 @@ on:
       - 'website/lib/**'
       - 'website/public/**'
       - 'website/scripts/verify-production-export.mjs'
+      - 'website/scripts/prepare-production-deploy.mjs'
+      - 'website/scripts/deploy-production-site.sh'
+      - 'website/scripts/run-production-deployment.sh'
       - 'website/tests/node/production-*.test.mjs'
+      - 'website/tests/shell/**'
+      - 'website/.gitignore'
       - 'website/eslint.config.mjs'
       - 'website/next.config.ts'
       - 'website/package.json'
