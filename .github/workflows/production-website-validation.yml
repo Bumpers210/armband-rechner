@@ -1,0 +1,116 @@
+name: Validate production website
+
+on:
+  push:
+    branches:
+      - release/production-product-management
+    paths:
+      - '.github/workflows/production-website-validation.yml'
+      - 'website/app/**'
+      - 'website/components/**'
+      - 'website/config/**'
+      - 'website/content/**'
+      - 'website/lib/**'
+      - 'website/public/**'
+      - 'website/scripts/verify-production-export.mjs'
+      - 'website/tests/node/production-*.test.mjs'
+      - 'website/eslint.config.mjs'
+      - 'website/next.config.ts'
+      - 'website/package.json'
+      - 'website/package-lock.json'
+      - 'website/tsconfig.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-website-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-production-website:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository without write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install locked website dependencies
+        working-directory: website
+        run: npm ci
+
+      - name: Lint production website
+        working-directory: website
+        run: npm run lint
+
+      - name: Run production website tests
+        working-directory: website
+        run: npm test
+
+      - name: Build production website
+        working-directory: website
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_log="$(mktemp)"
+          trap 'rm -f "${build_log}"' EXIT
+          npm run build | tee "${build_log}"
+          grep -Fxq 'PRODUCTION_EXPORT_VERIFIED_OK' "${build_log}"
+
+      - name: Verify static production export
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          output='website/out'
+          test -d "${output}"
+          test -f "${output}/index.html"
+          test -f "${output}/impressum/index.html"
+          test -f "${output}/datenschutz/index.html"
+          test -f "${output}/armbaender/index.html"
+          test -f "${output}/sitemap.xml"
+          test -f "${output}/robots.txt"
+          test ! -e "${output}/armbaender/__empty"
+          test ! -e "${output}/armbaender/__empty.html"
+          ! find "${output}" -type f -name 'products.json' -print -quit | grep -q .
+
+          export_text="$(mktemp)"
+          trap 'rm -f "${export_text}"' EXIT
+          find "${output}" -type f \( -name '*.html' -o -name '*.json' -o -name '*.txt' -o -name '*.xml' \) \
+            -print0 | xargs -0 cat > "${export_text}"
+
+          for forbidden_value in \
+            'CP-2026-0001' \
+            'CP-2026-0002' \
+            'CP-2026-0003' \
+            'CP-2026-0004' \
+            'test.carmaja-perlen.de' \
+            'test-api.carmaja-perlen.de' \
+            'internalArticleName' \
+            'sourceSlug' \
+            'salePrice' \
+            'recommendedPrice' \
+            'draftId' \
+            'expectedVersion' \
+            'internalCalculation' \
+            'careInstructions' \
+            'payloadAlt' \
+            'deviceToken'; do
+            ! grep -Fq "${forbidden_value}" "${export_text}"
+          done
+
+          if [ -d "${output}/images/products" ]; then
+            ! find "${output}/images/products" \
+              -path '*/CP-2026-000[1-4]/*' -type f -print -quit | grep -q .
+          fi
+
+          echo 'PRODUCTION_EXPORT_VERIFIED_OK'
