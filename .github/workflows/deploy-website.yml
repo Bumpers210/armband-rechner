@@ -101,7 +101,6 @@ jobs:
         run: npm run build
 
       - name: Bind release to workflow commit
-        if: ${{ github.ref == 'refs/heads/main' }}
         id: release
         shell: bash
         run: |
@@ -110,14 +109,12 @@ jobs:
           printf 'release-id=%s\n' "$RELEASE_ID" >> "$GITHUB_OUTPUT"
 
       - name: Scan sources and create production deployment manifest
-        if: ${{ github.ref == 'refs/heads/main' }}
         env:
           GITHUB_REF_NAME: main
           CARMAJA_RELEASE_ID: ${{ steps.release.outputs.release-id }}
         run: npm run prepare:production-deploy
 
       - name: Package only verified production export
-        if: ${{ github.ref == 'refs/heads/main' }}
         id: package
         shell: bash
         run: |
@@ -128,7 +125,6 @@ jobs:
           printf 'archive-sha256=%s\n' "$ARCHIVE_SHA256" >> "$GITHUB_OUTPUT"
 
       - name: Upload verified production deployment artifact
-        if: ${{ github.ref == 'refs/heads/main' }}
         uses: actions/upload-artifact@v4
         with:
           name: Carmaja-Produktion-Website-${{ github.sha }}

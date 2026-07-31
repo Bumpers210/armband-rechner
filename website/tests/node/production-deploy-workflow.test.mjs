@@ -19,6 +19,14 @@ test("Produktionsworkflow trennt Build und ausschliesslich main-gebundenes Deplo
   assert.match(workflow, /- main/);
   assert.match(workflow, /build-production-site:/);
   assert.match(workflow, /deploy-production-site:/);
+  const buildSection = workflow.slice(
+    workflow.indexOf("  build-production-site:"),
+    workflow.indexOf("  deploy-production-site:"),
+  );
+  assert.match(buildSection, /Scan sources and create production deployment manifest/);
+  assert.match(buildSection, /Package only verified production export/);
+  assert.match(buildSection, /Upload verified production deployment artifact/);
+  assert.doesNotMatch(buildSection, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
   assert.match(workflow, /github\.ref == 'refs\/heads\/main' && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true'/);
   assert.match(workflow, /environment:\s*\n\s+name: carmaja-production/);
   assert.match(workflow, /CARMAJA_PRODUCTION_PUBLISH_ENABLED: "false"/);
