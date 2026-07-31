@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 export const PRODUCTION_DEPLOY_CONSTANTS = Object.freeze({
   repository: "Bumpers210/armband-rechner",
   branch: "main",
+  candidateBranch: "release/production-product-management",
   target: "production",
   domain: "www.carmaja-perlen.de",
   webroot: "/home/www/carmaja",
@@ -158,6 +159,7 @@ export function createDeployManifest({
   repositoryRoot,
   commitSha,
   releaseId,
+  sourceBranch = PRODUCTION_DEPLOY_CONSTANTS.branch,
 }) {
   if (!/^[0-9a-f]{40}$/.test(commitSha)) {
     throw new Error("Deployment-Commit muss eine vollstaendige Git-SHA sein.");
@@ -168,6 +170,13 @@ export function createDeployManifest({
     !releaseId.startsWith(`${commitSha}-`)
   ) {
     throw new Error("Release-ID ist nicht an Commit und Workflowlauf gebunden.");
+  }
+
+  if (
+    sourceBranch !== PRODUCTION_DEPLOY_CONSTANTS.branch &&
+    sourceBranch !== PRODUCTION_DEPLOY_CONSTANTS.candidateBranch
+  ) {
+    throw new Error("Manifest-Branch ist nicht als Produktionsquelle freigegeben.");
   }
 
   scanTrackedSources(repositoryRoot);
@@ -189,7 +198,7 @@ export function createDeployManifest({
   const lines = [
     "manifest\t1",
     `meta\trepository\t${PRODUCTION_DEPLOY_CONSTANTS.repository}`,
-    `meta\tbranch\t${PRODUCTION_DEPLOY_CONSTANTS.branch}`,
+    `meta\tbranch\t${sourceBranch}`,
     `meta\ttarget\t${PRODUCTION_DEPLOY_CONSTANTS.target}`,
     `meta\tdomain\t${PRODUCTION_DEPLOY_CONSTANTS.domain}`,
     `meta\twebroot\t${PRODUCTION_DEPLOY_CONSTANTS.webroot}`,
@@ -236,7 +245,6 @@ function runCli() {
     CARMAJA_PRODUCTION_PUBLISH_ENABLED: "false",
     CARMAJA_PRODUCTION_DEPLOY_ENABLED: "false",
     GITHUB_REPOSITORY: PRODUCTION_DEPLOY_CONSTANTS.repository,
-    GITHUB_REF_NAME: PRODUCTION_DEPLOY_CONSTANTS.branch,
   };
 
   for (const [name, expected] of Object.entries(expectedEnvironment)) {
@@ -245,12 +253,14 @@ function runCli() {
     }
   }
 
+  const sourceBranch = process.env.GITHUB_REF_NAME ?? "";
   const result = createDeployManifest({
     outputDirectory,
     packageDirectory,
     repositoryRoot,
     commitSha: process.env.GITHUB_SHA ?? "",
     releaseId: process.env.CARMAJA_RELEASE_ID ?? "",
+    sourceBranch,
   });
   console.log(`Produktionsdeployment-Manifest erstellt: ${result.fileCount} Dateien.`);
 }

@@ -107,3 +107,35 @@ test("Produktionsmanifest verweigert unvollstaendige oder ungebundene Exporte", 
     /nicht an Commit/,
   );
 });
+
+test("Release-Kandidaten sind als Manifestquelle gebunden und nicht mit beliebigen Branches austauschbar", async () => {
+  const { outputDirectory, packageDirectory } = await fixture();
+  const commitSha = "d".repeat(40);
+  const releaseId = `${commitSha}-12345-1`;
+  const candidate = createDeployManifest({
+    outputDirectory,
+    packageDirectory,
+    repositoryRoot,
+    commitSha,
+    releaseId,
+    sourceBranch: PRODUCTION_DEPLOY_CONSTANTS.candidateBranch,
+  });
+  const manifest = await readFile(candidate.manifestPath, "utf8");
+
+  assert.match(
+    manifest,
+    /^meta\tbranch\trelease\/production-product-management$/m,
+  );
+  assert.throws(
+    () =>
+      createDeployManifest({
+        outputDirectory,
+        packageDirectory,
+        repositoryRoot,
+        commitSha,
+        releaseId,
+        sourceBranch: "test/product-management-beta",
+      }),
+    /nicht als Produktionsquelle freigegeben/,
+  );
+});

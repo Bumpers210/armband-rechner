@@ -110,7 +110,6 @@ jobs:
 
       - name: Scan sources and create production deployment manifest
         env:
-          GITHUB_REF_NAME: main
           CARMAJA_RELEASE_ID: ${{ steps.release.outputs.release-id }}
         run: npm run prepare:production-deploy
 
