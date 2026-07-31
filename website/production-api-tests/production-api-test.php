@@ -244,8 +244,11 @@ try {
         'Bereinigtes Bild wurde nicht atomar uebernommen.'
     );
     production_api_assert(
-        !is_dir($fixture['private'] . DIRECTORY_SEPARATOR . 'uploads-temp' . DIRECTORY_SEPARATOR . $draftId),
-        'Temporarer Bildbereich wurde nicht bereinigt.'
+        (glob(
+            $fixture['private'] . DIRECTORY_SEPARATOR . 'uploads-temp'
+                . DIRECTORY_SEPARATOR . $draftId . DIRECTORY_SEPARATOR . '*'
+        ) ?: []) === [],
+        'Temporare Bilddateien wurden nicht bereinigt.'
     );
 
     production_api_expect(403, 'production_publish_disabled', static function () use ($draftId): void {
