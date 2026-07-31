@@ -6,42 +6,71 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val signingPropertiesFile = rootProject.file(".signing/keystore.properties")
-val signingProperties = Properties().apply {
-    if (signingPropertiesFile.isFile) {
-        signingPropertiesFile.inputStream().use(::load)
+val productionVersionCode = 1
+val productionVersionName = "1.0.0"
+val productionSigningPropertiesFile = rootProject.file(".signing/production-keystore.properties")
+val productionSigningProperties = Properties().apply {
+    if (productionSigningPropertiesFile.isFile) {
+        productionSigningPropertiesFile.inputStream().use(::load)
     }
 }
+val productionSigningStoreFile = System.getenv("CARMAJA_PRODUCTION_KEYSTORE_PATH")
+    ?.takeIf(String::isNotBlank)
+    ?.let(rootProject::file)
+    ?: productionSigningProperties.getProperty("storeFile")
+        ?.takeIf(String::isNotBlank)
+        ?.let { rootProject.file(".signing/$it") }
+val productionSigningStorePassword = System.getenv("CARMAJA_PRODUCTION_STORE_PASSWORD")
+    ?.takeIf(String::isNotBlank)
+    ?: productionSigningProperties.getProperty("storePassword")?.takeIf(String::isNotBlank)
+val productionSigningKeyPassword = System.getenv("CARMAJA_PRODUCTION_KEY_PASSWORD")
+    ?.takeIf(String::isNotBlank)
+    ?: productionSigningProperties.getProperty("keyPassword")?.takeIf(String::isNotBlank)
+val productionSigningKeyAlias = "carmaja-product-management-production"
+val productionSigningReady = productionSigningStoreFile?.isFile == true &&
+    productionSigningStorePassword != null &&
+    productionSigningKeyPassword != null
 
 android {
-    namespace = "de.steinhart.armbandrechner"
+    namespace = "de.carmajaperlen.armbandrechner"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "de.steinhart.armbandrechner"
+        applicationId = "de.carmajaperlen.armbandrechner"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = productionVersionCode
+        versionName = productionVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["appLabel"] = "Carmaja-Perlen Produktverwaltung"
+        buildConfigField(
+            "String",
+            "DEFAULT_PRODUCT_API_BASE_URL",
+            "\"https://api.carmaja-perlen.de/\"",
+        )
+        buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"production\"")
     }
 
     signingConfigs {
-        if (signingPropertiesFile.isFile) {
+        if (productionSigningReady) {
             create("release") {
-                storeFile = rootProject.file(".signing/${signingProperties["storeFile"]}")
-                storePassword = signingProperties["storePassword"] as String
-                keyAlias = signingProperties["keyAlias"] as String
-                keyPassword = signingProperties["keyPassword"] as String
+                storeFile = productionSigningStoreFile
+                storePassword = productionSigningStorePassword
+                keyAlias = productionSigningKeyAlias
+                keyPassword = productionSigningKeyPassword
             }
         }
     }
 
     buildTypes {
+        debug {
+            manifestPlaceholders["appLabel"] = "Carmaja-Perlen Produktverwaltung"
+        }
+
         release {
             isMinifyEnabled = false
-            if (signingPropertiesFile.isFile) {
+            if (productionSigningReady) {
                 signingConfig = signingConfigs.getByName("release")
             }
             proguardFiles(
@@ -52,6 +81,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 

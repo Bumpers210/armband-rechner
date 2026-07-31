@@ -1,4 +1,4 @@
-package de.steinhart.armbandrechner
+package de.carmajaperlen.armbandrechner
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import java.io.File

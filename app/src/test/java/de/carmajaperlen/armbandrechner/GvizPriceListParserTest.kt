@@ -1,4 +1,4 @@
-package de.steinhart.armbandrechner
+package de.carmajaperlen.armbandrechner
 
 import java.math.BigDecimal
 import org.junit.Assert.assertEquals

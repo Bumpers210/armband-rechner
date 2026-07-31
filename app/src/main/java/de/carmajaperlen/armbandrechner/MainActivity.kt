@@ -1,4 +1,4 @@
-package de.steinhart.armbandrechner
+package de.carmajaperlen.armbandrechner
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -40,6 +40,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
@@ -70,6 +71,9 @@ class MainActivity : ComponentActivity() {
     private val viewModel: CalculatorViewModel by viewModels {
         CalculatorViewModel.factory(applicationContext)
     }
+    private val productViewModel: ProductViewModel by viewModels {
+        ProductViewModel.factory(applicationContext)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,17 +81,85 @@ class MainActivity : ComponentActivity() {
         setContent {
             ArmbandRechnerTheme {
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
-                ArmbandCalculatorScreen(
-                    state = state,
-                    onRefresh = viewModel::refreshPriceList,
-                    onQuantityChange = viewModel::changeQuantity,
-                    onWorkMinutesChange = viewModel::updateWorkMinutes,
-                    onHourlyRateChange = viewModel::updateHourlyRate,
-                    onOtherCostsChange = viewModel::updateOtherCosts,
-                    onMarkupChange = viewModel::updateMarkup,
-                    onNewCalculation = viewModel::newCalculation,
-                    onNoticeShown = viewModel::consumeNotice,
+                val productState by productViewModel.uiState.collectAsStateWithLifecycle()
+                val productActions = ProductUiActions(
+                    onCreateFromCalculation = {
+                        productViewModel.createFromCalculation(
+                            state.prices,
+                            state.calculator,
+                            state.totals,
+                        )
+                    },
+                    onSelectDraft = productViewModel::selectDraft,
+                    onUsernameChange = productViewModel::updateUsername,
+                    onPasswordChange = productViewModel::updatePassword,
+                    onDeviceNameChange = productViewModel::updateDeviceName,
+                    onRememberSessionChange = productViewModel::updateRememberSession,
+                    onLogin = productViewModel::login,
+                    onLogout = productViewModel::logout,
+                    onEdit = productViewModel::beginEditingSelected,
+                    onNameChange = { value ->
+                        productViewModel.updateSelectedEditor(ProductEditorField.Name, value)
+                    },
+                    onMaterialsChange = { value ->
+                        productViewModel.updateSelectedEditor(ProductEditorField.Materials, value)
+                    },
+                    onMetalElementsChange = { value ->
+                        productViewModel.updateSelectedEditor(
+                            ProductEditorField.MetalElements,
+                            value,
+                        )
+                    },
+                    onBraceletSizeChange = { value ->
+                        productViewModel.updateSelectedEditor(
+                            ProductEditorField.BraceletSize,
+                            value,
+                        )
+                    },
+                    onStockChange = { value ->
+                        productViewModel.updateSelectedEditor(ProductEditorField.Stock, value)
+                    },
+                    onShortDescriptionChange = { value ->
+                        productViewModel.updateSelectedEditor(
+                            ProductEditorField.ShortDescription,
+                            value,
+                        )
+                    },
+                    onVintedUrlChange = { value ->
+                        productViewModel.updateSelectedEditor(
+                            ProductEditorField.VintedUrl,
+                            value,
+                        )
+                    },
+                    onImagesPicked = productViewModel::addImages,
+                    onSave = productViewModel::saveSelected,
+                    onSync = productViewModel::syncSelected,
+                    onPublish = productViewModel::publishSelected,
+                    onMarkSold = productViewModel::markSelectedSold,
+                    onDisable = productViewModel::disableSelected,
+                    onDiscardSelected = productViewModel::discardSelected,
+                    onMessageShown = productViewModel::consumeMessage,
                 )
+                if (productState.authenticated) {
+                    ArmbandCalculatorScreen(
+                        state = state,
+                        productState = productState,
+                        onRefresh = viewModel::refreshPriceList,
+                        onQuantityChange = viewModel::changeQuantity,
+                        onWorkMinutesChange = viewModel::updateWorkMinutes,
+                        onHourlyRateChange = viewModel::updateHourlyRate,
+                        onOtherCostsChange = viewModel::updateOtherCosts,
+                        onMarkupChange = viewModel::updateMarkup,
+                        onNewCalculation = viewModel::newCalculation,
+                        onNoticeShown = viewModel::consumeNotice,
+                        productActions = productActions,
+                    )
+                } else {
+                    ProductLoginScreen(
+                        state = productState,
+                        actions = productActions,
+                    )
+                }
             }
         }
     }
@@ -97,6 +169,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 internal fun ArmbandCalculatorScreen(
     state: AppUiState,
+    productState: ProductUiState? = null,
     onRefresh: () -> Unit,
     onQuantityChange: (String, Int) -> Unit,
     onWorkMinutesChange: (String) -> Unit,
@@ -105,12 +178,22 @@ internal fun ArmbandCalculatorScreen(
     onMarkupChange: (String) -> Unit,
     onNewCalculation: () -> Unit,
     onNoticeShown: () -> Unit,
+    productActions: ProductUiActions = ProductUiActions.noop(),
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val pearlPrices = state.prices.filterNot(PriceItem::isSpacer)
+    val spacerPrices = state.prices.filter(PriceItem::isSpacer)
     LaunchedEffect(state.notice) {
         state.notice?.let {
             snackbarHostState.showSnackbar(it)
             onNoticeShown()
+        }
+    }
+    LaunchedEffect(productState?.message, productState?.error) {
+        val message = productState?.message ?: productState?.error
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            productActions.onMessageShown()
         }
     }
 
@@ -119,11 +202,20 @@ internal fun ArmbandCalculatorScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Armband-Rechner",
+                        text = "Carmaja-Perlen Produktverwaltung",
                         fontWeight = FontWeight.SemiBold,
                     )
                 },
                 actions = {
+                    if (productState != null) {
+                        TextButton(
+                            onClick = productActions.onLogout,
+                            enabled = !productState.busy,
+                            modifier = Modifier.testTag("product-logout"),
+                        ) {
+                            Text("Abmelden")
+                        }
+                    }
                     IconButton(
                         onClick = onRefresh,
                         enabled = !state.refreshing,
@@ -181,7 +273,35 @@ internal fun ArmbandCalculatorScreen(
                 }
 
                 else -> items(
-                    items = state.prices,
+                    items = pearlPrices,
+                    key = { it.name },
+                ) { item ->
+                    PriceItemRow(
+                        item = item,
+                        quantity = state.calculator.quantities[item.name] ?: 0,
+                        onQuantityChange = onQuantityChange,
+                        modifier = Modifier.padding(
+                            horizontal = 16.dp,
+                            vertical = 4.dp,
+                        ),
+                    )
+                }
+            }
+
+            if (!state.loadingStoredData && spacerPrices.isNotEmpty()) {
+                item {
+                    SectionHeading(
+                        text = "Spacer",
+                        modifier = Modifier.padding(
+                            start = 16.dp,
+                            top = 20.dp,
+                            end = 16.dp,
+                            bottom = 10.dp,
+                        ),
+                    )
+                }
+                items(
+                    items = spacerPrices,
                     key = { it.name },
                 ) { item ->
                     PriceItemRow(
@@ -234,6 +354,16 @@ internal fun ArmbandCalculatorScreen(
                         .testTag("new-calculation"),
                 ) {
                     Text("Neue Kalkulation")
+                }
+            }
+
+            if (productState != null) {
+                item {
+                    HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
+                    ProductManagementSection(
+                        state = productState,
+                        actions = productActions,
+                    )
                 }
             }
         }
@@ -544,7 +674,7 @@ private fun CostRow(
 }
 
 @Composable
-private fun SectionHeading(
+internal fun SectionHeading(
     text: String,
     modifier: Modifier = Modifier,
 ) {
