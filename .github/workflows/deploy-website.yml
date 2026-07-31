@@ -27,6 +27,16 @@ on:
       - "website/package.json"
       - "website/package-lock.json"
       - "website/tsconfig.json"
+  workflow_dispatch:
+    inputs:
+      expected_commit_sha:
+        description: "Exakter Commit-SHA, der bereitgestellt werden soll"
+        required: true
+        type: string
+      deployment_confirmation:
+        description: "Zur Bestaetigung exakt DEPLOY_PRODUCTION eingeben"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -135,9 +145,34 @@ jobs:
           include-hidden-files: true
           retention-days: 30
 
+  validate-manual-production-deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CARMAJA_EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+      CARMAJA_DEPLOYMENT_CONFIRMATION: ${{ inputs.deployment_confirmation }}
+      CARMAJA_PRODUCTION_DEPLOY_ENABLED: ${{ vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED }}
+
+    steps:
+      - name: Validate explicit manual production deployment request
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_REF_NAME" = "$CARMAJA_PRODUCTION_BRANCH"
+          test "$CARMAJA_EXPECTED_COMMIT_SHA" = "$GITHUB_SHA"
+          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"
+          test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
+          test "$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"
+
   deploy-production-site:
-    needs: build-production-site
-    if: ${{ github.ref == 'refs/heads/main' && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' }}
+    needs:
+      - build-production-site
+      - validate-manual-production-deploy
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_name == 'main' && inputs.expected_commit_sha == github.sha && inputs.deployment_confirmation == 'DEPLOY_PRODUCTION' && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' && needs.validate-manual-production-deploy.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -148,6 +183,8 @@ jobs:
         working-directory: website
     env:
       CARMAJA_PRODUCTION_DEPLOY_ENABLED: ${{ vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED }}
+      CARMAJA_EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+      CARMAJA_DEPLOYMENT_CONFIRMATION: ${{ inputs.deployment_confirmation }}
       CARMAJA_PRODUCTION_SSH_HOST: ${{ secrets.CARMAJA_PRODUCTION_SSH_HOST }}
       CARMAJA_PRODUCTION_SSH_USER: ${{ secrets.CARMAJA_PRODUCTION_SSH_USER }}
       CARMAJA_PRODUCTION_SSH_PORT: ${{ secrets.CARMAJA_PRODUCTION_SSH_PORT }}
@@ -175,8 +212,11 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$GITHUB_REPOSITORY" = "Bumpers210/armband-rechner"
+          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
           test "$GITHUB_REF" = "refs/heads/main"
           test "$GITHUB_REF_NAME" = "main"
+          test "$CARMAJA_EXPECTED_COMMIT_SHA" = "$GITHUB_SHA"
+          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$CARMAJA_SITE_TARGET" = "production"
           test "$CARMAJA_SITE_DOMAIN" = "www.carmaja-perlen.de"
@@ -310,7 +350,10 @@ jobs:
         run: bash scripts/run-production-deployment.sh
 
   reset-production-deploy-gate:
-    needs: deploy-production-site
+    needs:
+      - build-production-site
+      - validate-manual-production-deploy
+      - deploy-production-site
     if: ${{ always() && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     permissions:
