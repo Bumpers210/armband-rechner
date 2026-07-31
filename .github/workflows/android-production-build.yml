@@ -64,7 +64,7 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
           script: |
-            set -euo pipefail
+            set -eu
             adb shell svc wifi disable
             adb shell svc data disable
             ./gradlew connectedDebugAndroidTest
