@@ -11,13 +11,15 @@ async function readRepositoryFile(relativePath) {
   return readFile(path.join(repositoryRoot, ...relativePath.split("/")), "utf8");
 }
 
-test("Produktionsworkflow trennt Build und ausschliesslich main-gebundenes Deployment", async () => {
+test("Produktionsworkflow trennt Push-Builds von einem expliziten manuellen Produktionsdeploy", async () => {
   const workflow = await readRepositoryFile(".github/workflows/deploy-website.yml");
 
-  assert.doesNotMatch(workflow, /workflow_dispatch/);
+  assert.match(workflow, /workflow_dispatch:\s*\n\s+inputs:\s*\n\s+expected_commit_sha:/);
+  assert.match(workflow, /deployment_confirmation:/);
   assert.match(workflow, /release\/production-product-management/);
   assert.match(workflow, /- main/);
   assert.match(workflow, /build-production-site:/);
+  assert.match(workflow, /validate-manual-production-deploy:/);
   assert.match(workflow, /deploy-production-site:/);
   const buildSection = workflow.slice(
     workflow.indexOf("  build-production-site:"),
@@ -28,7 +30,12 @@ test("Produktionsworkflow trennt Build und ausschliesslich main-gebundenes Deplo
   assert.match(buildSection, /Upload verified production deployment artifact/);
   assert.doesNotMatch(buildSection, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
   assert.doesNotMatch(buildSection, /GITHUB_REF_NAME: main/);
-  assert.match(workflow, /github\.ref == 'refs\/heads\/main' && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true'/);
+  assert.match(workflow, /github\.event_name == 'workflow_dispatch'/);
+  assert.match(workflow, /github\.ref == 'refs\/heads\/main'/);
+  assert.match(workflow, /github\.ref_name == 'main'/);
+  assert.match(workflow, /inputs\.expected_commit_sha == github\.sha/);
+  assert.match(workflow, /inputs\.deployment_confirmation == 'DEPLOY_PRODUCTION'/);
+  assert.match(workflow, /needs\.validate-manual-production-deploy\.result == 'success'/);
   assert.match(workflow, /environment:\s*\n\s+name: carmaja-production/);
   assert.match(workflow, /CARMAJA_PRODUCTION_PUBLISH_ENABLED: "false"/);
   assert.match(workflow, /CARMAJA_PRODUCTION_DEPLOY_ENABLED: "false"/);
@@ -37,6 +44,30 @@ test("Produktionsworkflow trennt Build und ausschliesslich main-gebundenes Deplo
   assert.doesNotMatch(workflow, /website\/hosting\/\*\*/);
   assert.doesNotMatch(workflow, /ssh-keyscan/);
   assert.match(workflow, /updateRepoVariable/);
+});
+
+test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert und stets zurueckgesetzt", async () => {
+  const workflow = await readRepositoryFile(".github/workflows/deploy-website.yml");
+  const validationStart = workflow.indexOf("  validate-manual-production-deploy:");
+  const deployStart = workflow.indexOf("  deploy-production-site:");
+  const resetStart = workflow.indexOf("  reset-production-deploy-gate:");
+  const validation = workflow.slice(validationStart, deployStart);
+  const deploy = workflow.slice(deployStart, resetStart);
+  const reset = workflow.slice(resetStart);
+
+  assert.ok(validationStart >= 0);
+  assert.ok(deployStart > validationStart);
+  assert.ok(resetStart > deployStart);
+  assert.match(validation, /test "\$GITHUB_REF" = "refs\/heads\/main"/);
+  assert.match(validation, /test "\$CARMAJA_EXPECTED_COMMIT_SHA" = "\$GITHUB_SHA"/);
+  assert.match(validation, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"/);
+  assert.match(validation, /test "\$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"/);
+  assert.match(validation, /test "\$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"/);
+  assert.match(deploy, /test "\$GITHUB_EVENT_NAME" = "workflow_dispatch"/);
+  assert.match(deploy, /test "\$CARMAJA_EXPECTED_COMMIT_SHA" = "\$GITHUB_SHA"/);
+  assert.match(deploy, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"/);
+  assert.match(reset, /needs:\s*\n\s+- build-production-site\s*\n\s+- validate-manual-production-deploy\s*\n\s+- deploy-production-site/);
+  assert.match(reset, /if: \$\{\{ always\(\) && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' \}\}/);
 });
 
 test("SFTP-Ziele sind relativ und SSH-Pfade bleiben absolut gebunden", async () => {

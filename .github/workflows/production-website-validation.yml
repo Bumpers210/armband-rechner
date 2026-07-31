@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - release/production-product-management
+      - fix/production-deploy-manual-trigger
     paths:
       - '.github/workflows/production-website-validation.yml'
       - '.github/workflows/deploy-website.yml'
