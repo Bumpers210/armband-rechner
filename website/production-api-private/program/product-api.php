@@ -17,14 +17,18 @@ const CARMAJA_LOGIN_WINDOW_SECONDS = 900;
 const CARMAJA_OPERATION_LEASE_SECONDS = 900;
 const CARMAJA_OPERATION_RETENTION_SECONDS = 2592000;
 const CARMAJA_BACKUP_NAME_PATTERN = '/^[0-9]{8}-[0-9]{6}-[a-f0-9]{8}$/';
+const CARMAJA_BACKUP_SCHEMA_VERSION = 2;
 const CARMAJA_BACKUP_DIRECTORIES = [
-    'auth',
     'products',
     'drafts',
     'uploads',
     'sku-counter',
     'audit',
     'idempotency',
+];
+const CARMAJA_BACKUP_EXCLUDED_AUTH_FILES = [
+    'auth/device-tokens.json',
+    'auth/login-attempts.json',
 ];
 const CARMAJA_PRODUCTION_REPOSITORY = 'Bumpers210/armband-rechner';
 const CARMAJA_PRODUCTION_BRANCH = 'main';
@@ -3701,10 +3705,134 @@ function carmaja_api_diagnose_environment(): array
     ];
 }
 
+function carmaja_api_backup_users_relative_path(): string
+{
+    $private = carmaja_api_private_dir();
+    $usersFile = carmaja_api_users_file();
+
+    if (!carmaja_api_path_is_inside($usersFile, $private)
+        || $usersFile === $private) {
+        throw new CarmajaApiException(
+            503,
+            'Benutzerdatei kann nicht sicher gesichert werden.',
+            [],
+            'backup_users_unavailable'
+        );
+    }
+
+    $relative = str_replace(
+        DIRECTORY_SEPARATOR,
+        '/',
+        substr($usersFile, strlen($private) + 1)
+    );
+
+    if (!str_starts_with($relative, 'auth/')
+        || str_contains($relative, '..')) {
+        throw new CarmajaApiException(
+            503,
+            'Benutzerdatei liegt nicht im vorgesehenen Authentifizierungsbereich.',
+            [],
+            'backup_users_unavailable'
+        );
+    }
+
+    return $relative;
+}
+
+function carmaja_api_backup_copy_file(string $source, string $target): void
+{
+    if (is_link($source) || !is_file($source)) {
+        throw new CarmajaApiException(503, 'Sicherungsdatei ist nicht sicher lesbar.');
+    }
+
+    carmaja_api_ensure_directory(dirname($target));
+
+    if (!copy($source, $target)) {
+        throw new CarmajaApiException(500, 'Sicherungsdatei konnte nicht kopiert werden.');
+    }
+
+    @chmod($target, 0640);
+}
+
+function carmaja_api_backup_authentication_manifest(string $usersRelativePath): array
+{
+    return [
+        'usersFile' => $usersRelativePath,
+        'includedFiles' => [$usersRelativePath],
+        'excludedFiles' => CARMAJA_BACKUP_EXCLUDED_AUTH_FILES,
+        'excludedAuthenticationData' => [
+            'deviceTokenHashes',
+            'rawDeviceTokens',
+            'loginAttempts',
+        ],
+        'deviceSessionsRestored' => false,
+    ];
+}
+
+function carmaja_api_validate_backup_authentication(string $source, array $manifest): string
+{
+    foreach (CARMAJA_BACKUP_EXCLUDED_AUTH_FILES as $excluded) {
+        if (is_file($source . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $excluded))) {
+            throw new CarmajaApiException(
+                409,
+                'Altes Backup mit Geraete-Authentifizierungsdaten wird nicht wiederhergestellt.',
+                [],
+                'backup_legacy_device_tokens_rejected'
+            );
+        }
+    }
+
+    if (($manifest['schemaVersion'] ?? null) !== CARMAJA_BACKUP_SCHEMA_VERSION) {
+        throw new CarmajaApiException(
+            409,
+            'Backup verwendet kein unterstuetztes Sicherungsschema.',
+            [],
+            'backup_schema_unsupported'
+        );
+    }
+
+    $authentication = $manifest['authentication'] ?? null;
+    $usersRelativePath = carmaja_api_backup_users_relative_path();
+
+    if (!is_array($authentication)
+        || ($authentication['usersFile'] ?? null) !== $usersRelativePath
+        || ($authentication['includedFiles'] ?? null) !== [$usersRelativePath]
+        || ($authentication['excludedFiles'] ?? null) !== CARMAJA_BACKUP_EXCLUDED_AUTH_FILES
+        || ($authentication['excludedAuthenticationData'] ?? null) !== [
+            'deviceTokenHashes',
+            'rawDeviceTokens',
+            'loginAttempts',
+        ]
+        || ($authentication['deviceSessionsRestored'] ?? null) !== false) {
+        throw new CarmajaApiException(
+            409,
+            'Backup-Authentifizierungsdaten sind unvollstaendig oder unsicher.',
+            [],
+            'backup_authentication_invalid'
+        );
+    }
+
+    $usersBackupPath = $source . DIRECTORY_SEPARATOR
+        . str_replace('/', DIRECTORY_SEPARATOR, $usersRelativePath);
+
+    if (is_link($usersBackupPath) || !is_file($usersBackupPath)) {
+        throw new CarmajaApiException(
+            409,
+            'Backup enthaelt keine sichere Benutzerdatei.',
+            [],
+            'backup_incomplete'
+        );
+    }
+
+    return $usersRelativePath;
+}
+
 function carmaja_api_create_backup(): array
 {
     return carmaja_api_with_lock('backup', function (): array {
         $source = carmaja_api_private_dir();
+        $usersFile = carmaja_api_users_file();
+        $usersRelativePath = carmaja_api_backup_users_relative_path();
         $backupRoot = carmaja_api_path('backups');
         carmaja_api_ensure_directory($backupRoot);
         $name = gmdate('Ymd-His') . '-' . bin2hex(random_bytes(4));
@@ -3721,6 +3849,12 @@ function carmaja_api_create_backup(): array
                 throw new CarmajaApiException(500, 'Umgebungsmarkierung konnte nicht gesichert werden.');
             }
             @chmod($staging . DIRECTORY_SEPARATOR . 'environment.json', 0640);
+
+            carmaja_api_backup_copy_file(
+                $usersFile,
+                $staging . DIRECTORY_SEPARATOR
+                    . str_replace('/', DIRECTORY_SEPARATOR, $usersRelativePath)
+            );
 
             foreach (CARMAJA_BACKUP_DIRECTORIES as $directory) {
                 $directorySource = $source . DIRECTORY_SEPARATOR . $directory;
@@ -3746,13 +3880,16 @@ function carmaja_api_create_backup(): array
                     'backup' => $name,
                     'createdAt' => carmaja_api_now(),
                     'environment' => 'production',
+                    'schemaVersion' => CARMAJA_BACKUP_SCHEMA_VERSION,
                     'directories' => CARMAJA_BACKUP_DIRECTORIES,
+                    'authentication' => carmaja_api_backup_authentication_manifest($usersRelativePath),
                 ])
             );
 
             if (!rename($staging, $target)) {
                 throw new CarmajaApiException(500, 'Backup konnte nicht atomar abgeschlossen werden.');
             }
+            @chmod($target, 0750);
         } finally {
             if (is_dir($staging)) {
                 carmaja_api_remove_tree($staging);
@@ -3794,6 +3931,7 @@ function carmaja_api_restore_backup(string $backup, bool $dryRun): array
             [],
             'Backup-Manifest'
         );
+        $usersRelativePath = carmaja_api_validate_backup_authentication($source, $manifest);
 
         if ($marker !== 'production'
             || ($manifest['environment'] ?? null) !== 'production'
@@ -3824,11 +3962,13 @@ function carmaja_api_restore_backup(string $backup, bool $dryRun): array
             $available[] = $directory;
         }
 
+        $restoreDirectories = array_merge($available, ['auth']);
+
         if ($dryRun) {
             return [
                 'backup' => $backup,
                 'status' => 'dry_run',
-                'directories' => $available,
+                'directories' => $restoreDirectories,
                 'writePerformed' => false,
             ];
         }
@@ -3852,7 +3992,18 @@ function carmaja_api_restore_backup(string $backup, bool $dryRun): array
                 );
             }
 
-            foreach ($available as $directory) {
+            carmaja_api_backup_copy_file(
+                $source . DIRECTORY_SEPARATOR
+                    . str_replace('/', DIRECTORY_SEPARATOR, $usersRelativePath),
+                $stagingRoot . DIRECTORY_SEPARATOR
+                    . str_replace('/', DIRECTORY_SEPARATOR, $usersRelativePath)
+            );
+            carmaja_api_write_json_atomic(
+                $stagingRoot . DIRECTORY_SEPARATOR . 'auth' . DIRECTORY_SEPARATOR . 'device-tokens.json',
+                carmaja_api_target_document(['tokens' => []])
+            );
+
+            foreach ($restoreDirectories as $directory) {
                 $live = $private . DIRECTORY_SEPARATOR . $directory;
                 $staged = $stagingRoot . DIRECTORY_SEPARATOR . $directory;
                 $rollback = $rollbackRoot . DIRECTORY_SEPARATOR . $directory;
@@ -3922,7 +4073,7 @@ function carmaja_api_restore_backup(string $backup, bool $dryRun): array
         return [
             'backup' => $backup,
             'status' => 'restored',
-            'directories' => $available,
+            'directories' => $restoreDirectories,
             'writePerformed' => true,
         ];
     });

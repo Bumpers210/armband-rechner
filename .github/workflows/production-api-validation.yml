@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - release/production-product-management
+      - fix/production-api-backup-auth
     paths:
       - '.github/workflows/production-api-validation.yml'
       - 'website/production-api-private/**'
