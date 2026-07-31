@@ -1,0 +1,128 @@
+name: Validate production Android release
+
+on:
+  push:
+    branches:
+      - release/production-product-management
+    paths:
+      - ".github/workflows/android-production-build.yml"
+      - "app/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-production-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-production-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Run Android lint
+        run: ./gradlew lintDebug
+
+      - name: Run Compose instrumentation tests in isolated emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          script: |
+            set -euo pipefail
+            adb shell svc wifi disable
+            adb shell svc data disable
+            ./gradlew connectedDebugAndroidTest
+
+      - name: Build unsigned production release APK
+        run: ./gradlew assembleRelease
+
+      - name: Verify unsigned production APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apk="app/build/outputs/apk/release/app-release-unsigned.apk"
+          apksigner="${ANDROID_HOME}/build-tools/36.0.0/apksigner"
+          aapt="${ANDROID_HOME}/build-tools/36.0.0/aapt"
+          test -f "${apk}"
+          test -x "${apksigner}"
+          test -x "${aapt}"
+
+          if "${apksigner}" verify "${apk}" >/dev/null 2>&1; then
+            echo "::error::The production validation artifact must remain unsigned."
+            exit 1
+          fi
+
+          badging="$("${aapt}" dump badging "${apk}")"
+          grep -Fq "package: name='de.carmajaperlen.armbandrechner'" <<<"${badging}"
+          grep -Fq "versionCode='1'" <<<"${badging}"
+          grep -Fq "versionName='1.0.0'" <<<"${badging}"
+          grep -Fq "application-label:'Carmaja-Perlen Produktverwaltung'" <<<"${badging}"
+
+          apk_strings="$(mktemp)"
+          trap 'rm -f "${apk_strings}"' EXIT
+          unzip -p "${apk}" 'classes*.dex' resources.arsc | strings > "${apk_strings}"
+
+          grep -Fqx 'https://api.carmaja-perlen.de/' "${apk_strings}"
+          ! grep -Fq 'https://test-api.carmaja-perlen.de/' "${apk_strings}"
+          ! grep -Fq 'de.carmajaperlen.armbandrechner.test' "${apk_strings}"
+          ! grep -Fq 'Carmaja-Perlen Produktverwaltung Test' "${apk_strings}"
+          ! grep -Fq -- '-beta' "${apk_strings}"
+          ! grep -Fq 'de.steinhart.armbandrechner' "${apk_strings}"
+
+          echo "PRODUCTION_APK_STATIC_VALIDATION_OK"
+
+      - name: Prepare unsigned production artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          apk="app/build/outputs/apk/release/app-release-unsigned.apk"
+          artifact_apk="artifact/Carmaja-Perlen-Produktverwaltung-1.0.0-unsigned.apk"
+          cp "${apk}" "${artifact_apk}"
+          sha256sum "${artifact_apk}" > "${artifact_apk}.sha256"
+          cat > artifact/VALIDATION.txt <<'EOF'
+          App-Name: Carmaja-Perlen Produktverwaltung
+          Paketname: de.carmajaperlen.armbandrechner
+          Version: 1.0.0
+          VersionCode: 1
+          Produkt-API: https://api.carmaja-perlen.de/
+          Signatur: unsigned validation artifact
+          EOF
+
+      - name: Upload unsigned production APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Carmaja-Perlen-Produktverwaltung-1.0.0-unsigned
+          path: artifact/*
+          if-no-files-found: error
+          retention-days: 30
