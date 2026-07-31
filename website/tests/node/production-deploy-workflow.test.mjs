@@ -70,6 +70,27 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.match(reset, /if: \$\{\{ always\(\) && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' \}\}/);
 });
 
+test("Erstdeploy-Bootstrap ist auf den bestaetigten Kandidaten beschraenkt und fasst den Webroot nicht an", async () => {
+  const script = await readRepositoryFile("website/scripts/bootstrap-production-first-deploy.sh");
+  const inventory = await readRepositoryFile("website/scripts/production-first-deploy-inventory.v1");
+  const workflow = await readRepositoryFile(".github/workflows/deploy-website.yml");
+
+  assert.match(script, /EXPECTED_CANDIDATE_COMMIT='d68dae76df53e5aa554f0139ce7c85301d63c81c'/);
+  assert.match(script, /EXPECTED_CANDIDATE_ARCHIVE_SHA256='568c5ce7a67248e803f029d707854946f5ff284e6722fdf5361cf0aab1c9b043'/);
+  assert.match(script, /EXPECTED_EXISTING_PATH_COUNT='50'/);
+  assert.match(script, /EXPECTED_MISSING_PATH_COUNT='19'/);
+  assert.match(script, /verify_live_inventory/);
+  assert.match(script, /bootstrap-provenance/);
+  assert.match(script, /no-repository-commit/);
+  assert.doesNotMatch(script, /chmod 0755 "\$WEBROOT"/);
+  assert.doesNotMatch(script, /rm -f "\$WEBROOT/);
+  assert.match(inventory, /^inventory\|1$/m);
+  assert.equal((inventory.match(/^existing\|/gm) ?? []).length, 50);
+  assert.equal((inventory.match(/^missing\|/gm) ?? []).length, 19);
+  assert.match(workflow, /website\/scripts\/bootstrap-production-first-deploy\.sh/);
+  assert.match(workflow, /website\/scripts\/production-first-deploy-inventory\.v1/);
+});
+
 test("SFTP-Ziele sind relativ und SSH-Pfade bleiben absolut gebunden", async () => {
   const workflow = await readRepositoryFile(".github/workflows/deploy-website.yml");
   const uploadStart = workflow.indexOf("- name: Upload production export into isolated incoming directory");
