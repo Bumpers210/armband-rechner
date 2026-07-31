@@ -47,6 +47,13 @@ jobs:
       - name: Run Android lint
         run: ./gradlew lintDebug
 
+      - name: Enable KVM for the isolated emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          sudo chmod 666 /dev/kvm
+
       - name: Run Compose instrumentation tests in isolated emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
