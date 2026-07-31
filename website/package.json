@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build && node scripts/verify-production-export.mjs",
     "test": "node --test tests/node/production-*.test.mjs && npm run test:deployment-shell",
-    "test:deployment-shell": "bash -n scripts/deploy-production-site.sh scripts/run-production-deployment.sh tests/shell/deploy-production-site-test.sh tests/shell/run-production-deployment-test.sh && bash tests/shell/deploy-production-site-test.sh scripts/deploy-production-site.sh && bash tests/shell/run-production-deployment-test.sh scripts/run-production-deployment.sh",
+    "test:deployment-shell": "bash -n scripts/bootstrap-production-first-deploy.sh scripts/deploy-production-site.sh scripts/run-production-deployment.sh tests/shell/bootstrap-production-first-deploy-test.sh tests/shell/deploy-production-site-test.sh tests/shell/run-production-deployment-test.sh && bash tests/shell/bootstrap-production-first-deploy-test.sh scripts/bootstrap-production-first-deploy.sh scripts/deploy-production-site.sh && bash tests/shell/deploy-production-site-test.sh scripts/deploy-production-site.sh && bash tests/shell/run-production-deployment-test.sh scripts/run-production-deployment.sh",
     "prepare:production-deploy": "node scripts/prepare-production-deploy.mjs",
     "start": "next start",
     "lint": "eslint app components config content lib scripts/prepare-production-deploy.mjs scripts/verify-production-export.mjs tests/node/production-*.test.mjs eslint.config.mjs next.config.ts"

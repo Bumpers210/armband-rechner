@@ -5,6 +5,7 @@ on:
     branches:
       - release/production-product-management
       - fix/production-deploy-manual-trigger
+      - fix/production-deploy-bootstrap
     paths:
       - '.github/workflows/production-website-validation.yml'
       - '.github/workflows/deploy-website.yml'
@@ -16,6 +17,8 @@ on:
       - 'website/public/**'
       - 'website/scripts/verify-production-export.mjs'
       - 'website/scripts/prepare-production-deploy.mjs'
+      - 'website/scripts/bootstrap-production-first-deploy.sh'
+      - 'website/scripts/production-first-deploy-inventory.v1'
       - 'website/scripts/deploy-production-site.sh'
       - 'website/scripts/run-production-deployment.sh'
       - 'website/tests/node/production-*.test.mjs'

@@ -16,6 +16,8 @@ on:
       - "website/lib/**"
       - "website/public/**"
       - "website/scripts/prepare-production-deploy.mjs"
+      - "website/scripts/bootstrap-production-first-deploy.sh"
+      - "website/scripts/production-first-deploy-inventory.v1"
       - "website/scripts/deploy-production-site.sh"
       - "website/scripts/run-production-deployment.sh"
       - "website/scripts/verify-production-export.mjs"
