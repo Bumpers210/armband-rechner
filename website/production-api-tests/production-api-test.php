@@ -142,6 +142,26 @@ function production_api_ready_payload(string $draftId, int $version): array
     ];
 }
 
+function production_api_create_jpeg(string $path): void
+{
+    $image = imagecreatetruecolor(80, 60);
+
+    if ($image === false) {
+        throw new ProductionApiTestFailure('GD-Bild konnte nicht erzeugt werden.');
+    }
+
+    try {
+        $color = imagecolorallocate($image, 140, 40, 80);
+        imagefill($image, 0, 0, $color);
+
+        if (!imagejpeg($image, $path, 85)) {
+            throw new ProductionApiTestFailure('GD-JPEG konnte nicht gespeichert werden.');
+        }
+    } finally {
+        imagedestroy($image);
+    }
+}
+
 $fixture = production_api_fixture();
 
 try {
@@ -196,33 +216,51 @@ try {
         carmaja_api_save_product($draftId, production_api_ready_payload($draftId, 0), production_api_actor());
     });
 
-    $imageDirectory = $fixture['private'] . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . $draftId;
-    mkdir($imageDirectory, 0750, true);
-    $image = $imageDirectory . DIRECTORY_SEPARATOR . '01.jpg';
-    file_put_contents($image, "not-a-real-image");
-    $draft = carmaja_api_load_draft($draftId);
-    $draft['images'] = [[
-        'path' => $image,
-        'width' => 1,
-        'height' => 1,
+    $source = $fixture['root'] . DIRECTORY_SEPARATOR . 'source.jpg';
+    production_api_create_jpeg($source);
+    $imageId = 'd3b07384-d9a0-4bce-9f64-56ef7d22f778';
+    $GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_VALIDATION'] = true;
+    $_POST = [
+        'expectedVersion' => '1',
+        'imageId' => $imageId,
+        'desiredImageIds' => json_encode([$imageId], JSON_THROW_ON_ERROR),
         'alt' => 'Produktbild',
-        'isMain' => true,
-    ]];
-    carmaja_api_save_draft($draft);
+    ];
+    $_FILES = [
+        'image' => [
+            'tmp_name' => $source,
+            'name' => 'produkt.jpg',
+            'size' => filesize($source),
+            'error' => UPLOAD_ERR_OK,
+        ],
+    ];
+    $uploaded = carmaja_api_upload_images($draftId, [], production_api_actor());
+    unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_VALIDATION']);
+    $_POST = [];
+    $_FILES = [];
+    production_api_assert($uploaded['version'] === 2, 'Bild-Upload hat die Version nicht erhoeht.');
+    production_api_assert(
+        is_file($uploaded['images'][0]['path'] ?? ''),
+        'Bereinigtes Bild wurde nicht atomar uebernommen.'
+    );
+    production_api_assert(
+        !is_dir($fixture['private'] . DIRECTORY_SEPARATOR . 'uploads-temp' . DIRECTORY_SEPARATOR . $draftId),
+        'Temporarer Bildbereich wurde nicht bereinigt.'
+    );
 
     production_api_expect(403, 'production_publish_disabled', static function () use ($draftId): void {
         carmaja_api_publish($draftId, [
-            'expectedVersion' => 1,
+            'expectedVersion' => 2,
             'operationId' => 'production-publish-0001',
         ], production_api_actor(), 'published');
     });
     putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
     $first = carmaja_api_publish($draftId, [
-        'expectedVersion' => 1,
+        'expectedVersion' => 2,
         'operationId' => 'production-publish-0001',
     ], production_api_actor(), 'published');
     $second = carmaja_api_publish($draftId, [
-        'expectedVersion' => 1,
+        'expectedVersion' => 2,
         'operationId' => 'production-publish-0001',
     ], production_api_actor(), 'published');
     production_api_assert($first === $second, 'Idempotente Wiederholung liefert ein anderes Ergebnis.');
@@ -257,6 +295,19 @@ try {
     $restored = carmaja_api_restore_backup($backup['backup'], false);
     production_api_assert($restored['status'] === 'restored', 'Restore wurde nicht abgeschlossen.');
     production_api_assert(carmaja_api_load_draft($draftId)['name'] !== 'Veraenderter Stand', 'Restore hat Entwurfsdaten nicht wiederhergestellt.');
+    production_api_json(
+        $fixture['private'] . DIRECTORY_SEPARATOR . 'backups' . DIRECTORY_SEPARATOR
+            . $backup['backup'] . DIRECTORY_SEPARATOR . 'environment.json',
+        ['environment' => 'wrong-environment']
+    );
+    $liveName = carmaja_api_load_draft($draftId)['name'];
+    production_api_expect(409, 'backup_environment_mismatch', static function () use ($backup): void {
+        carmaja_api_restore_backup($backup['backup'], false);
+    });
+    production_api_assert(
+        carmaja_api_load_draft($draftId)['name'] === $liveName,
+        'Fehlgeschlagener Restore hat den aktiven Datenbestand veraendert.'
+    );
 
     $calls = [];
     $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] = static function (string $method, string $path, ?array $body) use (&$calls): array {
@@ -278,5 +329,8 @@ try {
 } finally {
     putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=false');
     unset($GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER']);
+    unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_VALIDATION']);
+    $_POST = [];
+    $_FILES = [];
     production_api_remove_tree($fixture['root']);
 }

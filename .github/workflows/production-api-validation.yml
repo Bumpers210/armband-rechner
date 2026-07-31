@@ -1,0 +1,110 @@
+name: Validate production API
+
+on:
+  push:
+    branches:
+      - release/production-product-management
+    paths:
+      - '.github/workflows/production-api-validation.yml'
+      - 'website/production-api-private/**'
+      - 'website/production-api-public/**'
+      - 'website/production-api-tests/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-api-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-production-api:
+    runs-on: ubuntu-latest
+    env:
+      CARMAJA_PRODUCTION_PUBLISH_ENABLED: 'false'
+      CARMAJA_GITHUB_ADAPTER_ENABLED: 'false'
+
+    steps:
+      - name: Check out repository without write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: json, mbstring, gd, exif
+          coverage: none
+
+      - name: Verify PHP runtime and required extensions
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')" = '8.4'
+          php --version | head -n 1
+          php -m | tr '[:upper:]' '[:lower:]' | sort
+
+          for extension in json mbstring gd exif; do
+            php -m | tr '[:upper:]' '[:lower:]' | grep -Fxq "${extension}"
+          done
+
+          echo 'PHP_8_4_EXTENSIONS_OK'
+
+      - name: Lint all production API PHP files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(
+            find website/production-api-private website/production-api-public website/production-api-tests \
+              -type f -name '*.php' -print0
+          )
+          test "${#files[@]}" -gt 0
+
+          for file in "${files[@]}"; do
+            php -l "${file}"
+          done
+
+          echo 'PRODUCTION_API_LINT_OK'
+
+      - name: Verify isolated defaults and publisher guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '
+            $config = require "website/production-api-private/config/runtime-config.example.php";
+            if (($config["environment"] ?? null) !== "production"
+              || ($config["publishTarget"] ?? null) !== "production"
+              || ($config["productionPublishEnabled"] ?? null) !== false
+              || ($config["githubAdapterEnabled"] ?? null) !== false
+              || ($config["githubRepository"] ?? null) !== "Bumpers210/armband-rechner"
+              || ($config["githubBranch"] ?? null) !== "main") {
+                fwrite(STDERR, "Unsichere Produktionsvorgabe.\n");
+                exit(1);
+            }
+          '
+          ! rg -n -i 'https://(api|www)\.carmaja-perlen\.de' \
+            .github/workflows/production-api-validation.yml \
+            website/production-api-tests
+          ! rg -n -i 'CARMAJA_TEST|test-api|test/product-management-beta' \
+            website/production-api-private website/production-api-public
+          echo 'PRODUCTION_API_GUARDS_OK'
+
+      - name: Run bootstrap, admin, auth, publish and upload tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          php website/production-api-tests/production-bootstrap-test.php
+          php website/production-api-tests/production-admin-test.php
+          php website/production-api-tests/production-api-test.php
+          echo 'PRODUCTION_API_TESTS_OK'
+
+      - name: Confirm workflow stayed local and read-only
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${CARMAJA_PRODUCTION_PUBLISH_ENABLED}" = 'false'
+          test "${CARMAJA_GITHUB_ADAPTER_ENABLED}" = 'false'
+          ! grep -RInE 'curl|wget|ssh|scp|gh[[:space:]]+(api|workflow|run)|git[[:space:]]+push' \
+            .github/workflows/production-api-validation.yml
+          echo 'NO_PUBLISH_OR_DEPLOY_STEP_CONFIGURED'
