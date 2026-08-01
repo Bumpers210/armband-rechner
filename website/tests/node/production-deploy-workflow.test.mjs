@@ -90,6 +90,10 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.equal((workflow.match(/secrets\.CARMAJA_PRODUCTION_VARIABLES_TOKEN/g) ?? []).length, 1);
   assert.match(deploy, /prohibited = 1/);
   assert.match(deploy, /END \{ exit prohibited \? 0 : 1 \}/);
+  assert.match(deploy, /private_key_payload_length=\$\{#CARMAJA_PRODUCTION_SSH_PRIVATE_KEY\}/);
+  assert.match(deploy, /SSH_PRIVATE_KEY_BASE64_LENGTH=%s/);
+  assert.match(deploy, /Production SSH key secret is not canonical Base64\./);
+  assert.match(deploy, /\[\[ ! "\$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY" =~ \^\[A-Za-z0-9\+\/\]\+=\{0,2\}\$ \]\]/);
   assert.match(deploy, /printf '%s' "\$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY" \| base64 --decode > "\$HOME\/\.ssh\/carmaja_production_deploy"/);
   assert.doesNotMatch(deploy, /printf '%s\\n' "\$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY"/);
   for (const marker of [
