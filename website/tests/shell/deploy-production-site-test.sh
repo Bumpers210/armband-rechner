@@ -241,4 +241,13 @@ done
 assert_private_paths_unchanged
 assert_managed_permissions
 
+SCRIPT_DIRECTORY=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PHP_TEST="$SCRIPT_DIRECTORY/../php/production-click-statistics-test.php"
+
+if command -v php >/dev/null 2>&1; then
+    php "$PHP_TEST"
+else
+    printf 'PHP Klickstatistik-Test lokal uebersprungen: php nicht vorhanden.\n'
+fi
+
 printf 'Produktionsdeployment-Shell-Test erfolgreich.\n'
