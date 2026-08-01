@@ -18,10 +18,10 @@ export function SiteFooter() {
               <InstagramLink position="footer" />
             </li>
             <li>
-              <Link href="/impressum">Impressum</Link>
+              <Link href="/impressum/">Impressum</Link>
             </li>
             <li>
-              <Link href="/datenschutz">Datenschutz</Link>
+              <Link href="/datenschutz/">Datenschutz</Link>
             </li>
           </ul>
         </nav>

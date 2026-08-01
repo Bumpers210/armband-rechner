@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { siteContent } from "@/content/site-content";
@@ -8,6 +9,7 @@ import { siteContent } from "@/content/site-content";
 export function SiteHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const pathname = usePathname();
   const [brandPrimary, brandSecondary] = siteContent.brandName.split("-");
 
   useEffect(() => {
@@ -64,16 +66,24 @@ export function SiteHeader() {
           data-open={isMenuOpen}
         >
           <ul className="v2-navigation">
-            {siteContent.navigation.map((item) => (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
+            {siteContent.navigation.map((item) => {
+              const isActive = item.href === "/armbaender/"
+                ? pathname.startsWith("/armbaender/")
+                : pathname === item.href;
+
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    aria-current={isActive ? "page" : undefined}
+                    data-active={isActive}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </nav>
       </div>

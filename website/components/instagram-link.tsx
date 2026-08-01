@@ -1,6 +1,6 @@
 import { siteContent } from "@/content/site-content";
 
-import type { TrackedLinkPosition } from "./vinted-link";
+type TrackedLinkPosition = "footer";
 
 type InstagramLinkProps = {
   position: TrackedLinkPosition;

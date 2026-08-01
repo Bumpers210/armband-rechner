@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductImageGallery } from "@/components/product-image-gallery";
-import { ProductVintedLink } from "@/components/product-vinted-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteContent } from "@/content/site-content";
@@ -146,7 +145,6 @@ export default async function ProductDetailPage({
               </ul>
             </section>
 
-            {isSold ? null : <ProductVintedLink product={product} />}
           </div>
         </article>
       </main>
