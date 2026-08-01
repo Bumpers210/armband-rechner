@@ -202,10 +202,13 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    environment:
+      name: carmaja-production
     env:
       CARMAJA_EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
       CARMAJA_DEPLOYMENT_CONFIRMATION: ${{ inputs.deployment_confirmation }}
       CARMAJA_PRODUCTION_DEPLOY_ENABLED: ${{ vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED }}
+      CARMAJA_PRODUCTION_VARIABLES_TOKEN: ${{ secrets.CARMAJA_PRODUCTION_VARIABLES_TOKEN }}
 
     steps:
       - name: Validate explicit manual production deployment request
@@ -220,6 +223,7 @@ jobs:
           test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"
           test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
           test "$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"
+          test -n "$CARMAJA_PRODUCTION_VARIABLES_TOKEN"
 
   deploy-production-site:
     needs:
@@ -294,12 +298,12 @@ jobs:
             sha256sum -c site.tar.gz.sha256
           )
           test "$(sha256sum .production-deploy-package/site.tar.gz | awk '{print $1}')" = "$CARMAJA_ARCHIVE_SHA256"
-          grep -Fx "meta\trepository\tBumpers210/armband-rechner" .production-deploy-package/manifest.tsv
-          grep -Fx "meta\tbranch\tmain" .production-deploy-package/manifest.tsv
-          grep -Fx "meta\ttarget\tproduction" .production-deploy-package/manifest.tsv
-          grep -Fx "meta\tdomain\twww.carmaja-perlen.de" .production-deploy-package/manifest.tsv
-          grep -Fx "meta\twebroot\t/home/www/carmaja" .production-deploy-package/manifest.tsv
-          grep -Fx "meta\tworkspace\t/home/www/carmaja-production-deploy" .production-deploy-package/manifest.tsv
+          grep -Fx "$(printf 'meta\trepository\tBumpers210/armband-rechner')" .production-deploy-package/manifest.tsv
+          grep -Fx "$(printf 'meta\tbranch\tmain')" .production-deploy-package/manifest.tsv
+          grep -Fx "$(printf 'meta\ttarget\tproduction')" .production-deploy-package/manifest.tsv
+          grep -Fx "$(printf 'meta\tdomain\twww.carmaja-perlen.de')" .production-deploy-package/manifest.tsv
+          grep -Fx "$(printf 'meta\twebroot\t/home/www/carmaja')" .production-deploy-package/manifest.tsv
+          grep -Fx "$(printf 'meta\tworkspace\t/home/www/carmaja-production-deploy')" .production-deploy-package/manifest.tsv
           ! awk -F '\t' '$1 == "file" && ($4 ~ /(^|\/)(\.htaccess|click\.php|products\.json|private-data|_internal|statistik)(\/|$)/ || $4 ~ /\.php$/) { exit 0 } END { exit 1 }' .production-deploy-package/manifest.tsv
 
       - name: Prepare pinned SSH client
@@ -409,12 +413,15 @@ jobs:
       - deploy-production-site
     if: ${{ github.event_name == 'workflow_dispatch' && always() && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
+    environment:
+      name: carmaja-production
     permissions:
-      actions: write
+      contents: read
     steps:
       - name: Disable production deployment independently of result
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.CARMAJA_PRODUCTION_VARIABLES_TOKEN }}
           script: |
             await github.rest.actions.updateRepoVariable({
               owner: context.repo.owner,
