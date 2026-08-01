@@ -208,7 +208,6 @@ jobs:
       CARMAJA_EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
       CARMAJA_DEPLOYMENT_CONFIRMATION: ${{ inputs.deployment_confirmation }}
       CARMAJA_PRODUCTION_DEPLOY_ENABLED: ${{ vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED }}
-      CARMAJA_PRODUCTION_VARIABLES_TOKEN: ${{ secrets.CARMAJA_PRODUCTION_VARIABLES_TOKEN }}
 
     steps:
       - name: Validate explicit manual production deployment request
@@ -223,7 +222,6 @@ jobs:
           test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"
           test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
           test "$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"
-          test -n "$CARMAJA_PRODUCTION_VARIABLES_TOKEN"
 
   deploy-production-site:
     needs:
@@ -415,8 +413,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: carmaja-production
-    permissions:
-      contents: read
+    permissions: {}
     steps:
       - name: Disable production deployment independently of result
         uses: actions/github-script@v7
