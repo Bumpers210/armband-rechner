@@ -320,7 +320,7 @@ jobs:
         run: |
           set -Eeuo pipefail
           install -d -m 700 "$HOME/.ssh"
-          printf '%s\n' "$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY" > "$HOME/.ssh/carmaja_production_deploy"
+          printf '%s' "$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY" | base64 --decode > "$HOME/.ssh/carmaja_production_deploy"
           printf '%s\n' "$CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/carmaja_production_deploy" "$HOME/.ssh/known_hosts"
           ssh-keygen -y -f "$HOME/.ssh/carmaja_production_deploy" > /dev/null
