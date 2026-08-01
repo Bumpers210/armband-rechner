@@ -1,4 +1,38 @@
 {
-  "version": 1,
-  "products": []
+    "version": 1,
+    "products": [
+        {
+            "sku": "CP-2026-0001",
+            "slug": "cp-2026-0001-handgefertigtes-edelsteinarmband",
+            "status": "published",
+            "title": "Handgefertigtes Edelsteinarmband",
+            "description": "Handgefertigtes Edelsteinarmband aus afrikanischem Türkis und gold galvanisierten Lavasteinen\nPerlengröße: ca. 6mm",
+            "materials": [
+                "Afrikanischer Türkis",
+                "Goldene Lavaperlen"
+            ],
+            "metalElements": [],
+            "size": "18 cm",
+            "stock": 1,
+            "careInstructions": [],
+            "images": [
+                {
+                    "src": "/images/products/CP-2026-0001/01.jpg",
+                    "alt": "Handgefertigtes Edelsteinarmband",
+                    "width": 1200,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "src": "/images/products/CP-2026-0001/02.jpg",
+                    "alt": "Handgefertigtes Edelsteinarmband",
+                    "width": 1600,
+                    "height": 1200,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-08-01T14:20:20+00:00",
+            "vintedUrl": "https://www.vinted.de/items/9531745856-handgefertigtes-edelsteinarmband-afrikanischer-turkis-gold-galvanisierte-lavaperlen"
+        }
+    ]
 }
