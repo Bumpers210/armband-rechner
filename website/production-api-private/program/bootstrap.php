@@ -173,7 +173,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         );
     }
 
-    if ($githubAdapterEnabled !== $productionPublishEnabled
+    if (($productionPublishEnabled && !$githubAdapterEnabled)
         || ($githubAdapterEnabled && $githubTokenFile === null)) {
         throw new CarmajaBootstrapException(
             'github_adapter_configuration_invalid',

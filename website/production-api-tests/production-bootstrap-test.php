@@ -112,6 +112,23 @@ try {
         $config['githubAdapterEnabled'] = true;
         carmaja_bootstrap_validate_config($config, $fixture['configFile']);
     });
+    $githubTokenFile = $fixture['private'] . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'github-token';
+    file_put_contents($githubTokenFile, 'github_pat_test_token');
+    chmod($githubTokenFile, 0640);
+    $readOnlyConfig = $fixture['config'];
+    $readOnlyConfig['githubAdapterEnabled'] = true;
+    $readOnlyConfig['githubTokenFile'] = $githubTokenFile;
+    $readOnly = carmaja_bootstrap_validate_config($readOnlyConfig, $fixture['configFile']);
+    production_bootstrap_assert(
+        $readOnly['githubAdapterEnabled'] === true
+            && $readOnly['productionPublishEnabled'] === false,
+        'Tokengebundener Read-only-Adapter muss ohne Produktionspublish erlaubt sein.'
+    );
+    production_bootstrap_expect('github_adapter_configuration_invalid', static function () use ($fixture): void {
+        $config = $fixture['config'];
+        $config['productionPublishEnabled'] = true;
+        carmaja_bootstrap_validate_config($config, $fixture['configFile']);
+    });
     production_bootstrap_assert(
         carmaja_public_resolve_bootstrap($fixture['api'] . DIRECTORY_SEPARATOR . 'bootstrap.php', $fixture['api']) === null,
         'Oeffentlicher Bootstrap darf nicht akzeptiert werden.'
