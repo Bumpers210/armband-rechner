@@ -320,6 +320,12 @@ jobs:
         run: |
           set -Eeuo pipefail
           install -d -m 700 "$HOME/.ssh"
+          private_key_payload_length=${#CARMAJA_PRODUCTION_SSH_PRIVATE_KEY}
+          printf 'SSH_PRIVATE_KEY_BASE64_LENGTH=%s\n' "$private_key_payload_length"
+          if [[ ! "$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]; then
+            printf '%s\n' 'Production SSH key secret is not canonical Base64.' >&2
+            exit 1
+          fi
           printf '%s' "$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY" | base64 --decode > "$HOME/.ssh/carmaja_production_deploy"
           printf '%s\n' "$CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/carmaja_production_deploy" "$HOME/.ssh/known_hosts"
