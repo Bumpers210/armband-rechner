@@ -54,6 +54,8 @@ test("Produktion verwendet die neutrale Canonical-URL ohne Testziel", async () =
   const content = await source("content/site-content.ts");
   const layout = await source("app/layout.tsx");
   const detail = await source("app/armbaender/[slug]/page.tsx");
+  const imprint = await source("app/impressum/page.tsx");
+  const privacy = await source("app/datenschutz/page.tsx");
 
   assert.match(target, /https:\/\/www\.carmaja-perlen\.de\//);
   assert.doesNotMatch(target, /test\.carmaja-perlen\.de|test-api\.carmaja-perlen\.de/);
@@ -62,4 +64,6 @@ test("Produktion verwendet die neutrale Canonical-URL ohne Testziel", async () =
   assert.match(layout, /index: true/);
   assert.match(detail, /alternates:/);
   assert.match(detail, /canonical:/);
+  assert.match(imprint, /canonical: "\/impressum\/"/);
+  assert.match(privacy, /canonical: "\/datenschutz\/"/);
 });

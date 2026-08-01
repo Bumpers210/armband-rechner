@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: {
     absolute: "Impressum | Carmaja-Perlen",
   },
+  alternates: {
+    canonical: "/impressum/",
+  },
   robots: {
     index: false,
     follow: true,
