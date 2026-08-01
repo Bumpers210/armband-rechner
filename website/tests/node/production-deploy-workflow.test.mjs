@@ -16,6 +16,7 @@ test("Produktionsworkflow trennt Push-Builds von einem expliziten manuellen Prod
 
   assert.match(workflow, /workflow_dispatch:\s*\n\s+inputs:\s*\n\s+expected_commit_sha:/);
   assert.match(workflow, /deployment_confirmation:/);
+  assert.match(workflow, /pull_request:\s*\n\s+branches:\s*\n\s+- main/);
   assert.match(workflow, /release\/production-product-management/);
   assert.match(workflow, /- main/);
   assert.match(workflow, /build-production-site:/);
@@ -28,8 +29,16 @@ test("Produktionsworkflow trennt Push-Builds von einem expliziten manuellen Prod
   assert.match(buildSection, /Scan sources and create production deployment manifest/);
   assert.match(buildSection, /Package only verified production export/);
   assert.match(buildSection, /Upload verified production deployment artifact/);
+  assert.match(buildSection, /CARMAJA_PULL_REQUEST_BASE_REPOSITORY/);
+  assert.match(buildSection, /CARMAJA_PULL_REQUEST_HEAD_REPOSITORY/);
+  assert.match(buildSection, /CARMAJA_MANIFEST_SOURCE_BRANCH: \$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}/);
+  assert.match(buildSection, /GITHUB_REF_NAME="\$CARMAJA_MANIFEST_SOURCE_BRANCH" npm run prepare:production-deploy/);
+  assert.match(buildSection, /test "\$GITHUB_BASE_REF" = "\$CARMAJA_PRODUCTION_BRANCH"/);
+  assert.match(buildSection, /test "\$CARMAJA_PULL_REQUEST_BASE_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
+  assert.match(buildSection, /test "\$CARMAJA_PULL_REQUEST_HEAD_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
   assert.doesNotMatch(buildSection, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
   assert.doesNotMatch(buildSection, /GITHUB_REF_NAME: main/);
+  assert.doesNotMatch(buildSection, /secrets\.|environment:|\bssh\b|\bscp\b|github-script/i);
   assert.match(workflow, /github\.event_name == 'workflow_dispatch'/);
   assert.match(workflow, /github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /github\.ref_name == 'main'/);
@@ -67,7 +76,35 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.match(deploy, /test "\$CARMAJA_EXPECTED_COMMIT_SHA" = "\$GITHUB_SHA"/);
   assert.match(deploy, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"/);
   assert.match(reset, /needs:\s*\n\s+- build-production-site\s*\n\s+- validate-manual-production-deploy\s*\n\s+- deploy-production-site/);
-  assert.match(reset, /if: \$\{\{ always\(\) && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' \}\}/);
+  assert.match(reset, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && always\(\) && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' \}\}/);
+});
+
+test("Interne Pull Requests nach main validieren nur den Produktionsbuild", async () => {
+  const workflow = await readRepositoryFile(".github/workflows/deploy-website.yml");
+  const buildStart = workflow.indexOf("  build-production-site:");
+  const validationStart = workflow.indexOf("  validate-manual-production-deploy:");
+  const deployStart = workflow.indexOf("  deploy-production-site:");
+  const resetStart = workflow.indexOf("  reset-production-deploy-gate:");
+  const build = workflow.slice(buildStart, validationStart);
+  const validation = workflow.slice(validationStart, deployStart);
+  const deploy = workflow.slice(deployStart, resetStart);
+  const reset = workflow.slice(resetStart);
+
+  assert.ok(buildStart >= 0);
+  assert.ok(validationStart > buildStart);
+  assert.match(workflow, /pull_request:\s*\n\s+branches:\s*\n\s+- main\s*\n\s+paths:/);
+  assert.match(build, /pull_request\)/);
+  assert.match(build, /test "\$GITHUB_BASE_REF" = "\$CARMAJA_PRODUCTION_BRANCH"/);
+  assert.match(build, /test "\$CARMAJA_PULL_REQUEST_BASE_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
+  assert.match(build, /test "\$CARMAJA_PULL_REQUEST_HEAD_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
+  assert.match(build, /CARMAJA_MANIFEST_SOURCE_BRANCH: \$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}/);
+  assert.match(build, /GITHUB_REF_NAME="\$CARMAJA_MANIFEST_SOURCE_BRANCH" npm run prepare:production-deploy/);
+  assert.doesNotMatch(build, /secrets\.|environment:|\bssh\b|\bscp\b|github-script/i);
+  assert.match(validation, /if: \$\{\{ github\.event_name == 'workflow_dispatch' \}\}/);
+  assert.match(deploy, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
+  assert.match(reset, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && always\(\)/);
+  assert.doesNotMatch(workflow, /- fix\/production-bootstrap-rollback-records/);
+  assert.match(workflow, /push:\s*\n\s+branches:\s*\n\s+- release\/production-product-management\s*\n\s+- main/);
 });
 
 test("Erstdeploy-Bootstrap ist auf den bestaetigten Kandidaten beschraenkt und fasst den Webroot nicht an", async () => {
@@ -84,11 +121,34 @@ test("Erstdeploy-Bootstrap ist auf den bestaetigten Kandidaten beschraenkt und f
   assert.match(script, /no-repository-commit/);
   assert.doesNotMatch(script, /chmod 0755 "\$WEBROOT"/);
   assert.doesNotMatch(script, /rm -f "\$WEBROOT/);
+  assert.match(script, /write_missing_rollback_records/);
+  assert.match(script, /validate_missing_rollback_records/);
+  assert.match(script, /printf 'previously-missing\|%s\\n'/);
+  assert.doesNotMatch(script, /printf "previously-missing\|%s\\\\n"/);
   assert.match(inventory, /^inventory\|1$/m);
   assert.equal((inventory.match(/^existing\|/gm) ?? []).length, 50);
   assert.equal((inventory.match(/^missing\|/gm) ?? []).length, 19);
   assert.match(workflow, /website\/scripts\/bootstrap-production-first-deploy\.sh/);
   assert.match(workflow, /website\/scripts\/production-first-deploy-inventory\.v1/);
+});
+
+test("Bootstrap-Reparatur akzeptiert nur den bekannten privaten Fehlzustand und bleibt vom Webroot getrennt", async () => {
+  const repair = await readRepositoryFile(
+    "website/scripts/repair-production-bootstrap-rollback-records.sh",
+  );
+
+  assert.match(repair, /--repair-bootstrap-rollback-records/);
+  assert.match(repair, /EXPECTED_CURRENT_MANIFEST_SHA256='09919cd198475b8c6d0ff47a7ca3ed39242a45db654731633d81612b881f696b'/);
+  assert.match(repair, /EXPECTED_BACKUP_ID='bootstrap-unmanaged-d68dae76df53e5aa554f0139ce7c85301d63c81c'/);
+  assert.match(repair, /CARMAJA_PRODUCTION_DEPLOY_ENABLED:-/);
+  assert.match(repair, /CARMAJA_PRODUCTION_PUBLISH_ENABLED:-/);
+  assert.match(repair, /write_expected_legacy_broken_records/);
+  assert.match(repair, /validate_correct_rollback_records/);
+  assert.match(repair, /simulate_rollback/);
+  assert.match(repair, /QUARANTINE_DIRECTORY/);
+  assert.match(repair, /webroot_snapshot/);
+  assert.doesNotMatch(repair, /chmod 0755 "\$WEBROOT"/);
+  assert.doesNotMatch(repair, /rm -f "\$WEBROOT/);
 });
 
 test("SFTP-Ziele sind relativ und SSH-Pfade bleiben absolut gebunden", async () => {
