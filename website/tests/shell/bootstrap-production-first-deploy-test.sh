@@ -4,9 +4,13 @@ set -euo pipefail
 
 BOOTSTRAP_SOURCE=${1:?Pfad zum Bootstrap-Skript fehlt.}
 DEPLOY_SOURCE=${2:?Pfad zum Produktionsdeploy-Skript fehlt.}
+REPAIR_SOURCE=${3:-"$(dirname "$BOOTSTRAP_SOURCE")/repair-production-bootstrap-rollback-records.sh"}
 ROOT=$(mktemp -d /tmp/carmaja-production-bootstrap-test.XXXXXX)
 COMMIT_SHA=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 RELEASE_ID="${COMMIT_SHA}-123-1"
+
+[ -f "$REPAIR_SOURCE" ]
+bash -n "$REPAIR_SOURCE"
 
 cleanup() {
     case "$ROOT" in
@@ -21,6 +25,15 @@ trap cleanup EXIT HUP INT TERM
 
 assert_mode() {
     [ "$(stat -c '%a' "$2")" = "$1" ] || exit 1
+}
+
+tree_digest() {
+    (
+        cd "$1"
+        find -P . -xdev -type f -printf '%P\n' | LC_ALL=C sort | while IFS= read -r file_path; do
+            printf '%s\t%s\n' "$file_path" "$(sha256sum "$1/$file_path" | awk '{print $1}')"
+        done | sha256sum | awk '{print $1}'
+    )
 }
 
 snapshot_tree() {
@@ -65,6 +78,48 @@ patch_failing_deploy() {
     chmod 0700 "$destination"
 }
 
+patch_repair() {
+    local source=$1 destination=$2 webroot=$3 workspace=$4 archive_hash=$5 manifest_hash=$6 inventory_hash=$7 current_manifest_hash=$8 webroot_digest=$9 webroot_file_count=${10}
+    sed \
+        -e "s#^WEBROOT='/home/www/carmaja'\$#WEBROOT='$webroot'#" \
+        -e "s#^WORKSPACE='/home/www/carmaja-production-deploy'\$#WORKSPACE='$workspace'#" \
+        -e "s#^EXPECTED_CANDIDATE_COMMIT=.*\$#EXPECTED_CANDIDATE_COMMIT='$COMMIT_SHA'#" \
+        -e "s#^EXPECTED_CANDIDATE_RELEASE=.*\$#EXPECTED_CANDIDATE_RELEASE='$RELEASE_ID'#" \
+        -e "s#^EXPECTED_CANDIDATE_ARCHIVE_SHA256=.*\$#EXPECTED_CANDIDATE_ARCHIVE_SHA256='$archive_hash'#" \
+        -e "s#^EXPECTED_CANDIDATE_MANIFEST_SHA256=.*\$#EXPECTED_CANDIDATE_MANIFEST_SHA256='$manifest_hash'#" \
+        -e "s#^EXPECTED_INVENTORY_SHA256=.*\$#EXPECTED_INVENTORY_SHA256='$inventory_hash'#" \
+        -e "s#^EXPECTED_CURRENT_MANIFEST_SHA256=.*\$#EXPECTED_CURRENT_MANIFEST_SHA256='$current_manifest_hash'#" \
+        -e "s#^EXPECTED_WEBROOT_SNAPSHOT_SHA256=.*\$#EXPECTED_WEBROOT_SNAPSHOT_SHA256='$webroot_digest'#" \
+        -e "s#^EXPECTED_WEBROOT_FILE_COUNT=.*\$#EXPECTED_WEBROOT_FILE_COUNT='$webroot_file_count'#" \
+        -e "s#^EXPECTED_BACKUP_ID=.*\$#EXPECTED_BACKUP_ID='bootstrap-unmanaged-$COMMIT_SHA'#" \
+        "$source" > "$destination"
+    chmod 0700 "$destination"
+}
+
+assert_rollback_records() {
+    local records=$1 expected="$FIXTURE/expected-rollback-records.txt" actual="$FIXTURE/actual-rollback-records.txt"
+    [ "$(wc -l < "$records" | tr -d ' ')" -eq "${#MISSING_PATHS[@]}" ]
+    awk -F '|' '
+        NF != 2 || $1 != "previously-missing" || $2 == "" { invalid++ }
+        END { exit invalid ? 1 : 0 }
+    ' "$records"
+    ! grep -F '\n' "$records" > /dev/null
+    awk -F '|' '{ print $2 }' "$records" | LC_ALL=C sort > "$actual"
+    printf '%s\n' "${MISSING_PATHS[@]}" | LC_ALL=C sort > "$expected"
+    cmp -s "$expected" "$actual"
+    [ "$(uniq -d "$actual" | wc -l | tr -d ' ')" -eq 0 ]
+}
+
+write_legacy_broken_records() {
+    local inventory=$1 destination=$2
+    : > "$destination"
+    while IFS='|' read -r record_type _hash _size _mode path; do
+        [ "$record_type" = 'missing' ] || continue
+        printf 'previously-missing|%s\\n' "$path" >> "$destination"
+    done < "$inventory"
+    chmod 0640 "$destination"
+}
+
 setup_fixture() {
     local name=$1 mode=$2 path number destination inventory_path
     FIXTURE="$ROOT/$name"
@@ -81,6 +136,7 @@ setup_fixture() {
     CURRENT_MANIFEST="$WORKSPACE/state/current-manifest.tsv"
     BOOTSTRAP_MARKER="$WORKSPACE/state/bootstrap-first-deploy.env"
     BACKUP_DIRECTORY="$WORKSPACE/backups/bootstrap-unmanaged-$COMMIT_SHA"
+    ROLLBACK_RECORDS="$BACKUP_DIRECTORY/previously-missing-paths.v1"
     CANDIDATE_PATHS=()
     EXISTING_PATHS=()
     DIFFERENT_PATHS=()
@@ -106,6 +162,8 @@ setup_fixture() {
         CANDIDATE_PATHS+=("$path")
         MISSING_PATHS+=("$path")
     done
+    MISSING_PATHS[0]='new/missing-special_~$-name..txt'
+    CANDIDATE_PATHS[50]="${MISSING_PATHS[0]}"
     if [ "$mode" = 'protected' ]; then
         CANDIDATE_PATHS[0]='.htaccess'
         EXISTING_PATHS[0]='.htaccess'
@@ -199,6 +257,36 @@ expect_bootstrap_failure() {
     [ "$exit_code" -ne 0 ]
 }
 
+prepare_repair_script() {
+    local current_hash webroot_hash webroot_file_count
+    REPAIR_SCRIPT="$BIN/repair-production-bootstrap-rollback-records.sh"
+    current_hash=$(sha256sum "$CURRENT_MANIFEST" | awk '{print $1}')
+    webroot_hash=$(tree_digest "$WEBROOT")
+    webroot_file_count=$(find -P "$WEBROOT" -xdev -type f | wc -l | tr -d ' ')
+    patch_repair \
+        "$REPAIR_SOURCE" \
+        "$REPAIR_SCRIPT" \
+        "$WEBROOT" \
+        "$WORKSPACE" \
+        "$ARCHIVE_HASH" \
+        "$MANIFEST_HASH" \
+        "$INVENTORY_HASH" \
+        "$current_hash" \
+        "$webroot_hash" \
+        "$webroot_file_count"
+    bash -n "$REPAIR_SCRIPT"
+}
+
+expect_repair_failure() {
+    set +e
+    CARMAJA_PRODUCTION_DEPLOY_ENABLED="${1:-false}" \
+    CARMAJA_PRODUCTION_PUBLISH_ENABLED="${2:-false}" \
+        bash "$REPAIR_SCRIPT" --repair-bootstrap-rollback-records > "$FIXTURE/repair.log" 2>&1
+    local exit_code=$?
+    set -e
+    [ "$exit_code" -ne 0 ]
+}
+
 setup_fixture success normal
 [ "$(grep -c '^existing|' "$INVENTORY")" -eq 50 ]
 [ "$(grep -c '^missing|' "$INVENTORY")" -eq 19 ]
@@ -215,9 +303,17 @@ assert_mode 640 "$BOOTSTRAP_MARKER"
 grep -F $'meta\tbootstrap-provenance\tno-repository-commit' "$CURRENT_MANIFEST" > /dev/null
 [ "$(grep -c $'^file\t' "$CURRENT_MANIFEST")" -eq 50 ]
 [ "$(find "$BACKUP_DIRECTORY/files" -type f | wc -l | tr -d ' ')" -eq 50 ]
+assert_rollback_records "$ROLLBACK_RECORDS"
+grep -Fx 'previously-missing|new/missing-special_~$-name..txt' "$ROLLBACK_RECORDS" > /dev/null
 for directory in "$WORKSPACE" "$WORKSPACE/incoming" "$WORKSPACE/releases" "$WORKSPACE/backups" "$WORKSPACE/state" "$WORKSPACE/locks"; do
     assert_mode 750 "$directory"
 done
+
+LEGACY_BROKEN_RECORDS="$FIXTURE/legacy-broken-records.v1"
+write_legacy_broken_records "$INVENTORY" "$LEGACY_BROKEN_RECORDS"
+[ "$(awk 'END { print NR + 0 }' "$LEGACY_BROKEN_RECORDS")" -eq 1 ]
+[ "$(wc -l < "$LEGACY_BROKEN_RECORDS" | tr -d ' ')" -eq 0 ]
+grep -F '\n' "$LEGACY_BROKEN_RECORDS" > /dev/null
 
 set +e
 CARMAJA_REPOSITORY='Bumpers210/armband-rechner' CARMAJA_BRANCH='main' CARMAJA_SITE_TARGET='production' CARMAJA_SITE_DOMAIN='www.carmaja-perlen.de' CARMAJA_PRODUCTION_WEBROOT="$WEBROOT" CARMAJA_PRODUCTION_DEPLOY_WORKSPACE="$WORKSPACE" CARMAJA_PRODUCTION_PUBLISH_ENABLED='false' CARMAJA_PRODUCTION_DEPLOY_ENABLED='true' CARMAJA_COMMIT_SHA="$COMMIT_SHA" CARMAJA_RELEASE_ID="$RELEASE_ID" CARMAJA_ARCHIVE_SHA256="$ARCHIVE_HASH" CARMAJA_DEPLOY_ACTION='deploy' sh "$DEPLOY_SCRIPT" > "$FIXTURE/deploy-rollback.log" 2>&1
@@ -269,4 +365,109 @@ expect_bootstrap_failure
 cmp -s "$FIXTURE/before.txt" <(snapshot_tree "$WEBROOT")
 assert_no_bootstrap_state
 
-printf 'Produktions-Bootstrap-Test erfolgreich: Inventur, Abbruch, Schutz und Rollback geprueft.\n'
+setup_fixture incomplete-rollback-record normal
+sed '/CARMAJA_BOOTSTRAP_TEST_CORRUPT_ROLLBACK_RECORDS_POINT/a\
+printf "%s\\n" "previously-missing|" >> "$STAGE_DIRECTORY/previously-missing-paths.v1"' \
+    "$BOOTSTRAP_SCRIPT" > "$FIXTURE/bootstrap-incomplete-record.sh"
+mv "$FIXTURE/bootstrap-incomplete-record.sh" "$BOOTSTRAP_SCRIPT"
+chmod 0700 "$BOOTSTRAP_SCRIPT"
+snapshot_tree "$WEBROOT" > "$FIXTURE/before.txt"
+expect_bootstrap_failure
+grep -F 'enthaelt einen unsicheren Dateipfad' "$FIXTURE/bootstrap.log" > /dev/null
+cmp -s "$FIXTURE/before.txt" <(snapshot_tree "$WEBROOT")
+assert_no_bootstrap_state
+
+setup_fixture repair-success normal
+bash "$BOOTSTRAP_SCRIPT" > "$FIXTURE/bootstrap.log"
+write_legacy_broken_records "$INVENTORY" "$ROLLBACK_RECORDS"
+BROKEN_ROLLBACK_HASH=$(sha256sum "$ROLLBACK_RECORDS" | awk '{print $1}')
+CURRENT_MANIFEST_HASH=$(sha256sum "$CURRENT_MANIFEST" | awk '{print $1}')
+BACKUP_FILES_SNAPSHOT="$FIXTURE/backup-files-before.txt"
+snapshot_tree "$BACKUP_DIRECTORY/files" > "$BACKUP_FILES_SNAPSHOT"
+REPAIR_WEBROOT_SNAPSHOT="$FIXTURE/webroot-before-repair.txt"
+snapshot_tree "$WEBROOT" > "$REPAIR_WEBROOT_SNAPSHOT"
+prepare_repair_script
+CARMAJA_PRODUCTION_DEPLOY_ENABLED=false CARMAJA_PRODUCTION_PUBLISH_ENABLED=false \
+    bash "$REPAIR_SCRIPT" --repair-bootstrap-rollback-records > "$FIXTURE/repair.log"
+grep -F 'BOOTSTRAP_ROLLBACK_RECORDS_REPAIR_OK' "$FIXTURE/repair.log" > /dev/null
+assert_rollback_records "$ROLLBACK_RECORDS"
+[ "$(sha256sum "$CURRENT_MANIFEST" | awk '{print $1}')" = "$CURRENT_MANIFEST_HASH" ]
+cmp -s "$BACKUP_FILES_SNAPSHOT" <(snapshot_tree "$BACKUP_DIRECTORY/files")
+cmp -s "$REPAIR_WEBROOT_SNAPSHOT" <(snapshot_tree "$WEBROOT")
+QUARANTINE_RECORDS="$WORKSPACE/state/quarantine/$(basename "$BACKUP_DIRECTORY")/previously-missing-paths.v1"
+[ -f "$QUARANTINE_RECORDS" ]
+[ "$(sha256sum "$QUARANTINE_RECORDS" | awk '{print $1}')" = "$BROKEN_ROLLBACK_HASH" ]
+assert_mode 750 "$WORKSPACE/state/quarantine"
+assert_mode 750 "$(dirname "$QUARANTINE_RECORDS")"
+assert_mode 640 "$QUARANTINE_RECORDS"
+! find "$WORKSPACE/state" -maxdepth 1 -name '.bootstrap-repair-*' -print -quit | grep -q .
+
+setup_fixture repair-gate normal
+bash "$BOOTSTRAP_SCRIPT" > "$FIXTURE/bootstrap.log"
+write_legacy_broken_records "$INVENTORY" "$ROLLBACK_RECORDS"
+REPAIR_BEFORE="$FIXTURE/repair-before.txt"
+snapshot_tree "$WEBROOT" > "$REPAIR_BEFORE"
+prepare_repair_script
+expect_repair_failure true false
+grep -F 'Produktionsdeployfreigabe muss fuer die Reparatur exakt false sein' "$FIXTURE/repair.log" > /dev/null
+cmp -s "$REPAIR_BEFORE" <(snapshot_tree "$WEBROOT")
+[ ! -e "$WORKSPACE/state/quarantine" ]
+[ "$(awk 'END { print NR + 0 }' "$ROLLBACK_RECORDS")" -eq 1 ]
+
+setup_fixture repair-current-manifest normal
+bash "$BOOTSTRAP_SCRIPT" > "$FIXTURE/bootstrap.log"
+write_legacy_broken_records "$INVENTORY" "$ROLLBACK_RECORDS"
+prepare_repair_script
+sed "s/^EXPECTED_CURRENT_MANIFEST_SHA256=.*/EXPECTED_CURRENT_MANIFEST_SHA256='$(printf '0%.0s' {1..64})'/" \
+    "$REPAIR_SCRIPT" > "$FIXTURE/repair-wrong-manifest.sh"
+mv "$FIXTURE/repair-wrong-manifest.sh" "$REPAIR_SCRIPT"
+chmod 0700 "$REPAIR_SCRIPT"
+expect_repair_failure
+grep -F 'hat nicht die erwartete Pruefsumme' "$FIXTURE/repair.log" > /dev/null
+[ ! -e "$WORKSPACE/state/quarantine" ]
+[ "$(awk 'END { print NR + 0 }' "$ROLLBACK_RECORDS")" -eq 1 ]
+
+setup_fixture repair-live-change normal
+bash "$BOOTSTRAP_SCRIPT" > "$FIXTURE/bootstrap.log"
+write_legacy_broken_records "$INVENTORY" "$ROLLBACK_RECORDS"
+prepare_repair_script
+printf 'changed-after-bootstrap\n' > "$WEBROOT/${DIFFERENT_PATHS[0]}"
+expect_repair_failure
+grep -F 'hat sich seit der Bestaetigungsinventur geaendert' "$FIXTURE/repair.log" > /dev/null
+[ ! -e "$WORKSPACE/state/quarantine" ]
+[ "$(awk 'END { print NR + 0 }' "$ROLLBACK_RECORDS")" -eq 1 ]
+
+setup_fixture repair-release-present normal
+bash "$BOOTSTRAP_SCRIPT" > "$FIXTURE/bootstrap.log"
+write_legacy_broken_records "$INVENTORY" "$ROLLBACK_RECORDS"
+prepare_repair_script
+mkdir "$WORKSPACE/releases/active-release"
+chmod 0750 "$WORKSPACE/releases/active-release"
+expect_repair_failure
+grep -F 'Ein Produktionsrelease ist vorhanden' "$FIXTURE/repair.log" > /dev/null
+[ ! -e "$WORKSPACE/state/quarantine" ]
+[ "$(awk 'END { print NR + 0 }' "$ROLLBACK_RECORDS")" -eq 1 ]
+
+setup_fixture repair-backup-symlink normal
+bash "$BOOTSTRAP_SCRIPT" > "$FIXTURE/bootstrap.log"
+write_legacy_broken_records "$INVENTORY" "$ROLLBACK_RECORDS"
+prepare_repair_script
+SYMLINKED_BACKUP_FILE="$BACKUP_DIRECTORY/files/${EXISTING_PATHS[0]}"
+rm "$SYMLINKED_BACKUP_FILE"
+ln -s "$WEBROOT/${EXISTING_PATHS[0]}" "$SYMLINKED_BACKUP_FILE"
+expect_repair_failure
+grep -F 'Bootstrap-Sicherung enthaelt einen Symlink' "$FIXTURE/repair.log" > /dev/null
+[ ! -e "$WORKSPACE/state/quarantine" ]
+[ "$(awk 'END { print NR + 0 }' "$ROLLBACK_RECORDS")" -eq 1 ]
+
+setup_fixture repair-incomplete-record normal
+bash "$BOOTSTRAP_SCRIPT" > "$FIXTURE/bootstrap.log"
+printf 'previously-missing|incomplete' > "$ROLLBACK_RECORDS"
+chmod 0640 "$ROLLBACK_RECORDS"
+prepare_repair_script
+expect_repair_failure
+grep -F 'entspricht nicht dem exakt bekannten Escape-Fehler' "$FIXTURE/repair.log" > /dev/null
+[ ! -e "$WORKSPACE/state/quarantine" ]
+[ "$(cat "$ROLLBACK_RECORDS")" = 'previously-missing|incomplete' ]
+
+printf 'Produktions-Bootstrap-Test erfolgreich: Inventur, Abbruch, Schutz, Rollback und Reparatur geprueft.\n'

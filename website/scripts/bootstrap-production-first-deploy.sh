@@ -400,6 +400,81 @@ copy_bootstrap_backup()
     done < "$INVENTORY_FILE"
 }
 
+write_missing_rollback_records()
+{
+    records_file=$1
+
+    : > "$records_file"
+    while IFS='|' read -r record_type _file_hash _file_size _file_mode relative_path; do
+        [ "$record_type" = 'missing' ] || continue
+        printf 'previously-missing|%s\n' "$relative_path" >> "$records_file"
+    done < "$INVENTORY_FILE"
+    chmod 0640 "$records_file"
+}
+
+validate_missing_rollback_records()
+{
+    records_file=$1
+    candidate_manifest=$2
+    bootstrap_manifest=$3
+    records_paths_file="$records_file.paths"
+    expected_paths_file="$records_file.expected"
+    sorted_records_file="$records_file.sorted"
+    sorted_expected_file="$records_file.expected.sorted"
+    records_count=0
+
+    [ -f "$records_file" ] && [ ! -L "$records_file" ] \
+        || fail 'Bootstrap-Rollbackdatei fehlt oder ist kein regulaere Datei.'
+    : > "$records_paths_file"
+
+    while IFS= read -r record || [ -n "$record" ]; do
+        [ -n "$record" ] || fail 'Bootstrap-Rollbackdatei enthaelt einen leeren Datensatz.'
+        record_type=${record%%|*}
+        relative_path=${record#*|}
+
+        [ "$record_type" = 'previously-missing' ] && [ "$relative_path" != "$record" ] \
+            || fail 'Bootstrap-Rollbackdatei enthaelt ein ungueltiges Datensatzformat.'
+        validate_relative_path "$relative_path"
+        manifest_has_path "$candidate_manifest" "$relative_path" \
+            || fail 'Bootstrap-Rollbackdatei enthaelt einen unbekannten Kandidatenpfad.'
+        if manifest_has_path "$bootstrap_manifest" "$relative_path"; then
+            fail 'Bootstrap-Rollbackdatei enthaelt einen bereits vorhandenen Pfad.'
+        fi
+
+        printf '%s\n' "$relative_path" >> "$records_paths_file"
+        records_count=$((records_count + 1))
+    done < "$records_file"
+
+    assert_equal "$records_count" "$EXPECTED_MISSING_PATH_COUNT" \
+        'Bootstrap-Rollbackdatei hat eine unerwartete Anzahl von Datensaetzen.'
+    assert_equal "$(wc -l < "$records_file" | tr -d ' ')" "$EXPECTED_MISSING_PATH_COUNT" \
+        'Bootstrap-Rollbackdatei hat keine vollstaendigen physischen Datensaetze.'
+
+    duplicate_count=$(LC_ALL=C sort "$records_paths_file" | uniq -d | wc -l | tr -d ' ')
+    [ "$duplicate_count" -eq 0 ] || fail 'Bootstrap-Rollbackdatei enthaelt doppelte Pfade.'
+
+    awk -F "$TAB" '
+        NR == FNR {
+            if ($1 == "file") {
+                existing[$4] = 1
+            }
+            next
+        }
+        $1 == "file" && !($4 in existing) {
+            print $4
+        }
+    ' "$bootstrap_manifest" "$candidate_manifest" | LC_ALL=C sort > "$expected_paths_file"
+
+    assert_equal "$(wc -l < "$expected_paths_file" | tr -d ' ')" "$EXPECTED_MISSING_PATH_COUNT" \
+        'Bootstrap-Manifeste haben eine unerwartete Pfaddifferenz.'
+    LC_ALL=C sort "$records_paths_file" > "$sorted_records_file"
+    LC_ALL=C sort "$expected_paths_file" > "$sorted_expected_file"
+    cmp -s "$sorted_records_file" "$sorted_expected_file" \
+        || fail 'Bootstrap-Rollbackdatei entspricht nicht der Kandidatendifferenz.'
+
+    rm -f "$records_paths_file" "$expected_paths_file" "$sorted_records_file" "$sorted_expected_file"
+}
+
 [ "$#" -eq 0 ] || fail 'Das Bootstrap-Skript akzeptiert keine Argumente.'
 assert_equal "$BOOTSTRAP_COMMIT_SENTINEL" '0000000000000000000000000000000000000000' \
     'Sichere Bootstrap-Provenienz ist nicht darstellbar.'
@@ -499,7 +574,12 @@ validate_bootstrap_manifest "$STAGE_DIRECTORY/current-manifest.tsv"
 copy_bootstrap_backup "$STAGE_DIRECTORY/files"
 cp "$INVENTORY_FILE" "$STAGE_DIRECTORY/inventory.v1"
 cp "$CANDIDATE_MANIFEST" "$STAGE_DIRECTORY/candidate-manifest.tsv"
-awk -F '|' '$1 == "missing" { printf "previously-missing|%s\\n", $5 }' "$INVENTORY_FILE" > "$STAGE_DIRECTORY/previously-missing-paths.v1"
+write_missing_rollback_records "$STAGE_DIRECTORY/previously-missing-paths.v1"
+# CARMAJA_BOOTSTRAP_TEST_CORRUPT_ROLLBACK_RECORDS_POINT
+validate_missing_rollback_records \
+    "$STAGE_DIRECTORY/previously-missing-paths.v1" \
+    "$STAGE_DIRECTORY/candidate-manifest.tsv" \
+    "$STAGE_DIRECTORY/current-manifest.tsv"
 {
     printf 'state=bootstrap_pending\n'
     printf 'source=verified-unmanaged-live-webroot-inventory\n'

@@ -84,11 +84,34 @@ test("Erstdeploy-Bootstrap ist auf den bestaetigten Kandidaten beschraenkt und f
   assert.match(script, /no-repository-commit/);
   assert.doesNotMatch(script, /chmod 0755 "\$WEBROOT"/);
   assert.doesNotMatch(script, /rm -f "\$WEBROOT/);
+  assert.match(script, /write_missing_rollback_records/);
+  assert.match(script, /validate_missing_rollback_records/);
+  assert.match(script, /printf 'previously-missing\|%s\\n'/);
+  assert.doesNotMatch(script, /printf "previously-missing\|%s\\\\n"/);
   assert.match(inventory, /^inventory\|1$/m);
   assert.equal((inventory.match(/^existing\|/gm) ?? []).length, 50);
   assert.equal((inventory.match(/^missing\|/gm) ?? []).length, 19);
   assert.match(workflow, /website\/scripts\/bootstrap-production-first-deploy\.sh/);
   assert.match(workflow, /website\/scripts\/production-first-deploy-inventory\.v1/);
+});
+
+test("Bootstrap-Reparatur akzeptiert nur den bekannten privaten Fehlzustand und bleibt vom Webroot getrennt", async () => {
+  const repair = await readRepositoryFile(
+    "website/scripts/repair-production-bootstrap-rollback-records.sh",
+  );
+
+  assert.match(repair, /--repair-bootstrap-rollback-records/);
+  assert.match(repair, /EXPECTED_CURRENT_MANIFEST_SHA256='09919cd198475b8c6d0ff47a7ca3ed39242a45db654731633d81612b881f696b'/);
+  assert.match(repair, /EXPECTED_BACKUP_ID='bootstrap-unmanaged-d68dae76df53e5aa554f0139ce7c85301d63c81c'/);
+  assert.match(repair, /CARMAJA_PRODUCTION_DEPLOY_ENABLED:-/);
+  assert.match(repair, /CARMAJA_PRODUCTION_PUBLISH_ENABLED:-/);
+  assert.match(repair, /write_expected_legacy_broken_records/);
+  assert.match(repair, /validate_correct_rollback_records/);
+  assert.match(repair, /simulate_rollback/);
+  assert.match(repair, /QUARANTINE_DIRECTORY/);
+  assert.match(repair, /webroot_snapshot/);
+  assert.doesNotMatch(repair, /chmod 0755 "\$WEBROOT"/);
+  assert.doesNotMatch(repair, /rm -f "\$WEBROOT/);
 });
 
 test("SFTP-Ziele sind relativ und SSH-Pfade bleiben absolut gebunden", async () => {
