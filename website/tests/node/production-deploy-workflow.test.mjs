@@ -90,6 +90,16 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.equal((workflow.match(/secrets\.CARMAJA_PRODUCTION_VARIABLES_TOKEN/g) ?? []).length, 1);
   assert.match(deploy, /prohibited = 1/);
   assert.match(deploy, /END \{ exit prohibited \? 0 : 1 \}/);
+  for (const marker of [
+    "identity",
+    "ssh_secrets_present",
+    "ssh_secret_shapes",
+    "artifact_integrity",
+    "manifest_metadata",
+    "manifest_paths",
+  ]) {
+    assert.match(deploy, new RegExp(`DEPLOY_GUARD_OK=${marker}`));
+  }
 });
 
 test("Interne Pull Requests nach main validieren nur den Produktionsbuild", async () => {

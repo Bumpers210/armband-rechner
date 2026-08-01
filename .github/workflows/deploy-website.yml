@@ -281,33 +281,39 @@ jobs:
           test "$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"
           test "$CARMAJA_RELEASE_ID" = "${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           test "${#CARMAJA_ARCHIVE_SHA256}" -eq 64
+          printf '%s\n' 'DEPLOY_GUARD_OK=identity'
           test -n "$CARMAJA_PRODUCTION_SSH_HOST"
           test -n "$CARMAJA_PRODUCTION_SSH_USER"
           test -n "$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY"
           test -n "$CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS"
+          printf '%s\n' 'DEPLOY_GUARD_OK=ssh_secrets_present'
           [[ "$CARMAJA_PRODUCTION_SSH_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
           [[ "$CARMAJA_PRODUCTION_SSH_USER" =~ ^[A-Za-z0-9._-]+$ ]]
           [[ "${CARMAJA_PRODUCTION_SSH_PORT:-22}" =~ ^[0-9]{1,5}$ ]]
           test "$((10#${CARMAJA_PRODUCTION_SSH_PORT:-22}))" -ge 1
           test "$((10#${CARMAJA_PRODUCTION_SSH_PORT:-22}))" -le 65535
+          printf '%s\n' 'DEPLOY_GUARD_OK=ssh_secret_shapes'
           test "$(find .production-deploy-package -maxdepth 1 -type f | wc -l)" -eq 3
           (
             cd .production-deploy-package
             sha256sum -c site.tar.gz.sha256
           )
           test "$(sha256sum .production-deploy-package/site.tar.gz | awk '{print $1}')" = "$CARMAJA_ARCHIVE_SHA256"
+          printf '%s\n' 'DEPLOY_GUARD_OK=artifact_integrity'
           grep -Fx "$(printf 'meta\trepository\tBumpers210/armband-rechner')" .production-deploy-package/manifest.tsv
           grep -Fx "$(printf 'meta\tbranch\tmain')" .production-deploy-package/manifest.tsv
           grep -Fx "$(printf 'meta\ttarget\tproduction')" .production-deploy-package/manifest.tsv
           grep -Fx "$(printf 'meta\tdomain\twww.carmaja-perlen.de')" .production-deploy-package/manifest.tsv
           grep -Fx "$(printf 'meta\twebroot\t/home/www/carmaja')" .production-deploy-package/manifest.tsv
           grep -Fx "$(printf 'meta\tworkspace\t/home/www/carmaja-production-deploy')" .production-deploy-package/manifest.tsv
+          printf '%s\n' 'DEPLOY_GUARD_OK=manifest_metadata'
           ! awk -F '\t' '
             $1 == "file" && ($4 ~ /(^|\/)(\.htaccess|click\.php|products\.json|private-data|_internal|statistik)(\/|$)/ || $4 ~ /\.php$/) {
               prohibited = 1
             }
             END { exit prohibited ? 0 : 1 }
           ' .production-deploy-package/manifest.tsv
+          printf '%s\n' 'DEPLOY_GUARD_OK=manifest_paths'
 
       - name: Prepare pinned SSH client
         shell: bash
