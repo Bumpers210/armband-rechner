@@ -94,10 +94,13 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.match(deploy, /private_key_payload=\$\{private_key_payload\/\/\$'\\n'\/\}/);
   assert.match(deploy, /private_key_payload=\$\{private_key_payload#\$'\\xEF\\xBB\\xBF'\}/);
   assert.match(deploy, /private_key_payload_length=\$\{#private_key_payload\}/);
+  assert.match(deploy, /known_hosts_payload=\$\{CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS\/\/\$'\\r'\/\}/);
+  assert.match(deploy, /known_hosts_payload=\$\{known_hosts_payload#\$'\\xEF\\xBB\\xBF'\}/);
   assert.match(deploy, /SSH_PRIVATE_KEY_BASE64_LENGTH=%s/);
   assert.match(deploy, /Production SSH key secret is not canonical Base64\./);
   assert.match(deploy, /\[\[ ! "\$private_key_payload" =~ \^\[A-Za-z0-9\+\/\]\+=\{0,2\}\$ \]\]/);
   assert.match(deploy, /printf '%s' "\$private_key_payload" \| base64 --decode > "\$HOME\/\.ssh\/carmaja_production_deploy"/);
+  assert.match(deploy, /printf '%s\\n' "\$known_hosts_payload" > "\$HOME\/\.ssh\/known_hosts"/);
   assert.doesNotMatch(deploy, /printf '%s\\n' "\$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY"/);
   for (const marker of [
     "identity",
