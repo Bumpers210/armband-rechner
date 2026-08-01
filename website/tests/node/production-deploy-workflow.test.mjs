@@ -22,9 +22,10 @@ test("Produktionsworkflow trennt Push-Builds von einem expliziten manuellen Prod
   assert.match(workflow, /build-production-site:/);
   assert.match(workflow, /validate-manual-production-deploy:/);
   assert.match(workflow, /deploy-production-site:/);
+  const validationStart = workflow.indexOf("  validate-manual-production-deploy:");
   const buildSection = workflow.slice(
     workflow.indexOf("  build-production-site:"),
-    workflow.indexOf("  deploy-production-site:"),
+    validationStart,
   );
   assert.match(buildSection, /Scan sources and create production deployment manifest/);
   assert.match(buildSection, /Package only verified production export/);
@@ -72,11 +73,21 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.match(validation, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"/);
   assert.match(validation, /test "\$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"/);
   assert.match(validation, /test "\$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"/);
+  assert.match(validation, /environment:\s*\n\s+name: carmaja-production/);
+  assert.match(validation, /CARMAJA_PRODUCTION_VARIABLES_TOKEN: \$\{\{ secrets\.CARMAJA_PRODUCTION_VARIABLES_TOKEN \}\}/);
+  assert.match(validation, /test -n "\$CARMAJA_PRODUCTION_VARIABLES_TOKEN"/);
   assert.match(deploy, /test "\$GITHUB_EVENT_NAME" = "workflow_dispatch"/);
   assert.match(deploy, /test "\$CARMAJA_EXPECTED_COMMIT_SHA" = "\$GITHUB_SHA"/);
   assert.match(deploy, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"/);
   assert.match(reset, /needs:\s*\n\s+- build-production-site\s*\n\s+- validate-manual-production-deploy\s*\n\s+- deploy-production-site/);
   assert.match(reset, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && always\(\) && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' \}\}/);
+  assert.match(reset, /environment:\s*\n\s+name: carmaja-production/);
+  assert.match(reset, /github-token: \$\{\{ secrets\.CARMAJA_PRODUCTION_VARIABLES_TOKEN \}\}/);
+  assert.match(reset, /contents: read/);
+  assert.doesNotMatch(reset, /actions: write/);
+  assert.match(deploy, /grep -Fx "\$\(printf 'meta\\trepository\\tBumpers210\/armband-rechner'\)"/);
+  assert.match(deploy, /grep -Fx "\$\(printf 'meta\\tworkspace\\t\/home\/www\/carmaja-production-deploy'\)"/);
+  assert.doesNotMatch(deploy, /grep -Fx "meta\\trepository\\tBumpers210\/armband-rechner"/);
 });
 
 test("Interne Pull Requests nach main validieren nur den Produktionsbuild", async () => {
