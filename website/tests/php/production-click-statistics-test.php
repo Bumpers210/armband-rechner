@@ -172,6 +172,8 @@ try {
 
     $source = file_get_contents($hostingRoot . DIRECTORY_SEPARATOR . 'statistik' . DIRECTORY_SEPARATOR . 'index.php');
     expect_true(is_string($source) && str_contains($source, 'Produktklicks'), 'Dashboard zeigt keine Produktklicks.');
+    expect_true(is_string($source) && str_contains($source, "Content-Type: text/html; charset=utf-8"), 'Dashboard liefert keinen UTF-8-Content-Type.');
+    expect_true(is_string($source) && str_contains($source, 'Übersicht'), 'Dashboard nutzt keine korrekte deutsche Umlautschreibweise.');
     echo "PHP Klickstatistik-Test erfolgreich.\n";
 } finally {
     if (is_dir($testRoot)) {

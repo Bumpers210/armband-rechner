@@ -41,5 +41,7 @@ test("Statistikbereich verlangt Apache Basic Auth und private Antwortheader", ()
   assert.match(dashboard, /Cache-Control: private, no-store, max-age=0/);
   assert.match(dashboard, /X-Content-Type-Options: nosniff/);
   assert.match(dashboard, /noindex, nofollow, noimageindex/);
+  assert.match(dashboard, /Content-Type: text\/html; charset=utf-8/);
+  assert.match(dashboard, /Übersicht/);
   assert.doesNotMatch(dashboard, /<script\s+src=/i);
 });
