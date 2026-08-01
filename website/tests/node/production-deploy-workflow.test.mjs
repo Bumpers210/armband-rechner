@@ -31,6 +31,8 @@ test("Produktionsworkflow trennt Push-Builds von einem expliziten manuellen Prod
   assert.match(buildSection, /Upload verified production deployment artifact/);
   assert.match(buildSection, /CARMAJA_PULL_REQUEST_BASE_REPOSITORY/);
   assert.match(buildSection, /CARMAJA_PULL_REQUEST_HEAD_REPOSITORY/);
+  assert.match(buildSection, /CARMAJA_MANIFEST_SOURCE_BRANCH: \$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}/);
+  assert.match(buildSection, /GITHUB_REF_NAME="\$CARMAJA_MANIFEST_SOURCE_BRANCH" npm run prepare:production-deploy/);
   assert.match(buildSection, /test "\$GITHUB_BASE_REF" = "\$CARMAJA_PRODUCTION_BRANCH"/);
   assert.match(buildSection, /test "\$CARMAJA_PULL_REQUEST_BASE_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
   assert.match(buildSection, /test "\$CARMAJA_PULL_REQUEST_HEAD_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
@@ -95,6 +97,8 @@ test("Interne Pull Requests nach main validieren nur den Produktionsbuild", asyn
   assert.match(build, /test "\$GITHUB_BASE_REF" = "\$CARMAJA_PRODUCTION_BRANCH"/);
   assert.match(build, /test "\$CARMAJA_PULL_REQUEST_BASE_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
   assert.match(build, /test "\$CARMAJA_PULL_REQUEST_HEAD_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
+  assert.match(build, /CARMAJA_MANIFEST_SOURCE_BRANCH: \$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}/);
+  assert.match(build, /GITHUB_REF_NAME="\$CARMAJA_MANIFEST_SOURCE_BRANCH" npm run prepare:production-deploy/);
   assert.doesNotMatch(build, /secrets\.|environment:|\bssh\b|\bscp\b|github-script/i);
   assert.match(validation, /if: \$\{\{ github\.event_name == 'workflow_dispatch' \}\}/);
   assert.match(deploy, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);

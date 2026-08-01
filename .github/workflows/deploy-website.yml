@@ -168,7 +168,13 @@ jobs:
       - name: Scan sources and create production deployment manifest
         env:
           CARMAJA_RELEASE_ID: ${{ steps.release.outputs.release-id }}
-        run: npm run prepare:production-deploy
+          CARMAJA_MANIFEST_SOURCE_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$CARMAJA_MANIFEST_SOURCE_BRANCH" = "$CARMAJA_PRODUCTION_BRANCH" \
+            || test "$CARMAJA_MANIFEST_SOURCE_BRANCH" = "release/production-product-management"
+          GITHUB_REF_NAME="$CARMAJA_MANIFEST_SOURCE_BRANCH" npm run prepare:production-deploy
 
       - name: Package only verified production export
         id: package
