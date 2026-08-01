@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: {
     absolute: "Datenschutz | Carmaja-Perlen",
   },
+  alternates: {
+    canonical: "/datenschutz/",
+  },
   robots: {
     index: false,
     follow: true,
