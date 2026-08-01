@@ -5,6 +5,7 @@ declare(strict_types=1);
 header('Cache-Control: private, no-store, max-age=0');
 header('X-Content-Type-Options: nosniff', true);
 header('X-Robots-Tag: noindex, nofollow, noimageindex', true);
+header('Content-Type: text/html; charset=utf-8');
 
 $authenticatedUser = $_SERVER['REMOTE_USER'] ?? $_SERVER['PHP_AUTH_USER'] ?? '';
 
@@ -114,7 +115,7 @@ function carmaja_escape(string $value): string
     <main>
       <h1>Klickstatistik</h1>
       <section aria-labelledby="summary-heading">
-        <h2 id="summary-heading">Uebersicht</h2>
+        <h2 id="summary-heading">Übersicht</h2>
         <div class="summary">
           <div class="metric"><span>Klicks heute</span><strong><?= carmaja_format_number($todayTotal) ?></strong></div>
           <div class="metric"><span>Letzte 30 Tage</span><strong><?= carmaja_format_number($lastThirtyDaysTotal) ?></strong></div>
