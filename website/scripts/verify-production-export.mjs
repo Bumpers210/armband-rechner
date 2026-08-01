@@ -3,6 +3,8 @@ import { access, readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { loadPublicProducts } from "../lib/public-products.mjs";
+
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const websiteDirectory = path.resolve(scriptDirectory, "..");
 const outputDirectory = path.join(websiteDirectory, "out");
@@ -29,20 +31,36 @@ async function collectFiles(directory) {
   return files.flat();
 }
 
-async function main() {
-  assert.equal(await fileExists(outputDirectory), true, "Produktionsausgabe fehlt.");
+export async function verifyProductionExport({
+  outputDirectory: verifiedOutputDirectory = outputDirectory,
+  sourceProductsPath: verifiedSourceProductsPath = sourceProductsPath,
+  imageRoot = path.join(websiteDirectory, "public", "images", "products"),
+} = {}) {
+  assert.equal(await fileExists(verifiedOutputDirectory), true, "Produktionsausgabe fehlt.");
 
   // Der leere Platzhalter erzeugt keine oeffentliche Produktseite.
-  await rm(path.join(outputDirectory, "armbaender", "__empty"), {
+  await rm(path.join(verifiedOutputDirectory, "armbaender", "__empty"), {
     force: true,
     recursive: true,
   });
-  await rm(path.join(outputDirectory, "armbaender", "__empty.html"), { force: true });
+  await rm(path.join(verifiedOutputDirectory, "armbaender", "__empty.html"), { force: true });
 
-  const sourceProducts = JSON.parse(await readFile(sourceProductsPath, "utf8"));
-  assert.deepEqual(sourceProducts, { version: 1, products: [] });
+  const sourceText = await readFile(verifiedSourceProductsPath, "utf8");
+  const sourceProducts = loadPublicProducts(verifiedSourceProductsPath, imageRoot);
+  assert.equal(sourceProducts.version, 1, "Produktquelldatei hat keine unterstuetzte Version.");
 
-  const files = await collectFiles(outputDirectory);
+  assert.equal(
+    /\b(?:testprodukt|testarmband|testbeschreibung|abnahme)\b/iu.test(sourceText),
+    false,
+    "Test- oder Abnahmedaten duerfen nicht im Produktionsinhalt stehen.",
+  );
+  assert.equal(
+    /test(?:-api)?\.carmaja-perlen\.de/i.test(sourceText),
+    false,
+    "Testdomains duerfen nicht im Produktionsinhalt stehen.",
+  );
+
+  const files = await collectFiles(verifiedOutputDirectory);
   assert.equal(
     files.some((filePath) => path.basename(filePath) === "products.json"),
     false,
@@ -53,10 +71,6 @@ async function main() {
   const exportText = (await Promise.all(textFiles.map((filePath) => readFile(filePath, "utf8")))).join("\n");
 
   for (const forbiddenValue of [
-    "CP-2026-0001",
-    "CP-2026-0002",
-    "CP-2026-0003",
-    "CP-2026-0004",
     "test.carmaja-perlen.de",
     "test-api.carmaja-perlen.de",
     "draftId",
@@ -77,4 +91,6 @@ async function main() {
   console.log("PRODUCTION_EXPORT_VERIFIED_OK");
 }
 
-await main();
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  await verifyProductionExport();
+}
