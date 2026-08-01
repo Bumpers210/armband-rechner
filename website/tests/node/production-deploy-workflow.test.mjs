@@ -16,6 +16,7 @@ test("Produktionsworkflow trennt Push-Builds von einem expliziten manuellen Prod
 
   assert.match(workflow, /workflow_dispatch:\s*\n\s+inputs:\s*\n\s+expected_commit_sha:/);
   assert.match(workflow, /deployment_confirmation:/);
+  assert.match(workflow, /pull_request:\s*\n\s+branches:\s*\n\s+- main/);
   assert.match(workflow, /release\/production-product-management/);
   assert.match(workflow, /- main/);
   assert.match(workflow, /build-production-site:/);
@@ -28,8 +29,14 @@ test("Produktionsworkflow trennt Push-Builds von einem expliziten manuellen Prod
   assert.match(buildSection, /Scan sources and create production deployment manifest/);
   assert.match(buildSection, /Package only verified production export/);
   assert.match(buildSection, /Upload verified production deployment artifact/);
+  assert.match(buildSection, /CARMAJA_PULL_REQUEST_BASE_REPOSITORY/);
+  assert.match(buildSection, /CARMAJA_PULL_REQUEST_HEAD_REPOSITORY/);
+  assert.match(buildSection, /test "\$GITHUB_BASE_REF" = "\$CARMAJA_PRODUCTION_BRANCH"/);
+  assert.match(buildSection, /test "\$CARMAJA_PULL_REQUEST_BASE_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
+  assert.match(buildSection, /test "\$CARMAJA_PULL_REQUEST_HEAD_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
   assert.doesNotMatch(buildSection, /if: \$\{\{ github\.ref == 'refs\/heads\/main' \}\}/);
   assert.doesNotMatch(buildSection, /GITHUB_REF_NAME: main/);
+  assert.doesNotMatch(buildSection, /secrets\.|environment:|\bssh\b|\bscp\b|github-script/i);
   assert.match(workflow, /github\.event_name == 'workflow_dispatch'/);
   assert.match(workflow, /github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /github\.ref_name == 'main'/);
@@ -67,7 +74,33 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.match(deploy, /test "\$CARMAJA_EXPECTED_COMMIT_SHA" = "\$GITHUB_SHA"/);
   assert.match(deploy, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"/);
   assert.match(reset, /needs:\s*\n\s+- build-production-site\s*\n\s+- validate-manual-production-deploy\s*\n\s+- deploy-production-site/);
-  assert.match(reset, /if: \$\{\{ always\(\) && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' \}\}/);
+  assert.match(reset, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && always\(\) && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' \}\}/);
+});
+
+test("Interne Pull Requests nach main validieren nur den Produktionsbuild", async () => {
+  const workflow = await readRepositoryFile(".github/workflows/deploy-website.yml");
+  const buildStart = workflow.indexOf("  build-production-site:");
+  const validationStart = workflow.indexOf("  validate-manual-production-deploy:");
+  const deployStart = workflow.indexOf("  deploy-production-site:");
+  const resetStart = workflow.indexOf("  reset-production-deploy-gate:");
+  const build = workflow.slice(buildStart, validationStart);
+  const validation = workflow.slice(validationStart, deployStart);
+  const deploy = workflow.slice(deployStart, resetStart);
+  const reset = workflow.slice(resetStart);
+
+  assert.ok(buildStart >= 0);
+  assert.ok(validationStart > buildStart);
+  assert.match(workflow, /pull_request:\s*\n\s+branches:\s*\n\s+- main\s*\n\s+paths:/);
+  assert.match(build, /pull_request\)/);
+  assert.match(build, /test "\$GITHUB_BASE_REF" = "\$CARMAJA_PRODUCTION_BRANCH"/);
+  assert.match(build, /test "\$CARMAJA_PULL_REQUEST_BASE_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
+  assert.match(build, /test "\$CARMAJA_PULL_REQUEST_HEAD_REPOSITORY" = "\$CARMAJA_REPOSITORY"/);
+  assert.doesNotMatch(build, /secrets\.|environment:|\bssh\b|\bscp\b|github-script/i);
+  assert.match(validation, /if: \$\{\{ github\.event_name == 'workflow_dispatch' \}\}/);
+  assert.match(deploy, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
+  assert.match(reset, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && always\(\)/);
+  assert.doesNotMatch(workflow, /- fix\/production-bootstrap-rollback-records/);
+  assert.match(workflow, /push:\s*\n\s+branches:\s*\n\s+- release\/production-product-management\s*\n\s+- main/);
 });
 
 test("Erstdeploy-Bootstrap ist auf den bestaetigten Kandidaten beschraenkt und fasst den Webroot nicht an", async () => {

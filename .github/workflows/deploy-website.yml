@@ -29,6 +29,33 @@ on:
       - "website/package.json"
       - "website/package-lock.json"
       - "website/tsconfig.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-website.yml"
+      - "website/app/**"
+      - "website/components/**"
+      - "website/config/**"
+      - "website/content/products.json"
+      - "website/content/products.ts"
+      - "website/content/site-content.ts"
+      - "website/lib/**"
+      - "website/public/**"
+      - "website/scripts/prepare-production-deploy.mjs"
+      - "website/scripts/bootstrap-production-first-deploy.sh"
+      - "website/scripts/production-first-deploy-inventory.v1"
+      - "website/scripts/deploy-production-site.sh"
+      - "website/scripts/run-production-deployment.sh"
+      - "website/scripts/verify-production-export.mjs"
+      - "website/tests/node/production-*.test.mjs"
+      - "website/tests/shell/**"
+      - "website/.gitignore"
+      - "website/eslint.config.mjs"
+      - "website/next.config.ts"
+      - "website/package.json"
+      - "website/package-lock.json"
+      - "website/tsconfig.json"
   workflow_dispatch:
     inputs:
       expected_commit_sha:
@@ -62,6 +89,9 @@ jobs:
   build-production-site:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      CARMAJA_PULL_REQUEST_BASE_REPOSITORY: ${{ github.event.pull_request.base.repo.full_name }}
+      CARMAJA_PULL_REQUEST_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
     defaults:
       run:
         working-directory: website
@@ -81,8 +111,23 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
-          case "$GITHUB_REF_NAME" in
-            release/production-product-management|"$CARMAJA_PRODUCTION_BRANCH") ;;
+          case "$GITHUB_EVENT_NAME" in
+            pull_request)
+              test "$GITHUB_BASE_REF" = "$CARMAJA_PRODUCTION_BRANCH"
+              test "$CARMAJA_PULL_REQUEST_BASE_REPOSITORY" = "$CARMAJA_REPOSITORY"
+              test "$CARMAJA_PULL_REQUEST_HEAD_REPOSITORY" = "$CARMAJA_REPOSITORY"
+              test -n "$GITHUB_HEAD_REF"
+              ;;
+            push)
+              case "$GITHUB_REF_NAME" in
+                release/production-product-management|"$CARMAJA_PRODUCTION_BRANCH") ;;
+                *) exit 1 ;;
+              esac
+              ;;
+            workflow_dispatch)
+              test "$GITHUB_REF" = "refs/heads/main"
+              test "$GITHUB_REF_NAME" = "$CARMAJA_PRODUCTION_BRANCH"
+              ;;
             *) exit 1 ;;
           esac
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
@@ -356,7 +401,7 @@ jobs:
       - build-production-site
       - validate-manual-production-deploy
       - deploy-production-site
-    if: ${{ always() && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && always() && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       actions: write
