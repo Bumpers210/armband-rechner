@@ -92,6 +92,7 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.match(deploy, /END \{ exit prohibited \? 0 : 1 \}/);
   assert.match(deploy, /private_key_payload=\$\{CARMAJA_PRODUCTION_SSH_PRIVATE_KEY\/\/\$'\\r'\/\}/);
   assert.match(deploy, /private_key_payload=\$\{private_key_payload\/\/\$'\\n'\/\}/);
+  assert.match(deploy, /private_key_payload=\$\{private_key_payload#\$'\\xEF\\xBB\\xBF'\}/);
   assert.match(deploy, /private_key_payload_length=\$\{#private_key_payload\}/);
   assert.match(deploy, /SSH_PRIVATE_KEY_BASE64_LENGTH=%s/);
   assert.match(deploy, /Production SSH key secret is not canonical Base64\./);

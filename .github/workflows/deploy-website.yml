@@ -322,6 +322,7 @@ jobs:
           install -d -m 700 "$HOME/.ssh"
           private_key_payload=${CARMAJA_PRODUCTION_SSH_PRIVATE_KEY//$'\r'/}
           private_key_payload=${private_key_payload//$'\n'/}
+          private_key_payload=${private_key_payload#$'\xEF\xBB\xBF'}
           private_key_payload_length=${#private_key_payload}
           printf 'SSH_PRIVATE_KEY_BASE64_LENGTH=%s\n' "$private_key_payload_length"
           if [[ ! "$private_key_payload" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]; then
