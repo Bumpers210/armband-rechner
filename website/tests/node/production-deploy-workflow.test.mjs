@@ -88,6 +88,8 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.match(deploy, /grep -Fx "\$\(printf 'meta\\tworkspace\\t\/home\/www\/carmaja-production-deploy'\)"/);
   assert.doesNotMatch(deploy, /grep -Fx "meta\\trepository\\tBumpers210\/armband-rechner"/);
   assert.equal((workflow.match(/secrets\.CARMAJA_PRODUCTION_VARIABLES_TOKEN/g) ?? []).length, 1);
+  assert.match(deploy, /prohibited = 1/);
+  assert.match(deploy, /END \{ exit prohibited \? 0 : 1 \}/);
 });
 
 test("Interne Pull Requests nach main validieren nur den Produktionsbuild", async () => {
