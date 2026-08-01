@@ -302,7 +302,12 @@ jobs:
           grep -Fx "$(printf 'meta\tdomain\twww.carmaja-perlen.de')" .production-deploy-package/manifest.tsv
           grep -Fx "$(printf 'meta\twebroot\t/home/www/carmaja')" .production-deploy-package/manifest.tsv
           grep -Fx "$(printf 'meta\tworkspace\t/home/www/carmaja-production-deploy')" .production-deploy-package/manifest.tsv
-          ! awk -F '\t' '$1 == "file" && ($4 ~ /(^|\/)(\.htaccess|click\.php|products\.json|private-data|_internal|statistik)(\/|$)/ || $4 ~ /\.php$/) { exit 0 } END { exit 1 }' .production-deploy-package/manifest.tsv
+          ! awk -F '\t' '
+            $1 == "file" && ($4 ~ /(^|\/)(\.htaccess|click\.php|products\.json|private-data|_internal|statistik)(\/|$)/ || $4 ~ /\.php$/) {
+              prohibited = 1
+            }
+            END { exit prohibited ? 0 : 1 }
+          ' .production-deploy-package/manifest.tsv
 
       - name: Prepare pinned SSH client
         shell: bash
