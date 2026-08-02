@@ -1,0 +1,170 @@
+name: Publish production Android release
+
+on:
+  push:
+    tags:
+      - "app-v1.*"
+    paths:
+      - ".github/workflows/android-production-release.yml"
+      - "app/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-production-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-production-apk:
+    runs-on: ubuntu-latest
+    environment: carma-production-app
+    env:
+      CARMAJA_PRODUCTION_STORE_PASSWORD: ${{ secrets.CARMAJA_ANDROID_KEYSTORE_PASSWORD }}
+      CARMAJA_PRODUCTION_KEY_PASSWORD: ${{ secrets.CARMAJA_ANDROID_KEY_PASSWORD }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare protected production signing material
+        shell: bash
+        env:
+          CARMAJA_ANDROID_KEYSTORE_BASE64: ${{ secrets.CARMAJA_ANDROID_KEYSTORE_BASE64 }}
+          CARMAJA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.CARMAJA_ANDROID_KEYSTORE_PASSWORD }}
+          CARMAJA_ANDROID_KEY_ALIAS: ${{ secrets.CARMAJA_ANDROID_KEY_ALIAS }}
+          CARMAJA_ANDROID_KEY_PASSWORD: ${{ secrets.CARMAJA_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${CARMAJA_ANDROID_KEYSTORE_BASE64}"
+          test -n "${CARMAJA_ANDROID_KEYSTORE_PASSWORD}"
+          test "${CARMAJA_ANDROID_KEY_ALIAS}" = "carmaja-product-management-production"
+          test -n "${CARMAJA_ANDROID_KEY_PASSWORD}"
+
+          keystore="${RUNNER_TEMP}/carmaja-product-management-production.p12"
+          umask 077
+          printf '%s' "${CARMAJA_ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${keystore}"
+          test -s "${keystore}"
+          chmod 600 "${keystore}"
+          printf 'CARMAJA_PRODUCTION_KEYSTORE_PATH=%s\n' "${keystore}" >> "${GITHUB_ENV}"
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Run release lint
+        run: ./gradlew lintRelease
+
+      - name: Build signed production release APK
+        run: ./gradlew assembleRelease
+
+      - name: Verify signed production APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apk="app/build/outputs/apk/release/app-release.apk"
+          apksigner="${ANDROID_HOME}/build-tools/36.0.0/apksigner"
+          aapt="${ANDROID_HOME}/build-tools/36.0.0/aapt"
+          expected_certificate_sha256="17FBAD15D1682B173314A860530B3895790AAA7C83EEA40DD792F268AE298944"
+          test -f "${apk}"
+          test -x "${apksigner}"
+          test -x "${aapt}"
+
+          "${apksigner}" verify --verbose "${apk}" >/dev/null
+          certificate_sha256="$("${apksigner}" verify --print-certs "${apk}" |
+            awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ { print toupper($2) }')"
+          test "${certificate_sha256}" = "${expected_certificate_sha256}"
+
+          badging="$("${aapt}" dump badging "${apk}")"
+          grep -Fq "package: name='de.carmajaperlen.armbandrechner'" <<<"${badging}"
+          grep -Fq "versionCode='2'" <<<"${badging}"
+          grep -Fq "versionName='1.1.0'" <<<"${badging}"
+          grep -Fq "application-label:'Carmaja-Perlen Produktverwaltung'" <<<"${badging}"
+
+          apk_strings="$(mktemp)"
+          trap 'rm -f "${apk_strings}"' EXIT
+          unzip -p "${apk}" 'classes*.dex' resources.arsc | strings > "${apk_strings}"
+          grep -Fqx 'https://api.carmaja-perlen.de/' "${apk_strings}"
+          ! grep -Fq 'https://test-api.carmaja-perlen.de/' "${apk_strings}"
+          ! grep -Fq 'de.carmajaperlen.armbandrechner.test' "${apk_strings}"
+          ! grep -Fq 'Carmaja-Perlen Produktverwaltung Test' "${apk_strings}"
+          ! grep -Fq -- '-beta' "${apk_strings}"
+
+      - name: Prepare production artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          cp app/build/outputs/apk/release/app-release.apk artifact/carmaja-perlen.apk
+          sha256sum artifact/carmaja-perlen.apk > artifact/carmaja-perlen.apk.sha256
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: carmaja-perlen-apk
+          path: |
+            artifact/carmaja-perlen.apk
+            artifact/carmaja-perlen.apk.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove production signing key
+        if: always()
+        shell: bash
+        run: rm -f "${CARMAJA_PRODUCTION_KEYSTORE_PATH:-}"
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/app-v1.')
+    needs: build-production-apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: carmaja-perlen-apk
+          path: artifact
+
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -Eeuo pipefail
+          apk="artifact/carmaja-perlen.apk"
+          checksum="artifact/carmaja-perlen.apk.sha256"
+          test -f "${apk}"
+          test -f "${checksum}"
+
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" "${apk}" "${checksum}" --clobber \
+              --repo "${GITHUB_REPOSITORY}"
+          else
+            gh release create "${RELEASE_TAG}" "${apk}" "${checksum}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "Carmaja-Perlen ${RELEASE_TAG}" \
+              --latest \
+              --generate-notes
+          fi

@@ -6,14 +6,32 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+val productionVersionCode = 2
+val productionVersionName = "1.1.0"
 val betaVersionCode = 5
 val betaVersionName = "1.1.0-beta.4"
-val releaseSigningPropertiesFile = rootProject.file(".signing/keystore.properties")
-val releaseSigningProperties = Properties().apply {
-    if (releaseSigningPropertiesFile.isFile) {
-        releaseSigningPropertiesFile.inputStream().use(::load)
+val productionSigningPropertiesFile = rootProject.file(".signing/production-keystore.properties")
+val productionSigningProperties = Properties().apply {
+    if (productionSigningPropertiesFile.isFile) {
+        productionSigningPropertiesFile.inputStream().use(::load)
     }
 }
+val productionSigningStoreFile = System.getenv("CARMAJA_PRODUCTION_KEYSTORE_PATH")
+    ?.takeIf(String::isNotBlank)
+    ?.let(rootProject::file)
+    ?: productionSigningProperties.getProperty("storeFile")
+        ?.takeIf(String::isNotBlank)
+        ?.let { rootProject.file(".signing/$it") }
+val productionSigningStorePassword = System.getenv("CARMAJA_PRODUCTION_STORE_PASSWORD")
+    ?.takeIf(String::isNotBlank)
+    ?: productionSigningProperties.getProperty("storePassword")?.takeIf(String::isNotBlank)
+val productionSigningKeyPassword = System.getenv("CARMAJA_PRODUCTION_KEY_PASSWORD")
+    ?.takeIf(String::isNotBlank)
+    ?: productionSigningProperties.getProperty("keyPassword")?.takeIf(String::isNotBlank)
+val productionSigningKeyAlias = "carmaja-product-management-production"
+val productionSigningReady = productionSigningStoreFile?.isFile == true &&
+    productionSigningStorePassword != null &&
+    productionSigningKeyPassword != null
 val betaSigningPropertiesFile = rootProject.file(".signing/beta-keystore.properties")
 val betaSigningProperties = Properties().apply {
     if (betaSigningPropertiesFile.isFile) {
@@ -39,10 +57,19 @@ val betaSigningReady = betaSigningStoreFile?.isFile == true &&
 val betaBuildRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.substringAfterLast(':').contains("Beta", ignoreCase = true)
 }
+val productionReleaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.substringAfterLast(':').equals("assembleRelease", ignoreCase = true)
+}
 
 if (betaBuildRequested && !betaSigningReady) {
     throw GradleException(
         "Die stabile Beta-Signierung fehlt. Debug-Signierung ist fuer Beta-Builds nicht erlaubt.",
+    )
+}
+
+if (productionReleaseBuildRequested && !productionSigningReady) {
+    throw GradleException(
+        "Die Produktionssignierung fehlt. Unsigned oder debug-signierte Release-APKs sind nicht erlaubt.",
     )
 }
 
@@ -54,22 +81,26 @@ android {
         applicationId = "de.carmajaperlen.armbandrechner"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = productionVersionCode
+        versionName = productionVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        manifestPlaceholders["appLabel"] = "Armband-Rechner"
-        buildConfigField("String", "DEFAULT_PRODUCT_API_BASE_URL", "\"\"")
-        buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"\"")
+        manifestPlaceholders["appLabel"] = "Carmaja-Perlen Produktverwaltung"
+        buildConfigField(
+            "String",
+            "DEFAULT_PRODUCT_API_BASE_URL",
+            "\"https://api.carmaja-perlen.de/\"",
+        )
+        buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"production\"")
     }
 
     signingConfigs {
-        if (releaseSigningPropertiesFile.isFile) {
+        if (productionSigningReady) {
             create("release") {
-                storeFile = rootProject.file(".signing/${releaseSigningProperties["storeFile"]}")
-                storePassword = releaseSigningProperties["storePassword"] as String
-                keyAlias = releaseSigningProperties["keyAlias"] as String
-                keyPassword = releaseSigningProperties["keyPassword"] as String
+                storeFile = productionSigningStoreFile
+                storePassword = productionSigningStorePassword
+                keyAlias = productionSigningKeyAlias
+                keyPassword = productionSigningKeyPassword
             }
         }
         if (betaSigningReady) {
@@ -84,7 +115,7 @@ android {
 
     buildTypes {
         debug {
-            manifestPlaceholders["appLabel"] = "Armband-Rechner"
+            manifestPlaceholders["appLabel"] = "Carmaja-Perlen Produktverwaltung"
         }
 
         create("beta") {
@@ -108,7 +139,7 @@ android {
 
         release {
             isMinifyEnabled = false
-            if (releaseSigningPropertiesFile.isFile) {
+            if (productionSigningReady) {
                 signingConfig = signingConfigs.getByName("release")
             }
             proguardFiles(
