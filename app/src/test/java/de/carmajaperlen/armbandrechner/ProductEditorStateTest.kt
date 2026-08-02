@@ -33,8 +33,8 @@ class ProductEditorStateTest {
             metalElements = TextFieldValue(
                 "Spacer Blume\nEdelstahl Spacer Stern",
             ),
-            braceletSize = TextFieldValue("  Groesse 17 cm  "),
-            stock = TextFieldValue(" 2 "),
+            braceletSizeCm = TextFieldValue(" 17,5 "),
+            pearlSizeMm = TextFieldValue(" 6.0 "),
             shortDescription = TextFieldValue(
                 "  Persoenliche Anfertigung  auf Anfrage  ",
             ),
@@ -54,19 +54,19 @@ class ProductEditorStateTest {
             listOf("Spacer Blume Edelstahl", "Edelstahl Spacer Stern"),
             saved.metalElements,
         )
-        assertEquals("Groesse 17 cm", saved.braceletSize)
-        assertEquals(2, saved.stock)
+        assertEquals("17.5", saved.braceletSizeCm)
+        assertEquals("6", saved.pearlSizeMm)
         assertEquals("Persoenliche Anfertigung  auf Anfrage", saved.shortDescription)
     }
 
     @Test
-    fun stockMayBeTemporarilyEmptyButIsRejectedWhenSaving() {
+    fun pearlSizeMayBeTemporarilyEmptyButIsRejectedWhenSaving() {
         val editor = ProductDraftEditorState.fromDraft(testDraft()).copy(
-            stock = TextFieldValue(""),
+            pearlSizeMm = TextFieldValue(""),
         )
 
-        assertEquals("", editor.stock.text)
-        assertTrue(editor.validateForSave().containsKey("stock"))
+        assertEquals("", editor.pearlSizeMm.text)
+        assertTrue(editor.validateForSave().containsKey("pearlSizeMm"))
     }
 
     @Test
@@ -94,6 +94,8 @@ class ProductEditorStateTest {
     private fun testDraft(): ProductDraft {
         return ProductDraft(
             draftId = "019fa2e6-cf3c-7073-9275-7d3b566f54ee",
+            braceletSizeCm = "17",
+            pearlSizeMm = "6",
             internalCalculation = CalculationSnapshot(
                 quantities = emptyMap(),
                 workMinutes = "0",

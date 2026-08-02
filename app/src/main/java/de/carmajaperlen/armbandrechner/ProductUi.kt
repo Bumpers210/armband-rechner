@@ -62,10 +62,9 @@ data class ProductUiActions(
     val onNameChange: (TextFieldValue) -> Unit = {},
     val onMaterialsChange: (TextFieldValue) -> Unit = {},
     val onMetalElementsChange: (TextFieldValue) -> Unit = {},
-    val onBraceletSizeChange: (TextFieldValue) -> Unit = {},
-    val onStockChange: (TextFieldValue) -> Unit = {},
+    val onBraceletSizeCmChange: (TextFieldValue) -> Unit = {},
+    val onPearlSizeMmChange: (TextFieldValue) -> Unit = {},
     val onShortDescriptionChange: (TextFieldValue) -> Unit = {},
-    val onVintedUrlChange: (TextFieldValue) -> Unit = {},
     val onImagesPicked: (List<Uri>) -> Unit = {},
     val onSave: () -> Unit = {},
     val onSync: () -> Unit = {},
@@ -326,6 +325,8 @@ internal fun PublishedProductView(
             )
             Text("Perlen: ${draft.materials.joinToString(", ")}")
             Text("Spacer: ${draft.metalElements.joinToString(", ")}")
+            Text("Armbandgröße: ${displayMeasurement(draft.braceletSizeCm, "cm")}")
+            Text("Perlengröße: ${displayMeasurement(draft.pearlSizeMm, "mm")}")
             Text(draft.shortDescription)
             Text("Bilder: ${draft.images.size}/5")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -435,8 +436,7 @@ internal fun ProductDraftForm(
             },
             text = {
                 Text(
-                    "Das Produkt wird für die geschützte Testwebsite bereitgestellt. " +
-                        "Ein Vinted-Link ist in dieser Testphase optional.",
+                    "Das Produkt wird für die geschützte Testwebsite bereitgestellt.",
                 )
             },
             confirmButton = {
@@ -510,22 +510,22 @@ internal fun ProductDraftForm(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ProductTextField(
-                    value = editor.braceletSize,
-                    onValueChange = actions.onBraceletSizeChange,
-                    label = "Größe",
-                    testTag = "product-size",
-                    error = fieldErrors["braceletSize"],
+                    value = editor.braceletSizeCm,
+                    onValueChange = actions.onBraceletSizeCmChange,
+                    label = "Armbandgröße (cm)",
+                    testTag = "product-bracelet-size-cm",
+                    error = fieldErrors["braceletSizeCm"],
                     busy = busy,
                     modifier = Modifier.weight(1f),
                 )
                 ProductTextField(
-                    value = editor.stock,
-                    onValueChange = actions.onStockChange,
-                    label = "Bestand",
-                    testTag = "product-stock",
-                    error = fieldErrors["stock"],
+                    value = editor.pearlSizeMm,
+                    onValueChange = actions.onPearlSizeMmChange,
+                    label = "Perlengröße (mm)",
+                    testTag = "product-pearl-size-mm",
+                    error = fieldErrors["pearlSizeMm"],
                     busy = busy,
-                    keyboardType = KeyboardType.Number,
+                    keyboardType = KeyboardType.Decimal,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -537,14 +537,6 @@ internal fun ProductDraftForm(
                 error = fieldErrors["shortDescription"],
                 busy = busy,
                 singleLine = false,
-            )
-            ProductTextField(
-                value = editor.vintedUrl,
-                onValueChange = actions.onVintedUrlChange,
-                label = "Vinted-Angebotslink (optional)",
-                testTag = "product-vinted-url",
-                error = fieldErrors["vintedUrl"],
-                busy = busy,
             )
 
             Text(

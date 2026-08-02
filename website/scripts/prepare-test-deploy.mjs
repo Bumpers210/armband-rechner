@@ -130,9 +130,9 @@ export function scanTrackedSources(repositoryRoot) {
     }
 
     const absolutePath = path.join(repositoryRoot, ...normalized.split("/"));
-    const metadata = statSync(absolutePath);
+    const metadata = statSync(absolutePath, { throwIfNoEntry: false });
 
-    if (!metadata.isFile() || metadata.size > 2_000_000) {
+    if (!metadata?.isFile() || metadata.size > 2_000_000) {
       continue;
     }
 

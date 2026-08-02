@@ -70,12 +70,12 @@ Suchmaschinen deren `noindex`-Metadaten lesen können.
 
 ## Klickmessung
 
-Ausgehende Vinted- und Instagram-Links verwenden
+Ausgehende Instagram-Links verwenden
 `/click.php?target=...&position=...`.
 
 Der PHP-Endpunkt:
 
-- akzeptiert ausschließlich die Ziele `vinted` und `instagram`,
+- akzeptiert ausschließlich das Ziel `instagram`,
 - akzeptiert ausschließlich `hero`, `gallery`, `contact` und `footer`,
 - lehnt zusätzliche oder ungültige Parameter mit HTTP 400 ab,
 - leitet gültige Ziele mit HTTP 302 weiter,
@@ -101,11 +101,12 @@ erst beim ersten erfolgreichen Publish vergeben. Mutierende Anfragen verwenden
 Statusaktionen sind über eine clientseitige `operationId` idempotent.
 
 Öffentliche Produktdaten liegen in `content/products.json`. Die Website zeigt
-keine Verkaufspreise; Vinted bleibt die verbindliche Quelle für Preis und Kauf.
+keine Verkaufspreise und dient der Produktpräsentation.
 Die Produktdatei ist ausschließlich eine Build-Quelle und wird im geschützten
 Testexport weder als JSON noch unter einem internen Ersatzpfad ausgeliefert.
-Das öffentliche Produktmodell akzeptiert nur Darstellungsfelder; unbekannte
-oder interne Felder brechen den Build ab.
+Das öffentliche Produktmodell akzeptiert nur Darstellungsfelder; die
+Armbandgröße wird als `braceletSizeCm` und die Perlengröße als `pearlSizeMm`
+geführt. Unbekannte oder interne Felder brechen den Build ab.
 Statuswirkung:
 
 - `published`: Übersicht, Detailseite und Sitemap
@@ -154,9 +155,7 @@ aktiviert sind. Der normale Produktionsbuild und `out/` werden nicht
 überschrieben.
 
 Der Testexport enthält keine Produktquelldatei, kein Klicktracking, keine
-Statistikdateien und keine PHP-Laufzeitkonfiguration. Vinted-Links werden im
-Testziel nach strenger URL-Prüfung direkt ausgegeben. Fehlt der Link oder ist
-das Produkt verkauft, wird kein Link gerendert.
+Statistikdateien und keine PHP-Laufzeitkonfiguration.
 
 Der Passwortschutz des Testexports referenziert ausschließlich:
 
@@ -254,7 +253,7 @@ Das Dashboard liegt unter `/statistik/`. Es zeigt ausschließlich:
 - Klicks heute,
 - Klicks der letzten 30 Tage,
 - Klicks insgesamt,
-- Vinted- und Instagram-Klicks,
+- Instagram-Klicks,
 - Klicks nach Position,
 - eine Tabelle der Tageswerte.
 
@@ -312,7 +311,7 @@ keine externen Skripte.
    curl -I "http://carmaja-perlen.de/"
    curl -I "https://carmaja-perlen.de/impressum/"
    curl -I "https://www.carmaja-perlen.de/v2/?quelle=alt"
-   curl -I "https://www.carmaja-perlen.de/click.php?target=vinted&position=hero"
+   curl -I "https://www.carmaja-perlen.de/click.php?target=instagram&position=footer"
    curl -I "https://www.carmaja-perlen.de/private-data/clicks.json"
    curl -I "https://www.carmaja-perlen.de/statistik/"
    ```

@@ -24,11 +24,10 @@ data class ProductServerUpdate(
     val name: String,
     val materials: List<String>,
     val metalElements: List<String>,
-    val braceletSize: String,
-    val stock: Int,
+    val braceletSizeCm: String,
+    val pearlSizeMm: String,
     val shortDescription: String,
     val careInstructions: List<String>,
-    val vintedUrl: String,
     val images: List<ProductServerImage>,
 )
 
@@ -316,20 +315,17 @@ internal fun ProductDraft.toSaveJson(): JSONObject {
         else -> ProductStatus.Ready
     }
     val payload = JSONObject()
+        .put("modelVersion", modelVersion)
         .put("draftId", draftId)
         .put("expectedVersion", version)
         .put("status", saveStatus.wireName)
         .put("name", name)
         .put("materials", JSONArray(materials))
         .put("metalElements", JSONArray(metalElements))
-        .put("braceletSize", braceletSize)
-        .put("stock", stock)
+        .put("braceletSizeCm", braceletSizeCm.toBigDecimal())
+        .put("pearlSizeMm", pearlSizeMm.toBigDecimal())
         .put("shortDescription", shortDescription)
         .put("internalCalculation", internalCalculation.toJson())
-
-    if (vintedUrl.isNotBlank()) {
-        payload.put("vintedUrl", vintedUrl.trim())
-    }
 
     return payload
 }
@@ -376,11 +372,10 @@ private fun JSONObject.toServerUpdate(): ProductServerUpdate {
         name = optString("name"),
         materials = optStringList("materials"),
         metalElements = optStringList("metalElements"),
-        braceletSize = optString("braceletSize"),
-        stock = optInt("stock", 1),
+        braceletSizeCm = opt("braceletSizeCm")?.toString().orEmpty(),
+        pearlSizeMm = opt("pearlSizeMm")?.toString().orEmpty(),
         shortDescription = optString("shortDescription"),
         careInstructions = optStringList("careInstructions"),
-        vintedUrl = optString("vintedUrl"),
         images = serverImages,
     )
 }

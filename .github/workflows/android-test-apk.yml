@@ -118,7 +118,7 @@ jobs:
 
           App-Name: Carmaja-Perlen Produktverwaltung Test
           Paketname: de.carmajaperlen.armbandrechner.test
-          Version: 1.1.0-beta.3
+          Version: 1.1.0-beta.4
           API: https://test-api.carmaja-perlen.de/
 
           Diese APK ist mit dem fest gepinnten Carmaja-Beta-Zertifikat signiert

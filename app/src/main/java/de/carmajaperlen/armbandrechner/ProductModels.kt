@@ -1,7 +1,6 @@
 package de.carmajaperlen.armbandrechner
 
 import java.math.BigDecimal
-import java.net.URI
 import java.util.UUID
 
 enum class ProductStatus(val wireName: String) {
@@ -57,11 +56,11 @@ data class ProductDraft(
     val name: String = "",
     val materials: List<String> = emptyList(),
     val metalElements: List<String> = emptyList(),
-    val braceletSize: String = "",
-    val stock: Int = 1,
+    val modelVersion: Int = PRODUCT_MODEL_VERSION,
+    val braceletSizeCm: String = "",
+    val pearlSizeMm: String = "",
     val shortDescription: String = "",
     val careInstructions: List<String> = emptyList(),
-    val vintedUrl: String = "",
     val internalCalculation: CalculationSnapshot,
     val images: List<ProductImage> = emptyList(),
     val createdAtMillis: Long,
@@ -81,11 +80,9 @@ data class ProductDraft(
         return buildMap {
             if (name.isBlank()) put("name", "Produktname ist erforderlich.")
             if (materials.isEmpty()) put("materials", "Mindestens ein Material ist erforderlich.")
-            if (braceletSize.isBlank()) put("braceletSize", "Armbandgröße ist erforderlich.")
+            if (braceletSizeCm.isBlank()) put("braceletSizeCm", "Armbandgröße ist erforderlich.")
+            if (pearlSizeMm.isBlank()) put("pearlSizeMm", "Perlengröße ist erforderlich.")
             if (shortDescription.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
-            if (vintedUrl.isNotBlank() && !isValidVintedUrl(vintedUrl)) {
-                put("vintedUrl", "Vinted-Link ist ungültig.")
-            }
             if (images.isEmpty()) put("images", "Mindestens ein Hauptfoto ist erforderlich.")
         }
     }
@@ -124,7 +121,6 @@ data class ProductDraft(
                 draftId = UUID.randomUUID().toString(),
                 materials = selectedMaterials,
                 metalElements = selectedSpacers,
-                stock = 1,
                 internalCalculation = snapshot,
                 createdAtMillis = nowMillis,
                 updatedAtMillis = nowMillis,
@@ -153,18 +149,16 @@ internal fun ProductDraft.prepareForPublish(
     )
 }
 
-fun isValidVintedUrl(value: String): Boolean {
-    return runCatching {
-        val uri = URI(value.trim())
-        uri.scheme == "https" &&
-            uri.host?.lowercase() in setOf("vinted.de", "www.vinted.de") &&
-            uri.port == -1 &&
-            uri.userInfo == null &&
-            uri.query.orEmpty()
-                .split("&")
-                .mapNotNull { it.substringBefore("=", "").lowercase().takeIf(String::isNotBlank) }
-                .none { it in setOf("url", "redirect", "redirect_url", "redirect_uri", "next", "target") }
-    }.getOrDefault(false)
+const val PRODUCT_MODEL_VERSION = 2
+
+internal fun normalizeMeasurement(value: String): String? {
+    val normalized = value.trim().replace(',', '.')
+    val number = normalized.toBigDecimalOrNull()?.takeIf { it.signum() > 0 } ?: return null
+    return number.stripTrailingZeros().toPlainString()
+}
+
+internal fun displayMeasurement(value: String, unit: String): String {
+    return "${value.replace('.', ',')} $unit"
 }
 
 fun List<String>.toMultilineText(): String = joinToString("\n")

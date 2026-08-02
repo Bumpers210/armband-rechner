@@ -190,9 +190,10 @@ for (const product of published) {
     `Materialdarstellung fehlt: ${product.sku}`,
   );
   assert(
-    overviewHtml.includes(product.displaySize) &&
-      detailHtml.includes(product.displaySize) &&
-      !detailHtml.includes(`${product.displaySize} cm`),
+    overviewHtml.includes(product.displayBraceletSize) &&
+      detailHtml.includes(product.displayBraceletSize) &&
+      overviewHtml.includes(product.displayPearlSize) &&
+      detailHtml.includes(product.displayPearlSize),
     `Zentimeterdarstellung ist ungültig: ${product.sku}`,
   );
   assert(
@@ -212,17 +213,6 @@ for (const product of published) {
     `Published-Produkt enthält interne Preisfelder: ${product.sku}`,
   );
 
-  if (product.vintedUrl) {
-    assert(
-      detailHtml.includes(product.vintedUrl.replaceAll("&", "&amp;")),
-      `Direkter Vinted-Link fehlt: ${product.sku}`,
-    );
-  } else {
-    assert(
-      !detailHtml.includes("Auf Vinted ansehen"),
-      `Produkt ohne Vinted-URL zeigt einen Vinted-Link: ${product.sku}`,
-    );
-  }
 }
 
 for (const product of sold) {
@@ -233,8 +223,7 @@ for (const product of sold) {
   assert(
     !overviewHtml.includes(product.description) &&
       detailHtml.includes("Verkauft") &&
-      !detailHtml.includes("Auf Vinted ansehen") &&
-      !(product.vintedUrl && detailHtml.includes(product.vintedUrl)),
+      !detailHtml.includes("click.php?target="),
     `Sold-Status ist nicht korrekt gerendert: ${product.sku}`,
   );
 }

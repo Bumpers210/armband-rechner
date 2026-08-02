@@ -6,8 +6,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val betaVersionCode = 4
-val betaVersionName = "1.1.0-beta.3"
+val betaVersionCode = 5
+val betaVersionName = "1.1.0-beta.4"
 val releaseSigningPropertiesFile = rootProject.file(".signing/keystore.properties")
 val releaseSigningProperties = Properties().apply {
     if (releaseSigningPropertiesFile.isFile) {

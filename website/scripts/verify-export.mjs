@@ -145,10 +145,7 @@ assert(
     organization.address.addressLocality === "Treuchtlingen" &&
     organization.address.addressCountry === "DE" &&
     Array.isArray(organization.sameAs) &&
-    organization.sameAs.length === 2 &&
-    organization.sameAs.includes(
-      "https://www.vinted.de/member/314105735-carmaja0",
-    ) &&
+    organization.sameAs.length === 1 &&
     organization.sameAs.includes(
       "https://www.instagram.com/carmaja_perlen/",
     ) &&
@@ -268,9 +265,6 @@ assert(
 );
 
 const expectedTrackedLinks = [
-  "/click.php?target=vinted&amp;position=hero",
-  "/click.php?target=vinted&amp;position=gallery",
-  "/click.php?target=vinted&amp;position=contact",
   "/click.php?target=instagram&amp;position=footer",
 ];
 
@@ -337,11 +331,9 @@ for (const [name, rules] of [
 }
 
 assert(
-  clickPhp.includes("'vinted' =>") &&
-    clickPhp.includes("'instagram' =>") &&
+  clickPhp.includes("'instagram' =>") &&
     clickPhp.includes("http_response_code(400)") &&
     clickPhp.includes("in_array($position, CARMAJA_POSITIONS, true)") &&
-    clickPhp.includes("carmaja_product_target_url($product)") &&
     clickPhp.includes("header('Location: ' . $redirectUrl, true, 302)"),
   "Der Klick-Endpunkt erfüllt die statischen Whitelist-Prüfungen nicht.",
 );

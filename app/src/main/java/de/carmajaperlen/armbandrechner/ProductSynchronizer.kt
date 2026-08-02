@@ -203,9 +203,8 @@ private fun ProductServerUpdate.matchesMetadata(draft: ProductDraft): Boolean {
     return name == draft.name &&
         materials == draft.materials &&
         metalElements == draft.metalElements &&
-        braceletSize == draft.braceletSize &&
-        stock == draft.stock &&
+        braceletSizeCm == draft.braceletSizeCm &&
+        pearlSizeMm == draft.pearlSizeMm &&
         shortDescription == draft.shortDescription &&
-        careInstructions == draft.careInstructions &&
-        vintedUrl == draft.vintedUrl
+        careInstructions == draft.careInstructions
 }

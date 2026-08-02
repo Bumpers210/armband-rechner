@@ -32,7 +32,7 @@ const sourceImage = path.join(
   "hero-dunkelrot-braun-holz.jpg",
 );
 
-function product(sequence, status, vintedUrl) {
+function product(sequence, status) {
   const sku = `CP-2026-${String(sequence).padStart(4, "0")}`;
   const imageCount = sequence === 1 ? 3 : 1;
 
@@ -43,8 +43,8 @@ function product(sequence, status, vintedUrl) {
     description: `Öffentliche Produktbeschreibung ${sequence}.`,
     materials: ["Rosenquarz"],
     metalElements: ["Spacer Blume Edelstahl"],
-    size: sequence === 1 ? "175 mm" : "17,50 cm",
-    stock: status === "sold" ? 0 : 1,
+    braceletSizeCm: sequence === 1 ? 17.5 : 17.5,
+    pearlSizeMm: 6,
     status,
     images: Array.from({ length: imageCount }, (_, index) => ({
         src: `/images/products/${sku}/01.jpg`,
@@ -58,7 +58,6 @@ function product(sequence, status, vintedUrl) {
       })),
     careInstructions: [`INTERNER-PFLEGEHINWEIS-${sequence}`],
     updatedAt: `2026-07-2${sequence}T10:00:00.000Z`,
-    ...(vintedUrl ? { vintedUrl } : {}),
   };
 }
 
@@ -72,9 +71,9 @@ test(
     const imageRoot = path.join(fixtureRoot, "images", "products");
     const productsFile = path.join(fixtureRoot, "products.json");
     const products = [
-      product(1, "published", "https://www.vinted.de/items/1001-test"),
+      product(1, "published"),
       product(2, "published"),
-      product(3, "sold", "https://vinted.de/items/1003-sold"),
+      product(3, "sold"),
       product(4, "disabled"),
       product(5, "draft"),
       product(6, "ready"),

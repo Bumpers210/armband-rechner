@@ -306,7 +306,6 @@ function carmaja_api_test_prepare_image_upload(
 
 function carmaja_api_test_ready_draft(
     string $draftId,
-    ?string $vintedUrl = null,
     array $internalCalculation = []
 ): array {
     $imageDirectory = carmaja_api_path('uploads/' . $draftId);
@@ -322,11 +321,11 @@ function carmaja_api_test_ready_draft(
         'name' => 'Rosenquarz Armband',
         'materials' => ['Rosenquarz'],
         'metalElements' => [],
-        'braceletSize' => '17 cm',
-        'stock' => 1,
+        'modelVersion' => 2,
+        'braceletSizeCm' => 17.5,
+        'pearlSizeMm' => 6,
         'shortDescription' => 'Zartes Testarmband.',
         'careInstructions' => ['Vor Wasser schützen'],
-        'vintedUrl' => $vintedUrl,
         'internalCalculation' => $internalCalculation,
         'images' => [[
             'path' => $imagePath,
@@ -356,13 +355,14 @@ function carmaja_api_test_public_product(
 function carmaja_api_test_save_payload(int $expectedVersion): array
 {
     return [
+        'modelVersion' => 2,
         'expectedVersion' => $expectedVersion,
         'status' => 'ready',
         'name' => 'Rosenquarz Armband',
         'materials' => ['Rosenquarz'],
         'metalElements' => [],
-        'braceletSize' => '17 cm',
-        'stock' => 1,
+        'braceletSizeCm' => 17.5,
+        'pearlSizeMm' => 6,
         'shortDescription' => 'Zartes Testarmband.',
         'careInstructions' => [],
         'internalCalculation' => [],
@@ -571,37 +571,25 @@ carmaja_api_test('Fehlerantwort enthält keine Secrets', static function (): voi
     }
 });
 
-carmaja_api_test('Vinted-URL wird strukturell validiert', static function (): void {
+carmaja_api_test('Messwerte akzeptieren positive numerische Werte', static function (): void {
     carmaja_api_test_same(
-        null,
-        carmaja_api_validate_vinted_url('', false),
-        'Leerer Testlink muss zulässig sein.'
+        17.5,
+        carmaja_api_validate_measurement(17.5, 'braceletSizeCm'),
+        'Armbandgröße wurde nicht als Dezimalzahl übernommen.'
     );
     carmaja_api_test_same(
-        'https://www.vinted.de/items/123',
-        carmaja_api_validate_vinted_url('https://www.vinted.de/items/123', false),
-        'Gültiger Link wurde abgelehnt.'
+        6.0,
+        carmaja_api_validate_measurement(6, 'pearlSizeMm'),
+        'Perlengröße wurde nicht als numerischer Wert übernommen.'
     );
 
-    foreach ([
-        'http://vinted.de/items/123',
-        'https://vinted.de.fremd.example/items/123',
-        'https://user@vinted.de/items/123',
-        'https://vinted.de:443/items/123',
-        'https://vinted.de/redirect?url=https://example.org',
-    ] as $url) {
+    foreach ([null, '', '17.5', 0, -1, INF] as $value) {
         carmaja_api_test_exception(
-            static fn (): ?string => carmaja_api_validate_vinted_url($url, false),
+            static fn (): float => carmaja_api_validate_measurement($value, 'pearlSizeMm'),
             422,
-            'vinted_url_invalid'
+            'validation_failed'
         );
     }
-
-    carmaja_api_test_exception(
-        static fn (): ?string => carmaja_api_validate_vinted_url(null, true),
-        422,
-        'vinted_url_required'
-    );
 });
 
 carmaja_api_test('Atomare JSON-Prüfung behandelt nur gleiche Zahlen semantisch gleich', static function (): void {
@@ -610,8 +598,8 @@ carmaja_api_test('Atomare JSON-Prüfung behandelt nur gleiche Zahlen semantisch 
 
     carmaja_api_test_assert(
         carmaja_api_json_values_equal(
-            ['measurement' => 17.5, 'wholeNumber' => 6.0],
-            ['measurement' => 17.5, 'wholeNumber' => 6]
+            ['braceletSizeCm' => 17.5, 'pearlSizeMm' => 6.0],
+            ['braceletSizeCm' => 17.5, 'pearlSizeMm' => 6]
         ),
         'Gleiche JSON-Zahlen mit unterschiedlicher PHP-Zahlendarstellung wurden abgelehnt.'
     );
@@ -622,18 +610,18 @@ carmaja_api_test('Atomare JSON-Prüfung behandelt nur gleiche Zahlen semantisch 
         'Unterschiedliche Zahlen, Strings oder Booleans dürfen nicht gleichgesetzt werden.'
     );
 
-    carmaja_api_write_json_atomic($path, ['wholeNumber' => 6.0]);
+    carmaja_api_write_json_atomic($path, ['pearlSizeMm' => 6.0]);
     $stored = carmaja_api_read_json($path);
-    carmaja_api_test_same(6, $stored['wholeNumber'], 'Der Regressionstest erwartet die JSON-Normalisierung auf eine Ganzzahl.');
+    carmaja_api_test_same(6, $stored['pearlSizeMm'], 'Der Regressionstest erwartet die JSON-Normalisierung auf eine Ganzzahl.');
 });
 
-carmaja_api_test('Test-Publish ohne Vinted-Link ist erfolgreich', static function (): void {
+carmaja_api_test('Test-Publish mit Produktmodell Version 2 ist erfolgreich', static function (): void {
     $fixture = carmaja_api_test_fixture();
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5401';
     carmaja_api_test_ready_draft($draftId);
     $result = carmaja_api_publish(
         $draftId,
-        ['expectedVersion' => 1, 'operationId' => 'test-no-vinted-0001'],
+        ['expectedVersion' => 1, 'operationId' => 'test-model-v2-0001'],
         carmaja_api_test_actor(),
         'published'
     );
@@ -647,9 +635,14 @@ carmaja_api_test('Test-Publish ohne Vinted-Link ist erfolgreich', static functio
         [],
         'Öffentliche Testproduktdaten'
     );
+    carmaja_api_test_same(
+        17.5,
+        $public['products'][0]['braceletSizeCm'],
+        'Öffentlicher Export enthält nicht die numerische Armbandgröße.'
+    );
     carmaja_api_test_assert(
-        !array_key_exists('vintedUrl', $public['products'][0]),
-        'Öffentliches Testprodukt darf keinen leeren Vinted-Link enthalten.'
+        carmaja_api_json_values_equal(6.0, $public['products'][0]['pearlSizeMm']),
+        'Öffentlicher Export enthält nicht die numerische Perlengröße.'
     );
     $publicKeys = array_keys($public['products'][0]);
     sort($publicKeys);
@@ -659,11 +652,11 @@ carmaja_api_test('Test-Publish ohne Vinted-Link ist erfolgreich', static functio
         'images',
         'materials',
         'metalElements',
-        'size',
+        'braceletSizeCm',
+        'pearlSizeMm',
         'sku',
         'slug',
         'status',
-        'stock',
         'title',
         'updatedAt',
     ];
@@ -733,18 +726,80 @@ carmaja_api_test('Unvollständiger Testentwurf bleibt ohne Nebenwirkungen', stat
     );
 });
 
-carmaja_api_test('Test-Publish mit gültigem Vinted-Link ist erfolgreich', static function (): void {
-    $fixture = carmaja_api_test_fixture();
+carmaja_api_test('Fehlende Perlengröße wird beim Speichern abgelehnt', static function (): void {
+    carmaja_api_test_fixture();
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5402';
-    carmaja_api_test_ready_draft($draftId, 'https://vinted.de/items/123');
-    $result = carmaja_api_publish(
-        $draftId,
-        ['expectedVersion' => 1, 'operationId' => 'test-with-vinted-0001'],
-        carmaja_api_test_actor(),
-        'published'
-    );
+    $payload = carmaja_api_test_save_payload(0);
+    unset($payload['pearlSizeMm']);
 
-    carmaja_api_test_same('published', $result['status'], 'Test-Publish fehlgeschlagen.');
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_save_product(
+            $draftId,
+            $payload,
+            carmaja_api_test_actor()
+        ),
+        422,
+        'validation_failed'
+    );
+});
+
+carmaja_api_test('Veraltete Produktfelder werden durch die API abgelehnt', static function (): void {
+    carmaja_api_test_fixture();
+
+    foreach (['stock' => 4, 'vintedUrl' => 'https://example.invalid/item'] as $field => $value) {
+        $payload = carmaja_api_test_save_payload(0);
+        $payload[$field] = $value;
+
+        $error = carmaja_api_test_exception(
+            static fn (): array => carmaja_api_save_product(
+                '019fa2e6-cf3c-7073-9275-7d3b566f5402',
+                $payload,
+                carmaja_api_test_actor()
+            ),
+            422,
+            'unknown_fields'
+        );
+        carmaja_api_test_assert(
+            array_key_exists($field, $error->fields),
+            'Das veraltete Feld muss einzeln zurückgewiesen werden.'
+        );
+    }
+});
+
+carmaja_api_test('Produkt-API schützt commerceInventory.onHand', static function (): void {
+    carmaja_api_test_fixture();
+    $payload = carmaja_api_test_save_payload(0);
+    $payload['commerceInventory'] = ['onHand' => 4];
+
+    $error = carmaja_api_test_exception(
+        static fn (): array => carmaja_api_save_product(
+            '019fa2e6-cf3c-7073-9275-7d3b566f5402',
+            $payload,
+            carmaja_api_test_actor()
+        ),
+        422,
+        'unknown_fields'
+    );
+    carmaja_api_test_assert(
+        array_key_exists('commerceInventory', $error->fields),
+        'Die Produkt-API darf commerceInventory nicht entgegennehmen.'
+    );
+});
+
+carmaja_api_test('Produktmodell Version 1 wird beim Speichern abgelehnt', static function (): void {
+    carmaja_api_test_fixture();
+    $payload = carmaja_api_test_save_payload(0);
+    $payload['modelVersion'] = 1;
+
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_save_product(
+            '019fa2e6-cf3c-7073-9275-7d3b566f5403',
+            $payload,
+            carmaja_api_test_actor()
+        ),
+        422,
+        'unsupported_product_model_version'
+    );
 });
 
 carmaja_api_test('Produktion lehnt direkten Draft-Publish weiterhin ab', static function (): void {
@@ -752,10 +807,7 @@ carmaja_api_test('Produktion lehnt direkten Draft-Publish weiterhin ab', static 
     carmaja_api_test_use_target($fixture, 'production');
     putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5423';
-    $draft = carmaja_api_test_ready_draft(
-        $draftId,
-        'https://vinted.de/items/123'
-    );
+    $draft = carmaja_api_test_ready_draft($draftId);
     $draft['status'] = 'draft';
     carmaja_api_save_draft($draft);
 
@@ -780,57 +832,11 @@ carmaja_api_test('Produktion lehnt direkten Draft-Publish weiterhin ab', static 
     );
 });
 
-carmaja_api_test('Produktions-Publish ohne Link erhält HTTP 422', static function (): void {
-    $fixture = carmaja_api_test_fixture();
-    carmaja_api_test_use_target($fixture, 'production');
-    putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
-    $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5403';
-    carmaja_api_test_ready_draft($draftId);
-
-    carmaja_api_test_exception(
-        static fn (): array => carmaja_api_publish(
-            $draftId,
-            ['expectedVersion' => 1, 'operationId' => 'production-no-link-0001'],
-            carmaja_api_test_actor(),
-            'published'
-        ),
-        422,
-        'vinted_url_required'
-    );
-    carmaja_api_test_same(
-        [],
-        carmaja_api_test_json_files($fixture['productionPrivate'] . '/idempotency'),
-        'Validierungsfehler darf keinen Idempotency-Datensatz erzeugen.'
-    );
-});
-
-carmaja_api_test('Produktions-Publish mit Fremddomain erhält HTTP 422', static function (): void {
-    $fixture = carmaja_api_test_fixture();
-    carmaja_api_test_use_target($fixture, 'production');
-    putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
-    $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5404';
-    carmaja_api_test_ready_draft(
-        $draftId,
-        'https://vinted.de.fremd.example/items/123'
-    );
-
-    carmaja_api_test_exception(
-        static fn (): array => carmaja_api_publish(
-            $draftId,
-            ['expectedVersion' => 1, 'operationId' => 'production-bad-link-0001'],
-            carmaja_api_test_actor(),
-            'published'
-        ),
-        422,
-        'vinted_url_invalid'
-    );
-});
-
 carmaja_api_test('Deaktivierter Produktions-Publish hat keine Nebenwirkungen', static function (): void {
     $fixture = carmaja_api_test_fixture();
     carmaja_api_test_use_target($fixture, 'production');
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5405';
-    carmaja_api_test_ready_draft($draftId, 'https://vinted.de/items/123');
+    carmaja_api_test_ready_draft($draftId);
     $adapterCalls = 0;
     $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER'] = static function () use (&$adapterCalls): array {
         $adapterCalls++;
@@ -1377,7 +1383,7 @@ carmaja_api_test('Unvollständiger Upload blockiert Publish', static function ()
 carmaja_api_test('Öffentliche Daten enthalten keine internen Werte', static function (): void {
     $fixture = carmaja_api_test_fixture();
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5414';
-    carmaja_api_test_ready_draft($draftId, null, [
+    carmaja_api_test_ready_draft($draftId, [
         'materialCosts' => 'TESTSECRET-PRIVATE-COST',
         'recommendedSalePrice' => '999.99',
     ]);
@@ -1397,7 +1403,9 @@ carmaja_api_test('Öffentliche Daten enthalten keine internen Werte', static fun
         'recommendedSalePrice',
         'TESTSECRET-PRIVATE-COST',
         $fixture['testPrivate'],
-        '"vintedUrl": ""',
+        '"stock":',
+        '"vintedUrl":',
+        '"commerceInventory":',
     ] as $forbidden) {
         carmaja_api_test_assert(
             !str_contains($publicRaw, $forbidden),

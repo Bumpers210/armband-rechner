@@ -7,10 +7,9 @@ enum class ProductEditorField {
     Name,
     Materials,
     MetalElements,
-    BraceletSize,
-    Stock,
+    BraceletSizeCm,
+    PearlSizeMm,
     ShortDescription,
-    VintedUrl,
 }
 
 val ProductEditorField.errorKey: String
@@ -18,10 +17,9 @@ val ProductEditorField.errorKey: String
         ProductEditorField.Name -> "name"
         ProductEditorField.Materials -> "materials"
         ProductEditorField.MetalElements -> "metalElements"
-        ProductEditorField.BraceletSize -> "braceletSize"
-        ProductEditorField.Stock -> "stock"
+        ProductEditorField.BraceletSizeCm -> "braceletSizeCm"
+        ProductEditorField.PearlSizeMm -> "pearlSizeMm"
         ProductEditorField.ShortDescription -> "shortDescription"
-        ProductEditorField.VintedUrl -> "vintedUrl"
     }
 
 data class ProductDraftEditorState(
@@ -29,38 +27,32 @@ data class ProductDraftEditorState(
     val name: TextFieldValue,
     val materials: TextFieldValue,
     val metalElements: TextFieldValue,
-    val braceletSize: TextFieldValue,
-    val stock: TextFieldValue,
+    val braceletSizeCm: TextFieldValue,
+    val pearlSizeMm: TextFieldValue,
     val shortDescription: TextFieldValue,
-    val vintedUrl: TextFieldValue,
 ) {
     fun update(field: ProductEditorField, value: TextFieldValue): ProductDraftEditorState {
         return when (field) {
             ProductEditorField.Name -> copy(name = value)
             ProductEditorField.Materials -> copy(materials = value)
             ProductEditorField.MetalElements -> copy(metalElements = value)
-            ProductEditorField.BraceletSize -> copy(braceletSize = value)
-            ProductEditorField.Stock -> copy(stock = value)
+            ProductEditorField.BraceletSizeCm -> copy(braceletSizeCm = value)
+            ProductEditorField.PearlSizeMm -> copy(pearlSizeMm = value)
             ProductEditorField.ShortDescription -> copy(shortDescription = value)
-            ProductEditorField.VintedUrl -> copy(vintedUrl = value)
         }
     }
 
     fun validateForSave(): Map<String, String> {
         return buildMap {
-            val parsedStock = stock.text.trim().toIntOrNull()
-            if (parsedStock == null || parsedStock !in 0..99) {
-                put("stock", "Bestand muss eine Zahl zwischen 0 und 99 sein.")
-            }
+            if (normalizeMeasurement(braceletSizeCm.text) == null) put("braceletSizeCm", "Armbandgröße muss größer als null sein.")
+            if (normalizeMeasurement(pearlSizeMm.text) == null) put("pearlSizeMm", "Perlengröße muss größer als null sein.")
         }
     }
 
     fun applyTo(draft: ProductDraft): ProductDraft {
         require(draft.draftId == draftId) { "Editor und Entwurf stimmen nicht ueberein." }
-        val parsedStock = stock.text.trim().toIntOrNull()
-        require(parsedStock != null && parsedStock in 0..99) {
-            "Bestand muss eine Zahl zwischen 0 und 99 sein."
-        }
+        val braceletSizeCm = requireNotNull(normalizeMeasurement(braceletSizeCm.text)) { "Armbandgröße muss größer als null sein." }
+        val pearlSizeMm = requireNotNull(normalizeMeasurement(pearlSizeMm.text)) { "Perlengröße muss größer als null sein." }
 
         return draft.copy(
             name = name.text.trim(),
@@ -68,10 +60,9 @@ data class ProductDraftEditorState(
             metalElements = multilineTextToList(metalElements.text)
                 .map(::normalizeSpacerLabel)
                 .distinct(),
-            braceletSize = braceletSize.text.trim(),
-            stock = parsedStock,
+            braceletSizeCm = braceletSizeCm,
+            pearlSizeMm = pearlSizeMm,
             shortDescription = shortDescription.text.trim(),
-            vintedUrl = vintedUrl.text.trim(),
         )
     }
 
@@ -82,10 +73,9 @@ data class ProductDraftEditorState(
                 name = editorValue(draft.name),
                 materials = editorValue(draft.materials.toMultilineText()),
                 metalElements = editorValue(draft.metalElements.toMultilineText()),
-                braceletSize = editorValue(draft.braceletSize),
-                stock = editorValue(draft.stock.toString()),
+                braceletSizeCm = editorValue(draft.braceletSizeCm.replace('.', ',')),
+                pearlSizeMm = editorValue(draft.pearlSizeMm.replace('.', ',')),
                 shortDescription = editorValue(draft.shortDescription),
-                vintedUrl = editorValue(draft.vintedUrl),
             )
         }
     }

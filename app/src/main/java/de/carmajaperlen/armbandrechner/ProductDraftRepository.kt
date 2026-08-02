@@ -153,15 +153,15 @@ class ProductDraftRepository(
             .put("sku", draft.sku)
             .put("slug", draft.slug)
             .put("version", draft.version)
+            .put("modelVersion", draft.modelVersion)
             .put("status", draft.status.wireName)
             .put("name", draft.name)
             .put("materials", JSONArray(draft.materials))
             .put("metalElements", JSONArray(draft.metalElements))
-            .put("braceletSize", draft.braceletSize)
-            .put("stock", draft.stock)
+            .put("braceletSizeCm", draft.braceletSizeCm)
+            .put("pearlSizeMm", draft.pearlSizeMm)
             .put("shortDescription", draft.shortDescription)
             .put("careInstructions", JSONArray(draft.careInstructions))
-            .put("vintedUrl", draft.vintedUrl)
             .put("internalCalculation", encodeCalculation(draft.internalCalculation))
             .put("images", JSONArray(draft.images.map(::encodeImage)))
             .put("createdAtMillis", draft.createdAtMillis)
@@ -182,11 +182,11 @@ class ProductDraftRepository(
             name = json.optString("name"),
             materials = json.optStringList("materials"),
             metalElements = json.optStringList("metalElements"),
-            braceletSize = json.optString("braceletSize"),
-            stock = json.optInt("stock", 1).coerceAtLeast(0),
+            modelVersion = PRODUCT_MODEL_VERSION,
+            braceletSizeCm = legacyBraceletSizeCm(json),
+            pearlSizeMm = json.opt("pearlSizeMm")?.toString().orEmpty(),
             shortDescription = json.optString("shortDescription"),
             careInstructions = json.optStringList("careInstructions"),
-            vintedUrl = json.optString("vintedUrl"),
             internalCalculation = decodeCalculation(json.getJSONObject("internalCalculation")),
             images = json.optJSONArray("images")?.let { array ->
                 buildList {
@@ -202,6 +202,15 @@ class ProductDraftRepository(
             pendingSoldOperationId = json.optStringOrNull("pendingSoldOperationId"),
             pendingDisableOperationId = json.optStringOrNull("pendingDisableOperationId"),
         )
+    }
+
+    private fun legacyBraceletSizeCm(json: JSONObject): String {
+        val modern = json.opt("braceletSizeCm")?.toString()
+        if (!modern.isNullOrBlank()) return modern
+        return json.optString("braceletSize")
+            .removeSuffix("cm")
+            .trim()
+            .let { normalizeMeasurement(it).orEmpty() }
     }
 
     private fun encodeCalculation(snapshot: CalculationSnapshot): JSONObject {

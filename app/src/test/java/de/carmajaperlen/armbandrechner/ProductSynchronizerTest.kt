@@ -258,9 +258,9 @@ private fun productDraft(imageCount: Int): ProductDraft {
         version = 0,
         name = "Testprodukt",
         materials = listOf("Rosenquarz"),
-        braceletSize = "17 cm",
+        braceletSizeCm = "17",
+        pearlSizeMm = "6",
         shortDescription = "Testbeschreibung",
-        vintedUrl = "",
         internalCalculation = CalculationSnapshot(
             quantities = mapOf("Rosenquarz" to 1),
             workMinutes = "10",
@@ -302,11 +302,10 @@ private fun ProductDraft.toServerUpdate(
         name = name,
         materials = materials,
         metalElements = metalElements,
-        braceletSize = braceletSize,
-        stock = stock,
+        braceletSizeCm = braceletSizeCm,
+        pearlSizeMm = pearlSizeMm,
         shortDescription = shortDescription,
         careInstructions = careInstructions,
-        vintedUrl = vintedUrl,
         images = images,
     )
 }

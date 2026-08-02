@@ -1,7 +1,7 @@
 import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
 
-import type { TrackedLinkPosition } from "./vinted-link";
+export type TrackedLinkPosition = "hero" | "gallery" | "contact" | "footer";
 
 type InstagramLinkProps = {
   position: TrackedLinkPosition;

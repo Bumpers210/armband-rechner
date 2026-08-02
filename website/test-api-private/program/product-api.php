@@ -1052,68 +1052,12 @@ function carmaja_api_slugify(string $value): string
     return $slug !== '' ? $slug : 'armband';
 }
 
-function carmaja_api_validate_vinted_url(
-    mixed $value,
-    bool $required
-): ?string {
-    if ($value === null || (is_string($value) && trim($value) === '')) {
-        if ($required) {
-            throw new CarmajaApiException(
-                422,
-                'Für Produktionsveröffentlichungen ist ein Vinted-Link erforderlich.',
-                ['vintedUrl' => 'Vinted-Link ist erforderlich.'],
-                'vinted_url_required'
-            );
-        }
-
-        return null;
+function carmaja_api_validate_measurement(mixed $value, string $field): float
+{
+    if ((!is_int($value) && !is_float($value)) || !is_finite((float) $value) || (float) $value <= 0) {
+        throw new CarmajaApiException(422, $field . ' ist ungültig.', [$field => 'Positive Zahl erwartet.'], 'validation_failed');
     }
-
-    if (!is_string($value)) {
-        throw new CarmajaApiException(
-            422,
-            'Vinted-Link ist ungültig.',
-            ['vintedUrl' => 'Vinted-Link muss eine URL sein.'],
-            'vinted_url_invalid'
-        );
-    }
-
-    $url = trim($value);
-    $parts = parse_url($url);
-    $host = is_array($parts) && is_string($parts['host'] ?? null)
-        ? strtolower($parts['host'])
-        : null;
-    $hasCredentials = is_array($parts)
-        && (array_key_exists('user', $parts) || array_key_exists('pass', $parts));
-    $hasPort = is_array($parts) && array_key_exists('port', $parts);
-    $redirectKeys = ['url', 'redirect', 'redirect_url', 'redirect_uri', 'next', 'target'];
-    $query = [];
-
-    if (is_array($parts) && is_string($parts['query'] ?? null)) {
-        parse_str($parts['query'], $query);
-    }
-
-    $hasRedirect = array_intersect(
-        $redirectKeys,
-        array_map(static fn (mixed $key): string => strtolower((string) $key), array_keys($query))
-    ) !== [];
-
-    if (filter_var($url, FILTER_VALIDATE_URL) === false
-        || !is_array($parts)
-        || ($parts['scheme'] ?? null) !== 'https'
-        || !in_array($host, ['vinted.de', 'www.vinted.de'], true)
-        || $hasCredentials
-        || $hasPort
-        || $hasRedirect) {
-        throw new CarmajaApiException(
-            422,
-            'Vinted-Link ist ungültig.',
-            ['vintedUrl' => 'Erlaubt ist nur eine direkte HTTPS-URL auf vinted.de.'],
-            'vinted_url_invalid'
-        );
-    }
-
-    return $url;
+    return (float) $value;
 }
 
 function carmaja_api_reject_unknown_fields(
@@ -1266,19 +1210,23 @@ function carmaja_api_validate_draft_payload(
     ?array $existing
 ): array {
     carmaja_api_reject_unknown_fields($payload, [
+        'modelVersion',
         'draftId',
         'expectedVersion',
         'status',
         'name',
         'materials',
         'metalElements',
-        'braceletSize',
-        'stock',
+        'braceletSizeCm',
+        'pearlSizeMm',
         'shortDescription',
         'careInstructions',
-        'vintedUrl',
         'internalCalculation',
     ]);
+
+    if (($payload['modelVersion'] ?? null) !== 2) {
+        throw new CarmajaApiException(422, 'Nicht unterstützte Produktmodellversion.', ['modelVersion' => 'Version 2 erforderlich.'], 'unsupported_product_model_version');
+    }
 
     if (isset($payload['draftId'])
         && (!is_string($payload['draftId']) || $payload['draftId'] !== $draftId)) {
@@ -1321,17 +1269,6 @@ function carmaja_api_validate_draft_payload(
         );
     }
 
-    $stock = $payload['stock'] ?? 1;
-
-    if (!is_int($stock) || $stock < 0 || $stock > 99) {
-        throw new CarmajaApiException(
-            422,
-            'Bestand ist ungültig.',
-            ['stock' => 'Ganzzahl zwischen 0 und 99 erwartet.'],
-            'validation_failed'
-        );
-    }
-
     $draft = $existing ?? [
         'environment' => carmaja_api_publish_target(),
         'draftId' => $draftId,
@@ -1342,7 +1279,6 @@ function carmaja_api_validate_draft_payload(
         'images' => [],
     ];
 
-    $vintedUrl = carmaja_api_validate_vinted_url($payload['vintedUrl'] ?? null, false);
 
     $draft['draftId'] = $draftId;
     $draft['status'] = $status;
@@ -1352,13 +1288,10 @@ function carmaja_api_validate_draft_payload(
         $payload['metalElements'] ?? [],
         'metalElements'
     );
-    $draft['braceletSize'] = carmaja_api_validate_string(
-        $payload['braceletSize'] ?? '',
-        'braceletSize',
-        60,
-        $status === 'ready'
-    );
-    $draft['stock'] = $stock;
+    $draft['modelVersion'] = 2;
+    $draft['braceletSizeCm'] = carmaja_api_validate_measurement($payload['braceletSizeCm'] ?? null, 'braceletSizeCm');
+    $draft['pearlSizeMm'] = carmaja_api_validate_measurement($payload['pearlSizeMm'] ?? null, 'pearlSizeMm');
+    unset($draft['braceletSize'], $draft['stock'], $draft['vintedUrl']);
     $draft['shortDescription'] = carmaja_api_validate_string(
         $payload['shortDescription'] ?? '',
         'shortDescription',
@@ -1369,7 +1302,6 @@ function carmaja_api_validate_draft_payload(
         $payload['careInstructions'] ?? [],
         'careInstructions'
     );
-    $draft['vintedUrl'] = $vintedUrl;
     $draft['internalCalculation'] = carmaja_api_validate_internal_calculation(
         $payload['internalCalculation'] ?? []
     );
@@ -1434,7 +1366,7 @@ function carmaja_api_save_product(string $draftId, array $body, array $actor): a
 
 function carmaja_api_require_publishable(array $draft, string $target): void
 {
-    foreach (['name', 'braceletSize', 'shortDescription'] as $field) {
+    foreach (['name', 'shortDescription'] as $field) {
         if (!is_string($draft[$field] ?? null) || trim($draft[$field]) === '') {
             throw new CarmajaApiException(
                 422,
@@ -1483,10 +1415,8 @@ function carmaja_api_require_publishable(array $draft, string $target): void
         }
     }
 
-    carmaja_api_validate_vinted_url(
-        $draft['vintedUrl'] ?? null,
-        $target === 'production'
-    );
+    carmaja_api_validate_measurement($draft['braceletSizeCm'] ?? null, 'braceletSizeCm');
+    carmaja_api_validate_measurement($draft['pearlSizeMm'] ?? null, 'pearlSizeMm');
 }
 
 function carmaja_api_allocate_sku(string $operationId): string
@@ -1564,8 +1494,8 @@ function carmaja_api_public_product_from_draft(array $draft): array
         'description' => (string) $draft['shortDescription'],
         'materials' => array_values($draft['materials'] ?? []),
         'metalElements' => array_values($draft['metalElements'] ?? []),
-        'size' => (string) $draft['braceletSize'],
-        'stock' => (int) ($draft['stock'] ?? 1),
+        'braceletSizeCm' => (float) $draft['braceletSizeCm'],
+        'pearlSizeMm' => (float) $draft['pearlSizeMm'],
         'careInstructions' => array_values($draft['careInstructions'] ?? []),
         'images' => array_map(
             static fn (array $image): array => array_diff_key($image, [
@@ -1577,12 +1507,6 @@ function carmaja_api_public_product_from_draft(array $draft): array
         'updatedAt' => (string) $draft['updatedAt'],
         '_imageBlobs' => $publicImages,
     ];
-
-    $vintedUrl = carmaja_api_validate_vinted_url($draft['vintedUrl'] ?? null, false);
-
-    if ($vintedUrl !== null) {
-        $publicProduct['vintedUrl'] = $vintedUrl;
-    }
 
     return $publicProduct;
 }

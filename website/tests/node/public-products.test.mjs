@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import {
-  formatProductSize,
+  formatMeasurement,
   loadPublicProducts,
   publicProductName,
 } from "../../lib/public-products.mjs";
@@ -27,8 +27,8 @@ function product(overrides = {}) {
     description: "Ein Produkt für die isolierte Websiteprüfung.",
     materials: ["Rosenquarz"],
     metalElements: [],
-    size: "17 cm",
-    stock: 1,
+    braceletSizeCm: 17,
+    pearlSizeMm: 6,
     status: "published",
     images: [
       {
@@ -83,15 +83,10 @@ async function rejectsProduct(value, pattern, options) {
   }
 }
 
-test("erlaubte Statuswerte und optionale Vinted-URL werden akzeptiert", async () => {
+test("erlaubte Statuswerte werden akzeptiert", async () => {
   for (const status of ["published", "sold", "disabled", "draft", "ready"]) {
     const current = await fixture(
-      product({
-        status,
-        ...(status === "published"
-          ? { vintedUrl: "https://www.vinted.de/items/123-test" }
-          : {}),
-      }),
+      product({ status }),
     );
 
     try {
@@ -102,13 +97,6 @@ test("erlaubte Statuswerte und optionale Vinted-URL werden akzeptiert", async ()
     }
   }
 
-  const withoutLink = await fixture(product());
-
-  try {
-    assert.equal("vintedUrl" in withoutLink.load().products[0], false);
-  } finally {
-    await rm(withoutLink.root, { recursive: true, force: true });
-  }
 });
 
 test("interne Bezeichnungen und Payload-Pflegetexte verlassen die Quelle nicht", async () => {
@@ -123,7 +111,8 @@ test("interne Bezeichnungen und Payload-Pflegetexte verlassen die Quelle nicht",
           alt: "INTERNER-BILDTEXT",
         },
       ],
-      size: "175 mm",
+      braceletSizeCm: 17.5,
+      pearlSizeMm: 8,
     }),
   );
 
@@ -132,8 +121,9 @@ test("interne Bezeichnungen und Payload-Pflegetexte verlassen die Quelle nicht",
 
     assert.equal(loaded.publicTitle, publicProductName);
     assert.equal(loaded.slug, "cp-2026-0001");
-    assert.equal(loaded.size, "175 mm");
-    assert.equal(loaded.displaySize, "17,5 cm");
+    assert.equal(loaded.braceletSizeCm, 17.5);
+    assert.equal(loaded.displayBraceletSize, "17,5 cm");
+    assert.equal(loaded.displayPearlSize, "8 mm");
     assert.equal(loaded.images[0].alt, `${publicProductName}, Bild 1 von 1`);
     assert.equal("title" in loaded, false);
     assert.equal("careInstructions" in loaded, false);
@@ -154,15 +144,11 @@ test("Pflegehinweise aus älteren Payloads sind optional und werden ignoriert", 
   }
 });
 
-test("Größen werden eindeutig und genau einmal in Zentimetern formatiert", () => {
-  assert.equal(formatProductSize("18 cm"), "18 cm");
-  assert.equal(formatProductSize("18cm"), "18 cm");
-  assert.equal(formatProductSize("17,50 cm"), "17,5 cm");
-  assert.equal(formatProductSize("180 mm"), "18 cm");
-  assert.equal(formatProductSize("175 mm"), "17,5 cm");
-  assert.throws(() => formatProductSize("18"), /eindeutigen Wert in cm oder mm/);
-  assert.throws(() => formatProductSize("18 cm cm"), /eindeutigen Wert/);
-  assert.throws(() => formatProductSize("unbekannt"), /eindeutigen Wert/);
+test("Größen werden mit ihrer kanonischen Einheit formatiert", () => {
+  assert.equal(formatMeasurement(18, "cm", "braceletSizeCm"), "18 cm");
+  assert.equal(formatMeasurement(17.5, "cm", "braceletSizeCm"), "17,5 cm");
+  assert.equal(formatMeasurement(6, "mm", "pearlSizeMm"), "6 mm");
+  assert.throws(() => formatMeasurement(0, "mm", "pearlSizeMm"), /Positive Zahl/);
 });
 
 test("unbekannte und interne Produktfelder werden abgelehnt", async () => {
@@ -174,19 +160,15 @@ test("unbekannte und interne Produktfelder werden abgelehnt", async () => {
   );
 });
 
-test("ungültiger Status und ungültige Vinted-URLs werden abgelehnt", async () => {
+test("ungültiger Status und Altfelder werden abgelehnt", async () => {
   await rejectsProduct(product({ status: "archived" }), /Unbekannter Produktstatus/);
   await rejectsProduct(
-    product({ vintedUrl: "javascript:alert(1)" }),
-    /direkte HTTPS-URLs/,
+    product({ stock: 1 }),
+    /Unbekannte Felder: stock/,
   );
   await rejectsProduct(
-    product({ vintedUrl: "https://vinted.de.fremd.example/items/1" }),
-    /direkte HTTPS-URLs/,
-  );
-  await rejectsProduct(
-    product({ vintedUrl: "https://vinted.de/items/1?redirect=https://example.org" }),
-    /Weiterleitungsparameter/,
+    product({ vintedUrl: "https://example.org/legacy" }),
+    /Unbekannte Felder: vintedUrl/,
   );
 });
 

@@ -13,8 +13,8 @@
                 "Bergkristall"
             ],
             "metalElements": [],
-            "size": "18 cm",
-            "stock": 1,
+            "braceletSizeCm": 18,
+            "pearlSizeMm": 6,
             "careInstructions": [
                 "HTTP 422 invalid_status_transition: Status Übergang zu published ist nicht erlaubt."
             ],
@@ -55,8 +55,8 @@
                 "Indischer Achat"
             ],
             "metalElements": [],
-            "size": "18 cm",
-            "stock": 1,
+            "braceletSizeCm": 18,
+            "pearlSizeMm": 6,
             "careInstructions": [
                 "Nicht wässern"
             ],
@@ -112,8 +112,8 @@
                 "Bergkristall"
             ],
             "metalElements": [],
-            "size": "20 cm",
-            "stock": 1,
+            "braceletSizeCm": 20,
+            "pearlSizeMm": 6,
             "careInstructions": [
                 "Test2"
             ],
@@ -153,8 +153,8 @@
             "metalElements": [
                 "Edelstahlspacer"
             ],
-            "size": "18 cm",
-            "stock": 1,
+            "braceletSizeCm": 18,
+            "pearlSizeMm": 6,
             "careInstructions": [],
             "images": [
                 {

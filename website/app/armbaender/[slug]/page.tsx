@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductImageGallery } from "@/components/product-image-gallery";
-import { ProductVintedLink } from "@/components/product-vinted-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteTarget } from "@/config/site-target";
@@ -136,11 +135,11 @@ export default async function ProductDetailPage({
               </div>
               <div>
                 <dt>Größe</dt>
-                <dd>{product.displaySize}</dd>
+                <dd>{product.displayBraceletSize}</dd>
               </div>
               <div>
-                <dt>Bestand</dt>
-                <dd>{product.stock > 0 && !isSold ? "verfügbar" : "nicht verfügbar"}</dd>
+                <dt>Perlengröße</dt>
+                <dd>{product.displayPearlSize}</dd>
               </div>
             </dl>
 
@@ -153,7 +152,6 @@ export default async function ProductDetailPage({
               </ul>
             </section>
 
-            {isSold ? null : <ProductVintedLink product={product} />}
           </div>
         </article>
       </main>
