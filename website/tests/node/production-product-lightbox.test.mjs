@@ -26,6 +26,8 @@ test("Lightbox unterstützt Maus, Touch, Tastatur und Fokusführung", async () =
     "data-lightbox-open",
     "data-lightbox-previous",
     "data-lightbox-next",
+    "product-lightbox-arrow--previous",
+    "product-lightbox-arrow--next",
   ]) {
     assert.ok(component.includes(required), `Lightbox-Vertrag fehlt: ${required}`);
   }
@@ -33,6 +35,7 @@ test("Lightbox unterstützt Maus, Touch, Tastatur und Fokusführung", async () =
   assert.ok(!component.includes("http://"));
   assert.ok(!component.includes("https://"));
   assert.ok(!component.toLowerCase().includes("tracking"));
+  assert.ok(!component.includes("product-lightbox-navigation"));
 });
 
 test("Übersicht und Detailseite behalten ihre Produktnavigation", async () => {

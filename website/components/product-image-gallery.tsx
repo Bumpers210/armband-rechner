@@ -171,42 +171,46 @@ export function ProductImageGallery({
                 Schließen
               </button>
 
-              <figure className="product-lightbox-figure">
-                <Image
-                  src={activeImage.src}
-                  alt={activeImage.alt}
-                  width={activeImage.width}
-                  height={activeImage.height}
-                  sizes="100vw"
-                  className="product-lightbox-image"
-                  priority
-                />
-                <figcaption aria-live="polite">
-                  Bild {images.indexOf(activeImage) + 1} von {images.length}
-                </figcaption>
-              </figure>
-
-              {images.length > 1 ? (
-                <div
-                  className="product-lightbox-navigation"
-                  aria-label="Bilder wechseln"
-                >
+              <div className="product-lightbox-stage">
+                {images.length > 1 ? (
                   <button
                     type="button"
+                    className="product-lightbox-arrow product-lightbox-arrow--previous"
                     onClick={() => showAdjacentImage(-1)}
+                    aria-label="Vorheriges Bild"
                     data-lightbox-previous
                   >
-                    Vorheriges Bild
+                    <span aria-hidden="true">‹</span>
                   </button>
+                ) : null}
+
+                <figure className="product-lightbox-figure">
+                  <Image
+                    src={activeImage.src}
+                    alt={activeImage.alt}
+                    width={activeImage.width}
+                    height={activeImage.height}
+                    sizes="100vw"
+                    className="product-lightbox-image"
+                    priority
+                  />
+                  <figcaption aria-live="polite">
+                    Bild {images.indexOf(activeImage) + 1} von {images.length}
+                  </figcaption>
+                </figure>
+
+                {images.length > 1 ? (
                   <button
                     type="button"
+                    className="product-lightbox-arrow product-lightbox-arrow--next"
                     onClick={() => showAdjacentImage(1)}
+                    aria-label="Nächstes Bild"
                     data-lightbox-next
                   >
-                    Nächstes Bild
+                    <span aria-hidden="true">›</span>
                   </button>
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
           </div>,
           document.body,

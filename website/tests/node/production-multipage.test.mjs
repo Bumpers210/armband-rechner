@@ -74,6 +74,8 @@ test("gemeinsame Kontakt- und Armbänder-Weiterleitungen bleiben einheitlich", a
     /@media \(max-width: 47\.99rem\)[\s\S]*persistent-bracelet-flag[\s\S]*display: none/,
   );
   assert.match(instagram, /v2-instagram-icon/);
+  assert.match(instagram, /aria-label="Instagram/);
+  assert.doesNotMatch(instagram, /\{siteContent\.instagram\.label\}/);
   assert.match(styles, /\.v2-contact-card\s*\{[\s\S]*text-decoration: none/);
   assert.match(styles, /\.products-intro-inner\s*\{\s*max-width: none/);
 });

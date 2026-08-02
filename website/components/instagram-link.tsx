@@ -15,10 +15,10 @@ export function InstagramLink({ position }: InstagramLinkProps) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`${siteContent.instagram.label} – öffnet in einem neuen Tab`}
+      aria-label="Instagram – öffnet in einem neuen Tab"
+      title="Instagram"
     >
       <span className="v2-instagram-icon" aria-hidden="true" />
-      {siteContent.instagram.label}
     </a>
   );
 }
