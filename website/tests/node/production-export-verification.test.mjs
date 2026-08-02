@@ -16,6 +16,15 @@ async function fixture() {
 
   await mkdir(outputDirectory, { recursive: true });
   await writeFile(path.join(outputDirectory, "index.html"), "<main>Carmaja-Perlen</main>", "utf8");
+  await mkdir(path.join(outputDirectory, "steinwissen", "spirituelle-bedeutung"), {
+    recursive: true,
+  });
+  await mkdir(path.join(outputDirectory, "steinwissen", "natursteinkunde"), {
+    recursive: true,
+  });
+  await writeFile(path.join(outputDirectory, "steinwissen", "index.html"), "<main>Steinwissen</main>", "utf8");
+  await writeFile(path.join(outputDirectory, "steinwissen", "spirituelle-bedeutung", "index.html"), "<main>Spirituelle Bedeutung</main>", "utf8");
+  await writeFile(path.join(outputDirectory, "steinwissen", "natursteinkunde", "index.html"), "<main>Natursteinkunde</main>", "utf8");
   await cp(
     path.join(websiteDirectory, "content", "products.json"),
     sourceProductsPath,

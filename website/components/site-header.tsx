@@ -69,7 +69,9 @@ export function SiteHeader() {
             {siteContent.navigation.map((item) => {
               const isActive = item.href === "/armbaender/"
                 ? pathname.startsWith("/armbaender/")
-                : pathname === item.href;
+                : item.href === "/steinwissen/"
+                  ? pathname.startsWith("/steinwissen/")
+                  : pathname === item.href;
 
               return (
                 <li key={item.href}>

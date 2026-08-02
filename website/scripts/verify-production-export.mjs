@@ -61,6 +61,17 @@ export async function verifyProductionExport({
   );
 
   const files = await collectFiles(verifiedOutputDirectory);
+  for (const route of [
+    ["steinwissen", "index.html"],
+    ["steinwissen", "spirituelle-bedeutung", "index.html"],
+    ["steinwissen", "natursteinkunde", "index.html"],
+  ]) {
+    assert.equal(
+      await fileExists(path.join(verifiedOutputDirectory, ...route)),
+      true,
+      `Steinwissen-Route fehlt im Produktionsexport: /${route.slice(0, -1).join("/")}/`,
+    );
+  }
   assert.equal(
     files.some((filePath) => path.basename(filePath) === "products.json"),
     false,
@@ -82,6 +93,9 @@ export async function verifyProductionExport({
     "careInstructions",
     "deviceToken",
     "expectedVersion",
+    "stoneKnowledgeInventory",
+    "app-active-materials",
+    "Black Stone",
   ]) {
     assert.equal(
       exportText.includes(forbiddenValue),

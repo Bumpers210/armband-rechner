@@ -948,6 +948,130 @@
   color: var(--v2-muted);
 }
 
+.v2-page .stone-knowledge-main {
+  background: var(--v2-canvas);
+}
+
+.v2-page .stone-knowledge-breadcrumbs {
+  margin-bottom: 2rem;
+  color: var(--v2-muted);
+  font-size: 0.84rem;
+}
+
+.v2-page .stone-knowledge-breadcrumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.v2-page .stone-knowledge-breadcrumbs a {
+  color: inherit;
+  text-underline-offset: 0.25rem;
+}
+
+.v2-page .stone-knowledge-section {
+  padding-block: 4rem 5.5rem;
+}
+
+.v2-page .stone-knowledge-link-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.v2-page .stone-knowledge-link-card {
+  display: grid;
+  gap: 0.9rem;
+  min-height: 100%;
+  padding: 1.6rem;
+  border: 1px solid var(--v2-line);
+  border-radius: 0.4rem;
+  color: var(--v2-ink);
+  background: var(--v2-surface);
+  text-decoration: none;
+}
+
+.v2-page .stone-knowledge-link-card:hover {
+  border-color: var(--v2-sage);
+  background: #f5f6f0;
+}
+
+.v2-page .stone-knowledge-link-card .v2-eyebrow,
+.v2-page .stone-knowledge-link-card h2,
+.v2-page .stone-knowledge-link-card p {
+  margin: 0;
+}
+
+.v2-page .stone-knowledge-link-card h2 {
+  color: var(--v2-moss);
+  font-size: 1.65rem;
+}
+
+.v2-page .stone-knowledge-link-card p:not(.v2-eyebrow) {
+  color: var(--v2-muted);
+}
+
+.v2-page .stone-knowledge-link-card span {
+  margin-top: auto;
+  color: var(--v2-moss);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.25rem;
+}
+
+.v2-page .stone-knowledge-reading-width {
+  max-width: 44rem;
+}
+
+.v2-page .stone-knowledge-reading-width > h2 {
+  margin-top: 2.5rem;
+  color: var(--v2-moss);
+  font-size: 1.75rem;
+}
+
+.v2-page .stone-knowledge-reading-width > h2:first-child {
+  margin-top: 0;
+}
+
+.v2-page .stone-knowledge-reading-width > p {
+  color: var(--v2-muted);
+}
+
+.v2-page .stone-knowledge-notice {
+  margin: 0 0 2.5rem;
+  padding: 1rem 1.15rem;
+  border-left: 4px solid var(--v2-clay);
+  color: var(--v2-ink) !important;
+  background: #f4e8e2;
+  font-weight: 650;
+}
+
+.v2-page .stone-knowledge-source-list {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--v2-line);
+}
+
+.v2-page .stone-knowledge-source-list h2 {
+  color: var(--v2-moss);
+  font-size: 1.5rem;
+}
+
+.v2-page .stone-knowledge-source-list ul {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--v2-muted);
+}
+
+.v2-page .stone-knowledge-source-list a {
+  color: var(--v2-moss);
+  text-underline-offset: 0.25rem;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1197,6 +1321,10 @@
     grid-template-columns: minmax(0, 52fr) minmax(0, 48fr);
     gap: 3.5rem;
     padding-block: 4.5rem 6rem;
+  }
+
+  .v2-page .stone-knowledge-link-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .product-lightbox-arrow--previous {
