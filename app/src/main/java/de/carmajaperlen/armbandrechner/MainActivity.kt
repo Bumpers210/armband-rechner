@@ -116,6 +116,12 @@ class MainActivity : ComponentActivity() {
                             value,
                         )
                     },
+                    onPearlSizeMmChange = { value ->
+                        productViewModel.updateSelectedEditor(
+                            ProductEditorField.PearlSizeMm,
+                            value,
+                        )
+                    },
                     onStockChange = { value ->
                         productViewModel.updateSelectedEditor(ProductEditorField.Stock, value)
                     },

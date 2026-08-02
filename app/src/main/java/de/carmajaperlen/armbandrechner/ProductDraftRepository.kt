@@ -158,6 +158,7 @@ class ProductDraftRepository(
             .put("materials", JSONArray(draft.materials))
             .put("metalElements", JSONArray(draft.metalElements))
             .put("braceletSize", draft.braceletSize)
+            .put("pearlSizeMm", draft.pearlSizeMm)
             .put("stock", draft.stock)
             .put("shortDescription", draft.shortDescription)
             .put("careInstructions", JSONArray(draft.careInstructions))
@@ -183,6 +184,7 @@ class ProductDraftRepository(
             materials = json.optStringList("materials"),
             metalElements = json.optStringList("metalElements"),
             braceletSize = json.optString("braceletSize"),
+            pearlSizeMm = json.opt("pearlSizeMm")?.toString().orEmpty(),
             stock = json.optInt("stock", 1).coerceAtLeast(0),
             shortDescription = json.optString("shortDescription"),
             careInstructions = json.optStringList("careInstructions"),

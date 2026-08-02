@@ -33,6 +33,9 @@ test("Produktionsverifikation akzeptiert valide freigegebene Produktdaten", asyn
   const current = await fixture();
 
   try {
+    const products = JSON.parse(await readFile(current.sourceProductsPath, "utf8"));
+    products.products[0].pearlSizeMm = 6.5;
+    await writeFile(current.sourceProductsPath, `${JSON.stringify(products)}\n`, "utf8");
     await verifyProductionExport(current);
   } finally {
     await rm(current.root, { recursive: true, force: true });

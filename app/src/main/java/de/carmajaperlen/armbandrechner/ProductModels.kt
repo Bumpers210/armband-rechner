@@ -58,6 +58,7 @@ data class ProductDraft(
     val materials: List<String> = emptyList(),
     val metalElements: List<String> = emptyList(),
     val braceletSize: String = "",
+    val pearlSizeMm: String = "",
     val stock: Int = 1,
     val shortDescription: String = "",
     val careInstructions: List<String> = emptyList(),
@@ -82,6 +83,9 @@ data class ProductDraft(
             if (name.isBlank()) put("name", "Produktname ist erforderlich.")
             if (materials.isEmpty()) put("materials", "Mindestens ein Material ist erforderlich.")
             if (braceletSize.isBlank()) put("braceletSize", "Armbandgröße ist erforderlich.")
+            if (pearlSizeMm.isNotBlank() && normalizeMeasurement(pearlSizeMm) == null) {
+                put("pearlSizeMm", "Perlendurchmesser muss größer als null sein.")
+            }
             if (shortDescription.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
             if (vintedUrl.isNotBlank() && !isValidVintedUrl(vintedUrl)) {
                 put("vintedUrl", "Vinted-Link ist ungültig.")
@@ -142,6 +146,12 @@ internal fun normalizeSpacerLabel(value: String): String {
     } else {
         "$normalized Edelstahl".trim()
     }
+}
+
+internal fun normalizeMeasurement(value: String): String? {
+    val normalized = value.trim().replace(',', '.')
+    val number = normalized.toBigDecimalOrNull()?.takeIf { it.signum() > 0 } ?: return null
+    return number.stripTrailingZeros().toPlainString()
 }
 
 internal fun ProductDraft.prepareForPublish(

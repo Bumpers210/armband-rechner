@@ -44,9 +44,15 @@ export function ProductList({
                 </dd>
               </div>
               <div>
-                <dt>Größe</dt>
+                <dt>Umfang:</dt>
                 <dd>{product.displaySize}</dd>
               </div>
+              {product.displayPearlSizeMm ? (
+                <div>
+                  <dt>Perlendurchmesser:</dt>
+                  <dd>{product.displayPearlSizeMm}</dd>
+                </div>
+              ) : null}
             </dl>
             <Link className="product-detail-link" href={`/armbaender/${product.slug}/`}>
               Details ansehen

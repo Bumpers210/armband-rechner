@@ -41,6 +41,7 @@ class ProductManagementInputTest {
         enterText("product-name", "Handgefertigtes Edelsteinarmband")
         enterText("product-pearls", "Roter Dragon-Veins-Achat und Erdbeerquarz")
         enterText("product-size", "Größe 17 cm")
+        enterText("product-pearl-size-mm", "6,5")
         enterText("product-short-description", "Persönliche Anfertigung auf Anfrage")
 
         composeRule.onNodeWithTag("product-name")
@@ -53,6 +54,9 @@ class ProductManagementInputTest {
         composeRule.onNodeWithTag("product-size")
             .performScrollTo()
             .assertTextContains("Größe 17 cm")
+        composeRule.onNodeWithTag("product-pearl-size-mm")
+            .performScrollTo()
+            .assertTextContains("6,5")
         composeRule.onNodeWithTag("product-short-description")
             .performScrollTo()
             .assertTextContains("Persönliche Anfertigung auf Anfrage")
@@ -156,6 +160,9 @@ class ProductManagementInputTest {
                             },
                             onBraceletSizeChange = {
                                 update(ProductEditorField.BraceletSize, it)
+                            },
+                            onPearlSizeMmChange = {
+                                update(ProductEditorField.PearlSizeMm, it)
                             },
                             onStockChange = { update(ProductEditorField.Stock, it) },
                             onShortDescriptionChange = {

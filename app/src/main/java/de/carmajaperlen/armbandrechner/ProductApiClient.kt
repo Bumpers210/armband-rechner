@@ -25,6 +25,7 @@ data class ProductServerUpdate(
     val materials: List<String>,
     val metalElements: List<String>,
     val braceletSize: String,
+    val pearlSizeMm: String,
     val stock: Int,
     val shortDescription: String,
     val careInstructions: List<String>,
@@ -330,6 +331,10 @@ internal fun ProductDraft.toSaveJson(): JSONObject {
         .put("shortDescription", shortDescription)
         .put("internalCalculation", internalCalculation.toJson())
 
+    if (pearlSizeMm.isNotBlank()) {
+        payload.put("pearlSizeMm", pearlSizeMm.toBigDecimal())
+    }
+
     if (vintedUrl.isNotBlank()) {
         payload.put("vintedUrl", vintedUrl.trim())
     }
@@ -380,6 +385,7 @@ private fun JSONObject.toServerUpdate(): ProductServerUpdate {
         materials = optStringList("materials"),
         metalElements = optStringList("metalElements"),
         braceletSize = optString("braceletSize"),
+        pearlSizeMm = opt("pearlSizeMm")?.toString().orEmpty(),
         stock = optInt("stock", 1),
         shortDescription = optString("shortDescription"),
         careInstructions = optStringList("careInstructions"),

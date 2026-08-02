@@ -14,6 +14,7 @@ class ProductApiPayloadTest {
             "Spacer Blume Edelstahl",
             payload.getJSONArray("metalElements").getString(0),
         )
+        assertEquals(6.5, payload.getDouble("pearlSizeMm"), 0.0)
         assertFalse(payload.has("careInstructions"))
     }
 
@@ -22,6 +23,7 @@ class ProductApiPayloadTest {
             draftId = "019fa2e6-cf3c-7073-9275-7d3b566f54ee",
             materials = listOf("Rosenquarz"),
             metalElements = listOf("Spacer Blume Edelstahl"),
+            pearlSizeMm = "6.5",
             careInstructions = listOf("Legacy-Pflegehinweis"),
             internalCalculation = CalculationSnapshot(
                 quantities = emptyMap(),

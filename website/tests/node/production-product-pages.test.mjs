@@ -34,11 +34,15 @@ test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async 
   const careContent = await source("content/site-content.ts");
 
   assert.match(publicProducts, /formatProductSize/);
+  assert.match(publicProducts, /formatPearlSizeMm/);
   assert.match(publicProducts, /const ROOT_KEYS = \["products", "version"\]/);
   assert.match(publicProducts, /const PRODUCT_KEYS = \[/);
   assert.match(publicProducts, /publicTitle: publicProductName/);
   assert.match(publicProducts, /alt: `\$\{publicProductName\}, Bild/);
   assert.match(detail, /siteContent\.care\.items/);
+  assert.match(detail, /<dt>Umfang:<\/dt>/);
+  assert.match(detail, /<dt>Perlendurchmesser:<\/dt>/);
+  assert.match(detail, /product\.displayPearlSizeMm/);
   assert.doesNotMatch(detail, /product\.careInstructions/);
   assert.doesNotMatch(detail, /product\.title/);
   assert.match(careContent, /care:/);

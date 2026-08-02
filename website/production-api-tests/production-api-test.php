@@ -176,6 +176,7 @@ function production_api_ready_payload(string $draftId, int $version): array
         'materials' => ['Rosenquarz'],
         'metalElements' => ['Spacer Edelstahl'],
         'braceletSize' => '18 cm',
+        'pearlSizeMm' => 6.5,
         'stock' => 1,
         'shortDescription' => 'Handgefertigtes Armband.',
         'careInstructions' => [],
@@ -262,8 +263,14 @@ try {
     );
 
     $draftId = 'd3b07384-d9a0-4bce-9f64-56ef7d22f777';
+    $invalidPearlSize = production_api_ready_payload($draftId, 0);
+    $invalidPearlSize['pearlSizeMm'] = '6 mm';
+    production_api_expect(422, 'validation_failed', static function () use ($draftId, $invalidPearlSize): void {
+        carmaja_api_save_product($draftId, $invalidPearlSize, production_api_actor());
+    });
     $draft = carmaja_api_save_product($draftId, production_api_ready_payload($draftId, 0), production_api_actor());
     production_api_assert($draft['version'] === 1, 'Erste Entwurfsversion fehlt.');
+    production_api_assert($draft['pearlSizeMm'] === 6.5, 'Perlendurchmesser wurde nicht als Millimeterwert gespeichert.');
     production_api_expect(409, 'version_conflict', static function () use ($draftId): void {
         carmaja_api_save_product($draftId, production_api_ready_payload($draftId, 0), production_api_actor());
     });
@@ -326,6 +333,16 @@ try {
         'Oeffentliche Produktdaten'
     );
     production_api_assert(count($public['products'] ?? []) === 1, 'Idempotenz hat doppelte Produktdaten erzeugt.');
+    production_api_assert(
+        ($public['products'][0]['pearlSizeMm'] ?? null) === 6.5,
+        'Perlendurchmesser fehlt im öffentlichen Publisher-Export.'
+    );
+    $legacyPublicDraft = carmaja_api_load_draft($draftId);
+    unset($legacyPublicDraft['pearlSizeMm']);
+    production_api_assert(
+        !array_key_exists('pearlSizeMm', carmaja_api_public_product_from_draft($legacyPublicDraft)),
+        'Bestehende Produkte ohne Perlendurchmesser bleiben nicht kompatibel.'
+    );
     putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=false');
 
     $invalid = $fixture['root'] . DIRECTORY_SEPARATOR . 'invalid.jpg';

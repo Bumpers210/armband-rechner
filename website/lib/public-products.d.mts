@@ -22,6 +22,8 @@ export type PublicProduct = {
   metalElements: string[];
   size: string;
   displaySize: string;
+  pearlSizeMm?: number;
+  displayPearlSizeMm?: string;
   stock: number;
   status: ProductStatus;
   images: ProductImage[];
@@ -32,6 +34,7 @@ export type PublicProduct = {
 export const publicProductName: string;
 
 export function formatProductSize(value: unknown, location?: string): string;
+export function formatPearlSizeMm(value: unknown, location?: string): string;
 export function validateVintedUrl(value: unknown, location?: string): string;
 export function readJpegDimensions(filePath: string): {
   width: number;
