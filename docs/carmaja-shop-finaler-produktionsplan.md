@@ -1,9 +1,11 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
 Stand: 2026-08-02  
-Änderungsvermerk: AP1 und AP2 abgeschlossen; AP2a ist der nächste separat
-freizugebende Abschnitt.  
+Änderungsvermerk: AP1, AP2 und AP2a abgeschlossen; AP3 ist der nächste separat
+freizugebende Abschnitt. AP2a ergänzt technische Legal-Seiten und versionierte
+Test-/Produktions-Bundles; externe Rechtsfreigaben stehen aus.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`  
+AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 Produktionsziel: ausschließlich der eigene Carmaja-Shop; Vinted und andere
 parallele Verkaufskanäle werden vor AP7 entfernt und nicht synchronisiert.
 
@@ -16,8 +18,8 @@ praktischen MySQL-8-/InnoDB-Backup-/Restore-Nachweis. Der akzeptierte
 V1-Restpunkt fehlender CA-/Hostidentitätsprüfung bleibt dokumentiert; eine
 aktive TLS-Sitzung ist Pflicht.
 
-AP2 ist vollständig abgenommen. AP2a, AP3, AP4, AP5, AP6 und AP7 bleiben nicht
-freigegeben. Es gibt keinen produktiven Cutover, kein Deployment, keinen Push
+AP2 ist vollständig abgenommen. AP2a ist technisch abgenommen. AP3, AP4, AP5,
+AP6 und AP7 bleiben nicht freigegeben. Es gibt keinen produktiven Cutover, kein Deployment, keinen Push
 und keinen Zugriff auf Produktionsdaten.
 
 V1 bleibt ein direkter Einzelkauf ohne Warenkorb, Kundenkonto oder parallele
@@ -108,9 +110,29 @@ manipuliertem Dump und Cleanup. Produktionsdaten bleiben ausgeschlossen.
 
 ### AP2.5 – AP2-Abnahme
 
-Alle AP2-Nachweise werden zusammengeführt. AP2a und spätere Pakete werden
-nicht begonnen. Die Abnahme ist erst möglich, wenn keine AP2-spezifischen
+Alle AP2-Nachweise werden zusammengeführt. AP2a wurde anschließend separat
+bearbeitet; AP3 und spätere Pakete werden nicht begonnen. Die Abnahme ist erst
+möglich, wenn keine AP2-spezifischen
 Fehler offen sind und alle temporären Testressourcen entfernt wurden.
+
+### AP2a – Technische Legal-Seiten und Legal-Bundles
+
+Lieferumfang: technisch erreichbare Seiten `/shopbedingungen/`,
+`/datenschutz/`, `/widerruf/` und `/versand-und-zahlung/`; ein kanonisch
+gehashtes, versioniertes Legal-Bundle-Lesemodell mit ID, Status,
+Archiv-URL und getrennter Test-/Produktionsauswahl; unveränderliche
+Legal-Bundle-Snapshots für die spätere Checkout-Zuordnung.
+
+Testfassungen enthalten ausschließlich künstliche, deutlich als nicht
+rechtlich freigegeben gekennzeichnete Inhalte. Die Produktionsfassung bleibt
+bis zur externen Freigabe `awaiting_external_approval`; kein Bundle wird als
+rechtlich freigegeben behauptet. AP2a verändert weder Stripe-Checkout noch
+Produktionsdaten und beginnt AP3 nicht.
+
+Nachweis: Bundle-Hash- und Statusvalidierung, Test-/Produktions-Trennung,
+Snapshot-Vergleich, statischer Testexport aller vier Seiten, Lint und
+Node-Tests. Die technische Abnahme ist in
+`website/docs/ap2a-acceptance.md` dokumentiert.
 
 ## 5. Meilensteine und kritischer Pfad
 
@@ -122,10 +144,11 @@ Fehler offen sind und alle temporären Testressourcen entfernt wurden.
 | AP2.2 | abgeschlossen | Transaktion, Rollback, Row-Lock-Timeout, zehn Clients, Deadlock und Crash-Rollback bestanden |
 | AP2.3 | abgeschlossen | Lease-Sperre und Lease-Übernahme sowie Inbox-/Outbox-Zuordnung bestanden |
 | AP2.4 | abgeschlossen | Dump, Restore, Manipulationserkennung, Struktur-/Inhaltsvergleich und Cleanup bestanden |
-| AP2.5 | abgeschlossen | AP2-Gesamtabnahme dokumentiert; AP2a und spätere Pakete nicht begonnen |
+| AP2.5 | abgeschlossen | AP2-Gesamtabnahme dokumentiert; AP3 und spätere Pakete nicht begonnen |
+| AP2a | abgeschlossen | Vier technische Legal-Seiten, Bundle-Hash-/Statusprüfung, Snapshot-Zuordnung, Testexport und Abnahmebericht bestanden |
 
-Kritischer Pfad: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5. AP2.1 blockiert
-alle nachfolgenden praktischen Änderungen. Rechtstexte, Stripe-Checkout,
+Kritischer Pfad: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5 → AP2a. AP2.1 blockiert
+alle nachfolgenden praktischen Änderungen. Stripe-Checkout,
 Live-API, Website und Produktions-Cutover bleiben außerhalb dieses Pfades.
 
 ## 6. Aufwand und Kalenderkorridore
@@ -141,12 +164,18 @@ kein verbindliches Angebot.
 | AP2.4 Backup/Restore | 12–20 h |
 | AP2.5 Tests/Abnahme/Dokumentation | 12–20 h |
 | **Gesamt AP2** | **94–148 h** |
+| AP2a technische Legal-Seiten/Bundles | 18–28 h |
+| **Gesamt AP2 + AP2a (Planungskorridor)** | **112–176 h** |
 
 | Wochenaufwand | technischer Korridor |
 | ---: | --- |
 | 5 h/Woche | ca. 19–30 Wochen |
 | 10 h/Woche | ca. 10–15 Wochen |
 | 15 h/Woche | ca. 7–10 Wochen |
+
+Für AP2 plus AP2a ergibt sich der kombinierte Planungskorridor von ca. 23–36
+Wochen bei 5 h/Woche, 12–18 Wochen bei 10 h/Woche und 8–12 Wochen bei
+15 h/Woche. Die Werte sind Planwerte, keine Ist-Arbeitszeiten.
 
 Die Kalenderkorridore enthalten keinen externen IONOS-, Stripe-, Brevo- oder
 Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
@@ -158,10 +187,10 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | --- | --- |
 | AP1 | freigegeben und lokal abgeschlossen |
 | AP2.1 bis AP2.5 | freigegeben und abgenommen |
-| AP2a | nicht freigegeben |
+| AP2a | freigegeben und abgenommen |
 | AP3 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 
-Der AP2-Praxisnachweis ist bestanden. Der exakt nächste zulässige Schritt ist
-die separate fachliche Freigabe von AP2a. Ohne diese Freigabe bleiben AP2a,
+Der AP2- und AP2a-Praxisnachweis ist bestanden. Der exakt nächste zulässige
+Schritt ist die separate fachliche Freigabe von AP3. Ohne diese Freigabe bleiben
 AP3, Deployment und Produktions-Cutover unangetastet.

@@ -5,7 +5,7 @@ import { siteTarget } from "@/config/site-target";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Datenschutz | Carmaja-Perlen",
+    absolute: "Versand und Zahlung | Carmaja-Perlen",
   },
   robots: {
     index: false,
@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PrivacyPage() {
-  return <LegalBundlePage sectionKey="privacy" title="Datenschutz" />;
+export default function ShippingAndPaymentPage() {
+  return (
+    <LegalBundlePage sectionKey="shipping" title="Versand und Zahlung" />
+  );
 }

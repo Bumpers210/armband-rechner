@@ -5,7 +5,7 @@ import { siteTarget } from "@/config/site-target";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Datenschutz | Carmaja-Perlen",
+    absolute: "Widerruf | Carmaja-Perlen",
   },
   robots: {
     index: false,
@@ -14,6 +14,6 @@ export const metadata: Metadata = {
   },
 };
 
-export default function PrivacyPage() {
-  return <LegalBundlePage sectionKey="privacy" title="Datenschutz" />;
+export default function WithdrawalPage() {
+  return <LegalBundlePage sectionKey="withdrawal" title="Widerruf" />;
 }
