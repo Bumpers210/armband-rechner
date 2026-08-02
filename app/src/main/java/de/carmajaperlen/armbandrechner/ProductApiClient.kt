@@ -224,7 +224,7 @@ open class ProductApiClient {
         method: String,
         token: String?,
     ): HttpURLConnection {
-        val normalizedBase = requireTestApiBaseUrl(baseUrl).trimEnd('/')
+        val normalizedBase = requireKnownProductApiBaseUrl(baseUrl).trimEnd('/')
         val connection = (URL("$normalizedBase/$path").openConnection() as HttpURLConnection)
         connection.connectTimeout = 15_000
         connection.readTimeout = 30_000
@@ -277,20 +277,47 @@ open class ProductApiClient {
     }
 }
 
+data class ProductApiEndpoint(
+    val publishTarget: String,
+    val baseUrl: String,
+) {
+    val isTest: Boolean
+        get() = publishTarget == "test"
+
+    val environmentLabel: String
+        get() = if (isTest) "TESTUMGEBUNG" else "PRODUKTIVUMGEBUNG"
+
+    val host: String
+        get() = URI(baseUrl).host.orEmpty()
+
+    val allowsRememberedSession: Boolean
+        get() = isTest
+}
+
 internal fun requireMatchingPublishTarget(expected: String, actual: String) {
-    if (expected != "test" || actual != expected) {
+    if (expected !in PRODUCT_PUBLISH_TARGETS || actual != expected) {
         throw ProductTargetMismatchException(
-            "Test-App und API verwenden unterschiedliche Veröffentlichungsziele.",
+            "App und API verwenden unterschiedliche Veröffentlichungsziele.",
         )
     }
 }
 
-internal fun requireTestApiBaseUrl(value: String): String {
-    val normalized = value.trim().trimEnd('/')
+internal fun requireProductApiEndpoint(baseUrl: String, publishTarget: String): ProductApiEndpoint {
+    val expectedHost = when (publishTarget) {
+        "test" -> TEST_PRODUCT_API_HOST
+        "production" -> PRODUCTION_PRODUCT_API_HOST
+        else -> throw ProductApiException(
+            0,
+            "invalid_publish_target",
+            message = "Die Produktverwaltung ist nicht für ein bekanntes Veröffentlichungsziel konfiguriert.",
+        )
+    }
+
+    val normalized = valueForApiEndpoint(baseUrl)
     val valid = runCatching {
         val uri = URI(normalized)
         uri.scheme == "https" &&
-            uri.host == "test-api.carmaja-perlen.de" &&
+            uri.host == expectedHost &&
             uri.port == -1 &&
             uri.userInfo == null &&
             uri.path.orEmpty().isEmpty() &&
@@ -301,13 +328,44 @@ internal fun requireTestApiBaseUrl(value: String): String {
     if (!valid) {
         throw ProductApiException(
             0,
-            "test_api_endpoint_required",
-            message = "Die Test-App darf ausschließlich die konfigurierte Test-API verwenden.",
+            "product_api_endpoint_required",
+            message = "Die Produktverwaltung darf ausschließlich die konfigurierte API verwenden.",
+        )
+    }
+
+    return ProductApiEndpoint(publishTarget = publishTarget, baseUrl = "$normalized/")
+}
+
+internal fun requireKnownProductApiBaseUrl(value: String): String {
+    val normalized = valueForApiEndpoint(value)
+    val valid = runCatching {
+        val uri = URI(normalized)
+        uri.scheme == "https" &&
+            uri.host in PRODUCT_API_HOSTS &&
+            uri.port == -1 &&
+            uri.userInfo == null &&
+            uri.path.orEmpty().isEmpty() &&
+            uri.query == null &&
+            uri.fragment == null
+    }.getOrDefault(false)
+
+    if (!valid) {
+        throw ProductApiException(
+            0,
+            "product_api_endpoint_required",
+            message = "Die Produktverwaltung darf ausschließlich bekannte API-Endpunkte verwenden.",
         )
     }
 
     return "$normalized/"
 }
+
+private fun valueForApiEndpoint(value: String): String = value.trim().trimEnd('/')
+
+private const val TEST_PRODUCT_API_HOST = "test-api.carmaja-perlen.de"
+private const val PRODUCTION_PRODUCT_API_HOST = "api.carmaja-perlen.de"
+private val PRODUCT_API_HOSTS = setOf(TEST_PRODUCT_API_HOST, PRODUCTION_PRODUCT_API_HOST)
+private val PRODUCT_PUBLISH_TARGETS = setOf("test", "production")
 
 internal fun ProductDraft.toSaveJson(): JSONObject {
     val saveStatus = when (status) {

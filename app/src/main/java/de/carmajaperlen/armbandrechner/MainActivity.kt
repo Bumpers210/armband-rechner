@@ -201,7 +201,7 @@ internal fun ArmbandCalculatorScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (BuildConfig.PRODUCT_PUBLISH_TARGET == "test") {
+                        text = if (productState?.apiEndpoint?.isTest == true) {
                             "Carmaja Test"
                         } else {
                             "Armband-Rechner"

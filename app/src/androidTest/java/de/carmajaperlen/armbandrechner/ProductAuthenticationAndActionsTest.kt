@@ -33,6 +33,10 @@ class ProductAuthenticationAndActionsTest {
                 ProductLoginScreen(
                     state = ProductUiState(
                         sessionChecked = true,
+                        apiEndpoint = requireProductApiEndpoint(
+                            "https://test-api.carmaja-perlen.de/",
+                            "test",
+                        ),
                         loginEditor = ProductLoginEditorState(
                             rememberSession = rememberSession,
                         ),
@@ -44,11 +48,33 @@ class ProductAuthenticationAndActionsTest {
             }
         }
 
-        composeRule.onNodeWithTag("login-test-environment").assertIsDisplayed()
+        composeRule.onNodeWithTag("login-api-environment-label").assertIsDisplayed()
         composeRule.onNodeWithTag("login-api-environment").assertIsDisplayed()
         composeRule.onNodeWithTag("login-remember-session").assertIsOff()
         composeRule.onNodeWithTag("login-remember-session").performClick()
         composeRule.onNodeWithTag("login-remember-session").assertIsOn()
+    }
+
+    @Test
+    fun productionLoginShowsConfiguredProductionApiWithoutSessionPersistence() {
+        composeRule.setContent {
+            MaterialTheme {
+                ProductLoginScreen(
+                    state = ProductUiState(
+                        sessionChecked = true,
+                        apiEndpoint = requireProductApiEndpoint(
+                            "https://api.carmaja-perlen.de/",
+                            "production",
+                        ),
+                    ),
+                    actions = ProductUiActions.noop(),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("PRODUKTIVUMGEBUNG").assertIsDisplayed()
+        composeRule.onNodeWithText("API: api.carmaja-perlen.de").assertIsDisplayed()
+        composeRule.onNodeWithTag("login-remember-session").assertDoesNotExist()
     }
 
     @Test
@@ -65,6 +91,10 @@ class ProductAuthenticationAndActionsTest {
                 ProductLoginScreen(
                     state = ProductUiState(
                         sessionChecked = true,
+                        apiEndpoint = requireProductApiEndpoint(
+                            "https://test-api.carmaja-perlen.de/",
+                            "test",
+                        ),
                         loginEditor = ProductLoginEditorState(password = password),
                     ),
                     actions = ProductUiActions(

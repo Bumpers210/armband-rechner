@@ -104,24 +104,31 @@ internal fun ProductLoginScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 32.dp),
     ) {
+        val apiEndpoint = state.apiEndpoint
         Text(
-            text = "Carmaja-Perlen Produktverwaltung Test",
+            text = "Carmaja-Perlen Produktverwaltung",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
         )
-        Text(
-            text = "TESTUMGEBUNG",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.testTag("login-test-environment"),
-        )
-        Text(
-            text = "Test-API: test-api.carmaja-perlen.de",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.testTag("login-api-environment"),
-        )
+        apiEndpoint?.let { endpoint ->
+            Text(
+                text = endpoint.environmentLabel,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (endpoint.isTest) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = Modifier.testTag("login-api-environment-label"),
+            )
+            Text(
+                text = "API: ${endpoint.host}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("login-api-environment"),
+            )
+        }
         OutlinedTextField(
             value = state.loginEditor.username,
             onValueChange = actions.onUsernameChange,
@@ -166,17 +173,19 @@ internal fun ProductLoginScreen(
                 .fillMaxWidth()
                 .testTag("login-device"),
         )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Checkbox(
-                checked = state.loginEditor.rememberSession,
-                onCheckedChange = actions.onRememberSessionChange,
-                enabled = !state.busy,
-                modifier = Modifier.testTag("login-remember-session"),
-            )
-            Text("Dauerhaft eingeloggt bleiben")
+        if (apiEndpoint?.allowsRememberedSession != false) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Checkbox(
+                    checked = state.loginEditor.rememberSession,
+                    onCheckedChange = actions.onRememberSessionChange,
+                    enabled = !state.busy,
+                    modifier = Modifier.testTag("login-remember-session"),
+                )
+                Text("Dauerhaft eingeloggt bleiben")
+            }
         }
         state.error?.let { error ->
             Text(
@@ -222,16 +231,16 @@ internal fun ProductManagementSection(
             .padding(horizontal = 16.dp, vertical = 20.dp),
     ) {
         SectionHeading(text = "Produktverwaltung")
-        if (BuildConfig.PRODUCT_PUBLISH_TARGET == "test") {
+        state.apiEndpoint?.takeIf(ProductApiEndpoint::isTest)?.let { endpoint ->
             Text(
                 text = "TEST · Carmaja Produktverwaltung",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.testTag("product-test-environment"),
+                modifier = Modifier.testTag("product-api-environment-label"),
             )
             Text(
-                text = "Test-API: test-api.carmaja-perlen.de",
+                text = "API: ${endpoint.host}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.testTag("product-api-environment"),

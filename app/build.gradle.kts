@@ -6,10 +6,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val productionVersionCode = 2
-val productionVersionName = "1.1.0"
+val productionVersionCode = 3
+val productionVersionName = "1.1.1"
 val betaVersionCode = 5
 val betaVersionName = "1.1.0-beta.4"
+val productionProductApiBaseUrl = "https://api.carmaja-perlen.de/"
+val testProductApiBaseUrl = "https://test-api.carmaja-perlen.de/"
 val productionSigningPropertiesFile = rootProject.file(".signing/production-keystore.properties")
 val productionSigningProperties = Properties().apply {
     if (productionSigningPropertiesFile.isFile) {
@@ -89,7 +91,7 @@ android {
         buildConfigField(
             "String",
             "DEFAULT_PRODUCT_API_BASE_URL",
-            "\"https://api.carmaja-perlen.de/\"",
+            "\"$productionProductApiBaseUrl\"",
         )
         buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"production\"")
     }
@@ -116,6 +118,12 @@ android {
     buildTypes {
         debug {
             manifestPlaceholders["appLabel"] = "Carmaja-Perlen Produktverwaltung"
+            buildConfigField(
+                "String",
+                "DEFAULT_PRODUCT_API_BASE_URL",
+                "\"$testProductApiBaseUrl\"",
+            )
+            buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"test\"")
         }
 
         create("beta") {
@@ -132,7 +140,7 @@ android {
             buildConfigField(
                 "String",
                 "DEFAULT_PRODUCT_API_BASE_URL",
-                "\"https://test-api.carmaja-perlen.de/\"",
+                "\"$testProductApiBaseUrl\"",
             )
             buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"test\"")
         }

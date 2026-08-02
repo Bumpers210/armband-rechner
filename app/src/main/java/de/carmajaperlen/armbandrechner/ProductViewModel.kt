@@ -22,6 +22,7 @@ data class ProductUiState(
     val selectedDraftId: String? = null,
     val editors: Map<String, ProductDraftEditorState> = emptyMap(),
     val loginEditor: ProductLoginEditorState = ProductLoginEditorState(),
+    val apiEndpoint: ProductApiEndpoint? = null,
     val sessionChecked: Boolean = false,
     val authenticated: Boolean = false,
     val editingDraftId: String? = null,
@@ -52,10 +53,14 @@ class ProductViewModel(
 
     private var apiToken: String? = null
     private val draftSession = ProductDraftSession()
+    private val apiEndpoint = requireProductApiEndpoint(
+        baseUrl = BuildConfig.DEFAULT_PRODUCT_API_BASE_URL,
+        publishTarget = BuildConfig.PRODUCT_PUBLISH_TARGET,
+    )
 
     init {
         viewModelScope.launch {
-            val canRestoreSession = BuildConfig.PRODUCT_PUBLISH_TARGET == "test" &&
+            val canRestoreSession = apiEndpoint.allowsRememberedSession &&
                 tokenStore.isRememberedSessionEnabled()
             apiToken = if (canRestoreSession) tokenStore.loadRememberedToken() else null
             if (apiToken == null) {
@@ -63,7 +68,6 @@ class ProductViewModel(
             }
             val drafts = repository.loadDrafts()
             draftSession.initialize(drafts)
-            val apiBaseUrl = BuildConfig.DEFAULT_PRODUCT_API_BASE_URL
             val deviceName = tokenStore.loadPlainSetting(
                 SecureTokenStore.SETTING_DEVICE_NAME,
                 "Android",
@@ -73,10 +77,10 @@ class ProductViewModel(
                 selectedDraftId = drafts.firstOrNull()?.draftId,
                 editors = drafts.associate { it.draftId to ProductDraftEditorState.fromDraft(it) },
                 loginEditor = ProductLoginEditorState.fromStored(
-                    apiBaseUrl = apiBaseUrl,
                     deviceName = deviceName,
                     rememberSession = apiToken != null,
                 ),
+                apiEndpoint = apiEndpoint,
                 sessionChecked = true,
                 authenticated = apiToken != null,
             )
@@ -131,7 +135,9 @@ class ProductViewModel(
     }
 
     fun updateRememberSession(value: Boolean) {
-        val editor = _uiState.value.loginEditor.copy(rememberSession = value)
+        val editor = _uiState.value.loginEditor.copy(
+            rememberSession = value && apiEndpoint.allowsRememberedSession,
+        )
         _uiState.value = _uiState.value.copy(loginEditor = editor, error = null)
     }
 
@@ -198,7 +204,7 @@ class ProductViewModel(
                         username = editor.username.text,
                         password = editor.password.text,
                         deviceName = deviceName,
-                        expectedPublishTarget = BuildConfig.PRODUCT_PUBLISH_TARGET,
+                        expectedPublishTarget = apiEndpoint.publishTarget,
                     )
                 }
             } catch (error: ProductTargetMismatchException) {
@@ -208,7 +214,7 @@ class ProductViewModel(
                 throw error
             }
             apiToken = login.token
-            if (editor.rememberSession) {
+            if (editor.rememberSession && apiEndpoint.allowsRememberedSession) {
                 tokenStore.saveRememberedSession(login.token)
             } else {
                 tokenStore.clearSession()
@@ -501,14 +507,7 @@ class ProductViewModel(
     }
 
     private fun requireBaseUrl(): String {
-        if (BuildConfig.PRODUCT_PUBLISH_TARGET != "test") {
-            throw ProductApiException(
-                0,
-                "test_build_required",
-                message = "Produktverwaltung ist nur im Test-Build verfügbar.",
-            )
-        }
-        return requireTestApiBaseUrl(BuildConfig.DEFAULT_PRODUCT_API_BASE_URL)
+        return apiEndpoint.baseUrl
     }
 
     private fun requireToken(): String {
@@ -565,7 +564,7 @@ class ProductViewModel(
             is ProductConflictException ->
                 "HTTP 409 · ${error.errorCode}: ${error.message}"
             is ProductTargetMismatchException ->
-                "Anmeldung abgelehnt: Die API ist nicht als Testumgebung konfiguriert."
+                "Anmeldung abgelehnt: Die API stimmt nicht mit der App-Umgebung überein."
             is ProductApiException -> {
                 val status = error.statusCode.takeIf { it > 0 }?.let { "HTTP $it · " }.orEmpty()
                 "$status${error.errorCode}: ${error.message ?: "Produktserverfehler"}"
