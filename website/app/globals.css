@@ -82,6 +82,38 @@ section[id] {
   transform: translateY(0);
 }
 
+.persistent-bracelet-flag {
+  position: fixed;
+  z-index: 50;
+  top: 50%;
+  left: 0;
+  display: flex;
+  min-height: 10rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem 0.5rem 1.4rem;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 88%);
+  color: var(--surface);
+  background: var(--accent-secondary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  writing-mode: vertical-rl;
+  transform: translateY(-50%);
+}
+
+.persistent-bracelet-flag:hover {
+  background: var(--accent);
+}
+
+@media (max-width: 47.99rem) {
+  .persistent-bracelet-flag {
+    display: none;
+  }
+}
+
 .legal-main {
   min-height: 60vh;
   padding-block: 4.25rem;
@@ -89,7 +121,7 @@ section[id] {
 }
 
 .legal-content {
-  max-width: 46rem;
+  max-width: none;
 }
 
 .v2-page .legal-content h1 {

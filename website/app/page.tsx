@@ -117,38 +117,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="v2-home-materials">
-          <div className="content-shell v2-home-materials-grid">
-            <div>
-              <p className="v2-eyebrow">{siteContent.materials.eyebrow}</p>
-              <h2>Handarbeit und Materialien</h2>
-              <p>
-                Sorgfältige Handarbeit und die individuellen Farben,
-                Maserungen und Einschlüsse der Natursteine prägen jedes Stück.
-              </p>
-            </div>
-            <Link className="v2-feature-link" href="/material-pflege/">
-              <span>Materialien & Pflege</span>
-              <span aria-hidden="true">→</span>
-            </Link>
-          </div>
-        </section>
-
-        <section className="v2-closing">
-          <div className="content-shell v2-closing-grid">
-            <div className="v2-closing-heading">
-              <p className="v2-eyebrow">{siteContent.closing.eyebrow}</p>
-              <h2>{siteContent.closing.title}</h2>
-            </div>
-            <div className="v2-closing-content">
-              <p className="v2-closing-custom">{siteContent.closing.customText}</p>
-              <p>{siteContent.closing.contactText}</p>
-              <Link className="v2-button v2-button--light" href="/kontakt/">
-                Kontakt aufnehmen
-              </Link>
-            </div>
-          </div>
-        </section>
       </main>
 
       <SiteFooter />

@@ -539,13 +539,10 @@
   gap: 1.5rem;
 }
 
-.v2-page .v2-footer-brand {
-  margin-bottom: 0.15rem;
-  color: var(--v2-ink);
-  font-family:
-    "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
-    serif;
-  font-size: 1.4rem;
+.v2-page .v2-footer-branding {
+  display: grid;
+  justify-items: start;
+  gap: 0.65rem;
 }
 
 .v2-page .v2-footer-tagline {
@@ -566,6 +563,43 @@
   text-underline-offset: 0.25rem;
 }
 
+.v2-page .v2-instagram-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.v2-page .v2-instagram-icon {
+  position: relative;
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  border: 1.5px solid currentColor;
+  border-radius: 0.28rem;
+}
+
+.v2-page .v2-instagram-icon::before,
+.v2-page .v2-instagram-icon::after {
+  position: absolute;
+  content: "";
+}
+
+.v2-page .v2-instagram-icon::before {
+  inset: 0.19rem;
+  border: 1.3px solid currentColor;
+  border-radius: 50%;
+}
+
+.v2-page .v2-instagram-icon::after {
+  top: 0.14rem;
+  right: 0.14rem;
+  width: 0.14rem;
+  height: 0.14rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 .v2-page .products-main,
 .v2-page .product-detail-main {
   background: var(--v2-canvas);
@@ -577,7 +611,7 @@
 }
 
 .v2-page .v2-page-intro > .content-shell {
-  max-width: 58rem;
+  max-width: none;
 }
 
 .v2-page .v2-page-intro h1 {
@@ -610,48 +644,6 @@
   text-underline-offset: 0.28rem;
 }
 
-.v2-page .v2-home-materials {
-  padding-block: 5rem;
-  background: #e5e8df;
-}
-
-.v2-page .v2-home-materials-grid {
-  display: grid;
-  gap: 2rem;
-  align-items: end;
-}
-
-.v2-page .v2-home-materials h2 {
-  max-width: 16ch;
-  color: var(--v2-moss);
-}
-
-.v2-page .v2-home-materials p:last-child {
-  max-width: 42rem;
-  margin-bottom: 0;
-  color: var(--v2-muted);
-}
-
-.v2-page .v2-feature-link {
-  display: flex;
-  min-height: 5.5rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1.2rem 1.35rem;
-  border: 1px solid var(--v2-line);
-  border-radius: 0.35rem;
-  color: var(--v2-moss);
-  background: var(--v2-surface);
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.v2-page .v2-feature-link:hover {
-  color: var(--v2-surface);
-  background: var(--v2-moss);
-}
-
 .v2-page .v2-contact-section {
   padding-block: 4rem 5.5rem;
   background: var(--v2-canvas);
@@ -672,15 +664,22 @@
 }
 
 .v2-page .v2-contact-card {
+  display: grid;
+  gap: 0.5rem;
+  min-height: 100%;
+  align-content: center;
   padding: 1.5rem;
   border-radius: 0.35rem;
   color: var(--v2-surface);
   background: var(--v2-moss);
+  font-weight: 700;
+  text-decoration: none;
 }
 
-.v2-page .v2-contact-card p {
-  margin-bottom: 0.5rem;
+.v2-page .v2-contact-card > span:first-child {
   color: #dfe5da;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .v2-page .v2-contact-card .v2-contact-email {
@@ -693,7 +692,7 @@
 }
 
 .v2-page .products-intro-inner {
-  max-width: 58rem;
+  max-width: none;
 }
 
 .v2-page .products-intro h1 {

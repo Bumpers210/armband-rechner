@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-
 import { ContactEmailLink } from "@/components/contact-email-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -33,16 +31,11 @@ export default function ContactPage() {
               <h2>Kontakt aufnehmen</h2>
               <p>{siteContent.closing.contactText}</p>
             </div>
-            <div className="v2-contact-card">
-              <p>Per E-Mail erreichbar:</p>
-              <ContactEmailLink className="v2-contact-email" />
-            </div>
+            <ContactEmailLink className="v2-contact-card">
+              <span>Per E-Mail erreichbar:</span>
+              <span className="v2-contact-email">{siteContent.closing.email}</span>
+            </ContactEmailLink>
           </div>
-          <p className="content-shell v2-section-action">
-            <Link className="v2-button v2-button--outline" href="/armbaender/">
-              Armbänder ansehen
-            </Link>
-          </p>
         </section>
       </main>
       <SiteFooter />

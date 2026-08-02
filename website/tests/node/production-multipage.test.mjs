@@ -55,6 +55,29 @@ test("Navigation, Sitemap und Produktseiten bleiben erreichbar", async () => {
   assert.match(detail, /ProductImageGallery/);
 });
 
+test("gemeinsame Kontakt- und Armbänder-Weiterleitungen bleiben einheitlich", async () => {
+  const home = await source("app/page.tsx");
+  const materials = await source("app/material-pflege/page.tsx");
+  const contact = await source("app/kontakt/page.tsx");
+  const layout = await source("app/layout.tsx");
+  const footer = await source("components/site-footer.tsx");
+  const instagram = await source("components/instagram-link.tsx");
+  const styles = await source("app/site.css");
+
+  assert.doesNotMatch(home, /Handarbeit und Materialien|Persönliche Anfragen/);
+  assert.doesNotMatch(materials, /BraceletGallery|siteContent\.gallery/);
+  assert.match(contact, /ContactEmailLink className="v2-contact-card"/);
+  assert.match(footer, /className="v2-brand"/);
+  assert.match(layout, /persistent-bracelet-flag/);
+  assert.match(
+    await source("app/globals.css"),
+    /@media \(max-width: 47\.99rem\)[\s\S]*persistent-bracelet-flag[\s\S]*display: none/,
+  );
+  assert.match(instagram, /v2-instagram-icon/);
+  assert.match(styles, /\.v2-contact-card\s*\{[\s\S]*text-decoration: none/);
+  assert.match(styles, /\.products-intro-inner\s*\{\s*max-width: none/);
+});
+
 test("das gerenderte Frontend enthält keine Vinted-Verweise mehr", async () => {
   const frontendFiles = [
     "app/page.tsx",

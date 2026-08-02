@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { BraceletGallery } from "@/components/bracelet-gallery";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteContent } from "@/content/site-content";
@@ -50,23 +48,6 @@ export default function MaterialsAndCarePage() {
                 </ul>
               </div>
             </div>
-          </div>
-        </section>
-        <section className="v2-gallery-section">
-          <div className="content-shell">
-            <div className="v2-section-heading">
-              <div>
-                <p className="v2-eyebrow">{siteContent.gallery.eyebrow}</p>
-                <h2>{siteContent.gallery.title}</h2>
-              </div>
-              <p>{siteContent.gallery.introduction}</p>
-            </div>
-            <BraceletGallery />
-            <p className="v2-section-action">
-              <Link className="v2-button v2-button--outline" href="/armbaender/">
-                Armbänder ansehen
-              </Link>
-            </p>
           </div>
         </section>
       </main>
