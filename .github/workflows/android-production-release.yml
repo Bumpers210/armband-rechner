@@ -96,8 +96,8 @@ jobs:
 
           badging="$("${aapt}" dump badging "${apk}")"
           grep -Fq "package: name='de.carmajaperlen.armbandrechner'" <<<"${badging}"
-          grep -Fq "versionCode='3'" <<<"${badging}"
-          grep -Fq "versionName='1.1.1'" <<<"${badging}"
+          grep -Fq "versionCode='4'" <<<"${badging}"
+          grep -Fq "versionName='1.1.2'" <<<"${badging}"
           grep -Fq "application-label:'Carmaja-Perlen Produktverwaltung'" <<<"${badging}"
 
           apk_strings="$(mktemp)"

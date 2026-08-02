@@ -6,8 +6,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val productionVersionCode = 3
-val productionVersionName = "1.1.1"
+val productionVersionCode = 4
+val productionVersionName = "1.1.2"
 val betaVersionCode = 5
 val betaVersionName = "1.1.0-beta.4"
 val productionProductApiBaseUrl = "https://api.carmaja-perlen.de/"

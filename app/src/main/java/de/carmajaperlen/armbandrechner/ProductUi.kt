@@ -173,19 +173,17 @@ internal fun ProductLoginScreen(
                 .fillMaxWidth()
                 .testTag("login-device"),
         )
-        if (apiEndpoint?.allowsRememberedSession != false) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Checkbox(
-                    checked = state.loginEditor.rememberSession,
-                    onCheckedChange = actions.onRememberSessionChange,
-                    enabled = !state.busy,
-                    modifier = Modifier.testTag("login-remember-session"),
-                )
-                Text("Dauerhaft eingeloggt bleiben")
-            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Checkbox(
+                checked = state.loginEditor.rememberSession,
+                onCheckedChange = actions.onRememberSessionChange,
+                enabled = !state.busy,
+                modifier = Modifier.testTag("login-remember-session"),
+            )
+            Text("Dauerhaft eingeloggt bleiben")
         }
         state.error?.let { error ->
             Text(

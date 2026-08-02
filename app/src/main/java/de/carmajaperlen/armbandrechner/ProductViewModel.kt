@@ -60,8 +60,7 @@ class ProductViewModel(
 
     init {
         viewModelScope.launch {
-            val canRestoreSession = apiEndpoint.allowsRememberedSession &&
-                tokenStore.isRememberedSessionEnabled()
+            val canRestoreSession = tokenStore.isRememberedSessionEnabled()
             apiToken = if (canRestoreSession) tokenStore.loadRememberedToken() else null
             if (apiToken == null) {
                 tokenStore.clearSession()
@@ -135,9 +134,7 @@ class ProductViewModel(
     }
 
     fun updateRememberSession(value: Boolean) {
-        val editor = _uiState.value.loginEditor.copy(
-            rememberSession = value && apiEndpoint.allowsRememberedSession,
-        )
+        val editor = _uiState.value.loginEditor.copy(rememberSession = value)
         _uiState.value = _uiState.value.copy(loginEditor = editor, error = null)
     }
 
@@ -214,7 +211,7 @@ class ProductViewModel(
                 throw error
             }
             apiToken = login.token
-            if (editor.rememberSession && apiEndpoint.allowsRememberedSession) {
+            if (editor.rememberSession) {
                 tokenStore.saveRememberedSession(login.token)
             } else {
                 tokenStore.clearSession()

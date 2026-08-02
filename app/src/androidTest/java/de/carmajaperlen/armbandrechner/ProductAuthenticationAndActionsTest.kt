@@ -56,7 +56,7 @@ class ProductAuthenticationAndActionsTest {
     }
 
     @Test
-    fun productionLoginShowsConfiguredProductionApiWithoutSessionPersistence() {
+    fun productionLoginShowsConfiguredProductionApiAndRememberSessionOption() {
         composeRule.setContent {
             MaterialTheme {
                 ProductLoginScreen(
@@ -74,7 +74,7 @@ class ProductAuthenticationAndActionsTest {
 
         composeRule.onNodeWithText("PRODUKTIVUMGEBUNG").assertIsDisplayed()
         composeRule.onNodeWithText("API: api.carmaja-perlen.de").assertIsDisplayed()
-        composeRule.onNodeWithTag("login-remember-session").assertDoesNotExist()
+        composeRule.onNodeWithTag("login-remember-session").assertIsOff()
     }
 
     @Test

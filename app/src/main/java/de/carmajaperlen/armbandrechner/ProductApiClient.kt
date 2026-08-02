@@ -290,8 +290,6 @@ data class ProductApiEndpoint(
     val host: String
         get() = URI(baseUrl).host.orEmpty()
 
-    val allowsRememberedSession: Boolean
-        get() = isTest
 }
 
 internal fun requireMatchingPublishTarget(expected: String, actual: String) {

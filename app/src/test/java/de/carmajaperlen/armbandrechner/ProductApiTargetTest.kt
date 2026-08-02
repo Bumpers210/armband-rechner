@@ -53,24 +53,6 @@ class ProductApiTargetTest {
     }
 
     @Test
-    fun onlyTestTargetCanRestoreRememberedSessions() {
-        assertEquals(
-            true,
-            requireProductApiEndpoint(
-                "https://test-api.carmaja-perlen.de/",
-                "test",
-            ).allowsRememberedSession,
-        )
-        assertEquals(
-            false,
-            requireProductApiEndpoint(
-                "https://api.carmaja-perlen.de/",
-                "production",
-            ).allowsRememberedSession,
-        )
-    }
-
-    @Test
     fun allKnownApiCallsRejectUnknownEndpoints() {
         assertEquals(
             "https://api.carmaja-perlen.de/",
