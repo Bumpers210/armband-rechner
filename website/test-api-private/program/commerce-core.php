@@ -1,0 +1,979 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * AP2 commerce core.
+ *
+ * The PDO repository is deliberately free of network calls. Stripe and Brevo
+ * work is represented by inbox/outbox rows and is performed by a later worker
+ * outside the transaction that owns the relevant row locks. The memory engine
+ * is a deterministic test oracle for the same invariants.
+ */
+
+const CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR = 50;
+const CARMAJA_COMMERCE_CURRENCY = 'eur';
+const CARMAJA_COMMERCE_INVENTORY_REASONS = [
+    'activate_new_unique',
+    'shop_sale',
+    'mark_unsellable',
+    'release_return',
+];
+
+function carmaja_commerce_retry_schedule(int $attemptCount): ?int
+{
+    $delays = [300, 900, 3600, 14400, 43200];
+
+    if ($attemptCount < 0) {
+        throw new CarmajaCommerceException('retry_count_invalid', 'Versuchszähler ist ungültig.', 422);
+    }
+
+    return $delays[$attemptCount] ?? null;
+}
+
+final class CarmajaCommerceException extends RuntimeException
+{
+    public function __construct(
+        public readonly string $errorCode,
+        string $message,
+        public readonly int $httpStatus = 409
+    ) {
+        parent::__construct($message);
+    }
+}
+
+function carmaja_commerce_json(array $value): string
+{
+    $normalize = static function (mixed $item) use (&$normalize): mixed {
+        if (!is_array($item)) {
+            return $item;
+        }
+
+        if (array_is_list($item)) {
+            return array_map($normalize, $item);
+        }
+
+        ksort($item, SORT_STRING);
+
+        foreach ($item as $key => $child) {
+            $item[$key] = $normalize($child);
+        }
+
+        return $item;
+    };
+
+    return json_encode(
+        $normalize($value),
+        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+    );
+}
+
+function carmaja_commerce_request_hash(array $value): string
+{
+    return hash('sha256', carmaja_commerce_json($value));
+}
+
+function carmaja_commerce_assert_id(string $value, string $field): void
+{
+    if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{7,99}$/', $value) !== 1) {
+        throw new CarmajaCommerceException(
+            'validation_failed',
+            $field . ' ist ungültig.',
+            422
+        );
+    }
+}
+
+function carmaja_commerce_new_id(): string
+{
+    $hex = bin2hex(random_bytes(16));
+
+    return substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-4'
+        . substr($hex, 13, 3) . '-'
+        . dechex((hexdec(substr($hex, 16, 2)) & 0x3f) | 0x80)
+        . substr($hex, 18, 2) . '-' . substr($hex, 20);
+}
+
+function carmaja_commerce_validate_checkout(array $input): array
+{
+    $required = [
+        'checkoutId', 'idempotencyKey', 'requestHash', 'productId',
+        'productVersion', 'sourceHash', 'priceMinor', 'currency',
+        'shippingSnapshot', 'legalBundleId', 'expiresAt',
+    ];
+
+    foreach ($required as $field) {
+        if (!array_key_exists($field, $input)) {
+            throw new CarmajaCommerceException(
+                'validation_failed',
+                $field . ' ist erforderlich.',
+                422
+            );
+        }
+    }
+
+    foreach (['checkoutId', 'idempotencyKey', 'requestHash', 'productId', 'sourceHash', 'legalBundleId'] as $field) {
+        if (!is_string($input[$field]) || trim($input[$field]) === '') {
+            throw new CarmajaCommerceException('validation_failed', $field . ' ist ungültig.', 422);
+        }
+    }
+
+    if (!is_int($input['productVersion']) || $input['productVersion'] < 1
+        || !is_int($input['priceMinor']) || $input['priceMinor'] < CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR
+        || $input['currency'] !== CARMAJA_COMMERCE_CURRENCY
+        || !is_array($input['shippingSnapshot'])) {
+        throw new CarmajaCommerceException('validation_failed', 'Checkout-Snapshot ist ungültig.', 422);
+    }
+
+    foreach (['checkoutId', 'idempotencyKey'] as $field) {
+        carmaja_commerce_assert_id($input[$field], $field);
+    }
+
+    return $input;
+}
+
+function carmaja_commerce_active_reservation(array $reservation): bool
+{
+    return (bool) ($reservation['blocksStock'] ?? false)
+        && in_array($reservation['state'] ?? null, ['creating', 'active', 'expired', 'manual_review'], true);
+}
+
+/**
+ * Deterministic in-memory implementation used by AP2 unit/parallelity tests.
+ * It mirrors the SQL repository's transaction boundaries and status axes.
+ */
+final class CarmajaCommerceMemory
+{
+    public array $products = [];
+    public array $inventory = [];
+    public array $legalBundles = [];
+    public array $checkouts = [];
+    public array $reservations = [];
+    public array $payments = [];
+    public array $orders = [];
+    public array $shipments = [];
+    public array $adjustments = [];
+    public array $webhooks = [];
+    public array $mailOutbox = [];
+    public array $metadataOutbox = [];
+    public array $reviewCases = [];
+    public array $refunds = [];
+    public array $disputes = [];
+    public int $orderSequence = 1;
+
+    public function seedProduct(array $product, int $onHand = 1): void
+    {
+        if ($onHand < 0 || $onHand > 1) {
+            throw new CarmajaCommerceException('inventory_value_invalid', 'Bestand muss 0 oder 1 sein.', 422);
+        }
+
+        $id = (string) ($product['productId'] ?? '');
+        $product['productId'] = $id;
+        $this->products[$id] = $product;
+        $this->inventory[$id] = [
+            'productId' => $id,
+            'onHand' => $onHand,
+            'inventoryVersion' => 0,
+        ];
+    }
+
+    public function addLegalBundle(string $id): void
+    {
+        $this->legalBundles[$id] = ['legalBundleId' => $id, 'status' => 'approved'];
+    }
+
+    public function createCheckout(array $raw): array
+    {
+        $input = carmaja_commerce_validate_checkout($raw);
+        $key = $input['idempotencyKey'];
+
+        foreach ($this->checkouts as $existing) {
+            if ($existing['idempotencyKey'] === $key) {
+                if ($existing['requestHash'] !== $input['requestHash']) {
+                    throw new CarmajaCommerceException('idempotency_conflict', 'Idempotenzschlüssel gehört zu einer anderen Anfrage.', 409);
+                }
+
+                return $existing;
+            }
+        }
+
+        $product = $this->products[$input['productId']] ?? null;
+        $inventory = $this->inventory[$input['productId']] ?? null;
+        if (!is_array($product) || !is_array($inventory)
+            || ($product['productVersion'] ?? null) !== $input['productVersion']
+            || ($product['sourceHash'] ?? null) !== $input['sourceHash']
+            || ($product['priceMinor'] ?? null) !== $input['priceMinor']
+            || ($product['currency'] ?? null) !== $input['currency']
+            || !($product['salesEnabled'] ?? false)) {
+            throw new CarmajaCommerceException('product_snapshot_stale', 'Produkt-Snapshot ist nicht mehr aktuell.', 409);
+        }
+
+        $blocked = 0;
+        foreach ($this->reservations as $reservation) {
+            if (($reservation['productId'] ?? null) === $input['productId']
+                && carmaja_commerce_active_reservation($reservation)) {
+                $blocked++;
+            }
+        }
+
+        if ($inventory['onHand'] - $blocked < 1) {
+            throw new CarmajaCommerceException('sold_out_or_reserved', 'Produkt ist nicht verfügbar.', 409);
+        }
+
+        $checkout = [
+            'checkoutId' => $input['checkoutId'],
+            'idempotencyKey' => $key,
+            'requestHash' => $input['requestHash'],
+            'productId' => $input['productId'],
+            'productVersion' => $input['productVersion'],
+            'sourceHash' => $input['sourceHash'],
+            'priceMinor' => $input['priceMinor'],
+            'currency' => $input['currency'],
+            'shippingSnapshot' => $input['shippingSnapshot'],
+            'legalBundleId' => $input['legalBundleId'],
+            'state' => 'created',
+            'expiresAt' => $input['expiresAt'],
+        ];
+        $this->checkouts[$checkout['checkoutId']] = $checkout;
+        $reservationId = $input['checkoutId'] . '-reservation';
+        $this->reservations[$reservationId] = [
+            'reservationId' => $reservationId,
+            'checkoutId' => $checkout['checkoutId'],
+            'productId' => $input['productId'],
+            'state' => 'active',
+            'blocksStock' => true,
+            'expiresAt' => $input['expiresAt'],
+        ];
+        $paymentId = $input['checkoutId'] . '-payment';
+        $this->payments[$paymentId] = [
+            'paymentId' => $paymentId,
+            'checkoutId' => $checkout['checkoutId'],
+            'orderId' => null,
+            'amountMinor' => $input['priceMinor'] + (int) ($input['shippingSnapshot']['amountMinor'] ?? 0),
+            'currency' => $input['currency'],
+            'status' => 'created',
+            'verificationStatus' => 'unverified',
+            'refundStatus' => 'none',
+            'disputeStatus' => 'none',
+        ];
+
+        return $checkout;
+    }
+
+    public function recordStripeCreationOutcome(string $checkoutId, string $outcome): void
+    {
+        $checkout = &$this->checkouts[$checkoutId];
+        $reservationId = $checkoutId . '-reservation';
+        $reservation = &$this->reservations[$reservationId];
+
+        if ($outcome === 'created') {
+            if (!in_array($checkout['state'], ['created', 'stripe_open'], true)) {
+                return;
+            }
+            $checkout['state'] = 'stripe_open';
+            return;
+        }
+
+        if ($outcome === 'failed') {
+            $checkout['state'] = 'failed';
+            $reservation['state'] = 'released';
+            $reservation['blocksStock'] = false;
+            return;
+        }
+
+        if ($outcome === 'unknown') {
+            $checkout['state'] = 'manual_review';
+            $reservation['state'] = 'manual_review';
+            $reservation['blocksStock'] = true;
+            $this->openReview('checkout', $checkoutId, 'stripe_creation_unknown');
+            return;
+        }
+
+        throw new CarmajaCommerceException('invalid_stripe_outcome', 'Unbekannter Stripe-Erstellstatus.', 422);
+    }
+
+    public function finalizePayment(string $checkoutId, array $event): array
+    {
+        $checkout = &$this->checkouts[$checkoutId];
+        $paymentId = $checkoutId . '-payment';
+        $payment = &$this->payments[$paymentId];
+        $reservationId = $checkoutId . '-reservation';
+        $reservation = &$this->reservations[$reservationId];
+
+        if ($payment['orderId'] !== null) {
+            return $this->orders[$payment['orderId']];
+        }
+
+        $expected = $payment['amountMinor'];
+        if (($event['paymentStatus'] ?? null) !== 'succeeded'
+            || ($event['amountMinor'] ?? null) !== $expected
+            || ($event['currency'] ?? null) !== CARMAJA_COMMERCE_CURRENCY
+            || ($event['productId'] ?? null) !== $checkout['productId']
+            || ($event['legalBundleId'] ?? null) !== $checkout['legalBundleId']
+            || ($event['termsAccepted'] ?? false) !== true) {
+            $payment['status'] = 'manual_review';
+            $payment['verificationStatus'] = 'manual_review';
+            $checkout['state'] = 'manual_review';
+            $reservation['state'] = 'manual_review';
+            $reservation['blocksStock'] = true;
+            $this->openReview('payment', $paymentId, 'payment_verification_failed');
+            throw new CarmajaCommerceException('manual_review', 'Zahlung konnte nicht sicher zugeordnet werden.', 409);
+        }
+
+        $inventory = &$this->inventory[$checkout['productId']];
+        if ($inventory['onHand'] !== 1 || $reservation['state'] !== 'active') {
+            $payment['status'] = 'manual_review';
+            $payment['verificationStatus'] = 'manual_review';
+            $checkout['state'] = 'manual_review';
+            $reservation['state'] = 'manual_review';
+            $reservation['blocksStock'] = true;
+            $this->openReview('payment', $paymentId, 'inventory_or_reservation_conflict');
+            throw new CarmajaCommerceException('manual_review', 'Bestand oder Reservierung ist widersprüchlich.', 409);
+        }
+
+        $inventory['onHand'] = 0;
+        $inventory['inventoryVersion']++;
+        $orderId = $checkoutId . '-order';
+        $orderNumber = 'CMJ-' . str_pad((string) $this->orderSequence++, 8, '0', STR_PAD_LEFT);
+        $this->orders[$orderId] = [
+            'orderId' => $orderId,
+            'orderNumber' => $orderNumber,
+            'checkoutId' => $checkoutId,
+            'paymentId' => $paymentId,
+            'status' => 'confirmed',
+            'legalBundleId' => $checkout['legalBundleId'],
+            'productId' => $checkout['productId'],
+        ];
+        $this->shipments[$orderId] = ['orderId' => $orderId, 'status' => 'ready'];
+        $reservation['state'] = 'converted';
+        $reservation['blocksStock'] = false;
+        $reservation['convertedAt'] = true;
+        $payment['orderId'] = $orderId;
+        $payment['status'] = 'succeeded';
+        $payment['verificationStatus'] = 'verified';
+        $checkout['state'] = 'completed';
+        $this->mailOutbox['order-confirmation:' . $orderId] = ['status' => 'queued', 'orderId' => $orderId];
+        $this->metadataOutbox[$paymentId] = ['status' => 'queued', 'paymentId' => $paymentId];
+
+        return $this->orders[$orderId];
+    }
+
+    public function releaseExpiredReservation(string $checkoutId, bool $stripeEndStateConfirmed): void
+    {
+        $reservation = &$this->reservations[$checkoutId . '-reservation'];
+        if (!$stripeEndStateConfirmed) {
+            $reservation['state'] = 'manual_review';
+            $reservation['blocksStock'] = true;
+            $this->openReview('reservation', $reservation['reservationId'], 'stripe_end_state_missing');
+            return;
+        }
+
+        if (in_array($reservation['state'], ['released', 'converted'], true)) {
+            return;
+        }
+
+        $reservation['state'] = 'released';
+        $reservation['blocksStock'] = false;
+        $this->checkouts[$checkoutId]['state'] = 'expired';
+    }
+
+    public function applyRefund(string $paymentId, string $stripeRefundId, string $status): void
+    {
+        if (isset($this->refunds[$stripeRefundId])) {
+            return;
+        }
+
+        if (!in_array($status, ['pending', 'succeeded', 'failed', 'manual_review'], true)) {
+            throw new CarmajaCommerceException('invalid_refund_status', 'Erstattungsstatus ungültig.', 422);
+        }
+
+        $this->refunds[$stripeRefundId] = [
+            'paymentId' => $paymentId,
+            'status' => $status,
+        ];
+        $this->payments[$paymentId]['refundStatus'] = $status;
+        // Deliberately no inventory change: return and restock are separate.
+    }
+
+    public function adjustInventory(array $input, string $actorId, bool $manualOperator = true): array
+    {
+        foreach ($this->adjustments as $existing) {
+            if ($existing['idempotencyKey'] === ($input['idempotencyKey'] ?? null)) {
+                return $existing;
+            }
+        }
+
+        $reason = $input['reason'] ?? null;
+        if (!in_array($reason, CARMAJA_COMMERCE_INVENTORY_REASONS, true)
+            || ($manualOperator && $reason === 'shop_sale')) {
+            throw new CarmajaCommerceException('invalid_inventory_reason', 'Bestandsgrund ist nicht zulässig.', 422);
+        }
+
+        $productId = (string) ($input['productId'] ?? '');
+        $inventory = &$this->inventory[$productId];
+        $target = $input['targetOnHand'] ?? null;
+        if (!is_int($target) || !in_array($target, [0, 1], true)) {
+            throw new CarmajaCommerceException('validation_failed', 'targetOnHand muss 0 oder 1 sein.', 422);
+        }
+        if (($input['expectedInventoryVersion'] ?? null) !== $inventory['inventoryVersion']) {
+            throw new CarmajaCommerceException('inventory_version_conflict', 'Bestandsversion ist veraltet.', 409);
+        }
+        if ($target < $inventory['onHand']) {
+            foreach ($this->reservations as $reservation) {
+                if ($reservation['productId'] === $productId && carmaja_commerce_active_reservation($reservation)) {
+                    throw new CarmajaCommerceException('inventory_reserved', 'Bestand ist durch eine Reservierung blockiert.', 409);
+                }
+            }
+        }
+
+        $before = $inventory['onHand'];
+        $inventory['onHand'] = $target;
+        $inventory['inventoryVersion']++;
+        $adjustment = [
+            'productId' => $productId,
+            'targetOnHand' => $target,
+            'previousOnHand' => $before,
+            'inventoryVersion' => $inventory['inventoryVersion'],
+            'reason' => $reason,
+            'correlationId' => $input['correlationId'],
+            'idempotencyKey' => $input['idempotencyKey'],
+            'actorId' => $actorId,
+        ];
+        $this->adjustments[] = $adjustment;
+
+        return $adjustment;
+    }
+
+    public function persistWebhook(array $event): bool
+    {
+        $id = (string) ($event['id'] ?? '');
+        if ($id === '') {
+            throw new CarmajaCommerceException('validation_failed', 'Stripe-Event-ID fehlt.', 422);
+        }
+        if (isset($this->webhooks[$id])) {
+            return false;
+        }
+        $this->webhooks[$id] = [
+            'id' => $id,
+            'type' => $event['type'] ?? '',
+            'status' => 'queued',
+            'attemptCount' => 0,
+        ];
+        return true;
+    }
+
+    public function openReview(string $subjectType, string $subjectId, string $reason): string
+    {
+        $id = $subjectType . ':' . $subjectId . ':' . $reason;
+        $this->reviewCases[$id] ??= [
+            'reviewCaseId' => $id,
+            'subjectType' => $subjectType,
+            'subjectId' => $subjectId,
+            'reason' => $reason,
+            'status' => 'open',
+        ];
+        return $id;
+    }
+}
+
+/** MySQL 8/InnoDB repository used by AP2 server-side code and later workers. */
+final class CarmajaCommercePdo
+{
+    public function __construct(private readonly PDO $pdo)
+    {
+        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+    }
+
+    public function migrate(string $schemaFile): void
+    {
+        $sql = file_get_contents($schemaFile);
+        if (!is_string($sql) || trim($sql) === '') {
+            throw new CarmajaCommerceException('schema_unavailable', 'Commerce-Schema fehlt.', 500);
+        }
+
+        $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? $sql;
+        foreach (preg_split('/;\s*(?:\r?\n|$)/', $sql) ?: [] as $statement) {
+            $statement = trim($statement);
+            if ($statement !== '') {
+                $this->pdo->exec($statement);
+            }
+        }
+
+        $checksum = hash('sha256', $sql);
+        $journal = $this->pdo->prepare(
+            'INSERT INTO schema_migrations (migration_id, checksum)
+             VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE checksum = VALUES(checksum)'
+        );
+        $journal->execute(['commerce-v1-schema', $checksum]);
+    }
+
+    public function transaction(callable $callback): mixed
+    {
+        $this->pdo->beginTransaction();
+
+        try {
+            $result = $callback($this->pdo);
+            $this->pdo->commit();
+            return $result;
+        } catch (Throwable $error) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $error;
+        }
+    }
+
+    public function createCheckout(array $raw): array
+    {
+        $input = carmaja_commerce_validate_checkout($raw);
+
+        return $this->transaction(function (PDO $pdo) use ($input): array {
+            $existing = $pdo->prepare(
+                'SELECT * FROM checkout_sagas WHERE idempotency_key = ? FOR UPDATE'
+            );
+            $existing->execute([$input['idempotencyKey']]);
+            $row = $existing->fetch(PDO::FETCH_ASSOC);
+            if (is_array($row)) {
+                if ($row['request_hash'] !== $input['requestHash']) {
+                    throw new CarmajaCommerceException('idempotency_conflict', 'Idempotenzschlüssel gehört zu einer anderen Anfrage.', 409);
+                }
+                return $row;
+            }
+
+            $productStatement = $pdo->prepare(
+                'SELECT product_id, product_version, source_hash, price_minor,
+                    currency, sales_enabled FROM commerce_products
+                 WHERE product_id = ? FOR UPDATE'
+            );
+            $productStatement->execute([$input['productId']]);
+            $product = $productStatement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($product)) {
+                throw new CarmajaCommerceException('product_not_found', 'Produkt ist nicht verfügbar.', 404);
+            }
+
+            if ((int) $product['product_version'] !== $input['productVersion']
+                || $product['source_hash'] !== $input['sourceHash']
+                || (int) $product['price_minor'] !== $input['priceMinor']
+                || $product['currency'] !== $input['currency']
+                || (int) $product['sales_enabled'] !== 1) {
+                throw new CarmajaCommerceException('product_snapshot_stale', 'Produkt-Snapshot ist nicht mehr aktuell.', 409);
+            }
+
+            $inventoryStatement = $pdo->prepare(
+                'SELECT on_hand FROM commerce_inventory WHERE product_id = ? FOR UPDATE'
+            );
+            $inventoryStatement->execute([$input['productId']]);
+            $inventory = $inventoryStatement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($inventory)) {
+                throw new CarmajaCommerceException('inventory_missing', 'Bestand ist nicht verfügbar.', 409);
+            }
+
+            $blockingStatement = $pdo->prepare(
+                "SELECT COUNT(*) FROM reservations
+                 WHERE product_id = ? AND blocks_stock = 1
+                   AND state IN ('creating','active','expired','manual_review')
+                 FOR UPDATE"
+            );
+            $blockingStatement->execute([$input['productId']]);
+            if ((int) $inventory['on_hand'] - (int) $blockingStatement->fetchColumn() < 1) {
+                throw new CarmajaCommerceException('sold_out_or_reserved', 'Produkt ist nicht verfügbar.', 409);
+            }
+
+            $legal = $pdo->prepare(
+                "SELECT legal_bundle_id FROM legal_bundles
+                 WHERE legal_bundle_id = ? AND status = 'approved' FOR UPDATE"
+            );
+            $legal->execute([$input['legalBundleId']]);
+            if ($legal->fetchColumn() === false) {
+                throw new CarmajaCommerceException('legal_bundle_unavailable', 'Rechtstextversion ist nicht freigegeben.', 409);
+            }
+
+            $checkoutInsert = $pdo->prepare(
+                'INSERT INTO checkout_sagas
+                    (checkout_id, idempotency_key, request_hash, product_id,
+                     product_version, source_hash, price_minor, currency,
+                     shipping_snapshot, legal_bundle_id, state, expires_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'created\', ?)'
+            );
+            $checkoutInsert->execute([
+                $input['checkoutId'], $input['idempotencyKey'], $input['requestHash'],
+                $input['productId'], $input['productVersion'], $input['sourceHash'],
+                $input['priceMinor'], $input['currency'],
+                json_encode($input['shippingSnapshot'], JSON_THROW_ON_ERROR),
+                $input['legalBundleId'], $input['expiresAt'],
+            ]);
+
+            $reservationId = carmaja_commerce_new_id();
+            $reservationInsert = $pdo->prepare(
+                'INSERT INTO reservations
+                    (reservation_id, checkout_id, product_id, quantity, state,
+                     blocks_stock, expires_at)
+                 VALUES (?, ?, ?, 1, \'active\', 1, ?)'
+            );
+            $reservationInsert->execute([$reservationId, $input['checkoutId'], $input['productId'], $input['expiresAt']]);
+
+            $paymentId = carmaja_commerce_new_id();
+            $shippingAmount = (int) ($input['shippingSnapshot']['amountMinor'] ?? 0);
+            $paymentInsert = $pdo->prepare(
+                'INSERT INTO payments
+                    (payment_id, checkout_id, amount_minor, currency, status,
+                     verification_status, refund_status, dispute_status)
+                 VALUES (?, ?, ?, ?, \'created\', \'unverified\', \'none\', \'none\')'
+            );
+            $paymentInsert->execute([
+                $paymentId, $input['checkoutId'], $input['priceMinor'] + $shippingAmount, $input['currency'],
+            ]);
+
+            return [
+                'checkoutId' => $input['checkoutId'],
+                'reservationId' => $reservationId,
+                'paymentId' => $paymentId,
+                'state' => 'created',
+            ];
+        });
+    }
+
+    public function recordStripeCreationOutcome(string $checkoutId, string $outcome, ?string $sessionId = null): void
+    {
+        $this->transaction(function (PDO $pdo) use ($checkoutId, $outcome, $sessionId): void {
+            $checkout = $pdo->prepare('SELECT state FROM checkout_sagas WHERE checkout_id = ? FOR UPDATE');
+            $checkout->execute([$checkoutId]);
+            if ($checkout->fetchColumn() === false) {
+                throw new CarmajaCommerceException('checkout_not_found', 'Checkout fehlt.', 404);
+            }
+            $reservation = $pdo->prepare(
+                'SELECT reservation_id, state FROM reservations WHERE checkout_id = ? FOR UPDATE'
+            );
+            $reservation->execute([$checkoutId]);
+            $reservationRow = $reservation->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($reservationRow)) {
+                throw new CarmajaCommerceException('reservation_not_found', 'Reservierung fehlt.', 409);
+            }
+
+            if ($outcome === 'created') {
+                $update = $pdo->prepare(
+                    "UPDATE checkout_sagas SET state = 'stripe_open' WHERE checkout_id = ?");
+                $update->execute([$checkoutId]);
+                if ($sessionId !== null) {
+                    $payment = $pdo->prepare(
+                        'UPDATE payments SET stripe_checkout_session_id = ?, status = \'pending\'
+                         WHERE checkout_id = ?'
+                    );
+                    $payment->execute([$sessionId, $checkoutId]);
+                }
+                return;
+            }
+
+            if ($outcome === 'failed') {
+                $pdo->prepare(
+                    "UPDATE checkout_sagas SET state = 'failed', failure_code = 'stripe_session_not_created'
+                     WHERE checkout_id = ?"
+                )->execute([$checkoutId]);
+                $pdo->prepare(
+                    "UPDATE reservations SET state = 'released', blocks_stock = 0, released_at = UTC_TIMESTAMP(6)
+                     WHERE checkout_id = ? AND state NOT IN ('converted','released')"
+                )->execute([$checkoutId]);
+                return;
+            }
+
+            if ($outcome === 'unknown') {
+                $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $pdo->prepare(
+                    "UPDATE reservations SET state = 'manual_review', blocks_stock = 1
+                     WHERE checkout_id = ? AND state NOT IN ('converted','released')"
+                )->execute([$checkoutId]);
+                $this->openReviewCase($pdo, 'checkout', $checkoutId, 'stripe_creation_unknown');
+                return;
+            }
+
+            throw new CarmajaCommerceException('invalid_stripe_outcome', 'Unbekannter Stripe-Ausgang.', 422);
+        });
+    }
+
+    public function finalizePayment(string $checkoutId, array $event): array
+    {
+        return $this->transaction(function (PDO $pdo) use ($checkoutId, $event): array {
+            $checkoutStatement = $pdo->prepare('SELECT * FROM checkout_sagas WHERE checkout_id = ? FOR UPDATE');
+            $checkoutStatement->execute([$checkoutId]);
+            $checkout = $checkoutStatement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($checkout)) {
+                throw new CarmajaCommerceException('checkout_not_found', 'Checkout fehlt.', 404);
+            }
+            $paymentStatement = $pdo->prepare('SELECT * FROM payments WHERE checkout_id = ? FOR UPDATE');
+            $paymentStatement->execute([$checkoutId]);
+            $payment = $paymentStatement->fetch(PDO::FETCH_ASSOC);
+            $reservationStatement = $pdo->prepare('SELECT * FROM reservations WHERE checkout_id = ? FOR UPDATE');
+            $reservationStatement->execute([$checkoutId]);
+            $reservation = $reservationStatement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($payment) || !is_array($reservation)) {
+                throw new CarmajaCommerceException('commerce_relation_missing', 'Commerce-Zuordnung fehlt.', 409);
+            }
+            if ($payment['order_id'] !== null) {
+                $order = $pdo->prepare('SELECT * FROM orders WHERE order_id = ?');
+                $order->execute([$payment['order_id']]);
+                return $order->fetch(PDO::FETCH_ASSOC) ?: [];
+            }
+
+            $valid = ($event['paymentStatus'] ?? null) === 'succeeded'
+                && (int) ($event['amountMinor'] ?? -1) === (int) $payment['amount_minor']
+                && ($event['currency'] ?? null) === $payment['currency']
+                && ($event['productId'] ?? null) === $checkout['product_id']
+                && ($event['legalBundleId'] ?? null) === $checkout['legal_bundle_id']
+                && ($event['termsAccepted'] ?? false) === true;
+            if (!$valid || $reservation['state'] !== 'active') {
+                $pdo->prepare("UPDATE payments SET status = 'manual_review', verification_status = 'manual_review' WHERE payment_id = ?")
+                    ->execute([$payment['payment_id']]);
+                $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $pdo->prepare("UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'payment_verification_failed');
+                throw new CarmajaCommerceException('manual_review', 'Zahlung konnte nicht sicher zugeordnet werden.', 409);
+            }
+
+            $inventoryStatement = $pdo->prepare('SELECT on_hand, inventory_version FROM commerce_inventory WHERE product_id = ? FOR UPDATE');
+            $inventoryStatement->execute([$checkout['product_id']]);
+            $inventory = $inventoryStatement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($inventory) || (int) $inventory['on_hand'] !== 1) {
+                throw new CarmajaCommerceException('manual_review', 'Bestand ist widersprüchlich.', 409);
+            }
+
+            $sequence = $pdo->query("SELECT next_value FROM order_sequences WHERE sequence_name = 'carmaja-v1' FOR UPDATE")->fetchColumn();
+            if ($sequence === false) {
+                throw new CarmajaCommerceException('order_sequence_missing', 'Bestellnummernsequenz fehlt.', 500);
+            }
+            $orderNumber = 'CMJ-' . str_pad((string) $sequence, 8, '0', STR_PAD_LEFT);
+            $pdo->prepare("UPDATE order_sequences SET next_value = next_value + 1 WHERE sequence_name = 'carmaja-v1'")->execute();
+
+            $orderId = carmaja_commerce_new_id();
+            $productSnapshot = json_encode([
+                'productId' => $checkout['product_id'],
+                'productVersion' => (int) $checkout['product_version'],
+                'sourceHash' => $checkout['source_hash'],
+                'priceMinor' => (int) $checkout['price_minor'],
+                'currency' => $checkout['currency'],
+            ], JSON_THROW_ON_ERROR);
+            $shippingSnapshot = $checkout['shipping_snapshot'];
+            $pdo->prepare(
+                'INSERT INTO orders
+                    (order_id, order_number, checkout_id, payment_id, status,
+                     customer_email, customer_name, shipping_address, billing_address,
+                     product_snapshot, shipping_snapshot, legal_bundle_id, confirmed_at)
+                 VALUES (?, ?, ?, ?, \'confirmed\', ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(6))'
+            )->execute([
+                $orderId, $orderNumber, $checkoutId, $payment['payment_id'],
+                $event['customerEmail'] ?? '', $event['customerName'] ?? '',
+                json_encode($event['shippingAddress'] ?? [], JSON_THROW_ON_ERROR),
+                isset($event['billingAddress']) ? json_encode($event['billingAddress'], JSON_THROW_ON_ERROR) : null,
+                $productSnapshot, $shippingSnapshot, $checkout['legal_bundle_id'],
+            ]);
+            $pdo->prepare(
+                'INSERT INTO order_items
+                    (order_id, position_no, product_id, quantity, price_minor, currency, product_snapshot)
+                 VALUES (?, 1, ?, 1, ?, ?, ?)'
+            )->execute([$orderId, $checkout['product_id'], $checkout['price_minor'], $checkout['currency'], $productSnapshot]);
+            $pdo->prepare(
+                'INSERT INTO shipments
+                    (shipment_id, order_id, status, shipping_method_id)
+                 VALUES (?, ?, \'ready\', ?)'
+            )->execute([carmaja_commerce_new_id(), $orderId, json_decode($shippingSnapshot, true, 512, JSON_THROW_ON_ERROR)['shippingMethodId'] ?? 'de-standard']);
+            $pdo->prepare(
+                'UPDATE commerce_inventory SET on_hand = 0, inventory_version = inventory_version + 1 WHERE product_id = ?'
+            )->execute([$checkout['product_id']]);
+            $pdo->prepare(
+                "UPDATE reservations SET state = 'converted', blocks_stock = 0, converted_at = UTC_TIMESTAMP(6) WHERE checkout_id = ?"
+            )->execute([$checkoutId]);
+            $pdo->prepare("UPDATE checkout_sagas SET state = 'completed' WHERE checkout_id = ?")->execute([$checkoutId]);
+            $pdo->prepare("UPDATE payments SET order_id = ?, status = 'succeeded', verification_status = 'verified' WHERE payment_id = ?")
+                ->execute([$orderId, $payment['payment_id']]);
+            $pdo->prepare(
+                'INSERT INTO mail_outbox
+                    (dedupe_key, message_type, order_id, recipient, payload, status, next_attempt_at)
+                 VALUES (?, \'order_confirmation\', ?, ?, ?, \'queued\', UTC_TIMESTAMP(6))'
+            )->execute([
+                'order-confirmation:' . $orderId, $orderId,
+                $event['customerEmail'] ?? '', json_encode(['orderNumber' => $orderNumber], JSON_THROW_ON_ERROR),
+            ]);
+            $pdo->prepare(
+                'INSERT INTO stripe_metadata_outbox
+                    (dedupe_key, payment_id, stripe_payment_intent_id, metadata_payload, status, next_attempt_at)
+                 VALUES (?, ?, ?, ?, \'queued\', UTC_TIMESTAMP(6))'
+            )->execute([
+                'payment-order:' . $payment['payment_id'], $payment['payment_id'],
+                $event['stripePaymentIntentId'] ?? '', json_encode(['orderNumber' => $orderNumber], JSON_THROW_ON_ERROR),
+            ]);
+
+            return [
+                'orderId' => $orderId,
+                'orderNumber' => $orderNumber,
+                'status' => 'confirmed',
+            ];
+        });
+    }
+
+    public function applyRefund(string $paymentId, string $stripeRefundId, string $status, int $amountMinor): void
+    {
+        $this->transaction(function (PDO $pdo) use ($paymentId, $stripeRefundId, $status, $amountMinor): void {
+            $statement = $pdo->prepare(
+                'INSERT INTO refunds (refund_id, payment_id, stripe_refund_id, status, amount_minor, currency)
+                 VALUES (?, ?, ?, ?, ?, \'eur\')
+                 ON DUPLICATE KEY UPDATE status = VALUES(status)'
+            );
+            $statement->execute([carmaja_commerce_new_id(), $paymentId, $stripeRefundId, $status, $amountMinor]);
+            $pdo->prepare('UPDATE payments SET refund_status = ? WHERE payment_id = ?')->execute([$status, $paymentId]);
+            // No inventory update: release_return is an explicit later action.
+        });
+    }
+
+    private function openReviewCase(PDO $pdo, string $subjectType, string $subjectId, string $reason): void
+    {
+        $pdo->prepare(
+            'INSERT INTO review_cases
+                (review_case_id, subject_type, subject_id, reason, status, details, opened_at)
+             VALUES (?, ?, ?, ?, \'open\', ?, UTC_TIMESTAMP(6))'
+        )->execute([
+            carmaja_commerce_new_id(), $subjectType, $subjectId, $reason,
+            json_encode(['reason' => $reason], JSON_THROW_ON_ERROR),
+        ]);
+    }
+
+    public function adjustInventory(array $input, string $actorId, bool $manualOperator = true): array
+    {
+        $reason = $input['reason'] ?? null;
+        if (!in_array($reason, CARMAJA_COMMERCE_INVENTORY_REASONS, true)
+            || ($manualOperator && $reason === 'shop_sale')) {
+            throw new CarmajaCommerceException('invalid_inventory_reason', 'Bestandsgrund ist nicht zulässig.', 422);
+        }
+
+        return $this->transaction(function (PDO $pdo) use ($input, $actorId, $reason): array {
+            $idempotency = $pdo->prepare(
+                'SELECT adjustment_id, product_id, target_on_hand, previous_on_hand,
+                    inventory_version, reason, correlation_id, idempotency_key, actor_id
+                 FROM inventory_adjustments WHERE idempotency_key = ? FOR UPDATE'
+            );
+            $idempotency->execute([$input['idempotencyKey']]);
+            $existing = $idempotency->fetch(PDO::FETCH_ASSOC);
+            if (is_array($existing)) {
+                return $existing;
+            }
+
+            $select = $pdo->prepare(
+                'SELECT product_id, on_hand, inventory_version FROM commerce_inventory
+                 WHERE product_id = ? FOR UPDATE'
+            );
+            $select->execute([$input['productId']]);
+            $inventory = $select->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($inventory)) {
+                throw new CarmajaCommerceException('product_not_found', 'Inventarprodukt fehlt.', 404);
+            }
+
+            if ((int) $input['expectedInventoryVersion'] !== (int) $inventory['inventory_version']) {
+                throw new CarmajaCommerceException('inventory_version_conflict', 'Bestandsversion ist veraltet.', 409);
+            }
+
+            $target = (int) $input['targetOnHand'];
+            if (!in_array($target, [0, 1], true)) {
+                throw new CarmajaCommerceException('validation_failed', 'targetOnHand muss 0 oder 1 sein.', 422);
+            }
+
+            if ($target < (int) $inventory['on_hand']) {
+                $blocking = $pdo->prepare(
+                    "SELECT COUNT(*) FROM reservations
+                     WHERE product_id = ? AND blocks_stock = 1
+                       AND state IN ('creating','active','expired','manual_review')
+                     FOR UPDATE"
+                );
+                $blocking->execute([$input['productId']]);
+                if ((int) $blocking->fetchColumn() > 0) {
+                    throw new CarmajaCommerceException('inventory_reserved', 'Bestand ist reserviert.', 409);
+                }
+            }
+
+            $nextVersion = (int) $inventory['inventory_version'] + 1;
+            $update = $pdo->prepare(
+                'UPDATE commerce_inventory SET on_hand = ?, inventory_version = ?
+                 WHERE product_id = ?'
+            );
+            $update->execute([$target, $nextVersion, $input['productId']]);
+            $insert = $pdo->prepare(
+                'INSERT INTO inventory_adjustments
+                    (product_id, target_on_hand, previous_on_hand, inventory_version,
+                     reason, correlation_id, idempotency_key, actor_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $insert->execute([
+                $input['productId'], $target, (int) $inventory['on_hand'], $nextVersion,
+                $reason, $input['correlationId'], $input['idempotencyKey'], $actorId,
+            ]);
+
+            return [
+                'product_id' => $input['productId'],
+                'target_on_hand' => $target,
+                'previous_on_hand' => (int) $inventory['on_hand'],
+                'inventory_version' => $nextVersion,
+                'reason' => $reason,
+                'correlation_id' => $input['correlationId'],
+                'idempotency_key' => $input['idempotencyKey'],
+                'actor_id' => $actorId,
+            ];
+        });
+    }
+
+    public function persistWebhook(array $event): bool
+    {
+        try {
+            $statement = $this->pdo->prepare(
+                'INSERT INTO webhook_inbox
+                    (stripe_event_id, event_type, stripe_object_id, livemode,
+                     payload_hash, received_at, status, next_attempt_at)
+                 VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(6), \'queued\', UTC_TIMESTAMP(6))'
+            );
+            $statement->execute([
+                $event['id'], $event['type'], $event['objectId'] ?? null,
+                $event['livemode'] ? 1 : 0, $event['payloadHash'],
+            ]);
+            return true;
+        } catch (PDOException $error) {
+            if ((string) $error->errorInfo[1] === '1062') {
+                return false;
+            }
+            throw $error;
+        }
+    }
+
+    public function claimWorkerLease(string $workerName, string $leaseToken, int $leaseSeconds = 600): bool
+    {
+        return $this->transaction(function (PDO $pdo) use ($workerName, $leaseToken, $leaseSeconds): bool {
+            $select = $pdo->prepare(
+                'SELECT lease_until FROM worker_leases WHERE worker_name = ? FOR UPDATE'
+            );
+            $select->execute([$workerName]);
+            $current = $select->fetchColumn();
+            if ($current !== false && $current !== null && strtotime((string) $current) > time()) {
+                return false;
+            }
+            $statement = $pdo->prepare(
+                'INSERT INTO worker_leases (worker_name, lease_token, lease_until, last_started_at)
+                 VALUES (?, ?, DATE_ADD(UTC_TIMESTAMP(6), INTERVAL ? SECOND), UTC_TIMESTAMP(6))
+                 ON DUPLICATE KEY UPDATE lease_token = VALUES(lease_token),
+                    lease_until = VALUES(lease_until), last_started_at = VALUES(last_started_at)'
+            );
+            $statement->execute([$workerName, $leaseToken, $leaseSeconds]);
+            return true;
+        });
+    }
+
+    public function releaseWorkerLease(string $workerName, string $leaseToken, bool $success, ?string $error = null): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE worker_leases SET lease_token = NULL, lease_until = NULL,
+                last_finished_at = UTC_TIMESTAMP(6),
+                last_success_at = IF(? = 1, UTC_TIMESTAMP(6), last_success_at),
+                last_error = ? WHERE worker_name = ? AND lease_token = ?'
+        );
+        $statement->execute([$success ? 1 : 0, $error, $workerName, $leaseToken]);
+    }
+}
