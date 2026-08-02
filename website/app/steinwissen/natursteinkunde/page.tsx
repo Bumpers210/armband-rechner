@@ -26,35 +26,44 @@ export default function NaturalStoneKnowledgePage() {
             <p className="v2-eyebrow">Materialwissen</p>
             <h1>Natursteinkunde: Grundlagen zu Mineralen und Schmucksteinen</h1>
             <p>
-              Eine kompakte Einführung in Begriffe und Bearbeitungen, die beim
-              Einordnen von Naturstein- und Schmuckmaterialien helfen.
+              Natursteine entstehen über sehr lange Zeiträume in der Erde. Ihre
+              Farben, Muster und Strukturen machen ihre natürliche Vielfalt
+              sichtbar.
             </p>
           </div>
         </section>
 
         <section className="stone-knowledge-section">
           <div className="content-shell stone-knowledge-reading-width">
-            <h2>Mineralien, Gesteine und Schmucksteine</h2>
+            <h2>Wie entstehen Natursteine?</h2>
             <p>
-              Mineralien sind natürlich vorkommende Stoffe mit
-              charakteristischen Eigenschaften. Gesteine bestehen aus einem
-              oder mehreren Mineralien. Als Schmucksteine werden Materialien
-              bezeichnet, die wegen ihres Aussehens und ihrer Bearbeitbarkeit
-              für Schmuck verwendet werden.
+              Natursteine können auf verschiedene Weise entstehen: wenn
+              geschmolzenes Gestein abkühlt, sich Ablagerungen über lange Zeit
+              verdichten oder bereits vorhandenes Gestein durch Druck und Hitze
+              umgewandelt wird. So entstehen viele unterschiedliche natürliche
+              Materialien.
             </p>
-            <h2>Handelsnamen und Bearbeitungen</h2>
+            <h2>Warum sieht jeder Stein anders aus?</h2>
             <p>
-              Handelsnamen können von mineralogischen Bezeichnungen abweichen.
-              Schleifen und Polieren gehören zur üblichen Bearbeitung von
-              Schmucksteinen. Weitere Behandlungen sollten nachvollziehbar
-              angegeben werden, weil sie Aussehen, Beständigkeit oder
-              Wertwahrnehmung beeinflussen können.
+              Farbe, Maserung, Transparenz, Einschlüsse und Oberflächenstruktur
+              können von Stein zu Stein unterschiedlich sein. Solche
+              Abweichungen sind ein Merkmal natürlicher Materialien und kein
+              Fehler.
             </p>
-            <h2>Materialeigenschaften beachten</h2>
+            <h2>Natürlich und behandelt</h2>
             <p>
-              Härte, Zähigkeit und Empfindlichkeit unterscheiden sich je nach
-              Material. Deshalb passen Pflege und Nutzung am besten zu den
-              Eigenschaften des jeweiligen Schmuckmaterials.
+              Naturbelassene Steine werden für Schmuck üblicherweise geschliffen
+              und poliert. Darüber hinaus können Steine erhitzt, gefärbt,
+              stabilisiert oder beschichtet werden. Auch Polieren und Mattieren
+              verändern die Oberfläche. Solche Bearbeitungen können Farbe,
+              Oberfläche, Aussehen oder Haltbarkeit beeinflussen.
+            </p>
+            <p>
+              Naturbelassene Steine haben keine zusätzliche
+              erscheinungsverändernde Behandlung erhalten. Behandelte Steine
+              wurden gezielt verändert. Synthetische Steine werden im Labor
+              hergestellt; imitierte Steine ahmen nur das Aussehen eines
+              Natursteins nach.
             </p>
             <StoneKnowledgeSourceList sources={stoneKnowledgePublicSources} />
           </div>

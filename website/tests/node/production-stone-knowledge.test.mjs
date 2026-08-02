@@ -19,7 +19,13 @@ const routes = [
   {
     path: ["app", "steinwissen", "natursteinkunde", "page.tsx"],
     canonical: "/steinwissen/natursteinkunde/",
-    required: ["Natursteinkunde", "StoneKnowledgeSourceList"],
+    required: [
+      "Natursteinkunde",
+      "Wie entstehen Natursteine?",
+      "Warum sieht jeder Stein anders aus?",
+      "Natürlich und behandelt",
+      "StoneKnowledgeSourceList",
+    ],
   },
 ];
 
@@ -91,10 +97,33 @@ test("öffentliche Texte enthalten keine medizinischen Wirkversprechen oder Inve
   const publicText = (await Promise.all(routes.map((route) => text(...route.path)))).join("\n");
 
   assert.equal(
-    /\b(?:heilt|lindert|behandelt|entzündungshemmend|schmerzlindernd)\b/iu.test(publicText),
+    /\b(?:heilt|lindert|entzündungshemmend|schmerzlindernd|therapiert)\b/iu.test(publicText),
     false,
   );
   for (const internalValue of ["stoneKnowledgeInventory", "Black Stone", "Rosenquarz"]) {
     assert.equal(publicText.includes(internalValue), false);
   }
+});
+
+test("Natursteinkunde erklärt Entstehung, Vielfalt und Bearbeitungen ohne ausgeschlossene Themen", async () => {
+  const page = await text("app", "steinwissen", "natursteinkunde", "page.tsx");
+
+  for (const requiredPattern of [
+    /geschmolzenes Gestein\s+abkühlt/u,
+    /Ablagerungen über lange Zeit\s+verdichten/u,
+    /Druck und Hitze\s+umgewandelt/u,
+    /Farbe, Maserung, Transparenz, Einschlüsse und Oberflächenstruktur/u,
+    /Merkmal natürlicher Materialien und kein\s+Fehler/u,
+    /erhitzt, gefärbt,\s+stabilisiert oder beschichtet/u,
+    /Polieren und Mattieren/u,
+    /Synthetische Steine werden im Labor\s+hergestellt/u,
+    /imitierte Steine ahmen nur das Aussehen eines\s+Natursteins nach/u,
+  ]) {
+    assert.match(page, requiredPattern);
+  }
+
+  assert.equal(
+    /(?:Pflegehinweise|Härteskalen|chemische Formeln|Fundorte|spirituell)/iu.test(page),
+    false,
+  );
 });
