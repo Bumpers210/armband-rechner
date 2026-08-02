@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - test/product-management-beta
+    tags:
+      - "app-v*"
     paths:
       - ".github/workflows/android-test-apk.yml"
       - "app/**"
@@ -108,8 +110,8 @@ jobs:
         run: |
           set -eu
           mkdir -p artifact
-          cp app/build/outputs/apk/beta/app-beta.apk artifact/Carmaja-Perlen-Produktverwaltung-Test-1.1.0-beta.3.apk
-          sha256sum artifact/Carmaja-Perlen-Produktverwaltung-Test-1.1.0-beta.3.apk > artifact/Carmaja-Perlen-Produktverwaltung-Test-1.1.0-beta.3.apk.sha256
+          cp app/build/outputs/apk/beta/app-beta.apk artifact/carmaja-perlen-test.apk
+          sha256sum artifact/carmaja-perlen-test.apk > artifact/carmaja-perlen-test.apk.sha256
           printf '%s\n' '235ee4d746fdf5490df3c292f882a76429795e99feaeb58dea37443e944d5d2a' > artifact/BETA-CERTIFICATE-SHA256.txt
           cat > artifact/INSTALLATION.txt <<'EOF'
           Carmaja-Perlen Produktverwaltung Test
@@ -135,8 +137,10 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Carmaja-Perlen-Produktverwaltung-Test-1.1.0-beta.3
-          path: artifact/*
+          name: carmaja-perlen-test-apk
+          path: |
+            artifact/carmaja-perlen-test.apk
+            artifact/carmaja-perlen-test.apk.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -144,3 +148,40 @@ jobs:
         if: always()
         shell: bash
         run: rm -f "${CARMAJA_BETA_KEYSTORE_PATH:-}"
+
+  publish-release:
+    if: startsWith(github.ref, 'refs/tags/app-v')
+    needs: build-test-apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: carmaja-perlen-test-apk
+          path: artifact
+
+      - name: Create or update GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -Eeuo pipefail
+          apk="artifact/carmaja-perlen-test.apk"
+          checksum="artifact/carmaja-perlen-test.apk.sha256"
+          test -f "$apk"
+          test -f "$checksum"
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$apk" "$checksum" --clobber \
+              --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$RELEASE_TAG" "$apk" "$checksum" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "Carmaja-Perlen Test APK $RELEASE_TAG" \
+              --latest \
+              --generate-notes
+          fi
