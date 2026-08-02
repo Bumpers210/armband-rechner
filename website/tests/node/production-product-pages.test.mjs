@@ -45,8 +45,9 @@ test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async 
   assert.match(gallery, /role="dialog"/);
   assert.match(gallery, /const handleKeyDown/);
   assert.match(gallery, /document\.addEventListener\("keydown", handleKeyDown\)/);
-  assert.match(gallery, />\s*Vorheriges Bild\s*</);
-  assert.match(gallery, />\s*N.chstes Bild\s*</);
+  assert.match(gallery, /aria-label="Vorheriges Bild"/);
+  assert.match(gallery, /aria-label="Nächstes Bild"/);
+  assert.doesNotMatch(gallery, /product-lightbox-navigation/);
 });
 
 test("Produktion verwendet die neutrale Canonical-URL ohne Testziel", async () => {

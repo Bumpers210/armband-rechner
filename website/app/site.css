@@ -987,7 +987,7 @@
 }
 
 .product-lightbox-close,
-.product-lightbox-navigation button {
+.product-lightbox-arrow {
   min-height: 3rem;
   padding: 0.65rem 0.85rem;
   border: 1px solid rgb(255 255 255 / 45%);
@@ -1001,9 +1001,16 @@
 }
 
 .product-lightbox-close:focus-visible,
-.product-lightbox-navigation button:focus-visible {
+.product-lightbox-arrow:focus-visible {
   outline: 3px solid #fff;
   outline-offset: 3px;
+}
+
+.product-lightbox-stage {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  place-items: center;
 }
 
 .product-lightbox-figure {
@@ -1026,10 +1033,30 @@
   font-size: 0.88rem;
 }
 
-.product-lightbox-navigation {
+.product-lightbox-arrow {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.75rem;
+  width: 3rem;
+  min-width: 3rem;
+  height: 3rem;
+  min-height: 3rem;
+  padding: 0;
+  border-radius: 999px;
+  place-items: center;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.product-lightbox-arrow--previous {
+  left: 0.25rem;
+}
+
+.product-lightbox-arrow--next {
+  right: 0.25rem;
 }
 
 @media (max-width: 22rem) {
@@ -1172,9 +1199,12 @@
     padding-block: 4.5rem 6rem;
   }
 
-  .product-lightbox-navigation {
-    justify-self: center;
-    width: min(100%, 28rem);
+  .product-lightbox-arrow--previous {
+    left: 0.5rem;
+  }
+
+  .product-lightbox-arrow--next {
+    right: 0.5rem;
   }
 
 }
