@@ -1,16 +1,26 @@
+import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 
-import { BraceletGallery } from "@/components/bracelet-gallery";
-import { ContactEmailLink } from "@/components/contact-email-link";
+import { ProductList } from "@/components/product-list";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { VintedLink } from "@/components/vinted-link";
+import { visibleProducts } from "@/content/products";
 import { siteContent } from "@/content/site-content";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Handgefertigte Edelsteinarmbänder | Carmaja-Perlen",
+  },
+  description: siteContent.metadata.description,
+  alternates: {
+    canonical: "/",
+  },
+};
 
 export default function Home() {
   const imprint = siteContent.legal.imprint;
-  const [postalCode, ...localityParts] =
-    imprint.postalCodeAndCity.split(" ");
+  const [postalCode, ...localityParts] = imprint.postalCodeAndCity.split(" ");
   const organizationJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
@@ -25,7 +35,7 @@ export default function Home() {
       addressLocality: localityParts.join(" "),
       addressCountry: "DE",
     },
-    sameAs: [siteContent.vinted.url, siteContent.instagram.url],
+    sameAs: [siteContent.instagram.url],
   };
 
   return (
@@ -50,7 +60,6 @@ export default function Home() {
             style={{ objectPosition: siteContent.hero.image.objectPosition }}
           />
           <div className="v2-hero-overlay" aria-hidden="true" />
-
           <div className="content-shell v2-hero-inner">
             <div className="v2-hero-copy">
               <p className="v2-eyebrow">{siteContent.hero.eyebrow}</p>
@@ -58,109 +67,56 @@ export default function Home() {
               <p className="v2-hero-description">
                 {siteContent.hero.description}
               </p>
-              <VintedLink position="hero" />
+              <Link className="v2-button v2-button--warm" href="/armbaender/">
+                Armbänder ansehen
+              </Link>
             </div>
           </div>
         </section>
 
         <section className="v2-introduction" aria-label="Über Carmaja-Perlen">
           <div className="content-shell v2-introduction-grid">
-            <p className="v2-introduction-statement">
-              {siteContent.statement}
-            </p>
-            <p className="v2-introduction-copy">
-              {siteContent.introduction}
-            </p>
+            <p className="v2-introduction-statement">{siteContent.statement}</p>
+            <div className="v2-introduction-copy">
+              <p>{siteContent.introduction}</p>
+              <Link className="v2-text-link" href="/ueber-mich/">
+                Mehr über Carmaja-Perlen
+              </Link>
+            </div>
           </div>
         </section>
 
-        <section className="v2-gallery-section" id="armbaender">
+        <section className="v2-products-teaser">
           <div className="content-shell">
             <div className="v2-section-heading">
               <div>
-                <p className="v2-eyebrow">{siteContent.gallery.eyebrow}</p>
-                <h2>{siteContent.gallery.title}</h2>
+                <p className="v2-eyebrow">Aktuelle Auswahl</p>
+                <h2>Armbänder entdecken</h2>
               </div>
-              <p>{siteContent.gallery.introduction}</p>
-            </div>
-
-            <BraceletGallery />
-
-            <div className="v2-gallery-cta">
-              <VintedLink position="gallery" />
-            </div>
-          </div>
-        </section>
-
-        <section className="v2-maker" id="ueber-mich">
-          <div className="content-shell v2-maker-grid">
-            <div className="v2-maker-media">
-              <Image
-                src={siteContent.maker.image.src}
-                alt={siteContent.maker.image.alt}
-                width={siteContent.maker.image.width}
-                height={siteContent.maker.image.height}
-                sizes="(max-width: 767px) calc(100vw - 32px), 42vw"
-                className="v2-maker-image"
-                style={{ objectPosition: siteContent.maker.image.objectPosition }}
-              />
-            </div>
-
-            <div className="v2-maker-copy">
-              <p className="v2-eyebrow">{siteContent.maker.eyebrow}</p>
-              <h2>{siteContent.maker.title}</h2>
-              <p>{siteContent.maker.text}</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="v2-information" id="material-pflege">
-          <div className="content-shell">
-            <p className="v2-eyebrow v2-information-eyebrow">
-              {siteContent.materials.eyebrow}
-            </p>
-
-            <div className="v2-information-grid">
-              <div className="v2-information-column">
-                <h2>{siteContent.materials.title}</h2>
-                <ul>
-                  {siteContent.materials.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="v2-information-column v2-information-column--care">
-                <h2>{siteContent.care.title}</h2>
-                <ul>
-                  {siteContent.care.items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="v2-closing" id="kontakt">
-          <div className="content-shell v2-closing-grid">
-            <div className="v2-closing-heading">
-              <p className="v2-eyebrow">{siteContent.closing.eyebrow}</p>
-              <h2>{siteContent.closing.title}</h2>
-            </div>
-
-            <div className="v2-closing-content">
-              <p className="v2-closing-custom">
-                {siteContent.closing.customText}
+              <p>
+                Eine kleine Auswahl handgefertigter Stücke mit Bildern,
+                Materialien und Größen.
               </p>
-              <p>{siteContent.closing.contactText}</p>
-              <div className="v2-contact-placeholder">
-                <ContactEmailLink className="v2-contact-email" />
-              </div>
-              <VintedLink position="contact" />
             </div>
+            {visibleProducts.length > 0 ? (
+              <ProductList
+                products={visibleProducts.slice(0, 3)}
+                headingLevel="h3"
+              />
+            ) : (
+              <p className="products-empty">
+                Neue handgefertigte Stücke werden hier gezeigt, sobald sie
+                verfügbar sind.
+              </p>
+            )}
+            <p className="v2-section-action">
+              <Link className="v2-button v2-button--outline" href="/armbaender/">
+                Alle Armbänder ansehen
+              </Link>
+            </p>
           </div>
         </section>
+
       </main>
 
       <SiteFooter />

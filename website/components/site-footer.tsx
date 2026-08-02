@@ -7,8 +7,15 @@ export function SiteFooter() {
   return (
     <footer className="v2-footer">
       <div className="content-shell v2-footer-inner">
-        <div>
-          <p className="v2-footer-brand">{siteContent.brandName}</p>
+        <div className="v2-footer-branding">
+          <Link
+            className="v2-brand"
+            href="/"
+            aria-label={`${siteContent.brandName} – Startseite`}
+          >
+            <span className="v2-brand-primary">Carmaja</span>
+            <span className="v2-brand-secondary">PERLEN</span>
+          </Link>
           <p className="v2-footer-tagline">{siteContent.footer.tagline}</p>
         </div>
 
@@ -18,10 +25,10 @@ export function SiteFooter() {
               <InstagramLink position="footer" />
             </li>
             <li>
-              <Link href="/impressum">Impressum</Link>
+              <Link href="/impressum/">Impressum</Link>
             </li>
             <li>
-              <Link href="/datenschutz">Datenschutz</Link>
+              <Link href="/datenschutz/">Datenschutz</Link>
             </li>
           </ul>
         </nav>

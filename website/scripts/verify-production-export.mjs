@@ -73,6 +73,8 @@ export async function verifyProductionExport({
   for (const forbiddenValue of [
     "test.carmaja-perlen.de",
     "test-api.carmaja-perlen.de",
+    "vinted.de",
+    "vinted",
     "draftId",
     "internalArticleName",
     "internalCalculation",

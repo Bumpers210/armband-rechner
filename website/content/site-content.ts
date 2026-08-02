@@ -60,10 +60,6 @@ export type SiteContent = {
     image: SiteImage;
   };
   introduction: string;
-  vinted: {
-    url: string;
-    label: string;
-  };
   instagram: {
     profileName: string;
     url: string;
@@ -135,11 +131,10 @@ export const siteContent: SiteContent = {
       "Handgefertigte Edelsteinarmbänder aus Rosenquarz, Amazonit, Achat und weiteren echten Edelsteinen – in kleinen Stückzahlen gefertigt von Carmaja-Perlen.",
   },
   navigation: [
-    { label: "Verfügbare Armbänder", href: "/armbaender/" },
-    { label: "Armbänder", href: "/#armbaender" },
-    { label: "Über mich", href: "/#ueber-mich" },
-    { label: "Material & Pflege", href: "/#material-pflege" },
-    { label: "Kontakt", href: "/#kontakt" },
+    { label: "Armbänder", href: "/armbaender/" },
+    { label: "Über mich", href: "/ueber-mich/" },
+    { label: "Material & Pflege", href: "/material-pflege/" },
+    { label: "Kontakt", href: "/kontakt/" },
   ],
   hero: {
     eyebrow: "Handgefertigt · Naturstein · kleine Stückzahlen",
@@ -157,10 +152,6 @@ export const siteContent: SiteContent = {
   },
   introduction:
     "Jedes Armband entsteht in sorgfältiger Handarbeit. Farben, Maserungen und Einschlüsse machen die verwendeten Natursteine zu individuellen Begleitern.",
-  vinted: {
-    url: "https://www.vinted.de/member/314105735-carmaja0",
-    label: "Aktuelle Armbänder auf Vinted ansehen",
-  },
   instagram: {
     profileName: "carmaja_perlen",
     url: "https://www.instagram.com/carmaja_perlen/",
@@ -294,7 +285,7 @@ export const siteContent: SiteContent = {
     title: "Persönliche Anfragen",
     customText: "Individuelle Anfertigungen sind auf Anfrage möglich.",
     contactText:
-      "Fragen zu Größen, Materialien oder individuellen Anfertigungen beantworten wir gerne per E-Mail. Der Kauf erfolgt über unsere aktuellen Angebote auf Vinted.",
+      "Fragen zu Größen, Materialien oder individuellen Anfertigungen beantworten wir gerne per E-Mail.",
     email: "kontakt@carmaja-perlen.de",
   },
   legal: {
@@ -408,7 +399,7 @@ export const siteContent: SiteContent = {
           blocks: [
             {
               type: "paragraph",
-              text: "Wir zählen in zusammengefasster Form, wie häufig Links zu unserem Vinted-Profil und unserem Instagram-Profil angeklickt werden.",
+              text: "Wir zählen in zusammengefasster Form, wie häufig Links zu unserem Instagram-Profil angeklickt werden.",
             },
             {
               type: "paragraph",
@@ -417,7 +408,7 @@ export const siteContent: SiteContent = {
             {
               type: "list",
               items: [
-                "das Ziel des Links, beispielsweise Vinted oder Instagram",
+                "das Ziel des Links, beispielsweise Instagram",
                 "die Position des Links auf der Website",
                 "den Kalendertag des Klicks",
                 "die zusammengefasste Anzahl der Klicks",
@@ -467,7 +458,7 @@ export const siteContent: SiteContent = {
           blocks: [
             {
               type: "paragraph",
-              text: "Unsere Website enthält Links zu externen Plattformen, insbesondere Vinted und Instagram.",
+              text: "Unsere Website enthält Links zu Instagram.",
             },
             {
               type: "paragraph",
