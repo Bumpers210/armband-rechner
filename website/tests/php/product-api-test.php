@@ -604,6 +604,29 @@ carmaja_api_test('Vinted-URL wird strukturell validiert', static function (): vo
     );
 });
 
+carmaja_api_test('Atomare JSON-Prüfung behandelt nur gleiche Zahlen semantisch gleich', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    $path = $fixture['root'] . '/measurement.json';
+
+    carmaja_api_test_assert(
+        carmaja_api_json_values_equal(
+            ['measurement' => 17.5, 'wholeNumber' => 6.0],
+            ['measurement' => 17.5, 'wholeNumber' => 6]
+        ),
+        'Gleiche JSON-Zahlen mit unterschiedlicher PHP-Zahlendarstellung wurden abgelehnt.'
+    );
+    carmaja_api_test_assert(
+        !carmaja_api_json_values_equal(['value' => 6.0], ['value' => 6.1])
+            && !carmaja_api_json_values_equal(['value' => 6.0], ['value' => '6'])
+            && !carmaja_api_json_values_equal(['value' => 1], ['value' => true]),
+        'Unterschiedliche Zahlen, Strings oder Booleans dürfen nicht gleichgesetzt werden.'
+    );
+
+    carmaja_api_write_json_atomic($path, ['wholeNumber' => 6.0]);
+    $stored = carmaja_api_read_json($path);
+    carmaja_api_test_same(6, $stored['wholeNumber'], 'Der Regressionstest erwartet die JSON-Normalisierung auf eine Ganzzahl.');
+});
+
 carmaja_api_test('Test-Publish ohne Vinted-Link ist erfolgreich', static function (): void {
     $fixture = carmaja_api_test_fixture();
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5401';

@@ -348,6 +348,49 @@ function carmaja_api_read_json(string $path, array $fallback = []): array
     return $decoded;
 }
 
+function carmaja_api_json_values_equal(mixed $expected, mixed $actual): bool
+{
+    $expectedIsNumber = is_int($expected) || is_float($expected);
+    $actualIsNumber = is_int($actual) || is_float($actual);
+
+    if ($expectedIsNumber || $actualIsNumber) {
+        if (!$expectedIsNumber || !$actualIsNumber) {
+            return false;
+        }
+
+        if (gettype($expected) === gettype($actual)) {
+            return $expected === $actual;
+        }
+
+        $integer = is_int($expected) ? $expected : $actual;
+        $floatingPoint = is_float($expected) ? $expected : $actual;
+
+        return is_finite($floatingPoint)
+            && floor($floatingPoint) === $floatingPoint
+            && abs($floatingPoint) <= 9007199254740991
+            && $integer === (int) $floatingPoint;
+    }
+
+    if (is_array($expected) || is_array($actual)) {
+        if (!is_array($expected)
+            || !is_array($actual)
+            || array_is_list($expected) !== array_is_list($actual)
+            || array_keys($expected) !== array_keys($actual)) {
+            return false;
+        }
+
+        foreach ($expected as $key => $value) {
+            if (!carmaja_api_json_values_equal($value, $actual[$key])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return $expected === $actual;
+}
+
 function carmaja_api_write_json_atomic(string $path, array $data): void
 {
     carmaja_api_ensure_directory(dirname($path));
@@ -366,7 +409,7 @@ function carmaja_api_write_json_atomic(string $path, array $data): void
         @chmod($temporaryPath, 0640);
         $validated = carmaja_api_read_json($temporaryPath);
 
-        if ($validated !== $data) {
+        if (!carmaja_api_json_values_equal($data, $validated)) {
             throw new CarmajaApiException(500, 'Geschriebene JSON-Datei ist nicht konsistent.');
         }
 
