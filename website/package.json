@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build && node scripts/copy-hosting-files.mjs && node scripts/verify-export.mjs",
     "build:test": "node scripts/build-test.mjs",
+    "migration:dry-run": "node scripts/product-migration-dry-run.mjs",
+    "migration:backup-self-test": "node scripts/product-migration-backup.mjs --self-test",
     "lint:test": "eslint app components config content lib scripts tests eslint.config.mjs next.config.ts",
     "prepare:test-deploy": "node scripts/prepare-test-deploy.mjs",
     "test": "node --test tests/node/*.test.mjs",

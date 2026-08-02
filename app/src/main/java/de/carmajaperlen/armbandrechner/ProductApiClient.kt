@@ -103,6 +103,30 @@ open class ProductApiClient {
         return response.getJSONObject("product").toServerUpdate()
     }
 
+    open fun putProductV2(
+        baseUrl: String,
+        token: String,
+        productId: String,
+        update: ProductV2Update,
+        idempotencyKey: String,
+    ): ProductV2 {
+        require(idempotencyKey.matches(Regex("[A-Za-z0-9._:-]{8,100}"))) {
+            "Ungültiger Idempotency-Key."
+        }
+        val response = requestJson(
+            baseUrl = baseUrl,
+            path = "v2/products/$productId",
+            method = "PUT",
+            token = token,
+            body = update.toJson(),
+            headers = mapOf(
+                "Idempotency-Key" to idempotencyKey,
+                APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString(),
+            ),
+        )
+        return response.getJSONObject("product").toProductV2()
+    }
+
     open fun getDraft(baseUrl: String, token: String, draftId: String): ProductServerUpdate {
         val response = requestJson(
             baseUrl = baseUrl,
@@ -205,11 +229,13 @@ open class ProductApiClient {
         method: String,
         token: String?,
         body: JSONObject?,
+        headers: Map<String, String> = emptyMap(),
     ): JSONObject {
         val connection = openConnection(baseUrl, path, method, token).apply {
             if (body != null) {
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
             }
+            headers.forEach { (name, value) -> setRequestProperty(name, value) }
         }
         if (body != null) {
             connection.outputStream.use { output ->
@@ -382,6 +408,47 @@ private fun JSONObject.toServerUpdate(): ProductServerUpdate {
         careInstructions = optStringList("careInstructions"),
         vintedUrl = optString("vintedUrl"),
         images = serverImages,
+    )
+}
+
+private fun JSONObject.toProductV2(): ProductV2 {
+    val productModelVersion = getInt("productModelVersion")
+    require(productModelVersion == PRODUCT_MODEL_V2) {
+        "Unerwartete Produktmodellversion."
+    }
+    val images = optJSONArray("images")?.let { array ->
+        buildList {
+            for (index in 0 until array.length()) {
+                val image = array.optJSONObject(index) ?: continue
+                add(
+                    ProductImageV2(
+                        imageId = image.getString("imageId"),
+                        fileName = image.getString("fileName"),
+                        alt = image.getString("alt"),
+                        width = image.getInt("width"),
+                        height = image.getInt("height"),
+                        isMain = image.getBoolean("isMain"),
+                    ),
+                )
+            }
+        }
+    }.orEmpty()
+
+    return ProductV2(
+        productModelVersion = productModelVersion,
+        productId = getString("productId"),
+        productVersion = getInt("productVersion"),
+        sourceHash = getString("sourceHash"),
+        name = getString("name"),
+        description = getString("description"),
+        materials = optStringList("materials"),
+        metalElements = optStringList("metalElements"),
+        braceletSize = getString("braceletSize"),
+        careInstructions = optStringList("careInstructions"),
+        images = images,
+        priceMinor = getInt("priceMinor"),
+        currency = getString("currency"),
+        salesEnabled = getBoolean("salesEnabled"),
     )
 }
 

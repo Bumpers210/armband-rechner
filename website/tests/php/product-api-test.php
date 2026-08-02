@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api.php';
+require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v2.php';
 
 final class CarmajaApiTestFailure extends RuntimeException
 {
@@ -1916,6 +1917,340 @@ carmaja_api_test('IONOS-Diagnose erlaubt fehlende Produktionspfade im Testmodus'
     } finally {
         putenv('CARMAJA_TEST_WEBSITE_WEBROOT=' . $fixture['testWebsite']);
     }
+});
+
+carmaja_api_test('Produktmodell v2 erzeugt Version und sourceHash serverseitig', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '11111111-1111-4111-8111-111111111111';
+    $body = [
+        'expectedProductVersion' => 0,
+        'name' => 'V2-Testarmband',
+        'description' => 'V2-Beschreibung.',
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSize' => '18 cm',
+        'careInstructions' => [],
+        'images' => [],
+        'priceMinor' => 2490,
+        'currency' => 'eur',
+        'salesEnabled' => true,
+    ];
+
+    $first = carmaja_api_v2_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v2-contract-0001'
+    );
+
+    carmaja_api_test_same(2, $first['productModelVersion'] ?? null, 'Produktmodellversion fehlt.');
+    carmaja_api_test_same(1, $first['productVersion'] ?? null, 'Produktversion muss bei eins starten.');
+    carmaja_api_test_assert(
+        is_string($first['sourceHash'] ?? null)
+            && preg_match('/^[0-9a-f]{64}$/', $first['sourceHash']) === 1,
+        'sourceHash muss ein serverseitiger SHA-256-Hash sein.'
+    );
+    carmaja_api_test_assert(
+        !array_key_exists('stock', $first) && !array_key_exists('vintedUrl', $first),
+        'v2-Produkt darf keine Legacy-Verkaufsfelder enthalten.'
+    );
+
+    $replay = carmaja_api_v2_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v2-contract-0001'
+    );
+    carmaja_api_test_same($first, $replay, 'Idempotente v2-Wiederholung muss identisch sein.');
+
+    $reusedKeyBody = $body;
+    $reusedKeyBody['name'] = 'Abweichender Inhalt';
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v2_put_product(
+            $productId,
+            $reusedKeyBody,
+            carmaja_api_test_actor(),
+            'v2-contract-0001'
+        ),
+        409,
+        'idempotency_key_reused'
+    );
+
+    $nextBody = $body;
+    $nextBody['expectedProductVersion'] = 1;
+    $nextBody['name'] = 'V2-Testarmband geändert';
+    $next = carmaja_api_v2_put_product(
+        $productId,
+        $nextBody,
+        carmaja_api_test_actor(),
+        'v2-contract-0002'
+    );
+    carmaja_api_test_same(2, $next['productVersion'], 'Produktversion wurde nicht monoton erhöht.');
+    carmaja_api_test_assert(
+        $next['sourceHash'] !== $first['sourceHash'],
+        'Produktänderung muss den sourceHash ändern.'
+    );
+});
+
+carmaja_api_test('Produktmodell v2 verwendet eine deterministische Kanonisierung', static function (): void {
+    carmaja_api_test_fixture();
+    $left = [
+        'productId' => '11111111-1111-4111-8111-111111111111',
+        'productVersion' => 1,
+        'name' => 'Kanonisch',
+        'description' => 'Beschreibung',
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSize' => '18 cm',
+        'careInstructions' => [],
+        'images' => [],
+        'priceMinor' => 2490,
+        'currency' => 'eur',
+        'salesEnabled' => true,
+    ];
+    $right = [
+        'salesEnabled' => true,
+        'currency' => 'eur',
+        'priceMinor' => 2490,
+        'images' => [],
+        'careInstructions' => [],
+        'braceletSize' => '18 cm',
+        'metalElements' => [],
+        'materials' => ['Rosenquarz'],
+        'description' => 'Beschreibung',
+        'name' => 'Kanonisch',
+        'productVersion' => 1,
+        'productId' => '11111111-1111-4111-8111-111111111111',
+    ];
+
+    carmaja_api_test_same(
+        carmaja_api_v2_source_hash($left),
+        carmaja_api_v2_source_hash($right),
+        'Schlüsselreihenfolge darf sourceHash nicht verändern.'
+    );
+});
+
+carmaja_api_test('Produktmodell v2 lehnt clientseitige Legacy- und Versionsfelder ab', static function (): void {
+    carmaja_api_test_fixture();
+    $base = [
+        'expectedProductVersion' => 0,
+        'name' => 'V2-Testarmband',
+        'description' => 'V2-Beschreibung.',
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSize' => '18 cm',
+        'careInstructions' => [],
+        'images' => [],
+        'priceMinor' => 2490,
+        'currency' => 'eur',
+        'salesEnabled' => true,
+    ];
+
+    foreach ([
+        ['stock' => 1, 'error' => 'stock_write_disabled'],
+        ['sourceHash' => str_repeat('a', 64), 'error' => 'client_managed_field_forbidden'],
+        ['productVersion' => 9, 'error' => 'client_managed_field_forbidden'],
+    ] as $case) {
+        carmaja_api_test_exception(
+            static fn (): array => carmaja_api_v2_put_product(
+                '22222222-2222-4222-8222-222222222222',
+                array_merge($base, array_diff_key($case, ['error' => true])),
+                carmaja_api_test_actor(),
+                'v2-forbidden-' . $case['error']
+            ),
+            $case['error'] === 'stock_write_disabled' ? 409 : 422,
+            $case['error']
+        );
+    }
+
+    $incomplete = $base;
+    unset($incomplete['salesEnabled']);
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v2_validate_put_payload($incomplete),
+        422,
+        'validation_failed'
+    );
+});
+
+carmaja_api_test('Publisher v2 erzeugt nur den öffentlichen v2-Vertrag', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '33333333-3333-4333-8333-333333333333';
+    $body = [
+        'expectedProductVersion' => 0,
+        'name' => 'V2-Publisher-Test',
+        'description' => 'Öffentliche v2-Abbildung.',
+        'materials' => ['Amazonit'],
+        'metalElements' => [],
+        'braceletSize' => '18 cm',
+        'careInstructions' => [],
+        'images' => [[
+            'imageId' => '44444444-4444-4444-8444-444444444444',
+            'fileName' => '01.jpg',
+            'alt' => 'V2-Publisher-Test',
+            'width' => 1200,
+            'height' => 900,
+            'isMain' => true,
+        ]],
+        'priceMinor' => 1990,
+        'currency' => 'eur',
+        'salesEnabled' => true,
+    ];
+    carmaja_api_v2_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v2-publisher-0001'
+    );
+    $draft = carmaja_api_load_draft($productId);
+    $draft['sku'] = 'CP-2026-0099';
+    $draft['slug'] = 'cp-2026-0099-v2-publisher-test';
+    $beforeStock = $draft['stock'] ?? null;
+    $public = carmaja_api_v2_public_product_from_draft($draft);
+
+    carmaja_api_test_assert(
+        !array_key_exists('stock', $public) && !array_key_exists('vintedUrl', $public),
+        'Publisher v2 darf keine Legacy-Felder ausgeben.'
+    );
+    carmaja_api_local_publish_adapter_v2($public, ['operationId' => 'v2-publisher-0001']);
+    carmaja_api_test_same(
+        ['commitSha' => null, 'deploymentStatus' => 'not_started'],
+        carmaja_api_local_publish_adapter_v2($public, ['operationId' => 'v2-publisher-0001']),
+        'Publisher v2 muss eine Wiederholung idempotent beantworten.'
+    );
+    $changedPublic = $public;
+    $changedPublic['priceMinor'] = 2090;
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_local_publish_adapter_v2(
+            $changedPublic,
+            ['operationId' => 'v2-publisher-0001']
+        ),
+        409,
+        'publish_adapter_conflict'
+    );
+    $stored = carmaja_api_read_target_json(
+        carmaja_api_path('products/public-products-v2.json'),
+        [],
+        'v2-Publisherdaten'
+    );
+    $afterPublishDraft = carmaja_api_load_draft($productId);
+    carmaja_api_test_same(2, $stored['version'] ?? null, 'v2-Publisher muss Dokumentversion 2 speichern.');
+    carmaja_api_test_same(
+        $beforeStock,
+        $afterPublishDraft['stock'] ?? null,
+        'Publisher darf den Bestand auch nach dem Schreiben nicht veraendern.'
+    );
+    carmaja_api_test_same($beforeStock, $draft['stock'] ?? null, 'Publisher darf Bestand nicht verändern.');
+});
+
+carmaja_api_test('AP1.5 sperrt Legacy-Produktfelder und alte Clientversionen', static function (): void {
+    carmaja_api_test_fixture();
+
+    carmaja_api_test_exception(
+        static fn (): int => carmaja_api_validate_client_version_code('1'),
+        426,
+        'client_update_required'
+    );
+    carmaja_api_test_same(
+        2,
+        carmaja_api_validate_client_version_code('2'),
+        'Mindest-App-Version 2 muss akzeptiert werden.'
+    );
+    carmaja_api_test_same(
+        4,
+        carmaja_api_validate_client_version_code(4),
+        'Höhere App-Version muss akzeptiert werden.'
+    );
+
+    carmaja_api_test_exception(
+        static function (): void {
+            carmaja_api_validate_product_write_payload(['stock' => 1]);
+        },
+        409,
+        'stock_write_disabled'
+    );
+    carmaja_api_test_exception(
+        static function (): void {
+            carmaja_api_validate_product_write_payload(['productVersion' => 3]);
+        },
+        422,
+        'client_managed_field_forbidden'
+    );
+    carmaja_api_test_exception(
+        static function (): void {
+            carmaja_api_validate_product_write_payload(['sourceHash' => str_repeat('a', 64)]);
+        },
+        422,
+        'client_managed_field_forbidden'
+    );
+});
+
+carmaja_api_test('AP1.5 validiert den Inventory-Adjustment-Vertrag ohne Mutation', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '55555555-5555-4555-8555-555555555555';
+    $base = [
+        'productId' => $productId,
+        'targetOnHand' => 1,
+        'expectedInventoryVersion' => 0,
+        'reason' => 'activate_new_unique',
+        'correlationId' => 'ap15-inventory-0001',
+    ];
+
+    $validated = carmaja_api_validate_inventory_adjustment($base, 'ap15-idempotency-0001');
+    carmaja_api_test_same($productId, $validated['productId'], 'Produkt-ID fehlt im normalisierten Vertrag.');
+    carmaja_api_test_same(1, $validated['targetOnHand'], 'targetOnHand wurde nicht normalisiert.');
+    carmaja_api_test_same(
+        'ap15-idempotency-0001',
+        $validated['idempotencyKey'],
+        'Idempotency-Key fehlt im normalisierten Vertrag.'
+    );
+
+    foreach ([
+        ['targetOnHand' => 2, 'error' => 'validation_failed'],
+        ['expectedInventoryVersion' => -1, 'error' => 'validation_failed'],
+        ['reason' => 'unknown_reason', 'error' => 'invalid_inventory_reason'],
+        ['correlationId' => 'short', 'error' => 'validation_failed'],
+    ] as $case) {
+        $invalid = array_merge($base, array_diff_key($case, ['error' => true]));
+        carmaja_api_test_exception(
+            static fn (): array => carmaja_api_validate_inventory_adjustment(
+                $invalid,
+                'ap15-idempotency-' . $case['error']
+            ),
+            422,
+            $case['error']
+        );
+    }
+
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_validate_inventory_adjustment(
+            $base,
+            'bad key'
+        ),
+        422,
+        'validation_failed'
+    );
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_validate_inventory_adjustment(
+            array_merge($base, ['stock' => 1]),
+            'ap15-idempotency-stock'
+        ),
+        409,
+        'stock_write_disabled'
+    );
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_validate_inventory_adjustment(
+            array_merge($base, ['reason' => 'shop_sale', 'targetOnHand' => 0]),
+            'ap15-idempotency-manual-sale'
+        ),
+        422,
+        'invalid_inventory_reason'
+    );
+    $shopSale = carmaja_api_validate_inventory_adjustment(
+        array_merge($base, ['reason' => 'shop_sale', 'targetOnHand' => 0]),
+        'ap15-idempotency-shop-sale',
+        false
+    );
+    carmaja_api_test_same('shop_sale', $shopSale['reason'], 'Shopverkaufsgrund muss systemisch zulässig bleiben.');
 });
 
 $failures = 0;
