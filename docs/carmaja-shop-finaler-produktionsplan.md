@@ -1,9 +1,9 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
 Stand: 2026-08-02  
-Änderungsvermerk: AP1, AP2 und AP2a abgeschlossen; AP3 ist technisch umgesetzt,
-die PHP-8.4-Abnahme ist bestanden und AP3 damit formal abgenommen.
-AP4 bleibt der nächste separat freizugebende Abschnitt.
+Änderungsvermerk: AP1, AP2, AP2a und AP3 abgeschlossen; AP4 ist technisch umgesetzt,
+die PHP-, Node-, Android- und Integrationsnachweise sind bestanden und AP4 damit formal abgenommen.
+AP5 bleibt der nächste separat freizugebende Abschnitt.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`  
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 Produktionsziel: ausschließlich der eigene Carmaja-Shop; Vinted und andere
@@ -19,7 +19,8 @@ V1-Restpunkt fehlender CA-/Hostidentitätsprüfung bleibt dokumentiert; eine
 aktive TLS-Sitzung ist Pflicht.
 
 AP2 ist vollständig abgenommen. AP2a ist technisch abgenommen. AP3 ist
-implementiert und formal abgenommen; PHP-8.4-Lint, PHP-API- und Vertragsnachweise sind bestanden. AP4, AP5,
+implementiert und formal abgenommen; PHP-8.4-Lint, PHP-API- und Vertragsnachweise sind bestanden. AP4 ist
+implementiert und formal abgenommen; AP5,
 AP6 und AP7 bleiben nicht freigegeben. Es gibt keinen produktiven Cutover, kein Deployment, keinen Push
 und keinen Zugriff auf Produktionsdaten.
 
@@ -160,6 +161,31 @@ Website-Nachweise sowie PHP-8.4-Lint-/API-Nachweise sind bestanden; AP3 ist form
 Secrets noch produktive Ressourcen verwendet. Die Details stehen in
 `website/docs/ap3-acceptance.md`.
 
+### AP4 – Öffentliche Shop-API, Checkout-UI und Widerruf
+
+Lieferumfang: getrennte anonyme Shopsitzung, CSRF-Token, zehnminütiger
+Live-Kontext und kurzlebige Checkout-Berechtigung; serverseitig gehashte
+Token, `Secure`-/`HttpOnly`-/`SameSite=Lax`-Cookies, exakter CORS-Vertrag,
+`Cache-Control: no-store`, Rate-Limits und fail-closed Live-Produktdaten.
+Checkout-Start und Token-Ausgabe bleiben in einem Endpunkt; Stripe erhält
+ausschließlich den serverseitig geladenen Preis-, Produkt-, Versand- und
+Legal-Snapshot. Erfolgs-, Abbruch- und Fehlerseiten sowie die dauerhaft
+öffentliche zweistufige Widerrufsfunktion sind enthalten. Statische
+Bestandswerte werden nicht als Kaufentscheidung verwendet.
+
+Der eigene Carmaja-Shop ist der einzige Verkaufskanal. Vinted-/Marktplatzlinks
+und -verweise sind aus den sichtbaren Produkt-, Start- und Checkoutseiten
+entfernt; es gibt keine Marktplatzsynchronisierung. Die bestehende Legacy-
+Produktverwaltung bleibt für AP1-Kompatibilität lesbar, erzeugt aber keine
+öffentlichen Shoplinks.
+
+Die Umsetzung liegt isoliert auf `feature/shop-ap4`. Die AP4-PHP-Vertrags-,
+Node-, Website-, Integrations- und Sicherheitstests sind bestanden; sieben
+bereits bekannte AP4-fremde CRLF-/Shellfehler bleiben außerhalb des AP4-Scopes.
+Der
+technische Abnahmebericht steht in `website/docs/ap4-acceptance.md`. Es wurden
+weder Test-/Produktionsdaten noch produktive Ressourcen verwendet.
+
 ## 5. Meilensteine und kritischer Pfad
 
 | Meilenstein | Stand | Nachweis |
@@ -173,8 +199,9 @@ Secrets noch produktive Ressourcen verwendet. Die Details stehen in
 | AP2.5 | abgeschlossen | AP2-Gesamtabnahme dokumentiert; AP3 und spätere Pakete nicht begonnen |
 | AP2a | abgeschlossen | Vier technische Legal-Seiten, Bundle-Hash-/Statusprüfung, Snapshot-Zuordnung, Testexport und Abnahmebericht bestanden |
 | AP3 | vollständig abgenommen | Stripe-Vertrag, Checkout-Parameter, Webhook-Inbox, Worker, PHP-8.4-Lint/API und Node-Nachweise bestanden |
+| AP4 | vollständig abgenommen | Shop-Sitzung, Token-/CSRF-/CORS-Vertrag, Live-API, Checkout-UI, Widerruf, Marktplatzentfernung und Sicherheitstests bestanden |
 
-Kritischer Pfad: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5 → AP2a → AP3. AP2.1 blockiert
+Kritischer Pfad: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5 → AP2a → AP3 → AP4. AP2.1 blockiert
 alle nachfolgenden praktischen Änderungen. Stripe-Checkout,
 Live-API, Website und Produktions-Cutover bleiben außerhalb dieses Pfades.
 
@@ -195,6 +222,8 @@ kein verbindliches Angebot.
 | **Gesamt AP2 + AP2a (Planungskorridor)** | **112–176 h** |
 | AP3 Stripe/Checkout/Webhooks/Worker | 32–52 h |
 | **Gesamt AP2 + AP2a + AP3 (Planungskorridor)** | **144–228 h** |
+| AP4 öffentliche Shop-API/UI/Widerruf | 36–58 h |
+| **Gesamt AP2 + AP2a + AP3 + AP4 (Planungskorridor)** | **180–286 h** |
 
 | Wochenaufwand | technischer Korridor |
 | ---: | --- |
@@ -211,6 +240,11 @@ Wochen bei 5 h/Woche, 15–23 Wochen bei 10 h/Woche und 10–16 Wochen bei
 15 h/Woche. Der PHP-8.4-Nachweis ist abgeschlossen; die Werte bleiben
 Planwerte und sind keine gemessenen Arbeitszeiten.
 
+Für AP2 plus AP2a plus AP3 plus AP4 ergibt sich ein Planungskorridor von ca.
+36–58 Wochen bei 5 h/Woche, 18–29 Wochen bei 10 h/Woche und 12–20 Wochen bei
+15 h/Woche. AP4 ist abgenommen; AP5 und spätere Pakete bleiben außerhalb dieser
+Schätzung.
+
 Die Kalenderkorridore enthalten keinen externen IONOS-, Stripe-, Brevo- oder
 Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 `feature/shop-ap2` isoliert; der AP1-Abschlusscommit ist bereits vorhanden.
@@ -223,9 +257,10 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP2.1 bis AP2.5 | freigegeben und abgenommen |
 | AP2a | freigegeben und abgenommen |
 | AP3 | freigegeben und vollständig abgenommen |
-| AP4 und später | nicht freigegeben |
+| AP4 | freigegeben und vollständig abgenommen |
+| AP5 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 
-Der AP2- und AP2a-Praxisnachweis ist bestanden. AP3 ist vollständig abgenommen.
-Der naechste zulaessige Schritt ist ausschliesslich AP4; Deployment und
+Der AP2-, AP2a-, AP3- und AP4-Praxisnachweis ist bestanden. AP4 ist vollständig abgenommen.
+Der naechste zulaessige Schritt ist ausschliesslich AP5; Deployment und
 Produktions-Cutover bleiben unangetastet.

@@ -485,6 +485,263 @@ final class CarmajaCommercePdo
         $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
     }
 
+    /** Read the authoritative product and binary inventory without a static fallback. */
+    public function loadLiveProduct(string $productId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT p.product_id, p.name, p.price_minor, p.currency,
+                    p.product_version, p.sales_enabled, i.on_hand,
+                    COALESCE((SELECT COUNT(*) FROM reservations r
+                        WHERE r.product_id = p.product_id
+                          AND r.blocks_stock = 1
+                          AND r.state IN (\'creating\',\'active\',\'expired\',\'manual_review\')), 0) AS blocked
+             FROM commerce_products p
+             JOIN commerce_inventory i ON i.product_id = p.product_id
+             WHERE p.product_id = ?'
+        );
+        $statement->execute([$productId]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            throw new CarmajaCommerceException('product_not_found', 'Produkt ist nicht verfÃ¼gbar.', 404);
+        }
+
+        $available = max(0, (int) $row['on_hand'] - (int) $row['blocked']);
+
+        return [
+            'productId' => (string) $row['product_id'],
+            'priceMinor' => (int) $row['price_minor'],
+            'currency' => (string) $row['currency'],
+            'buyable' => (int) $row['sales_enabled'] === 1 && $available > 0,
+            'availableQuantity' => $available,
+            'productVersion' => (int) $row['product_version'],
+            'responseAt' => gmdate(DATE_ATOM),
+        ];
+    }
+
+    public function upsertShopSession(
+        string $sessionHash,
+        string $csrfHash,
+        string $csrfExpiresAt,
+        string $liveContextHash,
+        string $liveContextExpiresAt,
+        string $sessionExpiresAt
+    ): void {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO shop_sessions
+                (session_hash, csrf_hash, csrf_expires_at, live_context_hash,
+                 live_context_expires_at, session_expires_at)
+             VALUES (?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE csrf_hash = VALUES(csrf_hash),
+                csrf_expires_at = VALUES(csrf_expires_at),
+                live_context_hash = VALUES(live_context_hash),
+                live_context_expires_at = VALUES(live_context_expires_at),
+                session_expires_at = VALUES(session_expires_at)'
+        );
+        $statement->execute([
+            $sessionHash, $csrfHash, $csrfExpiresAt, $liveContextHash,
+            $liveContextExpiresAt, $sessionExpiresAt,
+        ]);
+    }
+
+    public function loadShopSession(string $sessionHash): ?array
+    {
+        $statement = $this->pdo->prepare('SELECT * FROM shop_sessions WHERE session_hash = ?');
+        $statement->execute([$sessionHash]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
+    public function issueCheckoutToken(
+        string $checkoutId,
+        string $tokenHash,
+        string $sessionHash,
+        string $productId,
+        int $productVersion,
+        string $requestHash,
+        string $rateBucketHash,
+        string $ipBucketHash,
+        string $expiresAt
+    ): void {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO checkout_tokens
+                (checkout_id, token_hash, session_hash, product_id,
+                product_version, request_hash, rate_bucket_hash, ip_bucket_hash, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE token_hash = token_hash'
+        );
+        $statement->execute([
+            $checkoutId, $tokenHash, $sessionHash, $productId,
+            $productVersion, $requestHash, $rateBucketHash, $ipBucketHash, $expiresAt,
+        ]);
+    }
+
+    public function loadCheckoutToken(string $tokenHash): ?array
+    {
+        $statement = $this->pdo->prepare('SELECT * FROM checkout_tokens WHERE token_hash = ?');
+        $statement->execute([$tokenHash]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
+    public function loadCheckoutStatus(string $checkoutId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT c.checkout_id, c.state, c.expires_at,
+                    p.status AS payment_status, p.refund_status,
+                    p.order_id, o.order_number
+             FROM checkout_sagas c
+             JOIN payments p ON p.checkout_id = c.checkout_id
+             LEFT JOIN orders o ON o.order_id = p.order_id
+             WHERE c.checkout_id = ?'
+        );
+        $statement->execute([$checkoutId]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
+    public function countShopAttempts(string $bucketHash): int
+    {
+        $statement = $this->pdo->prepare('SELECT counted_attempts, successful_attempts, window_started_at FROM shop_rate_limits WHERE bucket_hash = ?');
+        $statement->execute([$bucketHash]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row) || strtotime((string) $row['window_started_at']) + 86400 <= time()) {
+            $this->pdo->prepare(
+                'INSERT INTO shop_rate_limits (bucket_hash, window_started_at, counted_attempts, successful_attempts)
+                 VALUES (?, UTC_TIMESTAMP(6), 0, 0)
+                 ON DUPLICATE KEY UPDATE window_started_at = UTC_TIMESTAMP(6), counted_attempts = 0, successful_attempts = 0'
+            )->execute([$bucketHash]);
+            return 0;
+        }
+        return max(0, (int) $row['counted_attempts'] - (int) $row['successful_attempts']);
+    }
+
+    public function recordShopAttempt(string $bucketHash): void
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO shop_rate_limits (bucket_hash, window_started_at, counted_attempts, successful_attempts)
+             VALUES (?, UTC_TIMESTAMP(6), 1, 0)
+             ON DUPLICATE KEY UPDATE counted_attempts = counted_attempts + 1'
+        );
+        $statement->execute([$bucketHash]);
+    }
+
+    public function reserveShopAttempt(string $bucketHash): bool
+    {
+        return $this->transaction(function (PDO $pdo) use ($bucketHash): bool {
+            $statement = $pdo->prepare(
+                'SELECT counted_attempts, successful_attempts, window_started_at
+                 FROM shop_rate_limits WHERE bucket_hash = ? FOR UPDATE'
+            );
+            $statement->execute([$bucketHash]);
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($row) || strtotime((string) $row['window_started_at']) + 86400 <= time()) {
+                $pdo->prepare(
+                    'INSERT INTO shop_rate_limits
+                        (bucket_hash, window_started_at, counted_attempts, successful_attempts)
+                     VALUES (?, UTC_TIMESTAMP(6), 1, 0)
+                     ON DUPLICATE KEY UPDATE window_started_at = UTC_TIMESTAMP(6),
+                        counted_attempts = 1, successful_attempts = 0'
+                )->execute([$bucketHash]);
+                return true;
+            }
+            $effective = (int) $row['counted_attempts'] - (int) $row['successful_attempts'];
+            if ($effective >= CARMAJA_SHOP_MAX_CHECKOUT_ATTEMPTS) {
+                return false;
+            }
+            $pdo->prepare(
+                'UPDATE shop_rate_limits SET counted_attempts = counted_attempts + 1 WHERE bucket_hash = ?'
+            )->execute([$bucketHash]);
+            return true;
+        });
+    }
+
+    public function createWithdrawalRequest(
+        string $withdrawalId,
+        ?string $orderId,
+        string $tokenHash,
+        string $matchStatus,
+        array $content
+    ): void {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO withdrawal_requests
+                (withdrawal_id, order_id, token_hash, match_status, state, submitted_content)
+             VALUES (?, ?, ?, ?, \'awaiting_confirmation\', ?)'
+        );
+        $statement->execute([
+            $withdrawalId, $orderId, $tokenHash, $matchStatus,
+            json_encode($content, JSON_THROW_ON_ERROR),
+        ]);
+    }
+
+    public function confirmWithdrawal(string $withdrawalId, string $tokenHash): array
+    {
+        return $this->transaction(function (PDO $pdo) use ($withdrawalId, $tokenHash): array {
+            $statement = $pdo->prepare(
+                'SELECT * FROM withdrawal_requests
+                 WHERE withdrawal_id = ? AND token_hash = ? FOR UPDATE'
+            );
+            $statement->execute([$withdrawalId, $tokenHash]);
+            $row = $statement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($row) || $row['state'] !== 'awaiting_confirmation') {
+                throw new CarmajaCommerceException('withdrawal_confirmation_invalid', 'Widerruf kann nicht bestÃ¤tigt werden.', 409);
+            }
+            $state = $row['match_status'] === 'matched' ? 'submitted' : 'submitted';
+            $pdo->prepare(
+                "UPDATE withdrawal_requests
+                 SET state = ?, received_at = UTC_TIMESTAMP(6), confirmed_at = UTC_TIMESTAMP(6)
+                 WHERE withdrawal_id = ?"
+            )->execute([$state, $withdrawalId]);
+            $content = json_decode((string) $row['submitted_content'], true, 16, JSON_THROW_ON_ERROR);
+            $pdo->prepare(
+                'INSERT INTO mail_outbox
+                    (dedupe_key, message_type, order_id, recipient, payload, status, next_attempt_at)
+                 VALUES (?, \'withdrawal_receipt\', ?, ?, ?, \'queued\', UTC_TIMESTAMP(6))'
+            )->execute([
+                'withdrawal-receipt:' . $withdrawalId,
+                $row['order_id'],
+                (string) ($content['email'] ?? ''),
+                json_encode([
+                    'withdrawalId' => $withdrawalId,
+                    'receivedAt' => gmdate(DATE_ATOM),
+                    'content' => $content,
+                ], JSON_THROW_ON_ERROR),
+            ]);
+            if ($row['match_status'] !== 'matched') {
+                $case = $pdo->prepare(
+                    "INSERT INTO review_cases
+                        (review_case_id, subject_type, subject_id, reason, status, details, opened_at)
+                     VALUES (?, 'withdrawal', ?, 'withdrawal_not_uniquely_matched', 'open', ?, UTC_TIMESTAMP(6))"
+                );
+                $case->execute([
+                    carmaja_commerce_new_id(), $withdrawalId,
+                    json_encode(['withdrawalId' => $withdrawalId], JSON_THROW_ON_ERROR),
+                ]);
+            }
+            $row['state'] = $state;
+            $row['confirmed_at'] = gmdate('Y-m-d H:i:s.u');
+            return $row;
+        });
+    }
+
+    public function findOrderForWithdrawal(string $orderNumber, string $name, string $email): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT order_id, order_number, customer_name, customer_email
+             FROM orders WHERE order_number = ?'
+        );
+        $statement->execute([$orderNumber]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            return ['matchStatus' => 'manual_review', 'orderId' => null];
+        }
+        $matched = hash_equals(mb_strtolower((string) $row['customer_name']), mb_strtolower($name))
+            && hash_equals(mb_strtolower((string) $row['customer_email']), mb_strtolower($email));
+        return [
+            'matchStatus' => $matched ? 'matched' : 'manual_review',
+            'orderId' => $matched ? (string) $row['order_id'] : null,
+        ];
+    }
+
     public function migrate(string $schemaFile): void
     {
         $sql = file_get_contents($schemaFile);
@@ -507,6 +764,38 @@ final class CarmajaCommercePdo
              ON DUPLICATE KEY UPDATE checksum = VALUES(checksum)'
         );
         $journal->execute(['commerce-v1-schema', $checksum]);
+    }
+
+    public function migrateForward(string $migrationId, string $migrationFile): void
+    {
+        if (preg_match('/^[A-Za-z0-9._:-]{1,100}$/', $migrationId) !== 1) {
+            throw new CarmajaCommerceException('migration_id_invalid', 'Migrations-ID ist ungÃ¼ltig.', 422);
+        }
+        $sql = file_get_contents($migrationFile);
+        if (!is_string($sql) || trim($sql) === '') {
+            throw new CarmajaCommerceException('migration_unavailable', 'VorwÃ¤rtsmigration fehlt.', 500);
+        }
+        $normalized = preg_replace('/^\s*--.*$/m', '', $sql) ?? $sql;
+        $checksum = hash('sha256', $normalized);
+        $existing = $this->pdo->prepare('SELECT checksum FROM schema_migrations WHERE migration_id = ?');
+        $existing->execute([$migrationId]);
+        $stored = $existing->fetchColumn();
+        if (is_string($stored)) {
+            if (!hash_equals($stored, $checksum)) {
+                throw new CarmajaCommerceException('migration_checksum_conflict', 'Migrations-PrÃ¼fsumme weicht ab.', 409);
+            }
+            return;
+        }
+        foreach (preg_split('/;\s*(?:\r?\n|$)/', $normalized) ?: [] as $statement) {
+            $statement = trim($statement);
+            if ($statement !== '') {
+                $this->pdo->exec($statement);
+            }
+        }
+        $journal = $this->pdo->prepare(
+            'INSERT INTO schema_migrations (migration_id, checksum) VALUES (?, ?)'
+        );
+        $journal->execute([$migrationId, $checksum]);
     }
 
     public function transaction(callable $callback): mixed
@@ -909,6 +1198,18 @@ final class CarmajaCommercePdo
             $pdo->prepare("UPDATE checkout_sagas SET state = 'completed' WHERE checkout_id = ?")->execute([$checkoutId]);
             $pdo->prepare("UPDATE payments SET order_id = ?, status = 'succeeded', verification_status = 'verified' WHERE payment_id = ?")
                 ->execute([$orderId, $payment['payment_id']]);
+            $pdo->prepare(
+                'UPDATE shop_rate_limits r
+                 JOIN checkout_tokens t ON t.rate_bucket_hash = r.bucket_hash
+                 SET r.successful_attempts = r.successful_attempts + 1
+                 WHERE t.checkout_id = ?'
+            )->execute([$checkoutId]);
+            $pdo->prepare(
+                'UPDATE shop_rate_limits r
+                 JOIN checkout_tokens t ON t.ip_bucket_hash = r.bucket_hash
+                 SET r.successful_attempts = r.successful_attempts + 1
+                 WHERE t.checkout_id = ?'
+            )->execute([$checkoutId]);
             if ($stripePaymentIntentId !== '') {
                 $pdo->prepare(
                     'UPDATE payments SET stripe_payment_intent_id = ? WHERE payment_id = ?'

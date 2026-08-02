@@ -48,4 +48,6 @@ return [
     'shippingAmountMinor' => null,
     'shippingMinBusinessDays' => null,
     'shippingMaxBusinessDays' => null,
+    // Exakte Website-Origin fÃ¼r den Ã¶ffentlichen Shop-CORS-Vertrag.
+    'shopWebsiteOrigin' => 'https://test.carmaja-perlen.de',
 ];

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductImageGallery } from "@/components/product-image-gallery";
-import { ProductVintedLink } from "@/components/product-vinted-link";
+import { ShopBuyNow } from "@/components/shop-buy-now";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteTarget } from "@/config/site-target";
@@ -95,8 +95,6 @@ export default async function ProductDetailPage({
     notFound();
   }
 
-  const isSold = product.status === "sold";
-
   return (
     <div className="v2-page">
       <SiteHeader />
@@ -116,7 +114,7 @@ export default async function ProductDetailPage({
               Zur Übersicht
             </Link>
             <h1>{product.publicTitle}</h1>
-            {isSold ? (
+            {product.status === "sold" ? (
               <p className="product-status product-status--sold">Verkauft</p>
             ) : null}
             <p className="product-lede">{product.description}</p>
@@ -138,10 +136,6 @@ export default async function ProductDetailPage({
                 <dt>Größe</dt>
                 <dd>{product.displaySize}</dd>
               </div>
-              <div>
-                <dt>Bestand</dt>
-                <dd>{product.stock > 0 && !isSold ? "verfügbar" : "nicht verfügbar"}</dd>
-              </div>
             </dl>
 
             <section className="product-care" aria-labelledby="care-heading">
@@ -153,7 +147,7 @@ export default async function ProductDetailPage({
               </ul>
             </section>
 
-            {isSold ? null : <ProductVintedLink product={product} />}
+            <ShopBuyNow productId={product.sku} />
           </div>
         </article>
       </main>

@@ -4,7 +4,6 @@ import { BraceletGallery } from "@/components/bracelet-gallery";
 import { ContactEmailLink } from "@/components/contact-email-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
-import { VintedLink } from "@/components/vinted-link";
 import { siteContent } from "@/content/site-content";
 
 export default function Home() {
@@ -25,7 +24,7 @@ export default function Home() {
       addressLocality: localityParts.join(" "),
       addressCountry: "DE",
     },
-    sameAs: [siteContent.vinted.url, siteContent.instagram.url],
+    sameAs: [siteContent.instagram.url],
   };
 
   return (
@@ -58,7 +57,6 @@ export default function Home() {
               <p className="v2-hero-description">
                 {siteContent.hero.description}
               </p>
-              <VintedLink position="hero" />
             </div>
           </div>
         </section>
@@ -86,9 +84,6 @@ export default function Home() {
 
             <BraceletGallery />
 
-            <div className="v2-gallery-cta">
-              <VintedLink position="gallery" />
-            </div>
           </div>
         </section>
 
@@ -157,7 +152,6 @@ export default function Home() {
               <div className="v2-contact-placeholder">
                 <ContactEmailLink className="v2-contact-email" />
               </div>
-              <VintedLink position="contact" />
             </div>
           </div>
         </section>

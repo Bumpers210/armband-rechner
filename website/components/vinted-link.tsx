@@ -1,30 +1,10 @@
-import { siteTarget } from "@/config/site-target";
-import { siteContent } from "@/content/site-content";
+/**
+ * Retained as a compatibility module for the tracked-source manifest.
+ * AP4 intentionally renders no external marketplace link.
+ */
+export type TrackedLinkPosition = "hero" | "gallery" | "contact" | "footer";
 
-export type TrackedLinkPosition =
-  | "hero"
-  | "gallery"
-  | "contact"
-  | "footer";
-
-type VintedLinkProps = {
-  position: TrackedLinkPosition;
-};
-
-export function VintedLink({ position }: VintedLinkProps) {
-  const href = siteTarget.isTest
-    ? siteContent.vinted.url
-    : `${siteContent.tracking.endpoint}?target=vinted&position=${position}`;
-
-  return (
-    <a
-      className="vinted-link"
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`${siteContent.vinted.label} – öffnet in einem neuen Tab`}
-    >
-      {siteContent.vinted.label}
-    </a>
-  );
+export function VintedLink(_props: { position: TrackedLinkPosition }) {
+  void _props;
+  return null;
 }

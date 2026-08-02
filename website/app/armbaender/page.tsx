@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ProductImageGallery } from "@/components/product-image-gallery";
-import { ProductVintedLink } from "@/components/product-vinted-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteTarget } from "@/config/site-target";
@@ -11,7 +10,7 @@ import { visibleProducts } from "@/content/products";
 export const metadata: Metadata = {
   title: "Verfügbare Armbänder",
   description:
-    "Aktuell verfügbare handgefertigte Edelsteinarmbänder von Carmaja-Perlen mit Bildern, Materialien und Vinted-Angebotslink.",
+    "Aktuell verfügbare handgefertigte Edelsteinarmbänder von Carmaja-Perlen mit Bildern, Materialien und sicherem Direktkauf.",
   alternates: {
     canonical: "/armbaender/",
   },
@@ -35,8 +34,8 @@ export default function ProductsPage() {
             <p className="v2-eyebrow">Aktuell verfügbar</p>
             <h1>Handgefertigte Armbänder</h1>
             <p>
-              Eine kleine Auswahl aktuell verfügbarer Stücke. Der Kauf und die
-              verbindlichen Angebotsdetails laufen weiterhin über Vinted.
+              Eine kleine Auswahl aktuell verfügbarer Stücke. Preis und
+              Verfügbarkeit werden beim Kauf live geprüft.
             </p>
           </div>
         </section>
@@ -48,7 +47,7 @@ export default function ProductsPage() {
                 <h2>Gerade kein Armband online</h2>
                 <p>
                   Neue handgefertigte Stücke erscheinen hier, sobald sie
-                  fotografiert und auf Vinted eingestellt sind.
+                  fotografiert und für den Direktkauf freigegeben sind.
                 </p>
               </div>
             ) : (
@@ -85,7 +84,6 @@ export default function ProductsPage() {
                           <dd>{product.displaySize}</dd>
                         </div>
                       </dl>
-                      <ProductVintedLink product={product} />
                     </div>
                   </article>
                 ))}

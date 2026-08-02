@@ -172,6 +172,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'shippingAmountMinor',
         'shippingMinBusinessDays',
         'shippingMaxBusinessDays',
+        'shopWebsiteOrigin',
     ];
     $unknownKeys = array_diff(array_keys($config), $allowedKeys);
 
@@ -242,6 +243,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $shippingAmountMinor = $config['shippingAmountMinor'] ?? null;
     $shippingMinBusinessDays = $config['shippingMinBusinessDays'] ?? null;
     $shippingMaxBusinessDays = $config['shippingMaxBusinessDays'] ?? null;
+    $shopWebsiteOrigin = carmaja_bootstrap_optional_string($config, 'shopWebsiteOrigin');
 
     if (strlen($tokenPepper) < 32 || !is_bool($githubAdapterEnabled)
         || !is_bool($commerceRequireTls)
@@ -410,6 +412,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'shippingAmountMinor' => $shippingAmountMinor,
         'shippingMinBusinessDays' => $shippingMinBusinessDays,
         'shippingMaxBusinessDays' => $shippingMaxBusinessDays,
+        'shopWebsiteOrigin' => $shopWebsiteOrigin,
         'configFile' => $configFile,
     ];
 }
@@ -496,6 +499,7 @@ function carmaja_bootstrap_prepare(?string $configPath = null): array
     require_once __DIR__ . '/product-api-v2.php';
     require_once __DIR__ . '/commerce-bootstrap.php';
     require_once __DIR__ . '/shop-checkout.php';
+    require_once __DIR__ . '/shop-public.php';
     require_once __DIR__ . '/stripe-webhook.php';
 
     if ($config['githubAdapterEnabled']) {
@@ -538,6 +542,182 @@ function carmaja_bootstrap_route_request(): never
 
     if (($segments[0] ?? null) === 'api') {
         array_shift($segments);
+    }
+
+    $isShopRoute = ($segments[0] ?? null) === 'shop' && ($segments[1] ?? null) === 'v1';
+    if ($isShopRoute) {
+        $shopConfig = carmaja_bootstrap_load_config();
+        carmaja_shop_apply_cors($shopConfig, $_SERVER['HTTP_ORIGIN'] ?? null);
+        carmaja_shop_set_no_store();
+        carmaja_shop_require_origin($shopConfig);
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
+
+        $commerce = carmaja_bootstrap_commerce($shopConfig);
+        $sessionCookie = $_COOKIE['__Host-cmj_shop_session'] ?? null;
+
+        if ($method === 'GET' && $segments === ['shop', 'v1', 'context']) {
+            $sessionRaw = is_string($sessionCookie) && strlen($sessionCookie) >= 32
+                ? $sessionCookie
+                : carmaja_shop_token();
+            $context = carmaja_shop_context($commerce, $sessionRaw);
+            carmaja_shop_cookie(
+                '__Host-cmj_shop_session',
+                $sessionRaw,
+                time() + CARMAJA_SHOP_SESSION_TTL_SECONDS
+            );
+            carmaja_bootstrap_send(200, [
+                'ok' => true,
+                'context' => [
+                    'csrfToken' => $context['csrfToken'],
+                    'liveContextToken' => $context['liveContextToken'],
+                    'csrfExpiresAt' => $context['csrfExpiresAt'],
+                    'checkoutContextExpiresAt' => $context['checkoutContextExpiresAt'],
+                ],
+            ]);
+        }
+
+        if ($method === 'GET' && ($segments[2] ?? null) === 'products' && isset($segments[3])
+            && count($segments) === 4) {
+            $live = $commerce->loadLiveProduct((string) $segments[3]);
+            carmaja_bootstrap_send(200, ['ok' => true, 'product' => $live]);
+        }
+
+        if ($sessionCookie === null || !is_string($sessionCookie)) {
+            throw new CarmajaCommerceException('shop_session_required', 'Shop-Sitzung ist erforderlich.', 403);
+        }
+        $session = carmaja_shop_verify_context($commerce, $sessionCookie);
+
+        if ($method === 'POST' && $segments === ['shop', 'v1', 'checkouts']) {
+            carmaja_shop_verify_raw_context(
+                carmaja_shop_require_header('X-CSRF-Token'),
+                (string) $session['csrf_hash']
+            );
+            carmaja_shop_verify_raw_context(
+                carmaja_shop_require_header('X-Live-Context'),
+                (string) $session['live_context_hash']
+            );
+            $body = carmaja_shop_json_body();
+            $productId = carmaja_shop_validate_checkout_request($body);
+            $idempotencyKey = carmaja_shop_require_header('Idempotency-Key');
+            $bucketHash = carmaja_shop_rate_key(
+                carmaja_shop_token_hash($sessionCookie),
+                (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown')
+            );
+            $ipBucketHash = hash(
+                'sha256',
+                'ip|' . (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown')
+            );
+            $existingCheckout = $commerce->findCheckoutByIdempotency($idempotencyKey);
+            if (!is_array($existingCheckout)
+                && (!$commerce->reserveShopAttempt($bucketHash)
+                    || !$commerce->reserveShopAttempt($ipBucketHash))) {
+                throw new CarmajaCommerceException('checkout_rate_limited', 'Zu viele unbezahlte Checkout-Versuche.', 429);
+            }
+            $service = new CarmajaCheckoutService($commerce, carmaja_bootstrap_stripe($shopConfig), $shopConfig);
+            try {
+                $result = $service->start(['productId' => $productId], $idempotencyKey);
+            } catch (Throwable $error) {
+                throw $error;
+            }
+            $checkout = $commerce->findCheckoutByIdempotency($idempotencyKey);
+            if (!is_array($checkout)) {
+                throw new CarmajaCommerceException('checkout_not_found', 'Checkout konnte nicht gelesen werden.', 500);
+            }
+            $token = carmaja_shop_token();
+            $commerce->issueCheckoutToken(
+                (string) $checkout['checkout_id'],
+                carmaja_shop_token_hash($token),
+                carmaja_shop_token_hash($sessionCookie),
+                (string) $checkout['product_id'],
+                (int) $checkout['product_version'],
+                (string) $checkout['request_hash'],
+                $bucketHash,
+                $ipBucketHash,
+                gmdate('Y-m-d H:i:s', time() + CARMAJA_SHOP_CHECKOUT_TOKEN_TTL_SECONDS)
+            );
+            carmaja_shop_cookie('__Host-cmj_checkout', $token, time() + CARMAJA_SHOP_CHECKOUT_TOKEN_TTL_SECONDS);
+            carmaja_bootstrap_send(201, ['ok' => true, 'checkout' => $result]);
+        }
+
+        if ($method === 'GET' && ($segments[2] ?? null) === 'checkouts'
+            && isset($segments[3]) && ($segments[4] ?? null) === 'status' && count($segments) === 5) {
+            $checkoutToken = $_COOKIE['__Host-cmj_checkout'] ?? '';
+            if (!is_string($checkoutToken)) {
+                throw new CarmajaCommerceException('checkout_token_required', 'Checkout-Berechtigung ist erforderlich.', 403);
+            }
+            $tokenRow = $commerce->loadCheckoutToken(carmaja_shop_token_hash($checkoutToken));
+            if (!is_array($tokenRow)
+                || $tokenRow['checkout_id'] !== (string) $segments[3]
+                || $tokenRow['session_hash'] !== carmaja_shop_token_hash($sessionCookie)
+                || strtotime((string) $tokenRow['expires_at']) < time()) {
+                throw new CarmajaCommerceException('checkout_token_invalid', 'Checkout-Berechtigung ist ungÃ¼ltig.', 403);
+            }
+            $status = $commerce->loadCheckoutStatus((string) $segments[3]);
+            if (!is_array($status)) {
+                throw new CarmajaCommerceException('checkout_not_found', 'Checkout wurde nicht gefunden.', 404);
+            }
+            carmaja_bootstrap_send(200, ['ok' => true, 'checkout' => $status]);
+        }
+
+        if ($method === 'POST' && $segments === ['shop', 'v1', 'withdrawals', 'preview']) {
+            carmaja_shop_verify_raw_context(
+                carmaja_shop_require_header('X-CSRF-Token'),
+                (string) $session['csrf_hash']
+            );
+            $body = carmaja_shop_json_body();
+            $orderNumber = is_string($body['orderNumber'] ?? null) ? trim($body['orderNumber']) : '';
+            $name = is_string($body['name'] ?? null) ? trim($body['name']) : '';
+            $email = is_string($body['email'] ?? null) ? trim($body['email']) : '';
+            if ($orderNumber === '' || $name === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                throw new CarmajaCommerceException('withdrawal_identification_invalid', 'Identifikationsdaten sind unvollstÃ¤ndig.', 422);
+            }
+            $match = $commerce->findOrderForWithdrawal($orderNumber, $name, $email);
+            $confirmationToken = carmaja_shop_token();
+            $withdrawalId = carmaja_commerce_new_id();
+            $commerce->createWithdrawalRequest(
+                $withdrawalId,
+                $match['orderId'],
+                carmaja_shop_token_hash($confirmationToken),
+                $match['matchStatus'],
+                ['orderNumber' => $orderNumber, 'name' => $name, 'email' => $email]
+            );
+            carmaja_bootstrap_send(200, [
+                'ok' => true,
+                'withdrawal' => [
+                    'withdrawalId' => $withdrawalId,
+                    'matchStatus' => $match['matchStatus'],
+                    'confirmationToken' => $confirmationToken,
+                    'requiresConfirmation' => true,
+                ],
+            ]);
+        }
+
+        if ($method === 'POST' && $segments === ['shop', 'v1', 'withdrawals', 'confirm']) {
+            carmaja_shop_verify_raw_context(
+                carmaja_shop_require_header('X-CSRF-Token'),
+                (string) $session['csrf_hash']
+            );
+            $body = carmaja_shop_json_body();
+            if (!is_string($body['withdrawalId'] ?? null) || !is_string($body['confirmationToken'] ?? null)) {
+                throw new CarmajaCommerceException('withdrawal_confirmation_invalid', 'BestÃ¤tigung ist ungÃ¼ltig.', 422);
+            }
+            $result = $commerce->confirmWithdrawal(
+                $body['withdrawalId'],
+                carmaja_shop_token_hash($body['confirmationToken'])
+            );
+            carmaja_bootstrap_send(200, [
+                'ok' => true,
+                'withdrawal' => [
+                    'withdrawalId' => $result['withdrawal_id'],
+                    'state' => $result['state'],
+                    'receivedAt' => $result['confirmed_at'],
+                    'confirmation' => 'electronic_receipt_queued',
+                ],
+            ]);
+        }
     }
 
     if ($method === 'POST' && $segments === ['shop', 'v1', 'checkouts']) {

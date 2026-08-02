@@ -10,6 +10,7 @@ type LegalSectionKey = keyof LegalBundle["texts"];
 type LegalBundlePageProps = {
   sectionKey: LegalSectionKey;
   title: string;
+  children?: React.ReactNode;
 };
 
 function bundleNotice(bundle: LegalBundle) {
@@ -50,7 +51,7 @@ function Section({ section }: { section: LegalSection }) {
   );
 }
 
-export function LegalBundlePage({ sectionKey, title }: LegalBundlePageProps) {
+export function LegalBundlePage({ sectionKey, title, children }: LegalBundlePageProps) {
   const bundle = getActiveLegalBundle();
   const notice = bundleNotice(bundle);
   const sections = bundle.texts[sectionKey];
@@ -71,6 +72,8 @@ export function LegalBundlePage({ sectionKey, title }: LegalBundlePageProps) {
           {sections.map((section) => (
             <Section key={section.heading} section={section} />
           ))}
+
+          {children}
 
           <dl className="legal-bundle-metadata">
             <div>

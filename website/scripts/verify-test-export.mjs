@@ -212,17 +212,11 @@ for (const product of published) {
     `Published-Produkt enthält interne Preisfelder: ${product.sku}`,
   );
 
-  if (product.vintedUrl) {
-    assert(
-      detailHtml.includes(product.vintedUrl.replaceAll("&", "&amp;")),
-      `Direkter Vinted-Link fehlt: ${product.sku}`,
-    );
-  } else {
-    assert(
-      !detailHtml.includes("Auf Vinted ansehen"),
-      `Produkt ohne Vinted-URL zeigt einen Vinted-Link: ${product.sku}`,
-    );
-  }
+  assert(
+    !detailHtml.toLowerCase().includes("vinted") &&
+      !detailHtml.toLowerCase().includes("marktplatz"),
+    `Externer Marktplatzlink ist im Shop-Export nicht erlaubt: ${product.sku}`,
+  );
 }
 
 for (const product of sold) {
@@ -231,10 +225,10 @@ for (const product of sold) {
 
   assert(await exists(detailPath), `Sold-Detailseite fehlt: ${product.sku}`);
   assert(
-    !overviewHtml.includes(product.description) &&
+      !overviewHtml.includes(product.description) &&
       detailHtml.includes("Verkauft") &&
-      !detailHtml.includes("Auf Vinted ansehen") &&
-      !(product.vintedUrl && detailHtml.includes(product.vintedUrl)),
+      !detailHtml.toLowerCase().includes("vinted") &&
+      !detailHtml.toLowerCase().includes("marktplatz"),
     `Sold-Status ist nicht korrekt gerendert: ${product.sku}`,
   );
 }
