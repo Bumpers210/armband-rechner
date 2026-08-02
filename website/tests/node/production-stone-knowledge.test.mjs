@@ -109,12 +109,13 @@ test("Natursteinkunde erklärt Entstehung, Vielfalt und Bearbeitungen ohne ausge
   const page = await text("app", "steinwissen", "natursteinkunde", "page.tsx");
 
   for (const requiredPattern of [
-    /geschmolzenes Gestein\s+abkühlt/u,
-    /Ablagerungen über lange Zeit\s+verdichten/u,
-    /Druck und Hitze\s+umgewandelt/u,
+    /heißes, flüssiges Gestein\s+abkühlt/u,
+    /Ablagerungen, die sich Schicht für Schicht\s+verdichten/u,
+    /Gestein lange\s+unter Druck und Hitze steht/u,
     /Farbe, Maserung, Transparenz, Einschlüsse und Oberflächenstruktur/u,
-    /Merkmal natürlicher Materialien und kein\s+Fehler/u,
-    /erhitzt, gefärbt,\s+stabilisiert oder beschichtet/u,
+    /kein Makel/u,
+    /natürlichen Vielfalt und machen jeden Stein unverwechselbar/u,
+    /erhitzt, gefärbt,\s+stabilisiert oder\s+beschichtet/u,
     /Polieren und Mattieren/u,
     /Synthetische Steine werden im Labor\s+hergestellt/u,
     /imitierte Steine ahmen nur das Aussehen eines\s+Natursteins nach/u,
@@ -126,4 +127,46 @@ test("Natursteinkunde erklärt Entstehung, Vielfalt und Bearbeitungen ohne ausge
     /(?:Pflegehinweise|Härteskalen|chemische Formeln|Fundorte|spirituell)/iu.test(page),
     false,
   );
+});
+
+test("Natursteinkunde nutzt lokal gespeicherte, dokumentierte Bilder ohne Hotlinks", async () => {
+  const [page, imageLicenses] = await Promise.all([
+    text("app", "steinwissen", "natursteinkunde", "page.tsx"),
+    text("docs", "stone-knowledge-image-licenses.md"),
+  ]);
+
+  const images = [
+    {
+      fileName: "natural-stones-texture.jpg",
+      sourceUrl: "https://www.pexels.com/photo/close-up-of-colorful-stones-13328508/",
+      photographer: "MGT Photos",
+      alt: "Verschiedenfarbige natürliche Steine mit unterschiedlichen Oberflächen und Maserungen.",
+    },
+    {
+      fileName: "polished-gemstones-colours.jpg",
+      sourceUrl: "https://www.pexels.com/photo/a-pile-of-colorful-stones-and-rocks-19902306/",
+      photographer: "Markus Winkler",
+      alt: "Polierte Schmucksteine in verschiedenen Farben mit glänzenden Oberflächen und sichtbaren Mustern.",
+    },
+  ];
+
+  assert.equal(page.includes("images.pexels.com"), false);
+  for (const image of images) {
+    const localPath = path.join(
+      websiteDirectory,
+      "public",
+      "images",
+      "stone-knowledge",
+      image.fileName,
+    );
+    await access(localPath);
+    const imageBytes = await readFile(localPath);
+    assert.deepEqual([...imageBytes.subarray(0, 3)], [0xff, 0xd8, 0xff]);
+    assert.ok(page.includes(`/images/stone-knowledge/${image.fileName}`));
+    assert.ok(page.includes(image.alt));
+    assert.ok(imageLicenses.includes(image.sourceUrl));
+    assert.ok(imageLicenses.includes(image.photographer));
+  }
+  assert.ok(imageLicenses.includes("Pexels License"));
+  assert.ok(imageLicenses.includes("Namensnennung: nicht erforderlich"));
 });

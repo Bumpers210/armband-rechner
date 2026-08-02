@@ -26,6 +26,11 @@ async function fixture() {
   await writeFile(path.join(outputDirectory, "steinwissen", "spirituelle-bedeutung", "index.html"), "<main>Spirituelle Bedeutung</main>", "utf8");
   await writeFile(path.join(outputDirectory, "steinwissen", "natursteinkunde", "index.html"), "<main>Natursteinkunde</main>", "utf8");
   await cp(
+    path.join(websiteDirectory, "public", "images", "stone-knowledge"),
+    path.join(outputDirectory, "images", "stone-knowledge"),
+    { recursive: true },
+  );
+  await cp(
     path.join(websiteDirectory, "content", "products.json"),
     sourceProductsPath,
   );

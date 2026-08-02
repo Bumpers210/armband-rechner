@@ -1039,6 +1039,19 @@
   color: var(--v2-muted);
 }
 
+.v2-page .stone-knowledge-figure {
+  margin: 2rem 0 2.5rem;
+  overflow: hidden;
+  border-radius: 0.4rem;
+  background: var(--v2-sage);
+}
+
+.v2-page .stone-knowledge-figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .v2-page .stone-knowledge-notice {
   margin: 0 0 2.5rem;
   padding: 1rem 1.15rem;

@@ -72,6 +72,23 @@ export async function verifyProductionExport({
       `Steinwissen-Route fehlt im Produktionsexport: /${route.slice(0, -1).join("/")}/`,
     );
   }
+  for (const image of [
+    "natural-stones-texture.jpg",
+    "polished-gemstones-colours.jpg",
+  ]) {
+    assert.equal(
+      await fileExists(
+        path.join(
+          verifiedOutputDirectory,
+          "images",
+          "stone-knowledge",
+          image,
+        ),
+      ),
+      true,
+      `Steinwissen-Bild fehlt im Produktionsexport: ${image}`,
+    );
+  }
   assert.equal(
     files.some((filePath) => path.basename(filePath) === "products.json"),
     false,
@@ -96,6 +113,7 @@ export async function verifyProductionExport({
     "stoneKnowledgeInventory",
     "app-active-materials",
     "Black Stone",
+    "images.pexels.com",
   ]) {
     assert.equal(
       exportText.includes(forbiddenValue),
