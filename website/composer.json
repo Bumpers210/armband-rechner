@@ -1,0 +1,13 @@
+{
+  "name": "carmaja-perlen/shop-api",
+  "description": "Private Carmaja commerce API dependencies",
+  "type": "project",
+  "require": {
+    "php": ">=8.4",
+    "stripe/stripe-php": "20.3.0"
+  },
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {}
+  }
+}

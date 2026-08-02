@@ -635,13 +635,88 @@ final class CarmajaCommercePdo
         });
     }
 
+    public function loadProductForCheckout(string $productId): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT product_id, product_version, source_hash, name, price_minor,
+                    currency, sales_enabled
+             FROM commerce_products WHERE product_id = ?'
+        );
+        $statement->execute([$productId]);
+        $product = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($product)) {
+            throw new CarmajaCommerceException('product_not_found', 'Produkt ist nicht verfügbar.', 404);
+        }
+        return $product;
+    }
+
+    public function loadApprovedLegalBundle(string $legalBundleId): array
+    {
+        $statement = $this->pdo->prepare(
+            "SELECT legal_bundle_id, bundle_hash, terms_version,
+                    privacy_version, withdrawal_version, shipping_version,
+                    merchant_version, status
+             FROM legal_bundles WHERE legal_bundle_id = ? AND status = 'approved'"
+        );
+        $statement->execute([$legalBundleId]);
+        $bundle = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($bundle)) {
+            throw new CarmajaCommerceException('legal_bundle_unavailable', 'Rechtstextversion ist nicht freigegeben.', 409);
+        }
+        return $bundle;
+    }
+
+    public function findCheckoutByIdempotency(string $idempotencyKey): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT c.*, p.payment_id, p.stripe_checkout_session_id, p.status AS payment_status
+             FROM checkout_sagas c JOIN payments p ON p.checkout_id = c.checkout_id
+             WHERE c.idempotency_key = ?'
+        );
+        $statement->execute([$idempotencyKey]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
+    public function findPaymentByStripeObject(string $stripeObjectId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT * FROM payments
+             WHERE stripe_checkout_session_id = ? OR stripe_payment_intent_id = ?'
+        );
+        $statement->execute([$stripeObjectId, $stripeObjectId]);
+        $payment = $statement->fetch(PDO::FETCH_ASSOC);
+        return is_array($payment) ? $payment : null;
+    }
+
+    public function findOpenStripeSessions(int $limit = 10): array
+    {
+        $limit = max(1, min(20, $limit));
+        $statement = $this->pdo->query(
+            "SELECT c.checkout_id, c.state, p.stripe_checkout_session_id
+             FROM checkout_sagas c JOIN payments p ON p.checkout_id = c.checkout_id
+             WHERE p.stripe_checkout_session_id IS NOT NULL
+               AND c.state IN ('stripe_open','payment_pending','manual_review')
+             ORDER BY c.created_at LIMIT {$limit}"
+        );
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     public function recordStripeCreationOutcome(string $checkoutId, string $outcome, ?string $sessionId = null): void
     {
         $this->transaction(function (PDO $pdo) use ($checkoutId, $outcome, $sessionId): void {
             $checkout = $pdo->prepare('SELECT state FROM checkout_sagas WHERE checkout_id = ? FOR UPDATE');
             $checkout->execute([$checkoutId]);
-            if ($checkout->fetchColumn() === false) {
+            $checkoutState = $checkout->fetchColumn();
+            if ($checkoutState === false) {
                 throw new CarmajaCommerceException('checkout_not_found', 'Checkout fehlt.', 404);
+            }
+            $paymentLock = $pdo->prepare(
+                'SELECT payment_id FROM payments WHERE checkout_id = ? FOR UPDATE'
+            );
+            $paymentLock->execute([$checkoutId]);
+            if ($paymentLock->fetchColumn() === false) {
+                throw new CarmajaCommerceException('payment_not_found', 'Zahlungseinheit fehlt.', 409);
             }
             $reservation = $pdo->prepare(
                 'SELECT reservation_id, state FROM reservations WHERE checkout_id = ? FOR UPDATE'
@@ -654,7 +729,8 @@ final class CarmajaCommercePdo
 
             if ($outcome === 'created') {
                 $update = $pdo->prepare(
-                    "UPDATE checkout_sagas SET state = 'stripe_open' WHERE checkout_id = ?");
+                    "UPDATE checkout_sagas SET state = 'stripe_open'
+                     WHERE checkout_id = ? AND state IN ('creating','created','payment_pending')");
                 $update->execute([$checkoutId]);
                 if ($sessionId !== null) {
                     $payment = $pdo->prepare(
@@ -662,6 +738,9 @@ final class CarmajaCommercePdo
                          WHERE checkout_id = ?'
                     );
                     $payment->execute([$sessionId, $checkoutId]);
+                    $pdo->prepare(
+                        'UPDATE reservations SET stripe_session_id = ? WHERE checkout_id = ?'
+                    )->execute([$sessionId, $checkoutId]);
                 }
                 return;
             }
@@ -669,7 +748,7 @@ final class CarmajaCommercePdo
             if ($outcome === 'failed') {
                 $pdo->prepare(
                     "UPDATE checkout_sagas SET state = 'failed', failure_code = 'stripe_session_not_created'
-                     WHERE checkout_id = ?"
+                     WHERE checkout_id = ? AND state IN ('creating','created')"
                 )->execute([$checkoutId]);
                 $pdo->prepare(
                     "UPDATE reservations SET state = 'released', blocks_stock = 0, released_at = UTC_TIMESTAMP(6)
@@ -679,6 +758,9 @@ final class CarmajaCommercePdo
             }
 
             if ($outcome === 'unknown') {
+                if (in_array($checkoutState, ['completed', 'failed', 'expired', 'canceled'], true)) {
+                    return;
+                }
                 $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
                     ->execute([$checkoutId]);
                 $pdo->prepare(
@@ -693,6 +775,40 @@ final class CarmajaCommercePdo
         });
     }
 
+    public function releaseExpiredReservation(string $checkoutId): void
+    {
+        $this->transaction(function (PDO $pdo) use ($checkoutId): void {
+            $checkout = $pdo->prepare(
+                'SELECT state FROM checkout_sagas WHERE checkout_id = ? FOR UPDATE'
+            );
+            $checkout->execute([$checkoutId]);
+            $checkoutState = $checkout->fetchColumn();
+            if ($checkoutState === false) {
+                throw new CarmajaCommerceException('checkout_not_found', 'Checkout fehlt.', 404);
+            }
+            $reservation = $pdo->prepare(
+                'SELECT state FROM reservations WHERE checkout_id = ? FOR UPDATE'
+            );
+            $reservation->execute([$checkoutId]);
+            $state = $reservation->fetchColumn();
+            if ($state === false) {
+                throw new CarmajaCommerceException('reservation_not_found', 'Reservierung fehlt.', 409);
+            }
+            if (in_array($state, ['released', 'converted'], true)) {
+                return;
+            }
+            $pdo->prepare(
+                "UPDATE reservations SET state = 'released', blocks_stock = 0,
+                        released_at = UTC_TIMESTAMP(6)
+                 WHERE checkout_id = ?"
+            )->execute([$checkoutId]);
+            $pdo->prepare(
+                "UPDATE checkout_sagas SET state = 'expired' WHERE checkout_id = ?
+                 AND state NOT IN ('completed','failed','canceled')"
+            )->execute([$checkoutId]);
+        });
+    }
+
     public function finalizePayment(string $checkoutId, array $event): array
     {
         return $this->transaction(function (PDO $pdo) use ($checkoutId, $event): array {
@@ -702,6 +818,9 @@ final class CarmajaCommercePdo
             if (!is_array($checkout)) {
                 throw new CarmajaCommerceException('checkout_not_found', 'Checkout fehlt.', 404);
             }
+            $inventoryStatement = $pdo->prepare('SELECT on_hand, inventory_version FROM commerce_inventory WHERE product_id = ? FOR UPDATE');
+            $inventoryStatement->execute([$checkout['product_id']]);
+            $inventory = $inventoryStatement->fetch(PDO::FETCH_ASSOC);
             $paymentStatement = $pdo->prepare('SELECT * FROM payments WHERE checkout_id = ? FOR UPDATE');
             $paymentStatement->execute([$checkoutId]);
             $payment = $paymentStatement->fetch(PDO::FETCH_ASSOC);
@@ -717,12 +836,16 @@ final class CarmajaCommercePdo
                 return $order->fetch(PDO::FETCH_ASSOC) ?: [];
             }
 
+            $stripePaymentIntentId = is_string($event['stripePaymentIntentId'] ?? null)
+                ? trim($event['stripePaymentIntentId'])
+                : '';
             $valid = ($event['paymentStatus'] ?? null) === 'succeeded'
                 && (int) ($event['amountMinor'] ?? -1) === (int) $payment['amount_minor']
                 && ($event['currency'] ?? null) === $payment['currency']
                 && ($event['productId'] ?? null) === $checkout['product_id']
                 && ($event['legalBundleId'] ?? null) === $checkout['legal_bundle_id']
-                && ($event['termsAccepted'] ?? false) === true;
+                && ($event['termsAccepted'] ?? false) === true
+                && $stripePaymentIntentId !== '';
             if (!$valid || $reservation['state'] !== 'active') {
                 $pdo->prepare("UPDATE payments SET status = 'manual_review', verification_status = 'manual_review' WHERE payment_id = ?")
                     ->execute([$payment['payment_id']]);
@@ -734,9 +857,6 @@ final class CarmajaCommercePdo
                 throw new CarmajaCommerceException('manual_review', 'Zahlung konnte nicht sicher zugeordnet werden.', 409);
             }
 
-            $inventoryStatement = $pdo->prepare('SELECT on_hand, inventory_version FROM commerce_inventory WHERE product_id = ? FOR UPDATE');
-            $inventoryStatement->execute([$checkout['product_id']]);
-            $inventory = $inventoryStatement->fetch(PDO::FETCH_ASSOC);
             if (!is_array($inventory) || (int) $inventory['on_hand'] !== 1) {
                 throw new CarmajaCommerceException('manual_review', 'Bestand ist widersprüchlich.', 409);
             }
@@ -789,6 +909,11 @@ final class CarmajaCommercePdo
             $pdo->prepare("UPDATE checkout_sagas SET state = 'completed' WHERE checkout_id = ?")->execute([$checkoutId]);
             $pdo->prepare("UPDATE payments SET order_id = ?, status = 'succeeded', verification_status = 'verified' WHERE payment_id = ?")
                 ->execute([$orderId, $payment['payment_id']]);
+            if ($stripePaymentIntentId !== '') {
+                $pdo->prepare(
+                    'UPDATE payments SET stripe_payment_intent_id = ? WHERE payment_id = ?'
+                )->execute([$stripePaymentIntentId, $payment['payment_id']]);
+            }
             $pdo->prepare(
                 'INSERT INTO mail_outbox
                     (dedupe_key, message_type, order_id, recipient, payload, status, next_attempt_at)
@@ -944,15 +1069,202 @@ final class CarmajaCommercePdo
         }
     }
 
+    public function persistWebhookEnvelope(
+        array $event,
+        string $payloadCiphertext,
+        string $payloadKeyId
+    ): bool {
+        try {
+            $statement = $this->pdo->prepare(
+                'INSERT INTO webhook_inbox
+                    (stripe_event_id, event_type, stripe_object_id, livemode,
+                     payload_hash, payload_ciphertext, payload_key_id,
+                     received_at, status, next_attempt_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, \'queued\', UTC_TIMESTAMP(6))'
+            );
+            $statement->execute([
+                $event['id'], $event['type'], $event['objectId'] ?? null,
+                $event['livemode'] ? 1 : 0, $event['payloadHash'],
+                $payloadCiphertext, $payloadKeyId, $event['receivedAt'],
+            ]);
+            return true;
+        } catch (PDOException $error) {
+            if ((string) ($error->errorInfo[1] ?? '') === '1062') {
+                return false;
+            }
+            throw $error;
+        }
+    }
+
+    public function claimWebhookBatch(int $batchSize, int $leaseSeconds = 600): array
+    {
+        $batchSize = max(1, min(20, $batchSize));
+        return $this->transaction(function (PDO $pdo) use ($batchSize, $leaseSeconds): array {
+            $rows = $pdo->query(
+                "SELECT inbox_id, stripe_event_id, event_type, payload_ciphertext,
+                        payload_key_id, attempt_count
+                 FROM webhook_inbox
+                 WHERE next_attempt_at <= UTC_TIMESTAMP(6)
+                   AND (status = 'queued' OR (status = 'processing' AND lease_until < UTC_TIMESTAMP(6)))
+                   AND attempt_count <= 5
+                 ORDER BY inbox_id
+                 LIMIT {$batchSize} FOR UPDATE SKIP LOCKED"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            if ($rows === []) {
+                return [];
+            }
+            $update = $pdo->prepare(
+                "UPDATE webhook_inbox SET status = 'processing', attempt_count = attempt_count + 1,
+                        lease_until = DATE_ADD(UTC_TIMESTAMP(6), INTERVAL ? SECOND)
+                 WHERE inbox_id = ?"
+            );
+            foreach ($rows as $row) {
+                $update->execute([$leaseSeconds, $row['inbox_id']]);
+            }
+            return $rows;
+        });
+    }
+
+    public function recordDispute(
+        string $paymentId,
+        string $stripeDisputeId,
+        string $stripeStatus,
+        string $lastEventAt
+    ): void {
+        $this->transaction(function (PDO $pdo) use ($paymentId, $stripeDisputeId, $stripeStatus, $lastEventAt): void {
+            $pdo->prepare(
+                'INSERT INTO disputes
+                    (dispute_id, payment_id, stripe_dispute_id, stripe_status, last_event_at)
+                 VALUES (?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE stripe_status = IF(last_event_at <= VALUES(last_event_at), VALUES(stripe_status), stripe_status),
+                    last_event_at = GREATEST(last_event_at, VALUES(last_event_at))'
+            )->execute([
+                carmaja_commerce_new_id(), $paymentId, $stripeDisputeId, $stripeStatus, $lastEventAt,
+            ]);
+            $currentDispute = $pdo->prepare(
+                'SELECT stripe_status FROM disputes WHERE stripe_dispute_id = ?'
+            );
+            $currentDispute->execute([$stripeDisputeId]);
+            $currentStatus = $currentDispute->fetchColumn();
+            $pdo->prepare('UPDATE payments SET dispute_status = ? WHERE payment_id = ?')
+                ->execute([is_string($currentStatus) ? $currentStatus : $stripeStatus, $paymentId]);
+            $existingReview = $pdo->prepare(
+                "SELECT review_case_id FROM review_cases
+                 WHERE subject_type = 'dispute' AND subject_id = ? AND reason = 'stripe_dispute'
+                 LIMIT 1"
+            );
+            $existingReview->execute([$stripeDisputeId]);
+            if ($existingReview->fetchColumn() === false) {
+                $pdo->prepare(
+                    'INSERT INTO review_cases
+                        (review_case_id, subject_type, subject_id, reason, status, details, opened_at)
+                     VALUES (?, \'dispute\', ?, \'stripe_dispute\', \'open\', ?, UTC_TIMESTAMP(6))'
+                )->execute([
+                    carmaja_commerce_new_id(), $stripeDisputeId,
+                    json_encode(['stripeStatus' => $stripeStatus, 'paymentId' => $paymentId], JSON_THROW_ON_ERROR),
+                ]);
+            }
+        });
+    }
+
+    public function completeWebhook(int $inboxId, bool $success, ?string $error = null): void
+    {
+        if ($success) {
+            $statement = $this->pdo->prepare(
+                "UPDATE webhook_inbox SET status = 'processed', processed_at = UTC_TIMESTAMP(6),
+                        lease_until = NULL, last_error = NULL WHERE inbox_id = ?"
+            );
+            $statement->execute([$inboxId]);
+            return;
+        }
+
+        $attempt = $this->pdo->prepare('SELECT attempt_count FROM webhook_inbox WHERE inbox_id = ?');
+        $attempt->execute([$inboxId]);
+        $count = (int) $attempt->fetchColumn();
+        $delay = carmaja_commerce_retry_schedule($count - 1);
+        if ($delay === null) {
+            $statement = $this->pdo->prepare(
+                "UPDATE webhook_inbox SET status = 'manual_review', lease_until = NULL,
+                        last_error = ? WHERE inbox_id = ?"
+            );
+            $statement->execute([$error, $inboxId]);
+            return;
+        }
+        $statement = $this->pdo->prepare(
+            "UPDATE webhook_inbox SET status = 'queued', lease_until = NULL,
+                    next_attempt_at = DATE_ADD(UTC_TIMESTAMP(6), INTERVAL ? SECOND),
+                    last_error = ? WHERE inbox_id = ?"
+        );
+        $statement->execute([$delay, $error, $inboxId]);
+    }
+
+    public function claimMetadataOutbox(int $batchSize, int $leaseSeconds = 600): array
+    {
+        $batchSize = max(1, min(20, $batchSize));
+        return $this->transaction(function (PDO $pdo) use ($batchSize, $leaseSeconds): array {
+            $rows = $pdo->query(
+                "SELECT metadata_id, payment_id, stripe_payment_intent_id,
+                        metadata_payload, attempt_count
+                 FROM stripe_metadata_outbox
+                 WHERE next_attempt_at <= UTC_TIMESTAMP(6)
+                   AND (status = 'queued' OR (status = 'processing' AND lease_until < UTC_TIMESTAMP(6)))
+                   AND attempt_count <= 5
+                 ORDER BY metadata_id
+                 LIMIT {$batchSize} FOR UPDATE SKIP LOCKED"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            $update = $pdo->prepare(
+                "UPDATE stripe_metadata_outbox SET status = 'processing', attempt_count = attempt_count + 1,
+                        lease_until = DATE_ADD(UTC_TIMESTAMP(6), INTERVAL ? SECOND)
+                 WHERE metadata_id = ?"
+            );
+            foreach ($rows as $row) {
+                $update->execute([$leaseSeconds, $row['metadata_id']]);
+            }
+            return $rows;
+        });
+    }
+
+    public function completeMetadataOutbox(int $metadataId, bool $success, ?string $error = null): void
+    {
+        if ($success) {
+            $statement = $this->pdo->prepare(
+                "UPDATE stripe_metadata_outbox SET status = 'sent', lease_until = NULL,
+                        last_error = NULL WHERE metadata_id = ?"
+            );
+            $statement->execute([$metadataId]);
+            return;
+        }
+        $attempt = $this->pdo->prepare('SELECT attempt_count FROM stripe_metadata_outbox WHERE metadata_id = ?');
+        $attempt->execute([$metadataId]);
+        $count = (int) $attempt->fetchColumn();
+        $delay = carmaja_commerce_retry_schedule($count - 1);
+        $status = $delay === null ? 'manual_review' : 'queued';
+        if ($delay === null) {
+            $statement = $this->pdo->prepare(
+                "UPDATE stripe_metadata_outbox SET status = 'manual_review', lease_until = NULL,
+                        last_error = ? WHERE metadata_id = ?"
+            );
+            $statement->execute([$error, $metadataId]);
+            return;
+        }
+        $statement = $this->pdo->prepare(
+            "UPDATE stripe_metadata_outbox SET status = ?, lease_until = NULL,
+                    next_attempt_at = DATE_ADD(UTC_TIMESTAMP(6), INTERVAL ? SECOND),
+                    last_error = ? WHERE metadata_id = ?"
+        );
+        $statement->execute([$status, $delay, $error, $metadataId]);
+    }
+
     public function claimWorkerLease(string $workerName, string $leaseToken, int $leaseSeconds = 600): bool
     {
         return $this->transaction(function (PDO $pdo) use ($workerName, $leaseToken, $leaseSeconds): bool {
             $select = $pdo->prepare(
-                'SELECT lease_until FROM worker_leases WHERE worker_name = ? FOR UPDATE'
+                'SELECT lease_until, (lease_until IS NOT NULL AND lease_until > UTC_TIMESTAMP(6)) AS lease_active
+                 FROM worker_leases WHERE worker_name = ? FOR UPDATE'
             );
             $select->execute([$workerName]);
-            $current = $select->fetchColumn();
-            if ($current !== false && $current !== null && strtotime((string) $current) > time()) {
+            $current = $select->fetch(PDO::FETCH_ASSOC);
+            if (is_array($current) && (int) ($current['lease_active'] ?? 0) === 1) {
                 return false;
             }
             $statement = $pdo->prepare(

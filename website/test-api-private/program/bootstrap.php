@@ -151,6 +151,27 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'githubRepository',
         'githubBranch',
         'githubTokenFile',
+        'commerceDsn',
+        'commerceUser',
+        'commercePassword',
+        'commerceTlsCaPath',
+        'commerceRequireTls',
+        'stripeSecretKey',
+        'stripeWebhookSecret',
+        'stripeWebhookPayloadKey',
+        'stripeWebhookPayloadKeyId',
+        'stripeAutoload',
+        'stripeSdkVersion',
+        'stripeApiVersion',
+        'stripeWebhookApiVersion',
+        'stripeSuccessUrl',
+        'stripeCancelUrl',
+        'activeLegalBundleId',
+        'shippingMethodId',
+        'shippingPublicName',
+        'shippingAmountMinor',
+        'shippingMinBusinessDays',
+        'shippingMaxBusinessDays',
     ];
     $unknownKeys = array_diff(array_keys($config), $allowedKeys);
 
@@ -200,8 +221,33 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     );
     $githubBranch = carmaja_bootstrap_optional_string($config, 'githubBranch');
     $githubTokenFile = carmaja_bootstrap_optional_path($config, 'githubTokenFile');
+    $commerceDsn = carmaja_bootstrap_optional_string($config, 'commerceDsn');
+    $commerceUser = carmaja_bootstrap_optional_string($config, 'commerceUser');
+    $commercePassword = carmaja_bootstrap_optional_string($config, 'commercePassword');
+    $commerceTlsCaPath = carmaja_bootstrap_optional_path($config, 'commerceTlsCaPath');
+    $commerceRequireTls = $config['commerceRequireTls'] ?? false;
+    $stripeSecretKey = carmaja_bootstrap_optional_string($config, 'stripeSecretKey');
+    $stripeWebhookSecret = carmaja_bootstrap_optional_string($config, 'stripeWebhookSecret');
+    $stripeWebhookPayloadKey = carmaja_bootstrap_optional_string($config, 'stripeWebhookPayloadKey');
+    $stripeWebhookPayloadKeyId = carmaja_bootstrap_optional_string($config, 'stripeWebhookPayloadKeyId');
+    $stripeAutoload = carmaja_bootstrap_optional_path($config, 'stripeAutoload');
+    $stripeSdkVersion = carmaja_bootstrap_optional_string($config, 'stripeSdkVersion');
+    $stripeApiVersion = carmaja_bootstrap_optional_string($config, 'stripeApiVersion');
+    $stripeWebhookApiVersion = carmaja_bootstrap_optional_string($config, 'stripeWebhookApiVersion');
+    $stripeSuccessUrl = carmaja_bootstrap_optional_string($config, 'stripeSuccessUrl');
+    $stripeCancelUrl = carmaja_bootstrap_optional_string($config, 'stripeCancelUrl');
+    $activeLegalBundleId = carmaja_bootstrap_optional_string($config, 'activeLegalBundleId');
+    $shippingMethodId = carmaja_bootstrap_optional_string($config, 'shippingMethodId');
+    $shippingPublicName = carmaja_bootstrap_optional_string($config, 'shippingPublicName');
+    $shippingAmountMinor = $config['shippingAmountMinor'] ?? null;
+    $shippingMinBusinessDays = $config['shippingMinBusinessDays'] ?? null;
+    $shippingMaxBusinessDays = $config['shippingMaxBusinessDays'] ?? null;
 
-    if (strlen($tokenPepper) < 32 || !is_bool($githubAdapterEnabled)) {
+    if (strlen($tokenPepper) < 32 || !is_bool($githubAdapterEnabled)
+        || !is_bool($commerceRequireTls)
+        || ($shippingAmountMinor !== null && !is_int($shippingAmountMinor))
+        || ($shippingMinBusinessDays !== null && !is_int($shippingMinBusinessDays))
+        || ($shippingMaxBusinessDays !== null && !is_int($shippingMaxBusinessDays))) {
         throw new CarmajaBootstrapException(
             'config_secret_invalid',
             'Private Laufzeitkonfiguration ist nicht sicher konfiguriert.'
@@ -343,6 +389,27 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'githubRepository' => $githubRepository,
         'githubBranch' => $githubBranch,
         'githubTokenFile' => $githubTokenFile,
+        'commerceDsn' => $commerceDsn,
+        'commerceUser' => $commerceUser,
+        'commercePassword' => $commercePassword,
+        'commerceTlsCaPath' => $commerceTlsCaPath,
+        'commerceRequireTls' => $commerceRequireTls,
+        'stripeSecretKey' => $stripeSecretKey,
+        'stripeWebhookSecret' => $stripeWebhookSecret,
+        'stripeWebhookPayloadKey' => $stripeWebhookPayloadKey,
+        'stripeWebhookPayloadKeyId' => $stripeWebhookPayloadKeyId,
+        'stripeAutoload' => $stripeAutoload,
+        'stripeSdkVersion' => $stripeSdkVersion,
+        'stripeApiVersion' => $stripeApiVersion,
+        'stripeWebhookApiVersion' => $stripeWebhookApiVersion,
+        'stripeSuccessUrl' => $stripeSuccessUrl,
+        'stripeCancelUrl' => $stripeCancelUrl,
+        'activeLegalBundleId' => $activeLegalBundleId,
+        'shippingMethodId' => $shippingMethodId,
+        'shippingPublicName' => $shippingPublicName,
+        'shippingAmountMinor' => $shippingAmountMinor,
+        'shippingMinBusinessDays' => $shippingMinBusinessDays,
+        'shippingMaxBusinessDays' => $shippingMaxBusinessDays,
         'configFile' => $configFile,
     ];
 }
@@ -427,6 +494,9 @@ function carmaja_bootstrap_prepare(?string $configPath = null): array
     carmaja_bootstrap_apply_config($config);
     require_once __DIR__ . '/product-api.php';
     require_once __DIR__ . '/product-api-v2.php';
+    require_once __DIR__ . '/commerce-bootstrap.php';
+    require_once __DIR__ . '/shop-checkout.php';
+    require_once __DIR__ . '/stripe-webhook.php';
 
     if ($config['githubAdapterEnabled']) {
         $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER'] =
@@ -468,6 +538,54 @@ function carmaja_bootstrap_route_request(): never
 
     if (($segments[0] ?? null) === 'api') {
         array_shift($segments);
+    }
+
+    if ($method === 'POST' && $segments === ['shop', 'v1', 'checkouts']) {
+        $config = carmaja_bootstrap_load_config();
+        $body = file_get_contents('php://input');
+        $request = is_string($body) && $body !== ''
+            ? json_decode($body, true, 16, JSON_THROW_ON_ERROR)
+            : null;
+        if (!is_array($request)) {
+            throw new CarmajaCommerceException('checkout_request_invalid', 'Checkout-Anfrage ist ungültig.', 422);
+        }
+        $commerce = carmaja_bootstrap_commerce($config);
+        $stripe = carmaja_bootstrap_stripe($config);
+        $service = new CarmajaCheckoutService($commerce, $stripe, $config);
+        $result = $service->start(
+            $request,
+            (string) ($_SERVER['HTTP_IDEMPOTENCY_KEY'] ?? '')
+        );
+        carmaja_bootstrap_send(201, ['ok' => true, 'checkout' => $result]);
+    }
+
+    if ($method === 'POST' && $segments === ['stripe', 'webhook']) {
+        $config = carmaja_bootstrap_load_config();
+        $rawBody = file_get_contents('php://input');
+        if (!is_string($rawBody)) {
+            throw new CarmajaStripeException('webhook_payload_invalid', 'Webhook-Payload ist ungültig.', 400);
+        }
+        $commerce = carmaja_bootstrap_commerce($config);
+        $endpoint = new CarmajaStripeWebhookEndpoint();
+        $result = $endpoint->receive(
+            $rawBody,
+            (string) ($_SERVER['HTTP_STRIPE_SIGNATURE'] ?? ''),
+            (string) ($config['stripeWebhookSecret'] ?? ''),
+            $config['environment'] === 'production',
+            static function (array $envelope, string $raw) use ($commerce, $config): void {
+                $encrypted = carmaja_stripe_encrypt_webhook_payload(
+                    $raw,
+                    (string) ($config['stripeWebhookPayloadKey'] ?? '')
+                );
+                $commerce->persistWebhookEnvelope(
+                    $envelope,
+                    $encrypted['ciphertext'],
+                    (string) ($config['stripeWebhookPayloadKeyId'] ?? '')
+                );
+            }
+        );
+        http_response_code((int) $result['status']);
+        exit;
     }
 
     if (($segments[0] ?? null) === 'v2') {
@@ -687,6 +805,15 @@ function carmaja_bootstrap_main(): never
             $error->statusCode,
             carmaja_api_error_response($error)
         );
+    } catch (CarmajaCommerceException|CarmajaStripeException $error) {
+        carmaja_bootstrap_send($error->httpStatus, [
+            'ok' => false,
+            'error' => [
+                'code' => $error->errorCode,
+                'message' => $error->getMessage(),
+                'fields' => (object) [],
+            ],
+        ]);
     } catch (Throwable) {
         carmaja_bootstrap_send_unavailable();
     }

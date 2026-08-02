@@ -1,9 +1,9 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
 Stand: 2026-08-02  
-Änderungsvermerk: AP1, AP2 und AP2a abgeschlossen; AP3 ist der nächste separat
-freizugebende Abschnitt. AP2a ergänzt technische Legal-Seiten und versionierte
-Test-/Produktions-Bundles; externe Rechtsfreigaben stehen aus.
+Änderungsvermerk: AP1, AP2 und AP2a abgeschlossen; AP3 ist technisch umgesetzt,
+die PHP-8.4-Abnahme ist bestanden und AP3 damit formal abgenommen.
+AP4 bleibt der nächste separat freizugebende Abschnitt.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`  
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 Produktionsziel: ausschließlich der eigene Carmaja-Shop; Vinted und andere
@@ -18,7 +18,8 @@ praktischen MySQL-8-/InnoDB-Backup-/Restore-Nachweis. Der akzeptierte
 V1-Restpunkt fehlender CA-/Hostidentitätsprüfung bleibt dokumentiert; eine
 aktive TLS-Sitzung ist Pflicht.
 
-AP2 ist vollständig abgenommen. AP2a ist technisch abgenommen. AP3, AP4, AP5,
+AP2 ist vollständig abgenommen. AP2a ist technisch abgenommen. AP3 ist
+implementiert und formal abgenommen; PHP-8.4-Lint, PHP-API- und Vertragsnachweise sind bestanden. AP4, AP5,
 AP6 und AP7 bleiben nicht freigegeben. Es gibt keinen produktiven Cutover, kein Deployment, keinen Push
 und keinen Zugriff auf Produktionsdaten.
 
@@ -134,6 +135,31 @@ Snapshot-Vergleich, statischer Testexport aller vier Seiten, Lint und
 Node-Tests. Die technische Abnahme ist in
 `website/docs/ap2a-acceptance.md` dokumentiert.
 
+### AP3 – Stripe Checkout, Webhooks und Worker
+
+Lieferumfang: gepinnte Stripe-SDK-/API-/Webhook-Versionen, serverseitiger Checkout mit
+Preis-, Versand- und Legal-Bundle-Snapshot, verpflichtende
+Terms-of-Service-Zustimmung, Webhook-Signaturprüfung, persistente Inbox vor
+`2xx`, exakte Sieben-Ereignis-Allowlist, Deduplizierung, ungeordnete Events,
+Leases, Retry, Stripe-Abgleich und Stripe-Metadaten-Outbox.
+
+Die exakte V1-Allowlist lautet:
+
+```text
+checkout.session.completed
+checkout.session.expired
+charge.refunded
+refund.updated
+charge.dispute.created
+charge.dispute.updated
+charge.dispute.closed
+```
+
+Die Implementierung liegt isoliert auf `feature/shop-ap3`. Node-Vertrags- und
+Website-Nachweise sowie PHP-8.4-Lint-/API-Nachweise sind bestanden; AP3 ist formal abgenommen. Es wurden weder Test-/Produktions-
+Secrets noch produktive Ressourcen verwendet. Die Details stehen in
+`website/docs/ap3-acceptance.md`.
+
 ## 5. Meilensteine und kritischer Pfad
 
 | Meilenstein | Stand | Nachweis |
@@ -146,8 +172,9 @@ Node-Tests. Die technische Abnahme ist in
 | AP2.4 | abgeschlossen | Dump, Restore, Manipulationserkennung, Struktur-/Inhaltsvergleich und Cleanup bestanden |
 | AP2.5 | abgeschlossen | AP2-Gesamtabnahme dokumentiert; AP3 und spätere Pakete nicht begonnen |
 | AP2a | abgeschlossen | Vier technische Legal-Seiten, Bundle-Hash-/Statusprüfung, Snapshot-Zuordnung, Testexport und Abnahmebericht bestanden |
+| AP3 | vollständig abgenommen | Stripe-Vertrag, Checkout-Parameter, Webhook-Inbox, Worker, PHP-8.4-Lint/API und Node-Nachweise bestanden |
 
-Kritischer Pfad: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5 → AP2a. AP2.1 blockiert
+Kritischer Pfad: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5 → AP2a → AP3. AP2.1 blockiert
 alle nachfolgenden praktischen Änderungen. Stripe-Checkout,
 Live-API, Website und Produktions-Cutover bleiben außerhalb dieses Pfades.
 
@@ -166,6 +193,8 @@ kein verbindliches Angebot.
 | **Gesamt AP2** | **94–148 h** |
 | AP2a technische Legal-Seiten/Bundles | 18–28 h |
 | **Gesamt AP2 + AP2a (Planungskorridor)** | **112–176 h** |
+| AP3 Stripe/Checkout/Webhooks/Worker | 32–52 h |
+| **Gesamt AP2 + AP2a + AP3 (Planungskorridor)** | **144–228 h** |
 
 | Wochenaufwand | technischer Korridor |
 | ---: | --- |
@@ -176,6 +205,11 @@ kein verbindliches Angebot.
 Für AP2 plus AP2a ergibt sich der kombinierte Planungskorridor von ca. 23–36
 Wochen bei 5 h/Woche, 12–18 Wochen bei 10 h/Woche und 8–12 Wochen bei
 15 h/Woche. Die Werte sind Planwerte, keine Ist-Arbeitszeiten.
+
+Für AP2 plus AP2a plus AP3 ergibt sich ein Planungskorridor von ca. 29–46
+Wochen bei 5 h/Woche, 15–23 Wochen bei 10 h/Woche und 10–16 Wochen bei
+15 h/Woche. Der PHP-8.4-Nachweis ist abgeschlossen; die Werte bleiben
+Planwerte und sind keine gemessenen Arbeitszeiten.
 
 Die Kalenderkorridore enthalten keinen externen IONOS-, Stripe-, Brevo- oder
 Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
@@ -188,9 +222,10 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP1 | freigegeben und lokal abgeschlossen |
 | AP2.1 bis AP2.5 | freigegeben und abgenommen |
 | AP2a | freigegeben und abgenommen |
-| AP3 und später | nicht freigegeben |
+| AP3 | freigegeben und vollständig abgenommen |
+| AP4 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 
-Der AP2- und AP2a-Praxisnachweis ist bestanden. Der exakt nächste zulässige
-Schritt ist die separate fachliche Freigabe von AP3. Ohne diese Freigabe bleiben
-AP3, Deployment und Produktions-Cutover unangetastet.
+Der AP2- und AP2a-Praxisnachweis ist bestanden. AP3 ist vollständig abgenommen.
+Der naechste zulaessige Schritt ist ausschliesslich AP4; Deployment und
+Produktions-Cutover bleiben unangetastet.

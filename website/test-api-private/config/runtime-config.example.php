@@ -24,4 +24,28 @@ return [
     'githubRepository' => 'Bumpers210/armband-rechner',
     'githubBranch' => 'test/product-management-beta',
     'githubTokenFile' => null,
+
+    // AP3-Stripe-/Commerce-Vertrag. Niemals in diese Beispielkonfiguration
+    // echte Zugangsdaten oder Schlüssel eintragen.
+    'commerceDsn' => null,
+    'commerceUser' => null,
+    'commercePassword' => null,
+    'commerceTlsCaPath' => null,
+    'commerceRequireTls' => true,
+    'stripeSecretKey' => null,
+    'stripeWebhookSecret' => null,
+    'stripeWebhookPayloadKey' => null,
+    'stripeWebhookPayloadKeyId' => null,
+    'stripeAutoload' => null,
+    'stripeSdkVersion' => '20.3.0',
+    'stripeApiVersion' => '2026-06-24.dahlia',
+    'stripeWebhookApiVersion' => '2026-06-24.dahlia',
+    'stripeSuccessUrl' => null,
+    'stripeCancelUrl' => null,
+    'activeLegalBundleId' => null,
+    'shippingMethodId' => null,
+    'shippingPublicName' => null,
+    'shippingAmountMinor' => null,
+    'shippingMinBusinessDays' => null,
+    'shippingMaxBusinessDays' => null,
 ];
