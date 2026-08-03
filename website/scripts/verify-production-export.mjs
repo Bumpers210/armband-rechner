@@ -46,9 +46,6 @@ export async function verifyProductionExport({
   await rm(path.join(verifiedOutputDirectory, "armbaender", "__empty.html"), { force: true });
 
   const sourceText = await readFile(verifiedSourceProductsPath, "utf8");
-  const sourceProducts = loadPublicProducts(verifiedSourceProductsPath, imageRoot);
-  assert.equal(sourceProducts.version, 1, "Produktquelldatei hat keine unterstuetzte Version.");
-
   assert.equal(
     /\b(?:testprodukt|testarmband|testbeschreibung|abnahme)\b/iu.test(sourceText),
     false,
@@ -60,12 +57,27 @@ export async function verifyProductionExport({
     "Testdomains duerfen nicht im Produktionsinhalt stehen.",
   );
 
+  const sourceProducts = loadPublicProducts(verifiedSourceProductsPath, imageRoot);
+  assert.equal(sourceProducts.version, 1, "Produktquelldatei hat keine unterstuetzte Version.");
+
   const files = await collectFiles(verifiedOutputDirectory);
   assert.equal(
     files.some((filePath) => path.basename(filePath) === "products.json"),
     false,
     "Die Produktquelldatei darf nicht exportiert werden.",
   );
+  if (sourceProducts.products.length === 0) {
+    assert.equal(
+      files.some((filePath) =>
+        path.relative(verifiedOutputDirectory, filePath)
+          .split(path.sep)
+          .join("/")
+          .startsWith("images/products/"),
+      ),
+      false,
+      "Ohne Produktdaten duerfen keine Produktbilder exportiert werden.",
+    );
+  }
 
   const textFiles = files.filter((filePath) => /\.(?:html|json|txt|xml)$/i.test(filePath));
   const exportText = (await Promise.all(textFiles.map((filePath) => readFile(filePath, "utf8")))).join("\n");

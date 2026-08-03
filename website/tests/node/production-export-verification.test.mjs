@@ -20,12 +20,6 @@ async function fixture() {
     path.join(websiteDirectory, "content", "products.json"),
     sourceProductsPath,
   );
-  await cp(
-    path.join(websiteDirectory, "public", "images", "products"),
-    imageRoot,
-    { recursive: true },
-  );
-
   return { root, outputDirectory, sourceProductsPath, imageRoot };
 }
 
@@ -43,9 +37,15 @@ test("Produktionsverifikation blockiert Test- und Abnahmetexte", async () => {
   const current = await fixture();
 
   try {
-    const products = JSON.parse(await readFile(current.sourceProductsPath, "utf8"));
-    products.products[0].description = "Testprodukt nur fuer die Abnahme";
-    await writeFile(current.sourceProductsPath, `${JSON.stringify(products)}\n`, "utf8");
+    const sourceText = await readFile(current.sourceProductsPath, "utf8");
+    await writeFile(
+      current.sourceProductsPath,
+      sourceText.replace(
+        '"version": 1',
+        '"version": 1,\n  "note": "Testprodukt nur fuer die Abnahme"',
+      ),
+      "utf8",
+    );
     await assert.rejects(
       verifyProductionExport(current),
       /Test- oder Abnahmedaten/,
