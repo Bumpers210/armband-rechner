@@ -2,7 +2,7 @@ import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 const ROOT_KEYS = ["products", "version"];
-const PRODUCT_KEYS = [
+const COMMON_PRODUCT_KEYS = [
   "careInstructions",
   "description",
   "images",
@@ -10,15 +10,26 @@ const PRODUCT_KEYS = [
   "metalElements",
   "sku",
   "slug",
-  "size",
   "status",
-  "stock",
   "title",
   "updatedAt",
+];
+const PRODUCT_V2_KEYS = [
+  ...COMMON_PRODUCT_KEYS,
+  "braceletSizeCm",
+  "pearlSizeMm",
+];
+const LEGACY_PRODUCT_KEYS = [
+  ...COMMON_PRODUCT_KEYS,
+  "size",
+  "stock",
   "vintedUrl",
 ];
-const REQUIRED_PRODUCT_KEYS = PRODUCT_KEYS.filter(
-  (key) => !["careInstructions", "vintedUrl"].includes(key),
+const REQUIRED_PRODUCT_V2_KEYS = PRODUCT_V2_KEYS.filter(
+  (key) => key !== "careInstructions",
+);
+const REQUIRED_LEGACY_PRODUCT_KEYS = LEGACY_PRODUCT_KEYS.filter(
+  (key) => !["careInstructions", "stock", "vintedUrl"].includes(key),
 );
 const IMAGE_KEYS = ["alt", "height", "isMain", "src", "width"];
 const PRODUCT_STATUSES = new Set([
@@ -32,14 +43,6 @@ const SKU_PATTERN = /^CP-\d{4}-\d{4}$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const IMAGE_PATTERN =
   /^\/images\/products\/(CP-\d{4}-\d{4})\/(0[1-5]\.jpg)$/;
-const REDIRECT_PARAMETERS = new Set([
-  "url",
-  "redirect",
-  "redirect_url",
-  "redirect_uri",
-  "next",
-  "target",
-]);
 
 export const publicProductName = "Carmaja-Perlen Armband";
 
@@ -98,36 +101,41 @@ function requireStringList(value, location, { allowEmpty = true } = {}) {
   return normalized;
 }
 
-export function validateVintedUrl(value, location = "vintedUrl") {
-  if (typeof value !== "string" || value.trim() !== value || value === "") {
-    fail(location, "Nichtleere URL erwartet.");
-  }
-
-  let parsed;
-
-  try {
-    parsed = new URL(value);
-  } catch {
-    fail(location, "Ungültige URL.");
-  }
-
-  if (
-    parsed.protocol !== "https:" ||
-    !["vinted.de", "www.vinted.de"].includes(parsed.hostname.toLowerCase()) ||
-    parsed.port !== "" ||
-    parsed.username !== "" ||
-    parsed.password !== ""
-  ) {
-    fail(location, "Nur direkte HTTPS-URLs auf vinted.de sind erlaubt.");
-  }
-
-  for (const key of parsed.searchParams.keys()) {
-    if (REDIRECT_PARAMETERS.has(key.toLowerCase())) {
-      fail(location, "Weiterleitungsparameter sind nicht erlaubt.");
-    }
+function requirePositiveNumber(value, location) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    fail(location, "Positive Zahl erwartet.");
   }
 
   return value;
+}
+
+export function formatMeasurement(value, unit, location = unit) {
+  const rounded = Math.round(
+    (requirePositiveNumber(value, location) + Number.EPSILON) * 1_000,
+  ) / 1_000;
+  const formatted = new Intl.NumberFormat("de-DE", {
+    maximumFractionDigits: 3,
+    minimumFractionDigits: 0,
+    useGrouping: false,
+  }).format(rounded);
+
+  return `${formatted} ${unit}`;
+}
+
+function parseLegacyBraceletSizeCm(value, location) {
+  const source = requireString(value, location, 60);
+  const match = source.match(/^(\d+(?:[.,]\d+)?)\s*(cm|mm)$/i);
+
+  if (!match) {
+    fail(location, "Legacy-Größe muss einen eindeutigen Wert in cm oder mm enthalten.");
+  }
+
+  const numericValue = Number(match[1].replace(",", "."));
+  const centimeters = match[2].toLowerCase() === "mm"
+    ? numericValue / 10
+    : numericValue;
+
+  return requirePositiveNumber(centimeters, location);
 }
 
 export function readJpegDimensions(filePath) {
@@ -199,33 +207,6 @@ export function readJpegDimensions(filePath) {
   }
 
   throw new Error("JPEG enthält keine gültigen Bildabmessungen.");
-}
-
-export function formatProductSize(value, location = "size") {
-  const source = requireString(value, location, 60);
-  const match = source.match(/^(\d+(?:[.,]\d+)?)\s*(cm|mm)$/i);
-
-  if (!match) {
-    fail(location, "Größe muss einen eindeutigen Wert in cm oder mm enthalten.");
-  }
-
-  const numericValue = Number(match[1].replace(",", "."));
-
-  if (!Number.isFinite(numericValue) || numericValue <= 0) {
-    fail(location, "Größe muss größer als null sein.");
-  }
-
-  const centimeters = match[2].toLowerCase() === "mm"
-    ? numericValue / 10
-    : numericValue;
-  const rounded = Math.round((centimeters + Number.EPSILON) * 1_000) / 1_000;
-  const formatted = new Intl.NumberFormat("de-DE", {
-    maximumFractionDigits: 3,
-    minimumFractionDigits: 0,
-    useGrouping: false,
-  }).format(rounded);
-
-  return `${formatted} cm`;
 }
 
 function validateImage(value, product, index, imageCount, imageRoot) {
@@ -305,7 +286,28 @@ function validateImage(value, product, index, imageCount, imageRoot) {
 function validateProduct(value, index, imageRoot) {
   const location = `products[${index}]`;
   const product = requireObject(value, location);
-  requireExactKeys(product, PRODUCT_KEYS, REQUIRED_PRODUCT_KEYS, location);
+  const hasV2Measurements =
+    "braceletSizeCm" in product || "pearlSizeMm" in product;
+  const hasLegacyFields = ["size", "stock", "vintedUrl"].some(
+    (field) => field in product,
+  );
+
+  if (hasV2Measurements) {
+    requireExactKeys(product, PRODUCT_V2_KEYS, REQUIRED_PRODUCT_V2_KEYS, location);
+
+    if (hasLegacyFields) {
+      fail(location, "V1-Felder sind bei Produktmodell V2 nicht erlaubt.");
+    }
+  } else {
+    // Übergangsmodus: V1-Quelldaten werden ausschließlich in V2-Ausgabewerte
+    // überführt. Ihre Legacy-Felder verlassen diese Funktion nie.
+    requireExactKeys(
+      product,
+      LEGACY_PRODUCT_KEYS,
+      REQUIRED_LEGACY_PRODUCT_KEYS,
+      location,
+    );
+  }
   const sku = requireString(product.sku, `${location}.sku`, 20);
   const sourceSlug = requireString(product.slug, `${location}.slug`, 180);
 
@@ -321,10 +323,6 @@ function validateProduct(value, index, imageRoot) {
     fail(`${location}.status`, "Unbekannter Produktstatus.");
   }
 
-  if (!Number.isInteger(product.stock) || product.stock < 0 || product.stock > 99) {
-    fail(`${location}.stock`, "Ganzzahl zwischen 0 und 99 erwartet.");
-  }
-
   if (!Array.isArray(product.images) || product.images.length < 1 || product.images.length > 5) {
     fail(`${location}.images`, "Ein bis fünf Bilder erwartet.");
   }
@@ -336,7 +334,12 @@ function validateProduct(value, index, imageRoot) {
   }
 
   requireString(product.title, `${location}.title`, 120);
-  const size = requireString(product.size, `${location}.size`, 60);
+  const braceletSizeCm = hasV2Measurements
+    ? requirePositiveNumber(product.braceletSizeCm, `${location}.braceletSizeCm`)
+    : parseLegacyBraceletSizeCm(product.size, `${location}.size`);
+  const pearlSizeMm = hasV2Measurements
+    ? requirePositiveNumber(product.pearlSizeMm, `${location}.pearlSizeMm`)
+    : null;
 
   if ("careInstructions" in product) {
     requireStringList(
@@ -361,9 +364,16 @@ function validateProduct(value, index, imageRoot) {
       product.metalElements,
       `${location}.metalElements`,
     ),
-    size,
-    displaySize: formatProductSize(size, `${location}.size`),
-    stock: product.stock,
+    braceletSizeCm,
+    displayBraceletSize: formatMeasurement(
+      braceletSizeCm,
+      "cm",
+      `${location}.braceletSizeCm`,
+    ),
+    pearlSizeMm,
+    displayPearlSize: pearlSizeMm === null
+      ? null
+      : formatMeasurement(pearlSizeMm, "mm", `${location}.pearlSizeMm`),
     status: product.status,
     images: product.images.map((image, imageIndex) =>
       validateImage(
@@ -376,13 +386,6 @@ function validateProduct(value, index, imageRoot) {
     ),
     updatedAt,
   };
-
-  if ("vintedUrl" in product) {
-    validated.vintedUrl = validateVintedUrl(
-      product.vintedUrl,
-      `${location}.vintedUrl`,
-    );
-  }
 
   return validated;
 }

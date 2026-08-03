@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import {
-  formatProductSize,
+  formatMeasurement,
   loadPublicProducts,
   publicProductName,
 } from "../../lib/public-products.mjs";
@@ -27,8 +27,8 @@ function product(overrides = {}) {
     description: "Ein Produkt für die isolierte Websiteprüfung.",
     materials: ["Rosenquarz"],
     metalElements: [],
-    size: "17 cm",
-    stock: 1,
+    braceletSizeCm: 17,
+    pearlSizeMm: 6,
     status: "published",
     images: [
       {
@@ -41,6 +41,20 @@ function product(overrides = {}) {
     ],
     careInstructions: ["Vor Wasser schützen"],
     updatedAt: "2026-07-28T10:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function legacyProduct(overrides = {}) {
+  const current = product();
+  delete current.braceletSizeCm;
+  delete current.pearlSizeMm;
+
+  return {
+    ...current,
+    size: "17,5 cm",
+    stock: 1,
+    vintedUrl: "https://legacy.invalid/items/123",
     ...overrides,
   };
 }
@@ -83,35 +97,19 @@ async function rejectsProduct(value, pattern, options) {
   }
 }
 
-test("erlaubte Statuswerte und optionale Vinted-URL werden akzeptiert", async () => {
+test("V2-Produkte akzeptieren nur freigegebene Statuswerte", async () => {
   for (const status of ["published", "sold", "disabled", "draft", "ready"]) {
-    const current = await fixture(
-      product({
-        status,
-        ...(status === "published"
-          ? { vintedUrl: "https://www.vinted.de/items/123-test" }
-          : {}),
-      }),
-    );
+    const current = await fixture(product({ status }));
 
     try {
-      const loaded = current.load();
-      assert.equal(loaded.products[0].status, status);
+      assert.equal(current.load().products[0].status, status);
     } finally {
       await rm(current.root, { recursive: true, force: true });
     }
   }
-
-  const withoutLink = await fixture(product());
-
-  try {
-    assert.equal("vintedUrl" in withoutLink.load().products[0], false);
-  } finally {
-    await rm(withoutLink.root, { recursive: true, force: true });
-  }
 });
 
-test("interne Bezeichnungen und Payload-Pflegetexte verlassen die Quelle nicht", async () => {
+test("der öffentliche V2-Output enthält nur freigegebene Metadaten", async () => {
   const current = await fixture(
     product({
       slug: "nur-interne-zuordnung",
@@ -123,7 +121,8 @@ test("interne Bezeichnungen und Payload-Pflegetexte verlassen die Quelle nicht",
           alt: "INTERNER-BILDTEXT",
         },
       ],
-      size: "175 mm",
+      braceletSizeCm: 17.5,
+      pearlSizeMm: 8,
     }),
   );
 
@@ -132,61 +131,82 @@ test("interne Bezeichnungen und Payload-Pflegetexte verlassen die Quelle nicht",
 
     assert.equal(loaded.publicTitle, publicProductName);
     assert.equal(loaded.slug, "cp-2026-0001");
-    assert.equal(loaded.size, "175 mm");
-    assert.equal(loaded.displaySize, "17,5 cm");
+    assert.equal(loaded.braceletSizeCm, 17.5);
+    assert.equal(loaded.displayBraceletSize, "17,5 cm");
+    assert.equal(loaded.pearlSizeMm, 8);
+    assert.equal(loaded.displayPearlSize, "8 mm");
     assert.equal(loaded.images[0].alt, `${publicProductName}, Bild 1 von 1`);
-    assert.equal("title" in loaded, false);
-    assert.equal("careInstructions" in loaded, false);
+
+    for (const privateField of [
+      "title",
+      "careInstructions",
+      "size",
+      "stock",
+      "vintedUrl",
+      "commerceInventory",
+    ]) {
+      assert.equal(privateField in loaded, false, `${privateField} wurde veröffentlicht.`);
+    }
   } finally {
     await rm(current.root, { recursive: true, force: true });
   }
 });
 
-test("Pflegehinweise aus älteren Payloads sind optional und werden ignoriert", async () => {
-  const value = product();
-  delete value.careInstructions;
-  const current = await fixture(value);
+test("Legacy-V1-Daten werden kontrolliert nach V2 überführt", async () => {
+  const current = await fixture(
+    legacyProduct({
+      size: "175 mm",
+      stock: 0,
+      vintedUrl: "javascript:legacy-only",
+    }),
+  );
 
   try {
-    assert.equal("careInstructions" in current.load().products[0], false);
+    const loaded = current.load().products[0];
+
+    assert.equal(loaded.braceletSizeCm, 17.5);
+    assert.equal(loaded.displayBraceletSize, "17,5 cm");
+    assert.equal(loaded.pearlSizeMm, null);
+    assert.equal(loaded.displayPearlSize, null);
+    assert.equal("stock" in loaded, false);
+    assert.equal("vintedUrl" in loaded, false);
   } finally {
     await rm(current.root, { recursive: true, force: true });
   }
 });
 
-test("Größen werden eindeutig und genau einmal in Zentimetern formatiert", () => {
-  assert.equal(formatProductSize("18 cm"), "18 cm");
-  assert.equal(formatProductSize("18cm"), "18 cm");
-  assert.equal(formatProductSize("17,50 cm"), "17,5 cm");
-  assert.equal(formatProductSize("180 mm"), "18 cm");
-  assert.equal(formatProductSize("175 mm"), "17,5 cm");
-  assert.throws(() => formatProductSize("18"), /eindeutigen Wert in cm oder mm/);
-  assert.throws(() => formatProductSize("18 cm cm"), /eindeutigen Wert/);
-  assert.throws(() => formatProductSize("unbekannt"), /eindeutigen Wert/);
+test("Größen werden mit kanonischen Einheiten formatiert", () => {
+  assert.equal(formatMeasurement(18, "cm", "braceletSizeCm"), "18 cm");
+  assert.equal(formatMeasurement(17.5, "cm", "braceletSizeCm"), "17,5 cm");
+  assert.equal(formatMeasurement(6, "mm", "pearlSizeMm"), "6 mm");
+  assert.throws(() => formatMeasurement(0, "mm", "pearlSizeMm"), /Positive Zahl/);
 });
 
-test("unbekannte und interne Produktfelder werden abgelehnt", async () => {
+test("interne und Commerce-Felder werden im öffentlichen Schema abgelehnt", async () => {
   await rejectsProduct(product({ draftId: "intern" }), /Unbekannte Felder: draftId/);
   await rejectsProduct(product({ salePrice: "99.00" }), /Unbekannte Felder: salePrice/);
+  await rejectsProduct(
+    product({ commerceInventory: { onHand: 1 } }),
+    /Unbekannte Felder: commerceInventory/,
+  );
   await rejectsProduct(
     product({ internalCalculation: { materialCosts: "10.00" } }),
     /Unbekannte Felder: internalCalculation/,
   );
 });
 
-test("ungültiger Status und ungültige Vinted-URLs werden abgelehnt", async () => {
+test("V2 lehnt Legacy-Felder und unvollständige Größen strikt ab", async () => {
   await rejectsProduct(product({ status: "archived" }), /Unbekannter Produktstatus/);
+  await rejectsProduct(product({ stock: 1 }), /Unbekannte Felder: stock/);
   await rejectsProduct(
-    product({ vintedUrl: "javascript:alert(1)" }),
-    /direkte HTTPS-URLs/,
+    product({ vintedUrl: "https://legacy.invalid/items/123" }),
+    /Unbekannte Felder: vintedUrl/,
   );
+  await rejectsProduct(product({ size: "17 cm" }), /Unbekannte Felder: size/);
+  await rejectsProduct(product({ pearlSizeMm: 0 }), /Positive Zahl/);
   await rejectsProduct(
-    product({ vintedUrl: "https://vinted.de.fremd.example/items/1" }),
-    /direkte HTTPS-URLs/,
-  );
-  await rejectsProduct(
-    product({ vintedUrl: "https://vinted.de/items/1?redirect=https://example.org" }),
-    /Weiterleitungsparameter/,
+    product({ braceletSizeCm: 17, pearlSizeMm: undefined }),
+    /Fehlende Felder: pearlSizeMm/,
   );
 });
 

@@ -30,17 +30,25 @@ test("oeffentliche Routen behandeln nur freigegebene Produktstatus", async () =>
 test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async () => {
   const publicProducts = await source("lib/public-products.mjs");
   const detail = await source("app/armbaender/[slug]/page.tsx");
+  const overview = await source("components/product-list.tsx");
   const gallery = await source("components/product-image-gallery.tsx");
   const careContent = await source("content/site-content.ts");
 
-  assert.match(publicProducts, /formatProductSize/);
+  assert.match(publicProducts, /formatMeasurement/);
+  assert.match(publicProducts, /braceletSizeCm/);
+  assert.match(publicProducts, /pearlSizeMm/);
   assert.match(publicProducts, /const ROOT_KEYS = \["products", "version"\]/);
-  assert.match(publicProducts, /const PRODUCT_KEYS = \[/);
+  assert.match(publicProducts, /const PRODUCT_V2_KEYS = \[/);
   assert.match(publicProducts, /publicTitle: publicProductName/);
   assert.match(publicProducts, /alt: `\$\{publicProductName\}, Bild/);
   assert.match(detail, /siteContent\.care\.items/);
   assert.doesNotMatch(detail, /product\.careInstructions/);
   assert.doesNotMatch(detail, /product\.title/);
+  assert.doesNotMatch(detail, /product\.stock/);
+  assert.match(detail, /displayBraceletSize/);
+  assert.match(detail, /displayPearlSize/);
+  assert.match(overview, /displayBraceletSize/);
+  assert.match(overview, /displayPearlSize/);
   assert.match(careContent, /care:/);
   assert.match(gallery, /role="dialog"/);
   assert.match(gallery, /const handleKeyDown/);

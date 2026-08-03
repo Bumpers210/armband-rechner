@@ -20,19 +20,22 @@ export type PublicProduct = {
   description: string;
   materials: string[];
   metalElements: string[];
-  size: string;
-  displaySize: string;
-  stock: number;
+  braceletSizeCm: number;
+  displayBraceletSize: string;
+  pearlSizeMm: number | null;
+  displayPearlSize: string | null;
   status: ProductStatus;
   images: ProductImage[];
   updatedAt: string;
-  vintedUrl?: string;
 };
 
 export const publicProductName: string;
 
-export function formatProductSize(value: unknown, location?: string): string;
-export function validateVintedUrl(value: unknown, location?: string): string;
+export function formatMeasurement(
+  value: unknown,
+  unit: string,
+  location?: string,
+): string;
 export function readJpegDimensions(filePath: string): {
   width: number;
   height: number;
