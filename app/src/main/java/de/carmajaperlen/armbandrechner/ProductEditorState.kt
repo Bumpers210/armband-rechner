@@ -8,6 +8,7 @@ enum class ProductEditorField {
     Materials,
     MetalElements,
     BraceletSize,
+    PearlSizeMm,
     Stock,
     ShortDescription,
     VintedUrl,
@@ -19,6 +20,7 @@ val ProductEditorField.errorKey: String
         ProductEditorField.Materials -> "materials"
         ProductEditorField.MetalElements -> "metalElements"
         ProductEditorField.BraceletSize -> "braceletSize"
+        ProductEditorField.PearlSizeMm -> "pearlSizeMm"
         ProductEditorField.Stock -> "stock"
         ProductEditorField.ShortDescription -> "shortDescription"
         ProductEditorField.VintedUrl -> "vintedUrl"
@@ -30,6 +32,7 @@ data class ProductDraftEditorState(
     val materials: TextFieldValue,
     val metalElements: TextFieldValue,
     val braceletSize: TextFieldValue,
+    val pearlSizeMm: TextFieldValue,
     val stock: TextFieldValue,
     val shortDescription: TextFieldValue,
     val vintedUrl: TextFieldValue,
@@ -40,6 +43,7 @@ data class ProductDraftEditorState(
             ProductEditorField.Materials -> copy(materials = value)
             ProductEditorField.MetalElements -> copy(metalElements = value)
             ProductEditorField.BraceletSize -> copy(braceletSize = value)
+            ProductEditorField.PearlSizeMm -> copy(pearlSizeMm = value)
             ProductEditorField.Stock -> copy(stock = value)
             ProductEditorField.ShortDescription -> copy(shortDescription = value)
             ProductEditorField.VintedUrl -> copy(vintedUrl = value)
@@ -52,6 +56,9 @@ data class ProductDraftEditorState(
             if (parsedStock == null || parsedStock !in 0..99) {
                 put("stock", "Bestand muss eine Zahl zwischen 0 und 99 sein.")
             }
+            if (pearlSizeMm.text.isNotBlank() && normalizeMeasurement(pearlSizeMm.text) == null) {
+                put("pearlSizeMm", "Perlendurchmesser muss größer als null sein.")
+            }
         }
     }
 
@@ -61,6 +68,10 @@ data class ProductDraftEditorState(
         require(parsedStock != null && parsedStock in 0..99) {
             "Bestand muss eine Zahl zwischen 0 und 99 sein."
         }
+        val pearlSizeMm = pearlSizeMm.text.takeIf(String::isNotBlank)?.let(::normalizeMeasurement)
+        require(pearlSizeMm != null || this.pearlSizeMm.text.isBlank()) {
+            "Perlendurchmesser muss größer als null sein."
+        }
 
         return draft.copy(
             name = name.text.trim(),
@@ -69,6 +80,7 @@ data class ProductDraftEditorState(
                 .map(::normalizeSpacerLabel)
                 .distinct(),
             braceletSize = braceletSize.text.trim(),
+            pearlSizeMm = pearlSizeMm.orEmpty(),
             stock = parsedStock,
             shortDescription = shortDescription.text.trim(),
             vintedUrl = vintedUrl.text.trim(),
@@ -83,6 +95,7 @@ data class ProductDraftEditorState(
                 materials = editorValue(draft.materials.toMultilineText()),
                 metalElements = editorValue(draft.metalElements.toMultilineText()),
                 braceletSize = editorValue(draft.braceletSize),
+                pearlSizeMm = editorValue(draft.pearlSizeMm),
                 stock = editorValue(draft.stock.toString()),
                 shortDescription = editorValue(draft.shortDescription),
                 vintedUrl = editorValue(draft.vintedUrl),

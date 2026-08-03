@@ -34,6 +34,7 @@ class ProductEditorStateTest {
                 "Spacer Blume\nEdelstahl Spacer Stern",
             ),
             braceletSize = TextFieldValue("  Groesse 17 cm  "),
+            pearlSizeMm = TextFieldValue(" 6,5 "),
             stock = TextFieldValue(" 2 "),
             shortDescription = TextFieldValue(
                 "  Persoenliche Anfertigung  auf Anfrage  ",
@@ -55,6 +56,7 @@ class ProductEditorStateTest {
             saved.metalElements,
         )
         assertEquals("Groesse 17 cm", saved.braceletSize)
+        assertEquals("6.5", saved.pearlSizeMm)
         assertEquals(2, saved.stock)
         assertEquals("Persoenliche Anfertigung  auf Anfrage", saved.shortDescription)
     }

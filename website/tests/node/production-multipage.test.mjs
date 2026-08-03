@@ -53,6 +53,9 @@ test("Navigation, Sitemap und Produktseiten bleiben erreichbar", async () => {
   assert.match(sitemap, /kontakt/);
   assert.match(productList, /ProductImageGallery/);
   assert.match(detail, /ProductImageGallery/);
+  assert.match(productList, /<dt>Umfang:<\/dt>/);
+  assert.match(productList, /<dt>Perlendurchmesser:<\/dt>/);
+  assert.match(productList, /product\.displayPearlSizeMm/);
 });
 
 test("gemeinsame Kontakt- und Armbänder-Weiterleitungen bleiben einheitlich", async () => {

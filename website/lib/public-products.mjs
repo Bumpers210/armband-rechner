@@ -8,6 +8,7 @@ const PRODUCT_KEYS = [
   "images",
   "materials",
   "metalElements",
+  "pearlSizeMm",
   "sku",
   "slug",
   "size",
@@ -18,7 +19,7 @@ const PRODUCT_KEYS = [
   "vintedUrl",
 ];
 const REQUIRED_PRODUCT_KEYS = PRODUCT_KEYS.filter(
-  (key) => !["careInstructions", "vintedUrl"].includes(key),
+  (key) => !["careInstructions", "pearlSizeMm", "vintedUrl"].includes(key),
 );
 const IMAGE_KEYS = ["alt", "height", "isMain", "src", "width"];
 const PRODUCT_STATUSES = new Set([
@@ -228,6 +229,20 @@ export function formatProductSize(value, location = "size") {
   return `${formatted} cm`;
 }
 
+export function formatPearlSizeMm(value, location = "pearlSizeMm") {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    fail(location, "Positive Zahl in Millimetern erwartet.");
+  }
+
+  const formatted = new Intl.NumberFormat("de-DE", {
+    maximumFractionDigits: 3,
+    minimumFractionDigits: 0,
+    useGrouping: false,
+  }).format(value);
+
+  return `${formatted} mm`;
+}
+
 function validateImage(value, product, index, imageCount, imageRoot) {
   const location = `products[${product.sku}].images[${index}]`;
   const image = requireObject(value, location);
@@ -381,6 +396,14 @@ function validateProduct(value, index, imageRoot) {
     validated.vintedUrl = validateVintedUrl(
       product.vintedUrl,
       `${location}.vintedUrl`,
+    );
+  }
+
+  if ("pearlSizeMm" in product) {
+    validated.pearlSizeMm = product.pearlSizeMm;
+    validated.displayPearlSizeMm = formatPearlSizeMm(
+      product.pearlSizeMm,
+      `${location}.pearlSizeMm`,
     );
   }
 

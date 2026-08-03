@@ -127,9 +127,15 @@ export default async function ProductDetailPage({
                 </dd>
               </div>
               <div>
-                <dt>Größe</dt>
+                <dt>Umfang:</dt>
                 <dd>{product.displaySize}</dd>
               </div>
+              {product.displayPearlSizeMm ? (
+                <div>
+                  <dt>Perlendurchmesser:</dt>
+                  <dd>{product.displayPearlSizeMm}</dd>
+                </div>
+              ) : null}
               <div>
                 <dt>Bestand</dt>
                 <dd>{product.stock > 0 && !isSold ? "verfügbar" : "nicht verfügbar"}</dd>

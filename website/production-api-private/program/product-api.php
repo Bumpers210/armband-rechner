@@ -1229,6 +1229,7 @@ function carmaja_api_validate_draft_payload(
         'materials',
         'metalElements',
         'braceletSize',
+        'pearlSizeMm',
         'stock',
         'shortDescription',
         'careInstructions',
@@ -1314,6 +1315,24 @@ function carmaja_api_validate_draft_payload(
         60,
         $status === 'ready'
     );
+    if (array_key_exists('pearlSizeMm', $payload)) {
+        $pearlSizeMm = $payload['pearlSizeMm'];
+
+        if ($pearlSizeMm === '' || $pearlSizeMm === null) {
+            unset($draft['pearlSizeMm']);
+        } elseif ((!is_int($pearlSizeMm) && !is_float($pearlSizeMm))
+            || !is_finite((float) $pearlSizeMm)
+            || (float) $pearlSizeMm <= 0) {
+            throw new CarmajaApiException(
+                422,
+                'Perlendurchmesser ist ungültig.',
+                ['pearlSizeMm' => 'Positive Zahl in Millimetern erwartet.'],
+                'validation_failed'
+            );
+        } else {
+            $draft['pearlSizeMm'] = (float) $pearlSizeMm;
+        }
+    }
     $draft['stock'] = $stock;
     $draft['shortDescription'] = carmaja_api_validate_string(
         $payload['shortDescription'] ?? '',
@@ -1538,6 +1557,10 @@ function carmaja_api_public_product_from_draft(array $draft): array
 
     if ($vintedUrl !== null) {
         $publicProduct['vintedUrl'] = $vintedUrl;
+    }
+
+    if (isset($draft['pearlSizeMm'])) {
+        $publicProduct['pearlSizeMm'] = (float) $draft['pearlSizeMm'];
     }
 
     return $publicProduct;

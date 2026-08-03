@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  formatPearlSizeMm,
   formatProductSize,
   loadPublicProducts,
   publicProductName,
@@ -151,6 +152,25 @@ test("Pflegehinweise aus älteren Payloads sind optional und werden ignoriert", 
     assert.equal("careInstructions" in current.load().products[0], false);
   } finally {
     await rm(current.root, { recursive: true, force: true });
+  }
+});
+
+test("Perlendurchmesser bleibt optional und wird ausschließlich als Millimeterwert formatiert", async () => {
+  const withDiameter = await fixture(product({ pearlSizeMm: 6.5 }));
+  const withoutDiameter = await fixture(product());
+
+  try {
+    const loaded = withDiameter.load().products[0];
+
+    assert.equal(loaded.pearlSizeMm, 6.5);
+    assert.equal(loaded.displayPearlSizeMm, "6,5 mm");
+    assert.equal("pearlSizeMm" in withoutDiameter.load().products[0], false);
+    assert.equal(formatPearlSizeMm(8), "8 mm");
+    assert.throws(() => formatPearlSizeMm("8 mm"), /Positive Zahl in Millimetern/);
+    assert.throws(() => formatPearlSizeMm(0), /Positive Zahl in Millimetern/);
+  } finally {
+    await rm(withDiameter.root, { recursive: true, force: true });
+    await rm(withoutDiameter.root, { recursive: true, force: true });
   }
 });
 

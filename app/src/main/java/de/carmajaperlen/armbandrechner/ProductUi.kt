@@ -63,6 +63,7 @@ data class ProductUiActions(
     val onMaterialsChange: (TextFieldValue) -> Unit = {},
     val onMetalElementsChange: (TextFieldValue) -> Unit = {},
     val onBraceletSizeChange: (TextFieldValue) -> Unit = {},
+    val onPearlSizeMmChange: (TextFieldValue) -> Unit = {},
     val onStockChange: (TextFieldValue) -> Unit = {},
     val onShortDescriptionChange: (TextFieldValue) -> Unit = {},
     val onVintedUrlChange: (TextFieldValue) -> Unit = {},
@@ -324,6 +325,9 @@ internal fun PublishedProductView(
             )
             Text("Perlen: ${draft.materials.joinToString(", ")}")
             Text("Spacer: ${draft.metalElements.joinToString(", ")}")
+            if (draft.pearlSizeMm.isNotBlank()) {
+                Text("Perlendurchmesser: ${draft.pearlSizeMm} mm")
+            }
             Text(draft.shortDescription)
             Text("Bilder: ${draft.images.size}/5")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -514,6 +518,16 @@ internal fun ProductDraftForm(
                     testTag = "product-size",
                     error = fieldErrors["braceletSize"],
                     busy = busy,
+                    modifier = Modifier.weight(1f),
+                )
+                ProductTextField(
+                    value = editor.pearlSizeMm,
+                    onValueChange = actions.onPearlSizeMmChange,
+                    label = "Perlendurchmesser (mm)",
+                    testTag = "product-pearl-size-mm",
+                    error = fieldErrors["pearlSizeMm"],
+                    busy = busy,
+                    keyboardType = KeyboardType.Decimal,
                     modifier = Modifier.weight(1f),
                 )
                 ProductTextField(
