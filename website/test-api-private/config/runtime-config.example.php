@@ -50,4 +50,8 @@ return [
     'shippingMaxBusinessDays' => null,
     // Exakte Website-Origin fÃ¼r den Ã¶ffentlichen Shop-CORS-Vertrag.
     'shopWebsiteOrigin' => 'https://test.carmaja-perlen.de',
+    // AP5-Brevo: im privaten runtime-config.php setzen, nie im Repository.
+    'brevoApiKey' => null,
+    'brevoSenderEmail' => null,
+    'brevoSenderName' => 'Carmaja-Perlen Shop',
 ];

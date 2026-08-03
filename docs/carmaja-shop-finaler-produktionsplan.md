@@ -3,7 +3,8 @@
 Stand: 2026-08-02  
 Änderungsvermerk: AP1, AP2, AP2a und AP3 abgeschlossen; AP4 ist technisch umgesetzt,
 die PHP-, Node-, Android- und Integrationsnachweise sind bestanden und AP4 damit formal abgenommen.
-AP5 bleibt der nächste separat freizugebende Abschnitt.
+AP5 ist technisch umgesetzt und formal abgenommen; AP6 bleibt der nächste
+separat freizugebende Abschnitt.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`  
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 Produktionsziel: ausschließlich der eigene Carmaja-Shop; Vinted und andere
@@ -20,8 +21,8 @@ aktive TLS-Sitzung ist Pflicht.
 
 AP2 ist vollständig abgenommen. AP2a ist technisch abgenommen. AP3 ist
 implementiert und formal abgenommen; PHP-8.4-Lint, PHP-API- und Vertragsnachweise sind bestanden. AP4 ist
-implementiert und formal abgenommen; AP5,
-AP6 und AP7 bleiben nicht freigegeben. Es gibt keinen produktiven Cutover, kein Deployment, keinen Push
+implementiert und formal abgenommen; AP5 ist technisch implementiert und
+abgenommen. AP6 und AP7 bleiben nicht freigegeben. Es gibt keinen produktiven Cutover, kein Deployment, keinen Push
 und keinen Zugriff auf Produktionsdaten.
 
 V1 bleibt ein direkter Einzelkauf ohne Warenkorb, Kundenkonto oder parallele
@@ -186,6 +187,29 @@ Der
 technische Abnahmebericht steht in `website/docs/ap4-acceptance.md`. Es wurden
 weder Test-/Produktionsdaten noch produktive Ressourcen verwendet.
 
+### AP5 – Minimaler Admin und Brevo-Outbox
+
+Lieferumfang: getrenntes Admin-Konto in `admin_users` mit Argon2id,
+serverseitigen `admin_sessions`, CSRF-Hash, kurzer Sitzungsdauer,
+fehlgeschlagenen-Anmelde-Sperren sowie CLI-Bootstrap, Passwortwechsel und
+Sitzungswiderruf über `/usr/bin/php8.4`. Die `/admin/v1`-Routen bieten nur
+Bestellübersicht/-detail, Versandmarkierung, Widerrufsprüfung,
+Wiedereinlagerungsbestätigung, Reviewübersicht und auditierte Mail-
+Neuversendung. Bestellung, Zahlung, Versand, Widerruf, Review und
+Wiedereinlagerung bleiben getrennte Statusachsen.
+
+Refunds werden im Carmaja-Admin ausschließlich angezeigt und über Stripe-
+Webhook/Abgleich synchronisiert; es existiert keine eigene Refund-Auslösung.
+Die Brevo-Outbox verwendet Deduplizierung, Provider-`Idempotency-Key`,
+zehnminütige Leases, die V1-Retry-Staffel und den terminalen Zustand
+`delivery_unknown` für unklare Provider-Ausgänge. Ein manueller Neuversand
+erzeugt erst nach Betreiberaktion einen neuen, auditierten Outbox-Eintrag.
+
+Die AP5-Migration ist `website/database/migrations/commerce-v1-ap5-admin.sql`;
+die technischen Nachweise stehen in `website/docs/ap5-acceptance.md`.
+AP5 wurde nur mit künstlichen Testdaten geprüft; AP6 und Produktion bleiben
+unangetastet.
+
 ## 5. Meilensteine und kritischer Pfad
 
 | Meilenstein | Stand | Nachweis |
@@ -200,8 +224,9 @@ weder Test-/Produktionsdaten noch produktive Ressourcen verwendet.
 | AP2a | abgeschlossen | Vier technische Legal-Seiten, Bundle-Hash-/Statusprüfung, Snapshot-Zuordnung, Testexport und Abnahmebericht bestanden |
 | AP3 | vollständig abgenommen | Stripe-Vertrag, Checkout-Parameter, Webhook-Inbox, Worker, PHP-8.4-Lint/API und Node-Nachweise bestanden |
 | AP4 | vollständig abgenommen | Shop-Sitzung, Token-/CSRF-/CORS-Vertrag, Live-API, Checkout-UI, Widerruf, Marktplatzentfernung und Sicherheitstests bestanden |
+| AP5 | vollständig abgenommen | getrenntes Admin-Konto, Session/CSRF/Sperre, Admin-Verwaltung, Brevo-Outbox, Refund-Anzeige und AP5-Nachweise bestanden |
 
-Kritischer Pfad: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5 → AP2a → AP3 → AP4. AP2.1 blockiert
+Kritischer Pfad: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5 → AP2a → AP3 → AP4 → AP5. AP2.1 blockiert
 alle nachfolgenden praktischen Änderungen. Stripe-Checkout,
 Live-API, Website und Produktions-Cutover bleiben außerhalb dieses Pfades.
 
@@ -224,6 +249,8 @@ kein verbindliches Angebot.
 | **Gesamt AP2 + AP2a + AP3 (Planungskorridor)** | **144–228 h** |
 | AP4 öffentliche Shop-API/UI/Widerruf | 36–58 h |
 | **Gesamt AP2 + AP2a + AP3 + AP4 (Planungskorridor)** | **180–286 h** |
+| AP5 Admin/Brevo/Abnahme | 24–40 h |
+| **Gesamt AP2 + AP2a + AP3 + AP4 + AP5 (Planungskorridor)** | **204–326 h** |
 
 | Wochenaufwand | technischer Korridor |
 | ---: | --- |
@@ -242,8 +269,12 @@ Planwerte und sind keine gemessenen Arbeitszeiten.
 
 Für AP2 plus AP2a plus AP3 plus AP4 ergibt sich ein Planungskorridor von ca.
 36–58 Wochen bei 5 h/Woche, 18–29 Wochen bei 10 h/Woche und 12–20 Wochen bei
-15 h/Woche. AP4 ist abgenommen; AP5 und spätere Pakete bleiben außerhalb dieser
-Schätzung.
+15 h/Woche. AP4 ist abgenommen.
+
+Für AP2 plus AP2a plus AP3 plus AP4 plus AP5 ergibt sich ein
+Planungskorridor von ca. 41–66 Wochen bei 5 h/Woche, 21–33 Wochen bei
+10 h/Woche und 14–22 Wochen bei 15 h/Woche. AP5 ist ein Planungskorridor und
+keine gemessene Ist-Arbeitszeit.
 
 Die Kalenderkorridore enthalten keinen externen IONOS-, Stripe-, Brevo- oder
 Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
@@ -258,9 +289,10 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP2a | freigegeben und abgenommen |
 | AP3 | freigegeben und vollständig abgenommen |
 | AP4 | freigegeben und vollständig abgenommen |
-| AP5 und später | nicht freigegeben |
+| AP5 | freigegeben und vollständig abgenommen |
+| AP6 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 
-Der AP2-, AP2a-, AP3- und AP4-Praxisnachweis ist bestanden. AP4 ist vollständig abgenommen.
-Der naechste zulaessige Schritt ist ausschliesslich AP5; Deployment und
+Der AP2-, AP2a-, AP3-, AP4- und AP5-Praxisnachweis ist bestanden. AP5 ist vollständig abgenommen.
+Der naechste zulaessige Schritt ist ausschliesslich AP6; Deployment und
 Produktions-Cutover bleiben unangetastet.

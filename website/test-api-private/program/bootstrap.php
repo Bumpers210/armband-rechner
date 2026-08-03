@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+// Load the admin exception before configuration errors are caught below.
+require_once __DIR__ . '/shop-admin.php';
+
 final class CarmajaBootstrapException extends RuntimeException
 {
     public function __construct(
@@ -173,6 +176,9 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'shippingMinBusinessDays',
         'shippingMaxBusinessDays',
         'shopWebsiteOrigin',
+        'brevoApiKey',
+        'brevoSenderEmail',
+        'brevoSenderName',
     ];
     $unknownKeys = array_diff(array_keys($config), $allowedKeys);
 
@@ -244,6 +250,9 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $shippingMinBusinessDays = $config['shippingMinBusinessDays'] ?? null;
     $shippingMaxBusinessDays = $config['shippingMaxBusinessDays'] ?? null;
     $shopWebsiteOrigin = carmaja_bootstrap_optional_string($config, 'shopWebsiteOrigin');
+    $brevoApiKey = carmaja_bootstrap_optional_string($config, 'brevoApiKey');
+    $brevoSenderEmail = carmaja_bootstrap_optional_string($config, 'brevoSenderEmail');
+    $brevoSenderName = carmaja_bootstrap_optional_string($config, 'brevoSenderName');
 
     if (strlen($tokenPepper) < 32 || !is_bool($githubAdapterEnabled)
         || !is_bool($commerceRequireTls)
@@ -413,6 +422,9 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'shippingMinBusinessDays' => $shippingMinBusinessDays,
         'shippingMaxBusinessDays' => $shippingMaxBusinessDays,
         'shopWebsiteOrigin' => $shopWebsiteOrigin,
+        'brevoApiKey' => $brevoApiKey,
+        'brevoSenderEmail' => $brevoSenderEmail,
+        'brevoSenderName' => $brevoSenderName,
         'configFile' => $configFile,
     ];
 }
@@ -500,6 +512,8 @@ function carmaja_bootstrap_prepare(?string $configPath = null): array
     require_once __DIR__ . '/commerce-bootstrap.php';
     require_once __DIR__ . '/shop-checkout.php';
     require_once __DIR__ . '/shop-public.php';
+    require_once __DIR__ . '/shop-admin.php';
+    require_once __DIR__ . '/ap5-worker.php';
     require_once __DIR__ . '/stripe-webhook.php';
 
     if ($config['githubAdapterEnabled']) {
@@ -545,6 +559,136 @@ function carmaja_bootstrap_route_request(): never
     }
 
     $isShopRoute = ($segments[0] ?? null) === 'shop' && ($segments[1] ?? null) === 'v1';
+    $isAdminRoute = ($segments[0] ?? null) === 'admin' && ($segments[1] ?? null) === 'v1';
+    if ($isAdminRoute) {
+        $adminConfig = carmaja_bootstrap_load_config();
+        carmaja_shop_apply_cors($adminConfig, $_SERVER['HTTP_ORIGIN'] ?? null);
+        carmaja_shop_set_no_store();
+        carmaja_shop_require_origin($adminConfig);
+        if ($method === 'OPTIONS') {
+            http_response_code(204);
+            exit;
+        }
+        $commerce = carmaja_bootstrap_commerce($adminConfig);
+        $adminSegments = array_slice($segments, 2);
+        if ($method === 'POST' && $adminSegments === ['login']) {
+            $body = carmaja_shop_admin_request_json();
+            $login = carmaja_shop_admin_login(
+                $commerce,
+                (string) ($body['username'] ?? ''),
+                (string) ($body['password'] ?? ''),
+                (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown')
+            );
+            carmaja_shop_admin_set_session_cookie($login['sessionToken'], time() + CARMAJA_SHOP_ADMIN_SESSION_TTL_SECONDS);
+            carmaja_bootstrap_send(200, [
+                'ok' => true,
+                'admin' => [
+                    'adminId' => $login['adminId'],
+                    'username' => $login['username'],
+                    'csrfToken' => $login['csrfToken'],
+                    'csrfExpiresAt' => $login['csrfExpiresAt'],
+                    'expiresAt' => $login['expiresAt'],
+                ],
+            ]);
+        }
+        $sessionToken = $_COOKIE['__Host-cmj_admin'] ?? '';
+        if (!is_string($sessionToken) || $sessionToken === '') {
+            throw new CarmajaShopAdminException('admin_session_required', 'Admin-Sitzung ist erforderlich.', 401);
+        }
+        $session = carmaja_shop_admin_authenticate($commerce, $sessionToken);
+        if ($method === 'GET' && $adminSegments === ['session']) {
+            carmaja_bootstrap_send(200, [
+                'ok' => true,
+                'admin' => ['adminId' => $session['admin_id'], 'username' => $session['username']],
+            ]);
+        }
+        if ($method === 'POST' && $adminSegments === ['logout']) {
+            carmaja_shop_admin_require_csrf($session, (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
+            $commerce->revokeAdminSession((string) $session['session_hash']);
+            carmaja_shop_admin_clear_session_cookie();
+            carmaja_bootstrap_send(200, ['ok' => true]);
+        }
+        $csrfRequired = static function () use ($session): void {
+            carmaja_shop_admin_require_csrf($session, (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
+        };
+        if ($method === 'GET' && $adminSegments === ['orders']) {
+            carmaja_bootstrap_send(200, ['ok' => true, 'orders' => $commerce->listAdminOrders()]);
+        }
+        if ($method === 'GET' && ($adminSegments[0] ?? null) === 'orders' && isset($adminSegments[1])
+            && count($adminSegments) === 2) {
+            $order = $commerce->loadAdminOrder((string) $adminSegments[1]);
+            if (!is_array($order)) {
+                throw new CarmajaCommerceException('order_not_found', 'Bestellung fehlt.', 404);
+            }
+            carmaja_bootstrap_send(200, ['ok' => true, 'order' => $order]);
+        }
+        if ($method === 'POST' && ($adminSegments[0] ?? null) === 'orders'
+            && ($adminSegments[2] ?? null) === 'ship' && count($adminSegments) === 3) {
+            $csrfRequired();
+            $body = carmaja_shop_admin_request_json();
+            $result = $commerce->markAdminShipmentShipped(
+                (string) $adminSegments[1],
+                is_string($body['trackingNumber'] ?? null) ? trim($body['trackingNumber']) : '',
+                (string) $session['admin_id'],
+                carmaja_shop_admin_correlation($body)
+            );
+            carmaja_bootstrap_send(200, ['ok' => true, 'shipment' => $result]);
+        }
+        if ($method === 'GET' && $adminSegments === ['refunds']) {
+            carmaja_bootstrap_send(200, ['ok' => true, 'refunds' => $commerce->listAdminRefunds()]);
+        }
+        if ($method === 'GET' && $adminSegments === ['mails']) {
+            carmaja_bootstrap_send(200, ['ok' => true, 'mails' => $commerce->listAdminMailOutbox()]);
+        }
+        if ($method === 'GET' && $adminSegments === ['reviews']) {
+            carmaja_bootstrap_send(200, ['ok' => true, 'reviews' => $commerce->listAdminReviewCases()]);
+        }
+        if ($method === 'POST' && ($adminSegments[0] ?? null) === 'reviews'
+            && ($adminSegments[2] ?? null) === 'status' && count($adminSegments) === 3) {
+            $csrfRequired();
+            $body = carmaja_shop_admin_request_json();
+            carmaja_bootstrap_send(200, ['ok' => true, 'review' => $commerce->updateAdminReviewCase(
+                (string) $adminSegments[1],
+                is_string($body['status'] ?? null) ? $body['status'] : '',
+                (string) $session['admin_id'],
+                carmaja_shop_admin_correlation($body)
+            )]);
+        }
+        if ($method === 'POST' && ($adminSegments[0] ?? null) === 'withdrawals'
+            && ($adminSegments[2] ?? null) === 'review' && count($adminSegments) === 3) {
+            $csrfRequired();
+            $body = carmaja_shop_admin_request_json();
+            carmaja_bootstrap_send(200, ['ok' => true, 'withdrawal' => $commerce->reviewAdminWithdrawal(
+                (string) $adminSegments[1], (string) $session['admin_id'], carmaja_shop_admin_correlation($body)
+            )]);
+        }
+        if ($method === 'POST' && ($adminSegments[0] ?? null) === 'restocks'
+            && ($adminSegments[2] ?? null) === 'confirm' && count($adminSegments) === 3) {
+            $csrfRequired();
+            $body = carmaja_shop_admin_request_json();
+            $idempotency = (string) ($_SERVER['HTTP_IDEMPOTENCY_KEY'] ?? '');
+            if (preg_match('/^[A-Za-z0-9._:-]{8,100}$/', $idempotency) !== 1) {
+                throw new CarmajaShopAdminException('admin_idempotency_required', 'Idempotenzschlüssel ist erforderlich.', 422);
+            }
+            carmaja_bootstrap_send(200, ['ok' => true, 'restock' => $commerce->confirmAdminRestock(
+                (string) $adminSegments[1], (string) $session['admin_id'],
+                carmaja_shop_admin_correlation($body), $idempotency
+            )]);
+        }
+        if ($method === 'POST' && ($adminSegments[0] ?? null) === 'mail'
+            && ($adminSegments[2] ?? null) === 'resend' && count($adminSegments) === 3) {
+            $csrfRequired();
+            $body = carmaja_shop_admin_request_json();
+            $mailId = filter_var($adminSegments[1], FILTER_VALIDATE_INT);
+            if ($mailId === false || $mailId < 1) {
+                throw new CarmajaShopAdminException('admin_mail_invalid', 'Mail-ID ist ungültig.', 422);
+            }
+            carmaja_bootstrap_send(202, ['ok' => true, 'mail' => $commerce->queueAdminMailResend(
+                (int) $mailId, (string) $session['admin_id'], carmaja_shop_admin_correlation($body)
+            )]);
+        }
+        throw new CarmajaShopAdminException('admin_endpoint_not_found', 'Admin-Endpunkt wurde nicht gefunden.', 404);
+    }
     if ($isShopRoute) {
         $shopConfig = carmaja_bootstrap_load_config();
         carmaja_shop_apply_cors($shopConfig, $_SERVER['HTTP_ORIGIN'] ?? null);
@@ -985,7 +1129,7 @@ function carmaja_bootstrap_main(): never
             $error->statusCode,
             carmaja_api_error_response($error)
         );
-    } catch (CarmajaCommerceException|CarmajaStripeException $error) {
+    } catch (CarmajaCommerceException|CarmajaStripeException|CarmajaShopAdminException $error) {
         carmaja_bootstrap_send($error->httpStatus, [
             'ok' => false,
             'error' => [

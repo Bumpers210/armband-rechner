@@ -1556,6 +1556,74 @@ final class CarmajaCommercePdo
         $statement->execute([$status, $delay, $error, $metadataId]);
     }
 
+    public function claimMailOutbox(int $batchSize, int $leaseSeconds = 600): array
+    {
+        $batchSize = max(1, min(20, $batchSize));
+        return $this->transaction(function (PDO $pdo) use ($batchSize, $leaseSeconds): array {
+            $rows = $pdo->query(
+                "SELECT mail_id, dedupe_key, message_type, order_id, recipient, payload, attempt_count
+                 FROM mail_outbox
+                 WHERE next_attempt_at <= UTC_TIMESTAMP(6)
+                   AND (status = 'queued' OR (status = 'processing' AND lease_until < UTC_TIMESTAMP(6)))
+                   AND attempt_count <= 5
+                 ORDER BY mail_id
+                 LIMIT {$batchSize} FOR UPDATE SKIP LOCKED"
+            )->fetchAll(PDO::FETCH_ASSOC);
+            $update = $pdo->prepare(
+                "UPDATE mail_outbox SET status = 'processing', attempt_count = attempt_count + 1,
+                        lease_until = DATE_ADD(UTC_TIMESTAMP(6), INTERVAL ? SECOND)
+                 WHERE mail_id = ?"
+            );
+            foreach ($rows as $row) {
+                $update->execute([$leaseSeconds, $row['mail_id']]);
+            }
+            return $rows;
+        });
+    }
+
+    /**
+     * Complete a Brevo attempt. `delivery_unknown` is deliberately terminal
+     * for automatic retries: a manual operator action must resolve ambiguity.
+     */
+    public function completeMailOutbox(
+        int $mailId,
+        string $outcome,
+        ?string $brevoMessageId = null,
+        ?string $error = null
+    ): void {
+        if ($outcome === 'sent') {
+            $this->pdo->prepare(
+                "UPDATE mail_outbox SET status = 'sent', brevo_message_id = ?,
+                        lease_until = NULL, last_error = NULL, sent_at = UTC_TIMESTAMP(6)
+                 WHERE mail_id = ?"
+            )->execute([$brevoMessageId, $mailId]);
+            return;
+        }
+        if ($outcome === 'delivery_unknown') {
+            $this->pdo->prepare(
+                "UPDATE mail_outbox SET status = 'delivery_unknown', lease_until = NULL,
+                        last_error = ? WHERE mail_id = ?"
+            )->execute([$error, $mailId]);
+            return;
+        }
+        $attempt = $this->pdo->prepare('SELECT attempt_count FROM mail_outbox WHERE mail_id = ?');
+        $attempt->execute([$mailId]);
+        $count = (int) $attempt->fetchColumn();
+        $delay = carmaja_commerce_retry_schedule($count - 1);
+        if ($delay === null) {
+            $this->pdo->prepare(
+                "UPDATE mail_outbox SET status = 'manual_review', lease_until = NULL,
+                        last_error = ? WHERE mail_id = ?"
+            )->execute([$error, $mailId]);
+            return;
+        }
+        $this->pdo->prepare(
+            "UPDATE mail_outbox SET status = 'queued', lease_until = NULL,
+                    next_attempt_at = DATE_ADD(UTC_TIMESTAMP(6), INTERVAL ? SECOND),
+                    last_error = ? WHERE mail_id = ?"
+        )->execute([$delay, $error, $mailId]);
+    }
+
     public function claimWorkerLease(string $workerName, string $leaseToken, int $leaseSeconds = 600): bool
     {
         return $this->transaction(function (PDO $pdo) use ($workerName, $leaseToken, $leaseSeconds): bool {
@@ -1588,5 +1656,412 @@ final class CarmajaCommercePdo
                 last_error = ? WHERE worker_name = ? AND lease_token = ?'
         );
         $statement->execute([$success ? 1 : 0, $error, $workerName, $leaseToken]);
+    }
+
+    /* AP5 shop-admin repository methods. They never perform network I/O. */
+    public function loadAdminUser(string $username): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT admin_id, username, password_hash, enabled FROM admin_users WHERE username = ?'
+        );
+        $statement->execute([$username]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
+    public function createAdminUser(string $adminId, string $username, string $passwordHash): void
+    {
+        $this->pdo->prepare(
+            'INSERT INTO admin_users (admin_id, username, password_hash, password_changed_at)
+             VALUES (?, ?, ?, UTC_TIMESTAMP(6))'
+        )->execute([$adminId, $username, $passwordHash]);
+    }
+
+    public function updateAdminPassword(string $username, string $passwordHash): void
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE admin_users SET password_hash = ?, password_changed_at = UTC_TIMESTAMP(6)
+             WHERE username = ?'
+        );
+        $statement->execute([$passwordHash, $username]);
+        if ($statement->rowCount() !== 1) {
+            throw new CarmajaCommerceException('admin_user_not_found', 'Admin-Konto fehlt.', 404);
+        }
+    }
+
+    public function revokeAdminSessions(string $adminId): int
+    {
+        $statement = $this->pdo->prepare(
+            'UPDATE admin_sessions SET revoked_at = UTC_TIMESTAMP(6)
+             WHERE admin_id = ? AND revoked_at IS NULL'
+        );
+        $statement->execute([$adminId]);
+        return $statement->rowCount();
+    }
+
+    public function loadAdminLoginAttempt(string $attemptKeyHash): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT attempt_key_hash, window_started_at, failed_count, locked_until
+             FROM admin_login_attempts WHERE attempt_key_hash = ?'
+        );
+        $statement->execute([$attemptKeyHash]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) ? $row : null;
+    }
+
+    public function recordAdminLoginFailure(
+        string $attemptKeyHash,
+        int $windowSeconds,
+        int $maxFailures
+    ): void {
+        $this->transaction(function (PDO $pdo) use ($attemptKeyHash, $windowSeconds, $maxFailures): void {
+            $select = $pdo->prepare(
+                'SELECT window_started_at, failed_count FROM admin_login_attempts
+                 WHERE attempt_key_hash = ? FOR UPDATE'
+            );
+            $select->execute([$attemptKeyHash]);
+            $row = $select->fetch(PDO::FETCH_ASSOC);
+            $expired = !is_array($row)
+                || strtotime((string) $row['window_started_at']) + $windowSeconds <= time();
+            $count = $expired ? 1 : ((int) $row['failed_count'] + 1);
+            $locked = $count >= $maxFailures ? gmdate('Y-m-d H:i:s', time() + $windowSeconds) : null;
+            if ($expired) {
+                $pdo->prepare(
+                    'INSERT INTO admin_login_attempts
+                         (attempt_key_hash, window_started_at, failed_count, locked_until)
+                     VALUES (?, UTC_TIMESTAMP(6), ?, ?)'
+                )->execute([$attemptKeyHash, $count, $locked]);
+            } else {
+                $pdo->prepare(
+                    'UPDATE admin_login_attempts SET failed_count = ?, locked_until = ?
+                     WHERE attempt_key_hash = ?'
+                )->execute([$count, $locked, $attemptKeyHash]);
+            }
+        });
+    }
+
+    public function clearAdminLoginFailures(string $attemptKeyHash): void
+    {
+        $this->pdo->prepare('DELETE FROM admin_login_attempts WHERE attempt_key_hash = ?')
+            ->execute([$attemptKeyHash]);
+    }
+
+    public function createAdminSession(
+        string $sessionHash,
+        string $adminId,
+        string $csrfHash,
+        string $expiresAt
+    ): void {
+        $this->pdo->prepare(
+            'INSERT INTO admin_sessions
+                (session_hash, admin_id, csrf_hash, expires_at, last_seen_at)
+             VALUES (?, ?, ?, ?, UTC_TIMESTAMP(6))'
+        )->execute([$sessionHash, $adminId, $csrfHash, $expiresAt]);
+    }
+
+    public function loadAdminSession(string $sessionHash): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT s.session_hash, s.admin_id, s.csrf_hash, s.expires_at,
+                    s.last_seen_at, s.revoked_at, u.username, u.enabled
+             FROM admin_sessions s JOIN admin_users u ON u.admin_id = s.admin_id
+             WHERE s.session_hash = ?'
+        );
+        $statement->execute([$sessionHash]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        return is_array($row) && (int) ($row['enabled'] ?? 0) === 1 ? $row : null;
+    }
+
+    public function touchAdminSession(string $sessionHash): void
+    {
+        $this->pdo->prepare(
+            'UPDATE admin_sessions SET last_seen_at = UTC_TIMESTAMP(6)
+             WHERE session_hash = ? AND revoked_at IS NULL'
+        )->execute([$sessionHash]);
+    }
+
+    public function revokeAdminSession(string $sessionHash): void
+    {
+        $this->pdo->prepare(
+            'UPDATE admin_sessions SET revoked_at = UTC_TIMESTAMP(6)
+             WHERE session_hash = ? AND revoked_at IS NULL'
+        )->execute([$sessionHash]);
+    }
+
+    public function addAdminAudit(
+        ?string $adminId,
+        string $action,
+        string $subjectType,
+        string $subjectId,
+        string $correlationId,
+        array $details = []
+    ): void {
+        $this->pdo->prepare(
+            'INSERT INTO admin_audit_events
+                (admin_id, action, subject_type, subject_id, correlation_id, details)
+             VALUES (?, ?, ?, ?, ?, ?)'
+        )->execute([
+            $adminId,
+            $action,
+            $subjectType,
+            $subjectId,
+            $correlationId,
+            json_encode($details, JSON_THROW_ON_ERROR),
+        ]);
+    }
+
+    public function listAdminOrders(int $limit = 50, int $offset = 0): array
+    {
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
+        $statement = $this->pdo->query(
+            "SELECT o.order_id, o.order_number, o.status, o.customer_email,
+                    o.customer_name, o.confirmed_at, p.status AS payment_status,
+                    p.verification_status, p.refund_status, p.dispute_status,
+                    s.status AS shipment_status, s.tracking_number
+             FROM orders o
+             JOIN payments p ON p.payment_id = o.payment_id
+             LEFT JOIN shipments s ON s.order_id = o.order_id
+             ORDER BY o.confirmed_at DESC LIMIT {$limit} OFFSET {$offset}"
+        );
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function loadAdminOrder(string $orderId): ?array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT o.*, p.status AS payment_status, p.verification_status,
+                    p.refund_status, p.dispute_status,
+                    s.status AS shipment_status, s.tracking_number, s.shipped_at,
+                    s.delivered_at
+             FROM orders o JOIN payments p ON p.payment_id = o.payment_id
+             LEFT JOIN shipments s ON s.order_id = o.order_id
+             WHERE o.order_id = ?'
+        );
+        $statement->execute([$orderId]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) {
+            return null;
+        }
+        $items = $this->pdo->prepare('SELECT * FROM order_items WHERE order_id = ? ORDER BY position_no');
+        $items->execute([$orderId]);
+        $row['items'] = $items->fetchAll(PDO::FETCH_ASSOC);
+        return $row;
+    }
+
+    public function markAdminShipmentShipped(
+        string $orderId,
+        string $trackingNumber,
+        string $adminId,
+        string $correlationId
+    ): array {
+        return $this->transaction(function (PDO $pdo) use ($orderId, $trackingNumber, $adminId, $correlationId): array {
+            $shipment = $pdo->prepare(
+                'SELECT s.shipment_id, s.status, o.customer_email, o.order_number
+                 FROM shipments s JOIN orders o ON o.order_id = s.order_id
+                 WHERE s.order_id = ? FOR UPDATE'
+            );
+            $shipment->execute([$orderId]);
+            $row = $shipment->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($row)) {
+                throw new CarmajaCommerceException('shipment_not_found', 'Versanddatensatz fehlt.', 404);
+            }
+            if (!in_array((string) $row['status'], ['ready', 'on_hold'], true)) {
+                throw new CarmajaCommerceException('shipment_transition_invalid', 'Versandstatus kann nicht geändert werden.', 409);
+            }
+            $pdo->prepare(
+                "UPDATE shipments SET status = 'shipped', tracking_number = ?, shipped_at = UTC_TIMESTAMP(6)
+                 WHERE shipment_id = ?"
+            )->execute([$trackingNumber !== '' ? $trackingNumber : null, $row['shipment_id']]);
+            $pdo->prepare(
+                'INSERT INTO mail_outbox
+                    (dedupe_key, message_type, order_id, recipient, payload, status, next_attempt_at)
+                 VALUES (?, \'shipping_confirmation\', ?, ?, ?, \'queued\', UTC_TIMESTAMP(6))
+                 ON DUPLICATE KEY UPDATE dedupe_key = dedupe_key'
+            )->execute([
+                'shipping-confirmation:' . $orderId,
+                $orderId,
+                $row['customer_email'],
+                json_encode(['orderNumber' => $row['order_number'], 'trackingNumber' => $trackingNumber], JSON_THROW_ON_ERROR),
+            ]);
+            $this->addAdminAudit($adminId, 'shipment_marked_shipped', 'order', $orderId, $correlationId, [
+                'trackingPresent' => $trackingNumber !== '',
+            ]);
+            return ['orderId' => $orderId, 'status' => 'shipped'];
+        });
+    }
+
+    public function queueAdminMailResend(
+        int $mailId,
+        string $adminId,
+        string $correlationId
+    ): array {
+        return $this->transaction(function (PDO $pdo) use ($mailId, $adminId, $correlationId): array {
+            $select = $pdo->prepare('SELECT * FROM mail_outbox WHERE mail_id = ? FOR UPDATE');
+            $select->execute([$mailId]);
+            $row = $select->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($row)) {
+                throw new CarmajaCommerceException('mail_not_found', 'Mail-Outboxeintrag fehlt.', 404);
+            }
+            $dedupeKey = 'manual-resend:' . $mailId . ':' . carmaja_commerce_new_id();
+            $pdo->prepare(
+                'INSERT INTO mail_outbox
+                    (dedupe_key, message_type, order_id, recipient, payload, status, next_attempt_at)
+                 VALUES (?, ?, ?, ?, ?, \'queued\', UTC_TIMESTAMP(6))'
+            )->execute([$dedupeKey, $row['message_type'], $row['order_id'], $row['recipient'], $row['payload']]);
+            $this->addAdminAudit($adminId, 'mail_manual_resend_queued', 'mail', (string) $mailId, $correlationId, [
+                'newDedupeKey' => $dedupeKey,
+            ]);
+            return ['mailId' => (int) $pdo->lastInsertId(), 'status' => 'queued'];
+        });
+    }
+
+    public function listAdminRefunds(int $limit = 100): array
+    {
+        $limit = max(1, min(100, $limit));
+        return $this->pdo->query(
+            "SELECT r.refund_id, r.stripe_refund_id, r.status, r.amount_minor, r.currency,
+                    r.updated_at, p.payment_id, p.order_id
+             FROM refunds r JOIN payments p ON p.payment_id = r.payment_id
+             ORDER BY r.updated_at DESC LIMIT {$limit}"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function listAdminMailOutbox(int $limit = 100): array
+    {
+        $limit = max(1, min(100, $limit));
+        return $this->pdo->query(
+            "SELECT mail_id, dedupe_key, message_type, order_id, recipient, status,
+                    attempt_count, next_attempt_at, lease_until, brevo_message_id,
+                    last_error, sent_at, updated_at
+             FROM mail_outbox ORDER BY updated_at DESC LIMIT {$limit}"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function listAdminReviewCases(int $limit = 100): array
+    {
+        $limit = max(1, min(100, $limit));
+        return $this->pdo->query(
+            "SELECT review_case_id, subject_type, subject_id, reason, status,
+                    details, opened_at, resolved_at, resolved_by
+             FROM review_cases ORDER BY opened_at DESC LIMIT {$limit}"
+        )->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function updateAdminReviewCase(
+        string $reviewCaseId,
+        string $status,
+        string $adminId,
+        string $correlationId
+    ): array {
+        if (!in_array($status, ['investigating', 'resolved', 'closed'], true)) {
+            throw new CarmajaCommerceException('review_status_invalid', 'Reviewstatus ist ungültig.', 422);
+        }
+        return $this->transaction(function (PDO $pdo) use ($reviewCaseId, $status, $adminId, $correlationId): array {
+            $select = $pdo->prepare('SELECT status FROM review_cases WHERE review_case_id = ? FOR UPDATE');
+            $select->execute([$reviewCaseId]);
+            $current = $select->fetchColumn();
+            if (!is_string($current)) {
+                throw new CarmajaCommerceException('review_not_found', 'Reviewcase fehlt.', 404);
+            }
+            $order = ['open' => 0, 'investigating' => 1, 'resolved' => 2, 'closed' => 3];
+            if (($order[$status] ?? -1) < ($order[$current] ?? 99)) {
+                throw new CarmajaCommerceException('review_transition_invalid', 'Reviewcase darf nicht zurückgesetzt werden.', 409);
+            }
+            $pdo->prepare(
+                'UPDATE review_cases SET status = ?, resolved_at = IF(? IN (\'resolved\', \'closed\'), UTC_TIMESTAMP(6), resolved_at),
+                        resolved_by = IF(? IN (\'resolved\', \'closed\'), ?, resolved_by)
+                 WHERE review_case_id = ?'
+            )->execute([$status, $status, $status, $adminId, $reviewCaseId]);
+            $this->addAdminAudit($adminId, 'review_case_status_changed', 'review_case', $reviewCaseId, $correlationId, [
+                'from' => $current,
+                'to' => $status,
+            ]);
+            return ['reviewCaseId' => $reviewCaseId, 'status' => $status];
+        });
+    }
+
+    public function reviewAdminWithdrawal(
+        string $withdrawalId,
+        string $adminId,
+        string $correlationId
+    ): array {
+        return $this->transaction(function (PDO $pdo) use ($withdrawalId, $adminId, $correlationId): array {
+            $select = $pdo->prepare('SELECT state, match_status FROM withdrawal_requests WHERE withdrawal_id = ? FOR UPDATE');
+            $select->execute([$withdrawalId]);
+            $row = $select->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($row)) {
+                throw new CarmajaCommerceException('withdrawal_not_found', 'Widerruf fehlt.', 404);
+            }
+            if ((string) $row['state'] !== 'submitted') {
+                throw new CarmajaCommerceException('withdrawal_transition_invalid', 'Widerruf ist nicht prüfbar.', 409);
+            }
+            $pdo->prepare("UPDATE withdrawal_requests SET state = 'reviewed' WHERE withdrawal_id = ?")
+                ->execute([$withdrawalId]);
+            $this->addAdminAudit($adminId, 'withdrawal_reviewed', 'withdrawal', $withdrawalId, $correlationId, [
+                'matchStatus' => $row['match_status'],
+            ]);
+            return ['withdrawalId' => $withdrawalId, 'state' => 'reviewed'];
+        });
+    }
+
+    public function confirmAdminRestock(
+        string $orderId,
+        string $adminId,
+        string $correlationId,
+        string $idempotencyKey
+    ): array {
+        return $this->transaction(function (PDO $pdo) use ($orderId, $adminId, $correlationId, $idempotencyKey): array {
+            $existing = $pdo->prepare('SELECT * FROM restocks WHERE order_id = ? FOR UPDATE');
+            $existing->execute([$orderId]);
+            $restock = $existing->fetch(PDO::FETCH_ASSOC);
+            if (is_array($restock) && $restock['state'] === 'completed') {
+                return ['orderId' => $orderId, 'state' => 'completed'];
+            }
+            $query = $pdo->prepare(
+                "SELECT o.order_id, oi.product_id, s.status AS shipment_status,
+                        w.state AS withdrawal_state
+                 FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
+                 JOIN shipments s ON s.order_id = o.order_id
+                 LEFT JOIN withdrawal_requests w ON w.order_id = o.order_id
+                 WHERE o.order_id = ? FOR UPDATE"
+            );
+            $query->execute([$orderId]);
+            $row = $query->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($row) || $row['shipment_status'] !== 'returned'
+                || !in_array((string) ($row['withdrawal_state'] ?? ''), ['reviewed', 'closed'], true)) {
+                throw new CarmajaCommerceException('restock_not_ready', 'Rückgabe ist noch nicht für Wiedereinlagerung freigegeben.', 409);
+            }
+            $inventory = $pdo->prepare('SELECT on_hand, inventory_version FROM commerce_inventory WHERE product_id = ? FOR UPDATE');
+            $inventory->execute([$row['product_id']]);
+            $current = $inventory->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($current) || (int) $current['on_hand'] !== 0) {
+                throw new CarmajaCommerceException('restock_inventory_conflict', 'Bestand ist nicht eindeutig wiedereinlagerbar.', 409);
+            }
+            $next = (int) $current['inventory_version'] + 1;
+            $pdo->prepare('UPDATE commerce_inventory SET on_hand = 1, inventory_version = ? WHERE product_id = ?')
+                ->execute([$next, $row['product_id']]);
+            $pdo->prepare(
+                'INSERT INTO inventory_adjustments
+                    (product_id, target_on_hand, previous_on_hand, inventory_version, reason,
+                     correlation_id, idempotency_key, actor_id)
+                 VALUES (?, 1, 0, ?, \'release_return\', ?, ?, ?)'
+            )->execute([$row['product_id'], $next, $correlationId, $idempotencyKey, $adminId]);
+            if (is_array($restock)) {
+                $pdo->prepare("UPDATE restocks SET state = 'completed', completed_at = UTC_TIMESTAMP(6) WHERE restock_id = ?")
+                    ->execute([$restock['restock_id']]);
+            } else {
+                $pdo->prepare(
+                    "INSERT INTO restocks
+                        (restock_id, order_id, product_id, state, reason, audit_correlation_id, completed_at)
+                     VALUES (?, ?, ?, 'completed', 'release_return', ?, UTC_TIMESTAMP(6))"
+                )->execute([carmaja_commerce_new_id(), $orderId, $row['product_id'], $correlationId]);
+            }
+            $this->addAdminAudit($adminId, 'restock_confirmed', 'order', $orderId, $correlationId, [
+                'productId' => $row['product_id'],
+            ]);
+            return ['orderId' => $orderId, 'state' => 'completed', 'inventoryVersion' => $next];
+        });
     }
 }

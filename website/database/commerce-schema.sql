@@ -321,7 +321,7 @@ CREATE TABLE IF NOT EXISTS mail_outbox (
     UNIQUE KEY uq_mail_dedupe (dedupe_key),
     KEY idx_mail_due (status, next_attempt_at, lease_until),
     CONSTRAINT chk_mail_status CHECK (status IN
-        ('queued', 'processing', 'sent', 'manual_review', 'failed'))
+        ('queued', 'processing', 'sent', 'delivery_unknown', 'manual_review', 'failed'))
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS stripe_metadata_outbox (
