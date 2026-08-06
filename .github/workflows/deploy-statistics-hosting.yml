@@ -1,0 +1,223 @@
+name: Deploy guarded production statistics hosting
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-statistics-hosting.yml'
+      - 'website/hosting/**'
+      - 'website/scripts/prepare-production-statistics-hosting-maintenance.sh'
+      - 'website/scripts/install-production-statistics-hosting.sh'
+      - 'website/tests/shell/production-statistics-hosting-maintenance-test.sh'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-statistics-hosting.yml'
+      - 'website/hosting/**'
+      - 'website/scripts/prepare-production-statistics-hosting-maintenance.sh'
+      - 'website/scripts/install-production-statistics-hosting.sh'
+      - 'website/tests/shell/production-statistics-hosting-maintenance-test.sh'
+  workflow_dispatch:
+    inputs:
+      expected_commit_sha:
+        description: Exakter Commit-SHA fuer die Statistikwartung
+        required: true
+        type: string
+      deployment_confirmation:
+        description: Zur Bestaetigung exakt INSTALL_PRODUCTION_STATISTICS eingeben
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carmaja-production-statistics-hosting
+  cancel-in-progress: false
+
+env:
+  CARMAJA_REPOSITORY: Bumpers210/armband-rechner
+  CARMAJA_PRODUCTION_BRANCH: main
+  CARMAJA_PRODUCTION_WEBROOT: /home/www/carmaja
+  CARMAJA_STATS_HOSTING_WORKSPACE: /home/www/carmaja-production-stats-maintenance
+  CARMAJA_PRODUCTION_PUBLISH_ENABLED: 'false'
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      release-id: ${{ steps.release.outputs.release-id }}
+      archive-sha256: ${{ steps.package.outputs.archive-sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - name: Validate exact statistics-hosting sources
+        working-directory: website
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')" = '8.4'
+          bash -n scripts/prepare-production-statistics-hosting-maintenance.sh scripts/install-production-statistics-hosting.sh tests/shell/production-statistics-hosting-maintenance-test.sh
+          php -l hosting/click.php
+          php -l hosting/pageview.php
+          php -l hosting/_internal/tracking.php
+          php -l hosting/statistik/index.php
+          bash tests/shell/production-statistics-hosting-maintenance-test.sh scripts/prepare-production-statistics-hosting-maintenance.sh scripts/install-production-statistics-hosting.sh
+          npm ci
+          npm run lint
+          npm test
+          npm run build
+      - id: release
+        name: Bind maintenance release to workflow commit
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          printf 'release-id=%s\n' "${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+      - id: package
+        name: Package only reviewed statistics-hosting files
+        working-directory: website
+        env:
+          CARMAJA_STATS_HOSTING_COMMIT_SHA: ${{ github.sha }}
+          CARMAJA_STATS_HOSTING_RELEASE_ID: ${{ steps.release.outputs.release-id }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          bash scripts/prepare-production-statistics-hosting-maintenance.sh
+          archive_sha256="$(sha256sum .statistics-hosting-package/statistics-hosting.tar.gz | awk '{print $1}')"
+          printf 'archive-sha256=%s\n' "$archive_sha256" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Carmaja-Produktion-Statistikhosting-${{ github.sha }}
+          path: |
+            website/.statistics-hosting-package/manifest.tsv
+            website/.statistics-hosting-package/statistics-hosting.tar.gz
+            website/.statistics-hosting-package/statistics-hosting.tar.gz.sha256
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
+  validate-manual-statistics-hosting:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: carmaja-production
+    env:
+      CARMAJA_EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+      CARMAJA_DEPLOYMENT_CONFIRMATION: ${{ inputs.deployment_confirmation }}
+      CARMAJA_STATS_HOSTING_GATE: ${{ vars.CARMAJA_PRODUCTION_STATISTICS_HOSTING_ENABLED }}
+    steps:
+      - name: Validate explicit production statistics hosting request
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_EVENT_NAME" = workflow_dispatch
+          test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
+          test "$GITHUB_REF" = refs/heads/main
+          test "$GITHUB_REF_NAME" = "$CARMAJA_PRODUCTION_BRANCH"
+          test "$CARMAJA_EXPECTED_COMMIT_SHA" = "$GITHUB_SHA"
+          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = INSTALL_PRODUCTION_STATISTICS
+          test "$CARMAJA_STATS_HOSTING_GATE" = true
+          test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = false
+
+  deploy-statistics-hosting:
+    needs: [validate-and-package, validate-manual-statistics-hosting]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.expected_commit_sha == github.sha && inputs.deployment_confirmation == 'INSTALL_PRODUCTION_STATISTICS' && vars.CARMAJA_PRODUCTION_STATISTICS_HOSTING_ENABLED == 'true' && needs.validate-manual-statistics-hosting.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: carmaja-production
+      url: https://www.carmaja-perlen.de/
+    env:
+      CARMAJA_PRODUCTION_SSH_HOST: ${{ secrets.CARMAJA_PRODUCTION_SSH_HOST }}
+      CARMAJA_PRODUCTION_SSH_USER: ${{ secrets.CARMAJA_PRODUCTION_SSH_USER }}
+      CARMAJA_PRODUCTION_SSH_PORT: ${{ secrets.CARMAJA_PRODUCTION_SSH_PORT }}
+      CARMAJA_PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.CARMAJA_PRODUCTION_SSH_PRIVATE_KEY }}
+      CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS }}
+      CARMAJA_RELEASE_ID: ${{ needs.validate-and-package.outputs.release-id }}
+      CARMAJA_ARCHIVE_SHA256: ${{ needs.validate-and-package.outputs.archive-sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: Carmaja-Produktion-Statistikhosting-${{ github.sha }}
+          path: website/.statistics-hosting-package
+      - name: Guard artifact and deployment identity
+        working-directory: website
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
+          test "$GITHUB_REF" = refs/heads/main
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$CARMAJA_RELEASE_ID" = "${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          test "$(sha256sum .statistics-hosting-package/statistics-hosting.tar.gz | awk '{print $1}')" = "$CARMAJA_ARCHIVE_SHA256"
+          test "$(awk -F '\t' '$1 == "file" { count += 1 } END { print count + 0 }' .statistics-hosting-package/manifest.tsv)" = 8
+          ! tar -tzf .statistics-hosting-package/statistics-hosting.tar.gz | grep -Ev '^(\./)?(\.htaccess|click\.php|pageview\.php|_internal/\.htaccess|_internal/tracking\.php|private-data/\.htaccess|statistik/\.htaccess|statistik/index\.php)$' | grep -q .
+      - name: Prepare pinned SSH client
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test -n "$CARMAJA_PRODUCTION_SSH_HOST"
+          test -n "$CARMAJA_PRODUCTION_SSH_USER"
+          test -n "$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY"
+          test -n "$CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS"
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s' "${CARMAJA_PRODUCTION_SSH_PRIVATE_KEY//$'\r'/}" | base64 --decode > "$HOME/.ssh/carmaja_statistics_hosting"
+          printf '%s\n' "${CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS//$'\r'/}" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/carmaja_statistics_hosting" "$HOME/.ssh/known_hosts"
+          ssh-keygen -y -f "$HOME/.ssh/carmaja_statistics_hosting" > /dev/null
+          ssh-keygen -F "$CARMAJA_PRODUCTION_SSH_HOST" -f "$HOME/.ssh/known_hosts" > /dev/null || ssh-keygen -F "[$CARMAJA_PRODUCTION_SSH_HOST]:${CARMAJA_PRODUCTION_SSH_PORT:-22}" -f "$HOME/.ssh/known_hosts" > /dev/null
+      - name: Verify production paths and PHP 8.4 without writes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i "$HOME/.ssh/carmaja_statistics_hosting" -p "${CARMAJA_PRODUCTION_SSH_PORT:-22}" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" "$CARMAJA_PRODUCTION_SSH_USER@$CARMAJA_PRODUCTION_SSH_HOST" 'set -eu; test "$(realpath /home/www/carmaja)" = /home/www/carmaja; test -w /home/www/carmaja; test -x /usr/bin/php8.4; command -v curl >/dev/null'
+      - name: Upload reviewed hosting package
+        working-directory: website
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          remote="$CARMAJA_PRODUCTION_SSH_USER@$CARMAJA_PRODUCTION_SSH_HOST"
+          ssh -i "$HOME/.ssh/carmaja_statistics_hosting" -p "${CARMAJA_PRODUCTION_SSH_PORT:-22}" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" "$remote" 'set -eu; umask 027; mkdir -p /home/www/carmaja-production-stats-maintenance/incoming; chmod 0750 /home/www/carmaja-production-stats-maintenance /home/www/carmaja-production-stats-maintenance/incoming'
+          scp -i "$HOME/.ssh/carmaja_statistics_hosting" -P "${CARMAJA_PRODUCTION_SSH_PORT:-22}" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" .statistics-hosting-package/statistics-hosting.tar.gz "$remote:carmaja-production-stats-maintenance/incoming/$CARMAJA_RELEASE_ID.tar.gz"
+          scp -i "$HOME/.ssh/carmaja_statistics_hosting" -P "${CARMAJA_PRODUCTION_SSH_PORT:-22}" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" .statistics-hosting-package/manifest.tsv "$remote:carmaja-production-stats-maintenance/incoming/$CARMAJA_RELEASE_ID.manifest.tsv"
+      - name: Install, smoke-test and record statistics hosting
+        working-directory: website
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          ssh -i "$HOME/.ssh/carmaja_statistics_hosting" -p "${CARMAJA_PRODUCTION_SSH_PORT:-22}" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" "$CARMAJA_PRODUCTION_SSH_USER@$CARMAJA_PRODUCTION_SSH_HOST" "CARMAJA_STATS_HOSTING_REPOSITORY='$CARMAJA_REPOSITORY' CARMAJA_STATS_HOSTING_BRANCH='main' CARMAJA_STATS_HOSTING_COMMIT_SHA='$GITHUB_SHA' CARMAJA_STATS_HOSTING_RELEASE_ID='$CARMAJA_RELEASE_ID' CARMAJA_STATS_HOSTING_ARCHIVE_SHA256='$CARMAJA_ARCHIVE_SHA256' CARMAJA_STATS_HOSTING_ACTION='install' bash -s" < scripts/install-production-statistics-hosting.sh
+
+  reset-statistics-hosting-gate:
+    needs: [validate-and-package, validate-manual-statistics-hosting, deploy-statistics-hosting]
+    if: ${{ github.event_name == 'workflow_dispatch' && always() && vars.CARMAJA_PRODUCTION_STATISTICS_HOSTING_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: carmaja-production
+    permissions: {}
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CARMAJA_PRODUCTION_VARIABLES_TOKEN }}
+          script: |
+            await github.rest.actions.updateRepoVariable({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'CARMAJA_PRODUCTION_STATISTICS_HOSTING_ENABLED',
+              value: 'false',
+            });

@@ -1,6 +1,6 @@
 # Produktions-Website-Statistik
 
-Die Hostingdateien unter `website/hosting/` werden nicht vom normalen Website-Deployment verwaltet. Sie werden ausschliesslich als einzeln gepruefte Produktionswartung installiert.
+Die Hostingdateien unter `website/hosting/` werden nicht vom normalen Website-Deployment verwaltet. Der separate Workflow `deploy-statistics-hosting.yml` installiert ausschliesslich die acht geprueften Statistikdateien nach einer manuellen Freigabe.
 
 ## Daten und Datenschutz
 
@@ -22,7 +22,9 @@ Der Ordner wird mit `0711`, die Passwortdatei mit `0604` angelegt, falls Apache 
 
 ## Kontrollierte Installation
 
-Vor der Installation alle betroffenen Produktionsdateien ausserhalb des Webroots sichern, Hashes und Rechte erfassen und den Rollback in einem isolierten Verzeichnis pruefen. Danach nur diese Dateien atomar austauschen:
+Der separate Workflow verlangt den exakten Main-Commit, die Bestaetigung `INSTALL_PRODUCTION_STATISTICS` und die kurzzeitig gesetzte Variable `CARMAJA_PRODUCTION_STATISTICS_HOSTING_ENABLED=true`. Er setzt die Variable abschliessend unabhaengig vom Ergebnis wieder auf `false`.
+
+Vor der Installation sichert der Installer alle betroffenen Produktionsdateien ausserhalb des Webroots, erfasst Hashes und Rechte und prueft den Rollback in einem isolierten Verzeichnis. Danach tauscht er nur diese Dateien dateiweise atomar aus:
 
 - `.htaccess`
 - `click.php`
@@ -33,7 +35,7 @@ Vor der Installation alle betroffenen Produktionsdateien ausserhalb des Webroots
 - `statistik/.htaccess`
 - `statistik/index.php`
 
-`private-data/clicks.json` bleibt erhalten und wird nicht manuell bearbeitet. Nach der Installation ist genau eine kontrollierte Seitenaufrufzaehlung zulaessig. Sie wird als technische Testzaehlung dokumentiert.
+`private-data/clicks.json` bleibt erhalten und wird nicht manuell bearbeitet. Der Smoketest speichert genau eine dokumentierte technische Seitenaufrufzaehlung fuer `/` mit `direct-unknown`; er prueft ausserdem den Basic-Auth-Schutz von `/statistik/`.
 
 ## Pruefungen
 
