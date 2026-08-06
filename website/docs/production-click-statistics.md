@@ -1,12 +1,14 @@
-# Produktions-Klickstatistik
+# Produktions-Website-Statistik
 
 Die Hostingdateien unter `website/hosting/` werden nicht vom normalen Website-Deployment verwaltet. Sie werden ausschliesslich als einzeln gepruefte Produktionswartung installiert.
 
 ## Daten und Datenschutz
 
-`CARMAJA_STATS_FILE` zeigt auf `/home/www/carmaja/private-data/clicks.json`. Die Statistik speichert ausschliesslich aggregierte Klickzahlen pro Tag, Monat, Ziel, Position und Produkt-Slug. IP-Adressen, Cookies, User-Agents und Referrer werden nicht gespeichert.
+`CARMAJA_STATS_FILE` zeigt auf `/home/www/carmaja/private-data/clicks.json`. Die Statistik speichert ausschliesslich aggregierte Linkklicks sowie Seitenaufrufe pro Tag und Monat. Seitenaufrufe werden nach kanonischer öffentlicher Route und beim Einstieg nach einer festen Herkunftskategorie gespeichert. IP-Adressen, Cookies, User-Agents, Referer und vollständige Herkunfts-URLs werden nicht gespeichert.
 
-Die Version-2-Statistik liest vorhandene Version-1-Daten weiter. Beim naechsten Schreibvorgang wird sie atomar mit einem stabilen Lock und einem Austausch im selben privaten Verzeichnis aktualisiert.
+Die Version-3-Statistik liest vorhandene Version-1- und Version-2-Daten weiter. Beim naechsten Schreibvorgang wird sie atomar mit einem stabilen Lock und einem Austausch im selben privaten Verzeichnis aktualisiert.
+
+`pageview.php` akzeptiert ausschliesslich `POST` mit einer tatsächlich veröffentlichten kanonischen Route. Die Website ordnet beim ersten Aufruf eines geladenen Dokuments nur einen der Kategorien `google`, `other-search`, `instagram`, `other-social`, `direct-unknown` oder `other-website` zu. Interne Navigationen erhalten keine neue Herkunftszuordnung.
 
 Produktklicks sind nur erlaubt, wenn die statische Detailseite fuer den CP-Slug existiert und dort der Vinted-Link gerendert wird. Damit sind `sold`, `disabled` und unbekannte Produkte ausgeschlossen.
 
@@ -24,14 +26,15 @@ Vor der Installation alle betroffenen Produktionsdateien ausserhalb des Webroots
 
 - `.htaccess`
 - `click.php`
+- `pageview.php`
 - `_internal/.htaccess`
 - `_internal/tracking.php`
 - `private-data/.htaccess`
 - `statistik/.htaccess`
 - `statistik/index.php`
 
-`private-data/clicks.json` bleibt erhalten und wird nicht manuell bearbeitet. Nach der Installation ist genau eine kontrollierte Produktklickzaehlung zulaessig. Sie bleibt als technische Testzaehlung bestehen, bis ein eigener versionierter Wartungsvorgang zum bereinigten Entfernen existiert.
+`private-data/clicks.json` bleibt erhalten und wird nicht manuell bearbeitet. Nach der Installation ist genau eine kontrollierte Seitenaufrufzaehlung zulaessig. Sie wird als technische Testzaehlung dokumentiert.
 
 ## Pruefungen
 
-Der PHP-Integrationstest liegt unter `website/tests/php/production-click-statistics-test.php`. Er prueft Weiterleitung, Parametergrenzen, Produktstatus, Datenmigration, parallele Schreibvorgaenge und den Ausschluss personenbezogener Felder. Auf IONOS muss er mit `/usr/bin/php8.4` in einer temporären Kopie ausgefuehrt werden.
+Der PHP-Integrationstest liegt unter `website/tests/php/production-click-statistics-test.php`. Er prueft Weiterleitung, Parametergrenzen, veröffentlichte Seiten, Herkunftskategorien, Datenmigration, parallele Schreibvorgaenge und den Ausschluss personenbezogener Felder. Auf IONOS muss er mit `/usr/bin/php8.4` in einer temporären Kopie ausgefuehrt werden.

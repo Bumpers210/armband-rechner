@@ -27,11 +27,15 @@ try {
 $today = new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin'));
 $todayKey = $today->format('Y-m-d');
 $lastThirtyDaysStart = $today->modify('-29 days')->format('Y-m-d');
+$todayPageviewTotal = carmaja_bucket_pageview_total($stats['days'][$todayKey] ?? []);
+$lastThirtyDaysPageviewTotal = 0;
+$overallPageviewTotal = 0;
+$pageviewSourceTotals = array_fill_keys(CARMAJA_PAGEVIEW_SOURCES, 0);
+$pageviewRouteTotals = [];
 $todayTotal = carmaja_bucket_total($stats['days'][$todayKey] ?? []);
 $lastThirtyDaysTotal = 0;
 $overallTotal = 0;
 $targetTotals = array_fill_keys(CARMAJA_TARGETS, 0);
-$positionTotals = array_fill_keys(CARMAJA_POSITIONS, 0);
 $productTotals = [];
 
 foreach ([$stats['days'], $stats['months']] as $periods) {
@@ -41,19 +45,27 @@ foreach ([$stats['days'], $stats['months']] as $periods) {
         }
 
         $overallTotal += carmaja_bucket_total($bucket);
+        $overallPageviewTotal += carmaja_bucket_pageview_total($bucket);
 
         foreach (CARMAJA_TARGETS as $target) {
             $targetTotals[$target] += carmaja_bucket_total($bucket, $target);
         }
 
-        foreach (CARMAJA_POSITIONS as $position) {
-            $positionTotals[$position] += carmaja_bucket_total($bucket, null, $position);
+        foreach (CARMAJA_PAGEVIEW_SOURCES as $source) {
+            $pageviewSourceTotals[$source] += carmaja_bucket_pageview_source_total($bucket, $source);
         }
 
         foreach ($bucket['products'] ?? [] as $slug => $count) {
             if (is_string($slug) && preg_match(CARMAJA_PRODUCT_SLUG_PATTERN, $slug)) {
                 $productTotals[$slug] = ($productTotals[$slug] ?? 0)
                     + carmaja_bucket_product_total($bucket, $slug);
+            }
+        }
+
+        foreach ($bucket['pageviews'] ?? [] as $path => $pageview) {
+            if (is_string($path) && is_array($pageview)) {
+                $pageviewRouteTotals[$path] = ($pageviewRouteTotals[$path] ?? 0)
+                    + carmaja_non_negative_count($pageview['views'] ?? 0);
             }
         }
     }
@@ -68,11 +80,22 @@ foreach ($stats['days'] as $date => $bucket) {
     }
 
     $lastThirtyDaysTotal += carmaja_bucket_total($bucket);
+    $lastThirtyDaysPageviewTotal += carmaja_bucket_pageview_total($bucket);
 }
 
 $dailyRows = $stats['days'];
 krsort($dailyRows);
 ksort($productTotals);
+arsort($pageviewRouteTotals);
+
+$pageviewSourceLabels = [
+    'google' => 'Google',
+    'other-search' => 'Andere Suche',
+    'instagram' => 'Instagram',
+    'other-social' => 'Weitere soziale Netzwerke',
+    'direct-unknown' => 'Direkt/Unbekannt',
+    'other-website' => 'Sonstige Website',
+];
 
 function carmaja_format_number(int $number): string
 {
@@ -113,23 +136,45 @@ function carmaja_escape(string $value): string
   </head>
   <body>
     <main>
-      <h1>Klickstatistik</h1>
-      <section aria-labelledby="summary-heading">
-        <h2 id="summary-heading">Übersicht</h2>
+      <h1>Website-Statistik</h1>
+      <section aria-labelledby="pageviews-heading">
+        <h2 id="pageviews-heading">Seitenaufrufe</h2>
         <div class="summary">
-          <div class="metric"><span>Klicks heute</span><strong><?= carmaja_format_number($todayTotal) ?></strong></div>
-          <div class="metric"><span>Letzte 30 Tage</span><strong><?= carmaja_format_number($lastThirtyDaysTotal) ?></strong></div>
-          <div class="metric"><span>Klicks insgesamt</span><strong><?= carmaja_format_number($overallTotal) ?></strong></div>
-          <?php foreach ($targetTotals as $target => $total): ?>
-            <div class="metric"><span><?= carmaja_escape(ucfirst($target)) ?></span><strong><?= carmaja_format_number($total) ?></strong></div>
+          <div class="metric"><span>Heute</span><strong><?= carmaja_format_number($todayPageviewTotal) ?></strong></div>
+          <div class="metric"><span>Letzte 30 Tage</span><strong><?= carmaja_format_number($lastThirtyDaysPageviewTotal) ?></strong></div>
+          <div class="metric"><span>Insgesamt</span><strong><?= carmaja_format_number($overallPageviewTotal) ?></strong></div>
+        </div>
+      </section>
+      <section aria-labelledby="sources-heading">
+        <h2 id="sources-heading">Herkunft beim Einstieg</h2>
+        <div class="positions">
+          <?php foreach ($pageviewSourceLabels as $source => $label): ?>
+            <div class="position"><strong><?= carmaja_escape($label) ?></strong><div><?= carmaja_format_number($pageviewSourceTotals[$source]) ?></div></div>
           <?php endforeach; ?>
         </div>
       </section>
-      <section aria-labelledby="positions-heading">
-        <h2 id="positions-heading">Positionen</h2>
-        <div class="positions">
-          <?php foreach (CARMAJA_POSITIONS as $position): ?>
-            <div class="position"><strong><?= carmaja_escape($position) ?></strong><div><?= carmaja_format_number($positionTotals[$position]) ?></div></div>
+      <section aria-labelledby="routes-heading">
+        <h2 id="routes-heading">Häufige Seiten</h2>
+        <div class="table-wrap">
+          <table><thead><tr><th>Route</th><th>Aufrufe</th></tr></thead><tbody>
+            <?php if ($pageviewRouteTotals === []): ?>
+              <tr><td class="empty" colspan="2">Noch keine Seitenaufrufe erfasst.</td></tr>
+            <?php else: ?>
+              <?php foreach ($pageviewRouteTotals as $path => $total): ?>
+                <tr><td><?= carmaja_escape($path) ?></td><td><?= carmaja_format_number($total) ?></td></tr>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </tbody></table>
+        </div>
+      </section>
+      <section aria-labelledby="links-heading">
+        <h2 id="links-heading">Externe Linkklicks</h2>
+        <div class="summary">
+          <div class="metric"><span>Heute</span><strong><?= carmaja_format_number($todayTotal) ?></strong></div>
+          <div class="metric"><span>Letzte 30 Tage</span><strong><?= carmaja_format_number($lastThirtyDaysTotal) ?></strong></div>
+          <div class="metric"><span>Insgesamt</span><strong><?= carmaja_format_number($overallTotal) ?></strong></div>
+          <?php foreach ($targetTotals as $target => $total): ?>
+            <div class="metric"><span><?= carmaja_escape(ucfirst($target)) ?></span><strong><?= carmaja_format_number($total) ?></strong></div>
           <?php endforeach; ?>
         </div>
       </section>
@@ -150,18 +195,16 @@ function carmaja_escape(string $value): string
       <section aria-labelledby="daily-heading">
         <h2 id="daily-heading">Tageswerte</h2>
         <div class="table-wrap">
-          <table><thead><tr><th>Datum</th><th>Vinted</th><th>Instagram</th><th>Hero</th><th>Galerie</th><th>Kontakt</th><th>Footer</th><th>Produkt</th><th>Gesamt</th></tr></thead><tbody>
+          <table><thead><tr><th>Datum</th><th>Seitenaufrufe</th><th>Vinted</th><th>Instagram</th><th>Linkklicks</th></tr></thead><tbody>
             <?php if ($dailyRows === []): ?>
-              <tr><td class="empty" colspan="9">Noch keine Klicks erfasst.</td></tr>
+              <tr><td class="empty" colspan="5">Noch keine Statistikdaten erfasst.</td></tr>
             <?php else: ?>
               <?php foreach ($dailyRows as $date => $bucket): ?>
                 <tr>
                   <td><?= carmaja_escape((string) $date) ?></td>
+                  <td><?= carmaja_format_number(carmaja_bucket_pageview_total($bucket)) ?></td>
                   <td><?= carmaja_format_number(carmaja_bucket_total($bucket, 'vinted')) ?></td>
                   <td><?= carmaja_format_number(carmaja_bucket_total($bucket, 'instagram')) ?></td>
-                  <?php foreach (CARMAJA_POSITIONS as $position): ?>
-                    <td><?= carmaja_format_number(carmaja_bucket_total($bucket, null, $position)) ?></td>
-                  <?php endforeach; ?>
                   <td><?= carmaja_format_number(carmaja_bucket_total($bucket)) ?></td>
                 </tr>
               <?php endforeach; ?>

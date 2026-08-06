@@ -395,11 +395,11 @@ export const siteContent: SiteContent = {
           ],
         },
         {
-          heading: "4. Messung ausgehender Linkklicks",
+          heading: "4. Aggregierte Website-Statistik",
           blocks: [
             {
               type: "paragraph",
-              text: "Wir zählen in zusammengefasster Form, wie häufig Links zu unserem Instagram-Profil angeklickt werden.",
+              text: "Wir zählen in zusammengefasster Form Seitenaufrufe und Klicks auf externe Links, um zu erkennen, welche Inhalte und Angebote für Besucher relevant sind.",
             },
             {
               type: "paragraph",
@@ -408,15 +408,15 @@ export const siteContent: SiteContent = {
             {
               type: "list",
               items: [
-                "das Ziel des Links, beispielsweise Instagram",
-                "die Position des Links auf der Website",
-                "den Kalendertag des Klicks",
-                "die zusammengefasste Anzahl der Klicks",
+                "die aufgerufene öffentliche Seite und ihre zusammengefasste Anzahl von Aufrufen",
+                "beim Einstieg eine grobe Herkunftskategorie, etwa Google, Instagram, andere Suche, weitere soziale Netzwerke, Direkt/Unbekannt oder sonstige Website",
+                "bei externen Links das Ziel und die zusammengefasste Anzahl der Klicks",
+                "den Kalendertag der Messung",
               ],
             },
             {
               type: "paragraph",
-              text: "Wir speichern für diese Auswertung keine vollständigen IP-Adressen, Cookies, individuellen Besucherkennungen, Referrer-Adressen, Browserkennungen oder Nutzerprofile. Die Auswertung ermöglicht keine Identifizierung einzelner Besucher.",
+              text: "Wir speichern für diese Auswertung keine vollständigen IP-Adressen, Cookies, individuellen Besucherkennungen, Referrer-Adressen, Browserkennungen oder Nutzerprofile. Herkunft wird nur im Browser einer festen Kategorie zugeordnet; vollständige Herkunfts-URLs oder Domains werden nicht übertragen oder gespeichert. Die Auswertung ermöglicht keine Identifizierung einzelner Besucher.",
             },
             {
               type: "paragraph",

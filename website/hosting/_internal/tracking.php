@@ -2,10 +2,19 @@
 
 declare(strict_types=1);
 
-const CARMAJA_STATS_VERSION = 2;
+const CARMAJA_STATS_VERSION = 3;
 const CARMAJA_TARGETS = ['vinted', 'instagram'];
 const CARMAJA_POSITIONS = ['hero', 'gallery', 'contact', 'footer', 'product'];
 const CARMAJA_PRODUCT_SLUG_PATTERN = '/^cp-\d{4}-\d{4}$/';
+const CARMAJA_PAGEVIEW_SOURCES = [
+    'google',
+    'other-search',
+    'instagram',
+    'other-social',
+    'direct-unknown',
+    'other-website',
+];
+const CARMAJA_PAGE_PATH_PATTERN = '#^/(?:[a-z0-9]+(?:-[a-z0-9]+)*/)*$#';
 
 function carmaja_empty_stats(): array
 {
@@ -38,6 +47,51 @@ function carmaja_product_pages_root(): string
     }
 
     return dirname(__DIR__) . DIRECTORY_SEPARATOR . 'armbaender';
+}
+
+function carmaja_page_root(): string
+{
+    $configuredPath = getenv('CARMAJA_PAGE_ROOT');
+
+    if (is_string($configuredPath) && trim($configuredPath) !== '') {
+        return trim($configuredPath);
+    }
+
+    $documentRoot = $_SERVER['DOCUMENT_ROOT'] ?? null;
+
+    if (is_string($documentRoot) && trim($documentRoot) !== '') {
+        return trim($documentRoot);
+    }
+
+    return dirname(__DIR__);
+}
+
+function carmaja_is_canonical_page_path(string $path): bool
+{
+    return strlen($path) <= 240
+        && preg_match(CARMAJA_PAGE_PATH_PATTERN, $path) === 1;
+}
+
+function carmaja_is_published_page_path(string $path): bool
+{
+    if (!carmaja_is_canonical_page_path($path)) {
+        return false;
+    }
+
+    $root = realpath(carmaja_page_root());
+
+    if ($root === false || !is_dir($root)) {
+        return false;
+    }
+
+    $relativePath = $path === '/'
+        ? 'index.html'
+        : trim($path, '/') . DIRECTORY_SEPARATOR . 'index.html';
+    $page = realpath($root . DIRECTORY_SEPARATOR . $relativePath);
+
+    return $page !== false
+        && is_file($page)
+        && str_starts_with($page, $root . DIRECTORY_SEPARATOR);
 }
 
 function carmaja_non_negative_count(mixed $value): int
@@ -83,6 +137,39 @@ function carmaja_normalize_bucket(mixed $value): array
 
             if ($normalizedCount > 0) {
                 $bucket['products'][$slug] = $normalizedCount;
+            }
+        }
+    }
+
+    $pageviews = $value['pageviews'] ?? null;
+
+    if (is_array($pageviews)) {
+        foreach ($pageviews as $path => $pageview) {
+            if (!is_string($path)
+                || !carmaja_is_canonical_page_path($path)
+                || !is_array($pageview)) {
+                continue;
+            }
+
+            $views = carmaja_non_negative_count($pageview['views'] ?? 0);
+
+            if ($views <= 0) {
+                continue;
+            }
+
+            $bucket['pageviews'][$path]['views'] = $views;
+            $sources = $pageview['sources'] ?? null;
+
+            if (!is_array($sources)) {
+                continue;
+            }
+
+            foreach (CARMAJA_PAGEVIEW_SOURCES as $source) {
+                $count = carmaja_non_negative_count($sources[$source] ?? 0);
+
+                if ($count > 0) {
+                    $bucket['pageviews'][$path]['sources'][$source] = $count;
+                }
             }
         }
     }
@@ -157,6 +244,27 @@ function carmaja_increment_bucket(
     }
 }
 
+function carmaja_increment_pageview(
+    array &$bucket,
+    string $path,
+    ?string $source = null,
+    int $amount = 1,
+): void {
+    if (!carmaja_is_canonical_page_path($path) || $amount <= 0) {
+        return;
+    }
+
+    $bucket['pageviews'][$path]['views'] = carmaja_non_negative_count(
+        $bucket['pageviews'][$path]['views'] ?? 0,
+    ) + $amount;
+
+    if ($source !== null && in_array($source, CARMAJA_PAGEVIEW_SOURCES, true)) {
+        $bucket['pageviews'][$path]['sources'][$source] = carmaja_non_negative_count(
+            $bucket['pageviews'][$path]['sources'][$source] ?? 0,
+        ) + $amount;
+    }
+}
+
 function carmaja_merge_bucket(array &$destination, array $source): void
 {
     $source = carmaja_normalize_bucket($source);
@@ -176,6 +284,27 @@ function carmaja_merge_bucket(array &$destination, array $source): void
             $destination['products'][$slug] = carmaja_non_negative_count(
                 $destination['products'][$slug] ?? 0,
             ) + $amount;
+        }
+    }
+
+    foreach ($source['pageviews'] ?? [] as $path => $pageview) {
+        if (!is_string($path) || !is_array($pageview)) {
+            continue;
+        }
+
+        carmaja_increment_pageview(
+            $destination,
+            $path,
+            null,
+            carmaja_non_negative_count($pageview['views'] ?? 0),
+        );
+
+        foreach ($pageview['sources'] ?? [] as $sourceName => $amount) {
+            if (in_array($sourceName, CARMAJA_PAGEVIEW_SOURCES, true)) {
+                $destination['pageviews'][$path]['sources'][$sourceName] = carmaja_non_negative_count(
+                    $destination['pageviews'][$path]['sources'][$sourceName] ?? 0,
+                ) + carmaja_non_negative_count($amount);
+            }
         }
     }
 }
@@ -299,6 +428,23 @@ function carmaja_record_click(string $target, string $position, ?string $product
     });
 }
 
+function carmaja_record_pageview(string $path, ?string $source = null): void
+{
+    $statsPath = carmaja_stats_file_path();
+
+    carmaja_with_stats_lock($statsPath, LOCK_EX, static function () use ($statsPath, $path, $source): void {
+        $contents = is_file($statsPath) ? file_get_contents($statsPath) : '';
+        $stats = carmaja_decode_stats(is_string($contents) ? $contents : '');
+        $today = new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin'));
+        $todayKey = $today->format('Y-m-d');
+
+        carmaja_archive_expired_days($stats, $today);
+        $stats['days'][$todayKey] ??= [];
+        carmaja_increment_pageview($stats['days'][$todayKey], $path, $source);
+        carmaja_write_stats_atomically($statsPath, $stats);
+    });
+}
+
 function carmaja_read_stats(): array
 {
     $statsPath = carmaja_stats_file_path();
@@ -340,6 +486,36 @@ function carmaja_bucket_total(array $bucket, ?string $target = null, ?string $po
 function carmaja_bucket_product_total(array $bucket, string $slug): int
 {
     return carmaja_non_negative_count($bucket['products'][$slug] ?? 0);
+}
+
+function carmaja_bucket_pageview_total(array $bucket): int
+{
+    $total = 0;
+
+    foreach ($bucket['pageviews'] ?? [] as $pageview) {
+        if (is_array($pageview)) {
+            $total += carmaja_non_negative_count($pageview['views'] ?? 0);
+        }
+    }
+
+    return $total;
+}
+
+function carmaja_bucket_pageview_source_total(array $bucket, string $source): int
+{
+    if (!in_array($source, CARMAJA_PAGEVIEW_SOURCES, true)) {
+        return 0;
+    }
+
+    $total = 0;
+
+    foreach ($bucket['pageviews'] ?? [] as $pageview) {
+        if (is_array($pageview)) {
+            $total += carmaja_non_negative_count($pageview['sources'][$source] ?? 0);
+        }
+    }
+
+    return $total;
 }
 
 function carmaja_is_published_product_slug(string $slug): bool
