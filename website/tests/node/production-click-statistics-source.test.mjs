@@ -21,13 +21,15 @@ test("Produktions-Klickhandler begrenzt Parameter und veroeffentlichte Produktli
 test("Tracking verwendet einen stabilen Lock und atomaren Austausch", () => {
   const source = readSource("hosting/_internal/tracking.php");
 
-  assert.match(source, /CARMAJA_STATS_VERSION = 2/);
+  assert.match(source, /CARMAJA_STATS_VERSION = 3/);
   assert.match(source, /CARMAJA_STATS_FILE/);
   assert.match(source, /CARMAJA_PRODUCT_PAGES_DIR/);
   assert.match(source, /flock\(\$lockHandle, \$lockType\)/);
   assert.match(source, /tempnam\(\s*dirname\(\$path\), '\.clicks-'/);
   assert.match(source, /rename\(\$temporaryPath, \$path\)/);
   assert.match(source, /'products'/);
+  assert.match(source, /'pageviews'/);
+  assert.match(source, /CARMAJA_PAGEVIEW_SOURCES/);
   assert.doesNotMatch(source, /user.?agent|referer|referrer|\$_COOKIE/i);
 });
 
@@ -42,6 +44,9 @@ test("Statistikbereich verlangt Apache Basic Auth und private Antwortheader", ()
   assert.match(dashboard, /X-Content-Type-Options: nosniff/);
   assert.match(dashboard, /noindex, nofollow, noimageindex/);
   assert.match(dashboard, /Content-Type: text\/html; charset=utf-8/);
-  assert.match(dashboard, /Übersicht/);
+  assert.match(dashboard, /Website-Statistik/);
   assert.doesNotMatch(dashboard, /<script\s+src=/i);
+  assert.match(dashboard, /Seitenaufrufe/);
+  assert.match(dashboard, /Herkunft beim Einstieg/);
+  assert.match(dashboard, /Externe Linkklicks/);
 });

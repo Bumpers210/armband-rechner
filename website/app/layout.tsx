@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { PageViewTracker } from "@/components/pageview-tracker";
 import { siteContent } from "@/content/site-content";
 
 import "./globals.css";
@@ -53,6 +54,7 @@ export default function RootLayout({
   return (
     <html lang="de">
       <body>
+        <PageViewTracker />
         <a className="skip-link" href="#main-content">
           Zum Inhalt springen
         </a>

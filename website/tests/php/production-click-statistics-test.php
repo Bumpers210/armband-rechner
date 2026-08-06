@@ -84,16 +84,60 @@ function run_click_request(string $clickPath, array $query, array $environment):
     return $result;
 }
 
+function run_pageview_request(string $pageviewPath, array $parameters, array $environment, string $method = 'POST'): array
+{
+    $runner = '$_POST=json_decode(getenv("CARMAJA_TEST_POST"),true,512,JSON_THROW_ON_ERROR);'
+        . '$_SERVER["REQUEST_METHOD"]=getenv("CARMAJA_TEST_METHOD");'
+        . 'register_shutdown_function(static function(): void {'
+        . 'echo "\\n__CARMAJA_RESULT__".json_encode(['
+        . '"status"=>http_response_code(),"headers"=>headers_list()],JSON_THROW_ON_ERROR);'
+        . '});'
+        . 'require ' . var_export($pageviewPath, true) . ';';
+    $descriptors = [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
+    ];
+    $process = proc_open(
+        escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($runner),
+        $descriptors,
+        $pipes,
+        null,
+        array_merge(getenv() ?: [], $environment, [
+            'CARMAJA_TEST_POST' => json_encode($parameters, JSON_THROW_ON_ERROR),
+            'CARMAJA_TEST_METHOD' => $method,
+        ]),
+    );
+    expect_true(is_resource($process), 'Seitenaufrufhandler konnte nicht gestartet werden.');
+    fclose($pipes[0]);
+    $output = stream_get_contents($pipes[1]);
+    $errors = stream_get_contents($pipes[2]);
+    fclose($pipes[1]);
+    fclose($pipes[2]);
+    expect_true(proc_close($process) === 0, 'Seitenaufrufhandler ist fehlgeschlagen: ' . trim($errors));
+    $marker = strrpos($output, '__CARMAJA_RESULT__');
+    expect_true($marker !== false, 'Seitenaufrufhandler lieferte kein Testergebnis.');
+    $result = json_decode(substr($output, $marker + strlen('__CARMAJA_RESULT__')), true, 512, JSON_THROW_ON_ERROR);
+    expect_true(is_array($result), 'Seitenaufruf-Testresultat ist ungueltig.');
+
+    return $result;
+}
+
 $websiteRoot = dirname(__DIR__, 2);
 $hostingRoot = $websiteRoot . DIRECTORY_SEPARATOR . 'hosting';
 $testRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'carmaja-click-statistics-' . bin2hex(random_bytes(8));
 $statsPath = $testRoot . DIRECTORY_SEPARATOR . 'private' . DIRECTORY_SEPARATOR . 'clicks.json';
 $productRoot = $testRoot . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'armbaender';
+$pageRoot = $testRoot . DIRECTORY_SEPARATOR . 'public';
 
 try {
     mkdir($productRoot . DIRECTORY_SEPARATOR . 'cp-2026-0001', 0750, true);
     mkdir($productRoot . DIRECTORY_SEPARATOR . 'cp-2026-0002', 0750, true);
     mkdir(dirname($statsPath), 0750, true);
+    mkdir($pageRoot . DIRECTORY_SEPARATOR . 'kontakt', 0750, true);
+    file_put_contents($pageRoot . DIRECTORY_SEPARATOR . 'index.html', '<main>Startseite</main>');
+    file_put_contents($pageRoot . DIRECTORY_SEPARATOR . 'kontakt' . DIRECTORY_SEPARATOR . 'index.html', '<main>Kontakt</main>');
+    file_put_contents($pageRoot . DIRECTORY_SEPARATOR . 'armbaender' . DIRECTORY_SEPARATOR . 'index.html', '<main>Armbänder</main>');
     file_put_contents(
         $productRoot . DIRECTORY_SEPARATOR . 'cp-2026-0001' . DIRECTORY_SEPARATOR . 'index.html',
         '<a href="/click.php?target=vinted&amp;position=product&amp;product=cp-2026-0001">Vinted</a>',
@@ -107,6 +151,7 @@ try {
 
     putenv('CARMAJA_STATS_FILE=' . $statsPath);
     putenv('CARMAJA_PRODUCT_PAGES_DIR=' . $productRoot);
+    putenv('CARMAJA_PAGE_ROOT=' . $pageRoot);
     require $hostingRoot . DIRECTORY_SEPARATOR . '_internal' . DIRECTORY_SEPARATOR . 'tracking.php';
 
     expect_true(carmaja_is_published_product_slug('cp-2026-0001'), 'Published Produkt wurde nicht erkannt.');
@@ -120,6 +165,7 @@ try {
     $environment = array_merge(getenv() ?: [], [
         'CARMAJA_STATS_FILE' => $statsPath,
         'CARMAJA_PRODUCT_PAGES_DIR' => $productRoot,
+        'CARMAJA_PAGE_ROOT' => $pageRoot,
     ]);
     $clickPath = $hostingRoot . DIRECTORY_SEPARATOR . 'click.php';
     $productResult = run_click_request($clickPath, [
@@ -133,6 +179,27 @@ try {
         'position' => 'footer',
     ], $environment);
     expect_true(($instagramResult['status'] ?? 0) === 302, 'Gueltiger Instagram-Link leitet nicht weiter.');
+
+    $pageviewPath = $hostingRoot . DIRECTORY_SEPARATOR . 'pageview.php';
+    $googlePageview = run_pageview_request($pageviewPath, ['path' => '/', 'source' => 'google'], $environment);
+    expect_true(($googlePageview['status'] ?? 0) === 204, 'Gueltiger Google-Seitenaufruf wurde nicht akzeptiert.');
+    $directPageview = run_pageview_request($pageviewPath, ['path' => '/armbaender/'], $environment);
+    expect_true(($directPageview['status'] ?? 0) === 204, 'Seitenaufruf ohne Herkunft wurde nicht akzeptiert.');
+    $instagramPageview = run_pageview_request($pageviewPath, ['path' => '/kontakt/', 'source' => 'instagram'], $environment);
+    expect_true(($instagramPageview['status'] ?? 0) === 204, 'Gueltiger Instagram-Seitenaufruf wurde nicht akzeptiert.');
+
+    foreach ([
+        ['path' => '/statistik/', 'source' => 'google'],
+        ['path' => '/kontakt', 'source' => 'google'],
+        ['path' => '/kontakt/?campaign=test', 'source' => 'google'],
+        ['path' => '/', 'source' => 'unknown-source'],
+        ['path' => '/', 'source' => 'google', 'extra' => 'value'],
+    ] as $parameters) {
+        $result = run_pageview_request($pageviewPath, $parameters, $environment);
+        expect_true(($result['status'] ?? 0) === 400, 'Ungueltiger Seitenaufruf wurde akzeptiert.');
+    }
+    $wrongMethod = run_pageview_request($pageviewPath, ['path' => '/'], $environment, 'GET');
+    expect_true(($wrongMethod['status'] ?? 0) === 405, 'Falsche Methode fuer Seitenaufruf wurde akzeptiert.');
 
     foreach ([
         'target=vinted&position=product&product=cp-2026-0002',
@@ -168,12 +235,17 @@ try {
     $finalStats = read_json($statsPath);
     $productCount = $finalStats['days'][(new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d')]['products']['cp-2026-0001'] ?? 0;
     expect_true($productCount === 10, 'Parallele Produktzaehlungen gingen verloren.');
+    expect_true(($finalStats['days'][(new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d')]['pageviews']['/']['views'] ?? 0) === 1, 'Seitenaufruf der Startseite fehlt.');
+    expect_true(($finalStats['days'][(new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d')]['pageviews']['/']['sources']['google'] ?? 0) === 1, 'Google-Herkunft fehlt.');
+    expect_true(($finalStats['days'][(new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d')]['pageviews']['/kontakt/']['sources']['instagram'] ?? 0) === 1, 'Instagram-Herkunft fehlt.');
     expect_true(!contains_personal_statistic_key($finalStats), 'Personenbezogene Statistikfelder vorhanden.');
 
     $source = file_get_contents($hostingRoot . DIRECTORY_SEPARATOR . 'statistik' . DIRECTORY_SEPARATOR . 'index.php');
-    expect_true(is_string($source) && str_contains($source, 'Produktklicks'), 'Dashboard zeigt keine Produktklicks.');
+    expect_true(is_string($source) && str_contains($source, 'Seitenaufrufe'), 'Dashboard zeigt keine Seitenaufrufe.');
+    expect_true(is_string($source) && str_contains($source, 'Herkunft beim Einstieg'), 'Dashboard zeigt keine Herkunftskanäle.');
+    expect_true(is_string($source) && str_contains($source, 'Externe Linkklicks'), 'Dashboard zeigt keine Linkklicks.');
     expect_true(is_string($source) && str_contains($source, "Content-Type: text/html; charset=utf-8"), 'Dashboard liefert keinen UTF-8-Content-Type.');
-    expect_true(is_string($source) && str_contains($source, 'Übersicht'), 'Dashboard nutzt keine korrekte deutsche Umlautschreibweise.');
+    expect_true(is_string($source) && str_contains($source, 'Häufige Seiten'), 'Dashboard nutzt keine korrekte deutsche Umlautschreibweise.');
     echo "PHP Klickstatistik-Test erfolgreich.\n";
 } finally {
     if (is_dir($testRoot)) {
