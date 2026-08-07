@@ -14,6 +14,8 @@ test("Statistikhosting bleibt ein getrennt freizugebender Produktionswartungssch
   assert.match(workflow, /INSTALL_PRODUCTION_STATISTICS/);
   assert.match(workflow, /CARMAJA_PRODUCTION_VARIABLES_TOKEN/);
   assert.match(workflow, /CARMAJA_PRODUCTION_SSH_PRIVATE_KEY/);
+  assert.match(workflow, /private_key_payload_length/);
+  assert.match(workflow, /Production SSH key secret is not canonical Base64/);
   assert.doesNotMatch(workflow, /website\/out/);
   assert.match(installer, /\/usr\/bin\/php8\.4/);
   assert.match(installer, /STATISTICS_HOSTING_ROLLBACK_OK/);
