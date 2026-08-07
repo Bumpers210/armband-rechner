@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS payments (
     order_id CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NULL,
     stripe_checkout_session_id VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL,
     stripe_payment_intent_id VARCHAR(255) CHARACTER SET ascii COLLATE ascii_bin NULL,
+    payment_method_type VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NULL,
     amount_minor INT UNSIGNED NOT NULL,
     currency CHAR(3) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     status VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
@@ -162,7 +163,9 @@ CREATE TABLE IF NOT EXISTS payments (
         REFERENCES checkout_sagas (checkout_id),
     CONSTRAINT chk_payment_amount CHECK (amount_minor >= 50 AND currency = 'eur'),
     CONSTRAINT chk_payment_status CHECK (status IN
-        ('created', 'pending', 'succeeded', 'failed', 'canceled', 'manual_review')),
+        ('created', 'pending', 'processing', 'succeeded', 'failed', 'canceled', 'manual_review')),
+    CONSTRAINT chk_payment_method_type CHECK (payment_method_type IS NULL OR payment_method_type IN
+        ('card', 'paypal', 'klarna', 'sepa_debit')),
     CONSTRAINT chk_payment_verification CHECK (verification_status IN
         ('unverified', 'verified', 'mismatch', 'manual_review')),
     CONSTRAINT chk_payment_refund CHECK (refund_status IN

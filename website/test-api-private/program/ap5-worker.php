@@ -39,11 +39,13 @@ final class CarmajaBrevoClient
         if ($request['htmlContent'] === '') {
             return ['outcome' => 'failed', 'error' => 'mail_content_missing'];
         }
+        $request['headers'] = [
+            'idempotencyKey' => $this->providerIdempotencyKey((string) $row['dedupe_key']),
+        ];
         $headers = [
             'Accept: application/json',
             'Content-Type: application/json',
             'api-key: ' . $apiKey,
-            'Idempotency-Key: ' . (string) $row['dedupe_key'],
         ];
         try {
             $response = is_callable($this->transport)
@@ -54,18 +56,34 @@ final class CarmajaBrevoClient
         }
         $status = (int) ($response['status'] ?? 0);
         $body = (string) ($response['body'] ?? '');
+        $decoded = json_decode($body, true, 16);
         if ($status >= 200 && $status < 300) {
-            $decoded = json_decode($body, true, 16);
             $messageId = is_array($decoded) && is_string($decoded['messageId'] ?? null)
                 ? $decoded['messageId'] : null;
             return $messageId !== null
                 ? ['outcome' => 'sent', 'brevoMessageId' => $messageId]
                 : ['outcome' => 'delivery_unknown', 'error' => 'brevo_message_id_missing'];
         }
+        if (is_array($decoded) && ($decoded['code'] ?? null) === 'duplicate_parameter') {
+            return ['outcome' => 'delivery_unknown', 'error' => 'brevo_idempotency_duplicate'];
+        }
         if ($status === 0 || $status === 429 || $status >= 500) {
             return ['outcome' => 'retry', 'error' => 'brevo_temporary_failure'];
         }
         return ['outcome' => 'retry', 'error' => 'brevo_http_' . $status];
+    }
+
+    private function providerIdempotencyKey(string $dedupeKey): string
+    {
+        $bytes = substr(hash('sha256', $dedupeKey, true), 0, 16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+        $hex = bin2hex($bytes);
+        return substr($hex, 0, 8) . '-'
+            . substr($hex, 8, 4) . '-'
+            . substr($hex, 12, 4) . '-'
+            . substr($hex, 16, 4) . '-'
+            . substr($hex, 20, 12);
     }
 
     private function request(array $payload, array $headers): array

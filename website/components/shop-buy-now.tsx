@@ -98,6 +98,9 @@ export function ShopBuyNow({ productId }: { productId: string }) {
       if (!response.ok || typeof payload.checkout?.url !== "string") {
         throw new Error(payload.error?.code ?? "checkout");
       }
+      if (typeof payload.checkout?.checkoutId === "string") {
+        window.sessionStorage.setItem("carmajaCheckoutId", payload.checkout.checkoutId);
+      }
       window.location.assign(payload.checkout.url);
     } catch {
       setState("error");

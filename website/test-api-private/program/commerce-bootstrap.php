@@ -28,6 +28,16 @@ function carmaja_bootstrap_commerce(array $config): CarmajaCommercePdo
         if (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
             $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
         }
+    } else {
+        // AP6 V1 residual risk: IONOS has not provided a usable CA bundle.
+        // An explicit cipher requests TLS from PDO; the negotiated cipher and
+        // TLS version remain mandatory checks below.
+        if (defined('PDO::MYSQL_ATTR_SSL_CIPHER')) {
+            $options[PDO::MYSQL_ATTR_SSL_CIPHER] = 'HIGH';
+        }
+        if (defined('PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT')) {
+            $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = false;
+        }
     }
     try {
         $pdo = new PDO($dsn, $user, $password, $options);

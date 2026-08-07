@@ -614,6 +614,9 @@ function carmaja_bootstrap_route_request(): never
         if ($method === 'GET' && $adminSegments === ['orders']) {
             carmaja_bootstrap_send(200, ['ok' => true, 'orders' => $commerce->listAdminOrders()]);
         }
+        if ($method === 'GET' && $adminSegments === ['payments']) {
+            carmaja_bootstrap_send(200, ['ok' => true, 'payments' => $commerce->listAdminPayments()]);
+        }
         if ($method === 'GET' && ($adminSegments[0] ?? null) === 'orders' && isset($adminSegments[1])
             && count($adminSegments) === 2) {
             $order = $commerce->loadAdminOrder((string) $adminSegments[1]);

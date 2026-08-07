@@ -105,3 +105,71 @@ export function LegalBundlePage({ sectionKey, title, children }: LegalBundlePage
     </div>
   );
 }
+
+const archiveSections: Array<{
+  key: LegalSectionKey;
+  title: string;
+}> = [
+  { key: "terms", title: "Shopbedingungen" },
+  { key: "privacy", title: "Datenschutz" },
+  { key: "withdrawal", title: "Widerruf" },
+  { key: "shipping", title: "Versand und Zahlung" },
+];
+
+export function LegalBundleArchive({ bundle }: { bundle: LegalBundle }) {
+  return (
+    <div className="v2-page">
+      <SiteHeader />
+      <main className="legal-main" id="main-content">
+        <div className="content-shell legal-content">
+          <h1>Archivierte Rechtstextfassung</h1>
+          <p>
+            Diese unveränderliche Fassung ist dem Legal-Bundle {bundle.id}
+            zugeordnet.
+          </p>
+
+          {archiveSections.map(({ key, title }) => (
+            <section className="legal-section" key={key}>
+              <h2>{title}</h2>
+              {bundle.texts[key].map((section) => (
+                <div key={section.heading}>
+                  <h3>{section.heading}</h3>
+                  {section.paragraphs.map((paragraph) => (
+                    <p key={paragraph}>{paragraph}</p>
+                  ))}
+                  {section.bullets?.length ? (
+                    <ul>
+                      {section.bullets.map((bullet) => (
+                        <li key={bullet}>{bullet}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ))}
+            </section>
+          ))}
+
+          <dl className="legal-bundle-metadata">
+            <div>
+              <dt>Legal-Bundle-ID</dt>
+              <dd>{bundle.id}</dd>
+            </div>
+            <div>
+              <dt>Version</dt>
+              <dd>{bundle.version}</dd>
+            </div>
+            <div>
+              <dt>Inhalts-Hash</dt>
+              <dd>sha256:{bundle.contentHash}</dd>
+            </div>
+          </dl>
+
+          <p className="legal-back-link">
+            <Link href="/">Zurück zur Startseite</Link>
+          </p>
+        </div>
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}

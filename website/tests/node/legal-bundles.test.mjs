@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
@@ -78,8 +79,72 @@ test("Technische Seiten und Footer bieten alle öffentlichen Legal-Einstiege an"
   for (const route of routes) assert.match(footer, new RegExp(`/${route}`));
 });
 
+test("Legal-Bundle-Archiv wird für das aktive Buildziel statisch erzeugt", async () => {
+  const archivePage = await readFile(
+    new URL("../../app/legal-archive/[environment]/[bundleId]/page.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(archivePage, /generateStaticParams/);
+  assert.match(archivePage, /legalBundlesByTarget\[siteTarget\.name\]/);
+  assert.match(archivePage, /LegalBundleArchive/);
+  assert.match(archivePage, /dynamicParams = false/);
+});
+
 test("AP2-Schema kann Legal-Bundle-Snapshots an Checkout und Bestellung binden", async () => {
   const schema = await readFile(new URL("../../database/commerce-schema.sql", import.meta.url), "utf8");
   assert.match(schema, /checkout_sagas[\s\S]*legal_bundle_id/);
   assert.match(schema, /orders[\s\S]*legal_bundle_id/);
+});
+
+test("freigegebene AP6-Produktionsfassung ist dem aktuellen Shopvertrag zugeordnet", async () => {
+  const source = await readFile(new URL("../../content/legal-bundles.ts", import.meta.url), "utf8");
+  assert.match(source, /cmj-test-legal-2026-08-06-v2/);
+  assert.match(source, /cmj-production-legal-2026-08-07-v3/);
+  assert.match(source, /status: "approved"/);
+  assert.match(source, /PayPal, Klarna und SEPA-Lastschrift/);
+  assert.match(source, /Maxibrief der Deutschen Post bis 1\.000 g/);
+  assert.match(source, /Versandkosten je Bestellung: 2,70 €/);
+  assert.match(source, /Basis-Sendungsverfolgung enthält regelmäßig keinen Zustellnachweis/);
+  assert.match(source, /zahlungspflichtig bestellen/);
+});
+
+test("freigegebenes Produktions-Bundle ist für Checkout-Snapshots zulässig", () => {
+  const bundle = makeBundle({
+    id: "cmj-production-legal-2026-08-07-v3",
+    environment: "production",
+    version: "v3",
+    status: "approved",
+    archiveUrl: "/legal-archive/production/cmj-production-legal-2026-08-07-v3/",
+  });
+  assert.doesNotThrow(() => assertCheckoutLegalBundle(bundle, "production"));
+});
+
+test("AP6-Freigabemanifest bindet alle freigegebenen Dokumentfassungen per SHA-256", async () => {
+  const packageBase = new URL("../../docs/legal-review/ap6-2026-08-07-v1/", import.meta.url);
+  const manifest = JSON.parse(await readFile(new URL("manifest.json", packageBase), "utf8"));
+
+  assert.equal(manifest.status, "freigegeben");
+  assert.equal(manifest.legalBundleId, "cmj-production-legal-2026-08-07-v3");
+  assert.equal(manifest.legalBundleStatus, "approved");
+  assert.equal(manifest.approvalEvidenceStored, false);
+
+  for (const document of manifest.documents) {
+    const bytes = await readFile(new URL(document.file, packageBase));
+    const text = bytes.toString("utf8");
+    const contentMatch = text.match(
+      /<!-- hash-begin -->\r?\n([\s\S]*?)\r?\n<!-- hash-end -->/,
+    );
+    assert.ok(contentMatch, `${document.file}: Hashbereich fehlt`);
+
+    const normalizedContent = contentMatch[1].replace(/\r\n?/g, "\n");
+    const contentHash = createHash("sha256")
+      .update(normalizedContent, "utf8")
+      .digest("hex");
+    const fileHash = createHash("sha256").update(bytes).digest("hex");
+
+    assert.equal(contentHash, document.contentSha256, `${document.file}: Inhalts-Hash`);
+    assert.equal(fileHash, document.fileSha256, `${document.file}: Datei-Hash`);
+    assert.match(text, /Status: \*\*freigegeben\*\*/);
+    assert.doesNotMatch(text, /PENDING|externe Rechtsfreigabe ausstehend/);
+  }
 });

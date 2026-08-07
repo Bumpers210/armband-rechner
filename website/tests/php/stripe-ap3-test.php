@@ -38,6 +38,15 @@ final class StripeAp3FakeCheckout
 
 final class StripeAp3FakePaymentIntents
 {
+    public function retrieve(string $id, array $params = []): object
+    {
+        return (object) [
+            'id' => $id,
+            'status' => 'succeeded',
+            'payment_method' => ['type' => 'card'],
+        ];
+    }
+
     public function update(string $id, array $params): object
     {
         return (object) ['id' => $id, 'metadata' => $params['metadata']];
@@ -60,6 +69,7 @@ $config = [
     'stripeSdkVersion' => CARMAJA_STRIPE_SDK_VERSION,
     'stripeApiVersion' => CARMAJA_STRIPE_API_VERSION,
     'stripeWebhookApiVersion' => CARMAJA_STRIPE_WEBHOOK_API_VERSION,
+    'stripePaymentMethodTypes' => CARMAJA_STRIPE_PAYMENT_METHOD_TYPES,
     'stripeSecretKey' => 'sk_test_artificial_only',
 ];
 
@@ -71,7 +81,7 @@ $snapshot = [
     'productName' => 'Künstliches Testarmband',
     'priceMinor' => 4200,
     'currency' => 'eur',
-    'legalBundleId' => 'cmj-test-legal-2026-08-02-v1',
+    'legalBundleId' => 'cmj-test-legal-2026-08-06-v2',
     'shippingSnapshot' => [
         'shippingMethodId' => 'de-standard',
         'publicName' => 'Testversand Deutschland',
@@ -93,7 +103,16 @@ $tests = [
         stripe_ap3_assert($parameters['line_items'][0]['quantity'] === 1, 'Menge muss 1 sein.');
         stripe_ap3_assert($parameters['line_items'][0]['price_data']['unit_amount'] === 4200, 'Preis fehlt.');
         stripe_ap3_assert($parameters['shipping_options'][0]['shipping_rate_data']['fixed_amount']['amount'] === 490, 'Versand fehlt.');
-        stripe_ap3_assert($parameters['payment_method_types'] === ['card'], 'Zahlungsarten sind nicht begrenzt.');
+        stripe_ap3_assert(
+            $parameters['payment_method_types'] === ['card', 'paypal', 'klarna', 'sepa_debit'],
+            'Zahlungsarten sind nicht exakt begrenzt.'
+        );
+        stripe_ap3_assert(count(CARMAJA_STRIPE_WEBHOOK_ALLOWLIST) === 9, 'AP3b-Allowlist muss neun Ereignisse enthalten.');
+        stripe_ap3_assert(
+            in_array('checkout.session.async_payment_succeeded', CARMAJA_STRIPE_WEBHOOK_ALLOWLIST, true)
+                && in_array('checkout.session.async_payment_failed', CARMAJA_STRIPE_WEBHOOK_ALLOWLIST, true),
+            'Asynchrone Checkout-Ereignisse fehlen.'
+        );
         stripe_ap3_assert($parameters['consent_collection']['terms_of_service'] === 'required', 'AGB-Zustimmung fehlt.');
         stripe_ap3_assert($parameters['wallet_options']['link']['display'] === 'never', 'Link ist nicht deaktiviert.');
         stripe_ap3_assert($parameters['allow_promotion_codes'] === false, 'Promotion-Codes müssen deaktiviert sein.');

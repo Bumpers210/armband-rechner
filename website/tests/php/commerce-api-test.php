@@ -136,6 +136,9 @@ $tests = [
         $commerce->createCheckout(checkout_input('ap2-checkout-0006'));
         $event = [
             'paymentStatus' => 'succeeded',
+            'paymentIntentStatus' => 'succeeded',
+            'paymentMethodType' => 'card',
+            'stripePaymentIntentId' => 'pi_ap2_0006',
             'amountMinor' => 4690,
             'currency' => 'eur',
             'productId' => 'CP-2026-0001',
@@ -155,7 +158,9 @@ $tests = [
         $commerce = commerce_fixture();
         $commerce->createCheckout(checkout_input('ap2-checkout-0007'));
         commerce_exception(static fn (): array => $commerce->finalizePayment('ap2-checkout-0007', [
-            'paymentStatus' => 'succeeded', 'amountMinor' => 4690, 'currency' => 'eur',
+            'paymentStatus' => 'succeeded', 'paymentIntentStatus' => 'succeeded',
+            'paymentMethodType' => 'paypal', 'stripePaymentIntentId' => 'pi_ap2_0007',
+            'amountMinor' => 4690, 'currency' => 'eur',
             'productId' => 'CP-2026-0001', 'legalBundleId' => 'legal-v1', 'termsAccepted' => false,
         ]), 'manual_review');
         commerce_assert(count($commerce->orders) === 0, 'Reviewzahlung darf keine Order erzeugen.');
@@ -164,12 +169,64 @@ $tests = [
         $commerce = commerce_fixture();
         $commerce->createCheckout(checkout_input('ap2-checkout-0008'));
         $order = $commerce->finalizePayment('ap2-checkout-0008', [
-            'paymentStatus' => 'succeeded', 'amountMinor' => 4690, 'currency' => 'eur',
+            'paymentStatus' => 'succeeded', 'paymentIntentStatus' => 'succeeded',
+            'paymentMethodType' => 'klarna', 'stripePaymentIntentId' => 'pi_ap2_0008',
+            'amountMinor' => 4690, 'currency' => 'eur',
             'productId' => 'CP-2026-0001', 'legalBundleId' => 'legal-v1', 'termsAccepted' => true,
         ]);
         $commerce->applyRefund('ap2-checkout-0008-payment', 're_test_0001', 'succeeded');
         commerce_assert($commerce->inventory['CP-2026-0001']['onHand'] === 0, 'Erstattung hat unerlaubt wiedereingelagert.');
         commerce_assert($commerce->orders[$order['orderId']]['status'] === 'confirmed', 'Erstattung darf Orderstatus nicht doppelt führen.');
+    },
+    'SEPA-processing blockiert Bestand und erzeugt keine Bestellung' => static function (): void {
+        $commerce = commerce_fixture();
+        $commerce->createCheckout(checkout_input('ap3b-checkout-processing'));
+        $result = $commerce->markPaymentProcessing('ap3b-checkout-processing', [
+            'paymentStatus' => 'processing', 'paymentIntentStatus' => 'processing',
+            'paymentMethodType' => 'sepa_debit', 'stripePaymentIntentId' => 'pi_ap3b_processing',
+            'amountMinor' => 4690, 'currency' => 'eur', 'productId' => 'CP-2026-0001',
+            'legalBundleId' => 'legal-v1', 'termsAccepted' => true,
+        ]);
+        commerce_assert($result['status'] === 'processing', 'SEPA-Zahlung ist nicht processing.');
+        commerce_assert(count($commerce->orders) === 0, 'Processing darf keine Bestellung erzeugen.');
+        commerce_assert(count($commerce->shipments) === 0, 'Processing darf keinen Versand erzeugen.');
+        commerce_assert($commerce->reservations['ap3b-checkout-processing-reservation']['blocksStock'] === true, 'Processing muss Bestand blockieren.');
+    },
+    'Asynchroner Erfolg finalisiert genau einmal' => static function (): void {
+        $commerce = commerce_fixture();
+        $commerce->createCheckout(checkout_input('ap3b-checkout-success'));
+        $processing = [
+            'paymentStatus' => 'processing', 'paymentIntentStatus' => 'processing',
+            'paymentMethodType' => 'sepa_debit', 'stripePaymentIntentId' => 'pi_ap3b_success',
+            'amountMinor' => 4690, 'currency' => 'eur', 'productId' => 'CP-2026-0001',
+            'legalBundleId' => 'legal-v1', 'termsAccepted' => true,
+        ];
+        $commerce->markPaymentProcessing('ap3b-checkout-success', $processing);
+        $success = $processing;
+        $success['paymentStatus'] = 'succeeded';
+        $success['paymentIntentStatus'] = 'succeeded';
+        $first = $commerce->finalizePayment('ap3b-checkout-success', $success);
+        $second = $commerce->finalizePayment('ap3b-checkout-success', $success);
+        commerce_assert($first === $second && count($commerce->orders) === 1, 'Async-Erfolg ist nicht idempotent.');
+        commerce_assert($commerce->reservations['ap3b-checkout-success-reservation']['state'] === 'converted', 'Async-Erfolg konvertiert Reservierung nicht.');
+    },
+    'Asynchroner Fehler gibt Reservierung atomar frei' => static function (): void {
+        $commerce = commerce_fixture();
+        $commerce->createCheckout(checkout_input('ap3b-checkout-failed'));
+        $processing = [
+            'paymentStatus' => 'processing', 'paymentIntentStatus' => 'processing',
+            'paymentMethodType' => 'sepa_debit', 'stripePaymentIntentId' => 'pi_ap3b_failed',
+            'amountMinor' => 4690, 'currency' => 'eur', 'productId' => 'CP-2026-0001',
+            'legalBundleId' => 'legal-v1', 'termsAccepted' => true,
+        ];
+        $commerce->markPaymentProcessing('ap3b-checkout-failed', $processing);
+        $failure = $processing;
+        $failure['paymentStatus'] = 'failed';
+        $failure['paymentIntentStatus'] = 'requires_payment_method';
+        $commerce->failAsyncPayment('ap3b-checkout-failed', $failure);
+        commerce_assert(count($commerce->orders) === 0, 'Async-Fehler darf keine Bestellung erzeugen.');
+        commerce_assert($commerce->reservations['ap3b-checkout-failed-reservation']['state'] === 'released', 'Async-Fehler gibt Reservierung nicht frei.');
+        commerce_assert($commerce->reservations['ap3b-checkout-failed-reservation']['blocksStock'] === false, 'Async-Fehler blockiert Bestand weiter.');
     },
     'Inventory Adjustment prüft Version, Reservierung und erlaubte Gründe' => static function (): void {
         $commerce = commerce_fixture();

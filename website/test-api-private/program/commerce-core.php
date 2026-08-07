@@ -19,6 +19,25 @@ const CARMAJA_COMMERCE_INVENTORY_REASONS = [
     'mark_unsellable',
     'release_return',
 ];
+const CARMAJA_COMMERCE_PAYMENT_METHOD_TYPES = [
+    'card',
+    'paypal',
+    'klarna',
+    'sepa_debit',
+];
+
+function carmaja_commerce_payment_method_type(mixed $value): string
+{
+    if (!is_string($value) || !in_array($value, CARMAJA_COMMERCE_PAYMENT_METHOD_TYPES, true)) {
+        throw new CarmajaCommerceException(
+            'payment_method_not_allowed',
+            'Zahlungsart ist nicht für V1 freigegeben.',
+            422
+        );
+    }
+
+    return $value;
+}
 
 function carmaja_commerce_retry_schedule(int $attemptCount): ?int
 {
@@ -252,6 +271,7 @@ final class CarmajaCommerceMemory
             'amountMinor' => $input['priceMinor'] + (int) ($input['shippingSnapshot']['amountMinor'] ?? 0),
             'currency' => $input['currency'],
             'status' => 'created',
+            'paymentMethodType' => null,
             'verificationStatus' => 'unverified',
             'refundStatus' => 'none',
             'disputeStatus' => 'none',
@@ -305,12 +325,21 @@ final class CarmajaCommerceMemory
         }
 
         $expected = $payment['amountMinor'];
+        try {
+            $paymentMethodType = carmaja_commerce_payment_method_type($event['paymentMethodType'] ?? null);
+        } catch (CarmajaCommerceException) {
+            $paymentMethodType = '';
+        }
         if (($event['paymentStatus'] ?? null) !== 'succeeded'
+            || ($event['paymentIntentStatus'] ?? null) !== 'succeeded'
             || ($event['amountMinor'] ?? null) !== $expected
             || ($event['currency'] ?? null) !== CARMAJA_COMMERCE_CURRENCY
             || ($event['productId'] ?? null) !== $checkout['productId']
             || ($event['legalBundleId'] ?? null) !== $checkout['legalBundleId']
-            || ($event['termsAccepted'] ?? false) !== true) {
+            || ($event['termsAccepted'] ?? false) !== true
+            || $paymentMethodType === ''
+            || ($payment['paymentMethodType'] !== null
+                && $payment['paymentMethodType'] !== $paymentMethodType)) {
             $payment['status'] = 'manual_review';
             $payment['verificationStatus'] = 'manual_review';
             $checkout['state'] = 'manual_review';
@@ -350,6 +379,7 @@ final class CarmajaCommerceMemory
         $reservation['convertedAt'] = true;
         $payment['orderId'] = $orderId;
         $payment['status'] = 'succeeded';
+        $payment['paymentMethodType'] = $paymentMethodType;
         $payment['verificationStatus'] = 'verified';
         $checkout['state'] = 'completed';
         $this->mailOutbox['order-confirmation:' . $orderId] = ['status' => 'queued', 'orderId' => $orderId];
@@ -358,13 +388,100 @@ final class CarmajaCommerceMemory
         return $this->orders[$orderId];
     }
 
+    public function markPaymentProcessing(string $checkoutId, array $event): array
+    {
+        $checkout = &$this->checkouts[$checkoutId];
+        $paymentId = $checkoutId . '-payment';
+        $payment = &$this->payments[$paymentId];
+        $reservation = &$this->reservations[$checkoutId . '-reservation'];
+        $paymentMethodType = carmaja_commerce_payment_method_type($event['paymentMethodType'] ?? null);
+        $valid = ($event['paymentStatus'] ?? null) === 'processing'
+            && ($event['paymentIntentStatus'] ?? null) === 'processing'
+            && ($event['amountMinor'] ?? null) === $payment['amountMinor']
+            && ($event['currency'] ?? null) === CARMAJA_COMMERCE_CURRENCY
+            && ($event['productId'] ?? null) === $checkout['productId']
+            && ($event['legalBundleId'] ?? null) === $checkout['legalBundleId']
+            && ($event['termsAccepted'] ?? false) === true
+            && is_string($event['stripePaymentIntentId'] ?? null)
+            && trim((string) $event['stripePaymentIntentId']) !== ''
+            && ($payment['paymentMethodType'] === null
+                || $payment['paymentMethodType'] === $paymentMethodType)
+            && $reservation['state'] === 'active'
+            && $reservation['blocksStock'] === true
+            && $payment['orderId'] === null;
+        if (!$valid) {
+            $payment['status'] = 'manual_review';
+            $payment['verificationStatus'] = 'manual_review';
+            $checkout['state'] = 'manual_review';
+            $reservation['state'] = 'manual_review';
+            $reservation['blocksStock'] = true;
+            $this->openReview('payment', $paymentId, 'processing_payment_verification_failed');
+            throw new CarmajaCommerceException('manual_review', 'Laufende Zahlung konnte nicht sicher geprüft werden.', 409);
+        }
+        $payment['status'] = 'processing';
+        $payment['verificationStatus'] = 'verified';
+        $payment['paymentMethodType'] = $paymentMethodType;
+        $payment['stripePaymentIntentId'] = trim((string) $event['stripePaymentIntentId']);
+        $checkout['state'] = 'payment_pending';
+
+        return ['paymentId' => $paymentId, 'status' => 'processing'];
+    }
+
+    public function failAsyncPayment(string $checkoutId, array $event): array
+    {
+        $checkout = &$this->checkouts[$checkoutId];
+        $paymentId = $checkoutId . '-payment';
+        $payment = &$this->payments[$paymentId];
+        $reservation = &$this->reservations[$checkoutId . '-reservation'];
+        if ($payment['orderId'] !== null || $payment['status'] === 'succeeded') {
+            $this->openReview('payment', $paymentId, 'async_failure_after_success');
+            throw new CarmajaCommerceException('manual_review', 'Stripe meldet einen widersprüchlichen Zahlungszustand.', 409);
+        }
+        if ($payment['status'] === 'failed' && $reservation['state'] === 'released') {
+            return ['paymentId' => $paymentId, 'status' => 'failed'];
+        }
+        $method = $event['paymentMethodType'] ?? $payment['paymentMethodType'];
+        $paymentMethodType = carmaja_commerce_payment_method_type($method);
+        $valid = ($event['paymentStatus'] ?? null) === 'failed'
+            && in_array(
+                $event['paymentIntentStatus'] ?? null,
+                ['requires_payment_method', 'canceled'],
+                true
+            )
+            && ($event['amountMinor'] ?? null) === $payment['amountMinor']
+            && ($event['currency'] ?? null) === CARMAJA_COMMERCE_CURRENCY
+            && ($event['productId'] ?? null) === $checkout['productId']
+            && ($event['legalBundleId'] ?? null) === $checkout['legalBundleId'];
+        if (!$valid) {
+            $payment['status'] = 'manual_review';
+            $checkout['state'] = 'manual_review';
+            $reservation['state'] = 'manual_review';
+            $reservation['blocksStock'] = true;
+            $this->openReview('payment', $paymentId, 'async_failure_verification_failed');
+            throw new CarmajaCommerceException('manual_review', 'Fehlgeschlagene Zahlung konnte nicht sicher geprüft werden.', 409);
+        }
+        $payment['status'] = 'failed';
+        $payment['verificationStatus'] = 'verified';
+        $payment['paymentMethodType'] = $paymentMethodType;
+        $checkout['state'] = 'failed';
+        $reservation['state'] = 'released';
+        $reservation['blocksStock'] = false;
+
+        return ['paymentId' => $paymentId, 'status' => 'failed'];
+    }
+
     public function releaseExpiredReservation(string $checkoutId, bool $stripeEndStateConfirmed): void
     {
         $reservation = &$this->reservations[$checkoutId . '-reservation'];
-        if (!$stripeEndStateConfirmed) {
+        $payment = &$this->payments[$checkoutId . '-payment'];
+        if (!$stripeEndStateConfirmed || $payment['status'] === 'processing') {
             $reservation['state'] = 'manual_review';
             $reservation['blocksStock'] = true;
-            $this->openReview('reservation', $reservation['reservationId'], 'stripe_end_state_missing');
+            $this->openReview(
+                'reservation',
+                $reservation['reservationId'],
+                $payment['status'] === 'processing' ? 'expiration_during_payment_processing' : 'stripe_end_state_missing'
+            );
             return;
         }
 
@@ -587,7 +704,8 @@ final class CarmajaCommercePdo
     {
         $statement = $this->pdo->prepare(
             'SELECT c.checkout_id, c.state, c.expires_at,
-                    p.status AS payment_status, p.refund_status,
+                    p.status AS payment_status, p.payment_method_type,
+                    p.refund_status,
                     p.order_id, o.order_number
              FROM checkout_sagas c
              JOIN payments p ON p.checkout_id = c.checkout_id
@@ -1083,7 +1201,31 @@ final class CarmajaCommercePdo
             if ($state === false) {
                 throw new CarmajaCommerceException('reservation_not_found', 'Reservierung fehlt.', 409);
             }
+            $paymentStatement = $pdo->prepare(
+                'SELECT payment_id, status FROM payments WHERE checkout_id = ? FOR UPDATE'
+            );
+            $paymentStatement->execute([$checkoutId]);
+            $payment = $paymentStatement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($payment)) {
+                throw new CarmajaCommerceException('payment_not_found', 'Zahlungseinheit fehlt.', 409);
+            }
             if (in_array($state, ['released', 'converted'], true)) {
+                return;
+            }
+            if ($payment['status'] === 'processing') {
+                $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $pdo->prepare(
+                    "UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?"
+                )->execute([$checkoutId]);
+                if ($checkoutState !== 'manual_review') {
+                    $this->openReviewCase(
+                        $pdo,
+                        'payment',
+                        (string) $payment['payment_id'],
+                        'expiration_during_payment_processing'
+                    );
+                }
                 return;
             }
             $pdo->prepare(
@@ -1098,9 +1240,159 @@ final class CarmajaCommercePdo
         });
     }
 
+    public function markPaymentProcessing(string $checkoutId, array $event): array
+    {
+        $result = $this->transaction(function (PDO $pdo) use ($checkoutId, $event): array {
+            $checkoutStatement = $pdo->prepare('SELECT * FROM checkout_sagas WHERE checkout_id = ? FOR UPDATE');
+            $checkoutStatement->execute([$checkoutId]);
+            $checkout = $checkoutStatement->fetch(PDO::FETCH_ASSOC);
+            $paymentStatement = $pdo->prepare('SELECT * FROM payments WHERE checkout_id = ? FOR UPDATE');
+            $paymentStatement->execute([$checkoutId]);
+            $payment = $paymentStatement->fetch(PDO::FETCH_ASSOC);
+            $reservationStatement = $pdo->prepare('SELECT * FROM reservations WHERE checkout_id = ? FOR UPDATE');
+            $reservationStatement->execute([$checkoutId]);
+            $reservation = $reservationStatement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($checkout) || !is_array($payment) || !is_array($reservation)) {
+                throw new CarmajaCommerceException('commerce_relation_missing', 'Commerce-Zuordnung fehlt.', 409);
+            }
+            if ($payment['order_id'] !== null || $payment['status'] === 'succeeded') {
+                return ['paymentId' => $payment['payment_id'], 'status' => 'succeeded'];
+            }
+
+            try {
+                $paymentMethodType = carmaja_commerce_payment_method_type($event['paymentMethodType'] ?? null);
+            } catch (CarmajaCommerceException) {
+                $paymentMethodType = '';
+            }
+            $stripePaymentIntentId = is_string($event['stripePaymentIntentId'] ?? null)
+                ? trim($event['stripePaymentIntentId'])
+                : '';
+            $valid = ($event['paymentStatus'] ?? null) === 'processing'
+                && ($event['paymentIntentStatus'] ?? null) === 'processing'
+                && (int) ($event['amountMinor'] ?? -1) === (int) $payment['amount_minor']
+                && ($event['currency'] ?? null) === $payment['currency']
+                && ($event['productId'] ?? null) === $checkout['product_id']
+                && ($event['legalBundleId'] ?? null) === $checkout['legal_bundle_id']
+                && ($event['termsAccepted'] ?? false) === true
+                && $stripePaymentIntentId !== ''
+                && $paymentMethodType !== ''
+                && ($payment['stripe_payment_intent_id'] === null
+                    || hash_equals((string) $payment['stripe_payment_intent_id'], $stripePaymentIntentId))
+                && ($payment['payment_method_type'] === null
+                    || $payment['payment_method_type'] === $paymentMethodType)
+                && $reservation['state'] === 'active'
+                && (int) $reservation['blocks_stock'] === 1;
+            if (!$valid) {
+                $pdo->prepare("UPDATE payments SET status = 'manual_review', verification_status = 'manual_review' WHERE payment_id = ?")
+                    ->execute([$payment['payment_id']]);
+                $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $pdo->prepare("UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'processing_payment_verification_failed');
+                return ['paymentId' => $payment['payment_id'], 'status' => 'manual_review'];
+            }
+
+            $pdo->prepare(
+                "UPDATE payments SET status = 'processing', verification_status = 'verified',
+                        stripe_payment_intent_id = ?, payment_method_type = ?
+                 WHERE payment_id = ?"
+            )->execute([$stripePaymentIntentId, $paymentMethodType, $payment['payment_id']]);
+            $pdo->prepare(
+                "UPDATE checkout_sagas SET state = 'payment_pending', failure_code = NULL WHERE checkout_id = ?"
+            )->execute([$checkoutId]);
+
+            return ['paymentId' => $payment['payment_id'], 'status' => 'processing'];
+        });
+        if ($result['status'] === 'manual_review') {
+            throw new CarmajaCommerceException('manual_review', 'Laufende Zahlung konnte nicht sicher geprüft werden.', 409);
+        }
+        return $result;
+    }
+
+    public function failAsyncPayment(string $checkoutId, array $event): array
+    {
+        $result = $this->transaction(function (PDO $pdo) use ($checkoutId, $event): array {
+            $checkoutStatement = $pdo->prepare('SELECT * FROM checkout_sagas WHERE checkout_id = ? FOR UPDATE');
+            $checkoutStatement->execute([$checkoutId]);
+            $checkout = $checkoutStatement->fetch(PDO::FETCH_ASSOC);
+            $paymentStatement = $pdo->prepare('SELECT * FROM payments WHERE checkout_id = ? FOR UPDATE');
+            $paymentStatement->execute([$checkoutId]);
+            $payment = $paymentStatement->fetch(PDO::FETCH_ASSOC);
+            $reservationStatement = $pdo->prepare('SELECT * FROM reservations WHERE checkout_id = ? FOR UPDATE');
+            $reservationStatement->execute([$checkoutId]);
+            $reservation = $reservationStatement->fetch(PDO::FETCH_ASSOC);
+            if (!is_array($checkout) || !is_array($payment) || !is_array($reservation)) {
+                throw new CarmajaCommerceException('commerce_relation_missing', 'Commerce-Zuordnung fehlt.', 409);
+            }
+            if ($payment['status'] === 'failed' && $reservation['state'] === 'released') {
+                return ['paymentId' => $payment['payment_id'], 'status' => 'failed'];
+            }
+            if ($payment['order_id'] !== null || $payment['status'] === 'succeeded') {
+                $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'async_failure_after_success');
+                return ['paymentId' => $payment['payment_id'], 'status' => 'manual_review'];
+            }
+
+            $method = $event['paymentMethodType'] ?? $payment['payment_method_type'];
+            try {
+                $paymentMethodType = carmaja_commerce_payment_method_type($method);
+            } catch (CarmajaCommerceException) {
+                $paymentMethodType = '';
+            }
+            $stripePaymentIntentId = is_string($event['stripePaymentIntentId'] ?? null)
+                ? trim($event['stripePaymentIntentId'])
+                : (string) ($payment['stripe_payment_intent_id'] ?? '');
+            $valid = ($event['paymentStatus'] ?? null) === 'failed'
+                && in_array(
+                    $event['paymentIntentStatus'] ?? null,
+                    ['requires_payment_method', 'canceled'],
+                    true
+                )
+                && (int) ($event['amountMinor'] ?? -1) === (int) $payment['amount_minor']
+                && ($event['currency'] ?? null) === $payment['currency']
+                && ($event['productId'] ?? null) === $checkout['product_id']
+                && ($event['legalBundleId'] ?? null) === $checkout['legal_bundle_id']
+                && $paymentMethodType !== ''
+                && ($payment['stripe_payment_intent_id'] === null
+                    || ($stripePaymentIntentId !== ''
+                        && hash_equals((string) $payment['stripe_payment_intent_id'], $stripePaymentIntentId)))
+                && ($payment['payment_method_type'] === null
+                    || $payment['payment_method_type'] === $paymentMethodType);
+            if (!$valid) {
+                $pdo->prepare("UPDATE payments SET status = 'manual_review', verification_status = 'manual_review' WHERE payment_id = ?")
+                    ->execute([$payment['payment_id']]);
+                $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $pdo->prepare("UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'async_failure_verification_failed');
+                return ['paymentId' => $payment['payment_id'], 'status' => 'manual_review'];
+            }
+
+            $pdo->prepare(
+                "UPDATE payments SET status = 'failed', verification_status = 'verified',
+                        stripe_payment_intent_id = NULLIF(?, ''), payment_method_type = ?
+                 WHERE payment_id = ?"
+            )->execute([$stripePaymentIntentId, $paymentMethodType, $payment['payment_id']]);
+            $pdo->prepare(
+                "UPDATE checkout_sagas SET state = 'failed', failure_code = 'async_payment_failed' WHERE checkout_id = ?"
+            )->execute([$checkoutId]);
+            $pdo->prepare(
+                "UPDATE reservations SET state = 'released', blocks_stock = 0,
+                        released_at = UTC_TIMESTAMP(6) WHERE checkout_id = ?"
+            )->execute([$checkoutId]);
+
+            return ['paymentId' => $payment['payment_id'], 'status' => 'failed'];
+        });
+        if ($result['status'] === 'manual_review') {
+            throw new CarmajaCommerceException('manual_review', 'Stripe meldet einen widersprüchlichen oder nicht sicher prüfbaren Zahlungszustand.', 409);
+        }
+        return $result;
+    }
+
     public function finalizePayment(string $checkoutId, array $event): array
     {
-        return $this->transaction(function (PDO $pdo) use ($checkoutId, $event): array {
+        $result = $this->transaction(function (PDO $pdo) use ($checkoutId, $event): array {
             $checkoutStatement = $pdo->prepare('SELECT * FROM checkout_sagas WHERE checkout_id = ? FOR UPDATE');
             $checkoutStatement->execute([$checkoutId]);
             $checkout = $checkoutStatement->fetch(PDO::FETCH_ASSOC);
@@ -1128,13 +1420,24 @@ final class CarmajaCommercePdo
             $stripePaymentIntentId = is_string($event['stripePaymentIntentId'] ?? null)
                 ? trim($event['stripePaymentIntentId'])
                 : '';
+            try {
+                $paymentMethodType = carmaja_commerce_payment_method_type($event['paymentMethodType'] ?? null);
+            } catch (CarmajaCommerceException) {
+                $paymentMethodType = '';
+            }
             $valid = ($event['paymentStatus'] ?? null) === 'succeeded'
+                && ($event['paymentIntentStatus'] ?? null) === 'succeeded'
                 && (int) ($event['amountMinor'] ?? -1) === (int) $payment['amount_minor']
                 && ($event['currency'] ?? null) === $payment['currency']
                 && ($event['productId'] ?? null) === $checkout['product_id']
                 && ($event['legalBundleId'] ?? null) === $checkout['legal_bundle_id']
                 && ($event['termsAccepted'] ?? false) === true
-                && $stripePaymentIntentId !== '';
+                && $stripePaymentIntentId !== ''
+                && $paymentMethodType !== ''
+                && ($payment['stripe_payment_intent_id'] === null
+                    || hash_equals((string) $payment['stripe_payment_intent_id'], $stripePaymentIntentId))
+                && ($payment['payment_method_type'] === null
+                    || $payment['payment_method_type'] === $paymentMethodType);
             if (!$valid || $reservation['state'] !== 'active') {
                 $pdo->prepare("UPDATE payments SET status = 'manual_review', verification_status = 'manual_review' WHERE payment_id = ?")
                     ->execute([$payment['payment_id']]);
@@ -1143,11 +1446,18 @@ final class CarmajaCommercePdo
                 $pdo->prepare("UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?")
                     ->execute([$checkoutId]);
                 $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'payment_verification_failed');
-                throw new CarmajaCommerceException('manual_review', 'Zahlung konnte nicht sicher zugeordnet werden.', 409);
+                return ['paymentId' => $payment['payment_id'], 'status' => 'manual_review'];
             }
 
             if (!is_array($inventory) || (int) $inventory['on_hand'] !== 1) {
-                throw new CarmajaCommerceException('manual_review', 'Bestand ist widersprüchlich.', 409);
+                $pdo->prepare("UPDATE payments SET status = 'manual_review', verification_status = 'manual_review' WHERE payment_id = ?")
+                    ->execute([$payment['payment_id']]);
+                $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $pdo->prepare("UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?")
+                    ->execute([$checkoutId]);
+                $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'inventory_conflict_after_payment');
+                return ['paymentId' => $payment['payment_id'], 'status' => 'manual_review'];
             }
 
             $sequence = $pdo->query("SELECT next_value FROM order_sequences WHERE sequence_name = 'carmaja-v1' FOR UPDATE")->fetchColumn();
@@ -1196,8 +1506,11 @@ final class CarmajaCommercePdo
                 "UPDATE reservations SET state = 'converted', blocks_stock = 0, converted_at = UTC_TIMESTAMP(6) WHERE checkout_id = ?"
             )->execute([$checkoutId]);
             $pdo->prepare("UPDATE checkout_sagas SET state = 'completed' WHERE checkout_id = ?")->execute([$checkoutId]);
-            $pdo->prepare("UPDATE payments SET order_id = ?, status = 'succeeded', verification_status = 'verified' WHERE payment_id = ?")
-                ->execute([$orderId, $payment['payment_id']]);
+            $pdo->prepare(
+                "UPDATE payments SET order_id = ?, status = 'succeeded',
+                        verification_status = 'verified', payment_method_type = ?
+                 WHERE payment_id = ?"
+            )->execute([$orderId, $paymentMethodType, $payment['payment_id']]);
             $pdo->prepare(
                 'UPDATE shop_rate_limits r
                  JOIN checkout_tokens t ON t.rate_bucket_hash = r.bucket_hash
@@ -1238,6 +1551,10 @@ final class CarmajaCommercePdo
                 'status' => 'confirmed',
             ];
         });
+        if ($result['status'] === 'manual_review') {
+            throw new CarmajaCommerceException('manual_review', 'Zahlung konnte nicht sicher finalisiert werden.', 409);
+        }
+        return $result;
     }
 
     public function applyRefund(string $paymentId, string $stripeRefundId, string $status, int $amountMinor): void
@@ -1256,6 +1573,16 @@ final class CarmajaCommercePdo
 
     private function openReviewCase(PDO $pdo, string $subjectType, string $subjectId, string $reason): void
     {
+        $existing = $pdo->prepare(
+            "SELECT review_case_id FROM review_cases
+             WHERE subject_type = ? AND subject_id = ? AND reason = ?
+               AND status IN ('open', 'investigating')
+             ORDER BY opened_at LIMIT 1 FOR UPDATE"
+        );
+        $existing->execute([$subjectType, $subjectId, $reason]);
+        if ($existing->fetchColumn() !== false) {
+            return;
+        }
         $pdo->prepare(
             'INSERT INTO review_cases
                 (review_case_id, subject_type, subject_id, reason, status, details, opened_at)
@@ -1818,6 +2145,7 @@ final class CarmajaCommercePdo
         $statement = $this->pdo->query(
             "SELECT o.order_id, o.order_number, o.status, o.customer_email,
                     o.customer_name, o.confirmed_at, p.status AS payment_status,
+                    p.payment_method_type,
                     p.verification_status, p.refund_status, p.dispute_status,
                     s.status AS shipment_status, s.tracking_number
              FROM orders o
@@ -1831,7 +2159,8 @@ final class CarmajaCommercePdo
     public function loadAdminOrder(string $orderId): ?array
     {
         $statement = $this->pdo->prepare(
-            'SELECT o.*, p.status AS payment_status, p.verification_status,
+            'SELECT o.*, p.status AS payment_status, p.payment_method_type,
+                    p.verification_status,
                     p.refund_status, p.dispute_status,
                     s.status AS shipment_status, s.tracking_number, s.shipped_at,
                     s.delivered_at
@@ -1848,6 +2177,21 @@ final class CarmajaCommercePdo
         $items->execute([$orderId]);
         $row['items'] = $items->fetchAll(PDO::FETCH_ASSOC);
         return $row;
+    }
+
+    public function listAdminPayments(int $limit = 50, int $offset = 0): array
+    {
+        $limit = max(1, min(100, $limit));
+        $offset = max(0, $offset);
+        $statement = $this->pdo->query(
+            "SELECT p.payment_id, p.checkout_id, p.order_id, p.payment_method_type,
+                    p.status AS payment_status, p.verification_status,
+                    p.refund_status, p.dispute_status, p.amount_minor, p.currency,
+                    c.state AS checkout_state, c.product_id, c.created_at
+             FROM payments p JOIN checkout_sagas c ON c.checkout_id = p.checkout_id
+             ORDER BY c.created_at DESC LIMIT {$limit} OFFSET {$offset}"
+        );
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function markAdminShipmentShipped(
@@ -1910,10 +2254,11 @@ final class CarmajaCommercePdo
                     (dedupe_key, message_type, order_id, recipient, payload, status, next_attempt_at)
                  VALUES (?, ?, ?, ?, ?, \'queued\', UTC_TIMESTAMP(6))'
             )->execute([$dedupeKey, $row['message_type'], $row['order_id'], $row['recipient'], $row['payload']]);
+            $newMailId = (int) $pdo->lastInsertId();
             $this->addAdminAudit($adminId, 'mail_manual_resend_queued', 'mail', (string) $mailId, $correlationId, [
                 'newDedupeKey' => $dedupeKey,
             ]);
-            return ['mailId' => (int) $pdo->lastInsertId(), 'status' => 'queued'];
+            return ['mailId' => $newMailId, 'status' => 'queued'];
         });
     }
 

@@ -6,19 +6,27 @@ require_once __DIR__ . '/commerce-core.php';
 
 const CARMAJA_STRIPE_SDK_VERSION = '20.3.0';
 const CARMAJA_STRIPE_API_VERSION = '2026-06-24.dahlia';
-const CARMAJA_STRIPE_WEBHOOK_API_VERSION = '2026-06-24.dahlia';
+const CARMAJA_STRIPE_WEBHOOK_API_VERSION = '2026-07-29.dahlia';
 const CARMAJA_STRIPE_CHECKOUT_LIFETIME_SECONDS = 1800;
 const CARMAJA_STRIPE_WEBHOOK_TOLERANCE_SECONDS = 300;
 const CARMAJA_STRIPE_WEBHOOK_MAX_BYTES = 262144;
 
 const CARMAJA_STRIPE_WEBHOOK_ALLOWLIST = [
     'checkout.session.completed',
+    'checkout.session.async_payment_succeeded',
+    'checkout.session.async_payment_failed',
     'checkout.session.expired',
     'charge.refunded',
     'refund.updated',
     'charge.dispute.created',
     'charge.dispute.updated',
     'charge.dispute.closed',
+];
+const CARMAJA_STRIPE_PAYMENT_METHOD_TYPES = [
+    'card',
+    'paypal',
+    'klarna',
+    'sepa_debit',
 ];
 
 final class CarmajaStripeException extends RuntimeException
@@ -36,7 +44,8 @@ function carmaja_stripe_assert_configuration(array $config): void
 {
     if (($config['stripeSdkVersion'] ?? null) !== CARMAJA_STRIPE_SDK_VERSION
         || ($config['stripeApiVersion'] ?? null) !== CARMAJA_STRIPE_API_VERSION
-        || ($config['stripeWebhookApiVersion'] ?? null) !== CARMAJA_STRIPE_WEBHOOK_API_VERSION) {
+        || ($config['stripeWebhookApiVersion'] ?? null) !== CARMAJA_STRIPE_WEBHOOK_API_VERSION
+        || ($config['stripePaymentMethodTypes'] ?? null) !== CARMAJA_STRIPE_PAYMENT_METHOD_TYPES) {
         throw new CarmajaStripeException(
             'stripe_version_mismatch',
             'Stripe-Version ist nicht für V1 freigegeben.',
@@ -144,7 +153,7 @@ function carmaja_stripe_checkout_parameters(
                 ],
             ],
         ]],
-        'payment_method_types' => ['card'],
+        'payment_method_types' => CARMAJA_STRIPE_PAYMENT_METHOD_TYPES,
         'customer_creation' => 'if_required',
         'billing_address_collection' => 'auto',
         'shipping_address_collection' => [
@@ -266,6 +275,24 @@ final class CarmajaStripeGateway
         }
 
         return $this->resourceArray($session);
+    }
+
+    public function retrievePaymentIntent(string $paymentIntentId): array
+    {
+        try {
+            $intent = $this->client->paymentIntents->retrieve(
+                $paymentIntentId,
+                ['expand' => ['payment_method']]
+            );
+        } catch (Throwable $error) {
+            throw new CarmajaStripeException(
+                'stripe_payment_reconciliation_failed',
+                'Stripe-Zahlung konnte nicht abgeglichen werden.',
+                502
+            );
+        }
+
+        return $this->resourceArray($intent);
     }
 
     public function updatePaymentIntentMetadata(string $paymentIntentId, array $metadata): void

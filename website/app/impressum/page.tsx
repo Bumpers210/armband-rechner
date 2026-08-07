@@ -51,6 +51,9 @@ export default function ImprintPage() {
               {imprint.emailLabel}:{" "}
               <a href={`mailto:${imprint.email}`}>{imprint.email}</a>
             </p>
+            <p>
+              {imprint.phoneLabel}: {imprint.phone}
+            </p>
           </section>
 
           <section className="legal-section">

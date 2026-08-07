@@ -59,9 +59,14 @@ $tests['Passwort- und Benutzervalidierung'] = static function () use ($assert): 
 $tests['Brevo-Erfolg mit Nachrichten-ID'] = static function () use ($assert): void {
     $client = new CarmajaBrevoClient([
         'brevoApiKey' => 'synthetic', 'brevoSenderEmail' => 'test@example.invalid',
-    ], static fn (array $request, string $key): array => [
-        'status' => 201, 'body' => '{"messageId":"<synthetic-1>"}',
-    ]);
+    ], static function (array $request, string $key) use ($assert): array {
+        $providerKey = $request['headers']['idempotencyKey'] ?? null;
+        $assert($key === 'order-confirmation:synthetic', 'Lokaler Deduplizierungsschluessel veraendert.');
+        $assert(is_string($providerKey)
+            && preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $providerKey) === 1,
+            'Brevo-idempotencyKey ist keine deterministische UUIDv4.');
+        return ['status' => 201, 'body' => '{"messageId":"<synthetic-1>"}'];
+    });
     $result = $client->send([
         'dedupe_key' => 'order-confirmation:synthetic', 'recipient' => 'buyer@example.invalid',
         'payload' => '{"subject":"Test","htmlContent":"synthetic"}',
@@ -88,15 +93,38 @@ $tests['Brevo-temporärer Fehler folgt Retry-Vertrag'] = static function () use 
     ]);
     $assert($result['outcome'] === 'retry', 'Temporärer Brevo-Fehler wurde nicht für Retry markiert.');
 };
+$tests['Brevo-Duplikat bleibt terminal'] = static function () use ($assert): void {
+    $client = new CarmajaBrevoClient([
+        'brevoApiKey' => 'synthetic', 'brevoSenderEmail' => 'test@example.invalid',
+    ], static fn (): array => [
+        'status' => 400, 'body' => '{"code":"duplicate_parameter","message":"duplicate"}',
+    ]);
+    $result = $client->send([
+        'dedupe_key' => 'order-confirmation:synthetic', 'recipient' => 'buyer@example.invalid',
+        'payload' => '{"subject":"Test","htmlContent":"synthetic"}',
+    ]);
+    $assert($result['outcome'] === 'delivery_unknown'
+        && $result['error'] === 'brevo_idempotency_duplicate',
+        'Brevo-Duplikat wurde fuer einen blinden Retry freigegeben.');
+};
 $tests['AP5-Verträge und Statusachsen'] = static function () use ($assert): void {
     $migration = file_get_contents(dirname(__DIR__, 2) . '/database/migrations/commerce-v1-ap5-admin.sql');
     $schema = file_get_contents(dirname(__DIR__, 2) . '/database/commerce-schema.sql');
     $admin = file_get_contents(dirname(__DIR__, 2) . '/test-api-private/program/bootstrap.php');
+    $commerce = file_get_contents(dirname(__DIR__, 2) . '/test-api-private/program/commerce-core.php');
     $assert(is_string($migration) && str_contains($migration, 'delivery_unknown'), 'Brevo-Status fehlt in Migration.');
     $assert(is_string($schema) && str_contains($schema, "'confirmed', 'canceled'"), 'Bestellstatusachse fehlt.');
     $assert(is_string($schema) && str_contains($schema, "'not_ready', 'ready', 'on_hold', 'shipped', 'delivery_issue', 'returned'"), 'Versandstatusachse fehlt.');
     $assert(is_string($admin) && str_contains($admin, "['refunds']"), 'Erstattungsanzeige fehlt.');
+    $assert(is_string($admin) && str_contains($admin, "['payments']"), 'Zahlungsübersicht fehlt.');
+    $assert(is_string($commerce) && str_contains($commerce, 'payment_method_type'), 'Zahlungsart fehlt im Adminvertrag.');
     $assert(!str_contains($admin, 'refunds/charge'), 'Refund-Auslöseendpoint wurde ergänzt.');
+    $mailIdCapture = is_string($commerce) ? strpos($commerce, '$newMailId = (int) $pdo->lastInsertId();') : false;
+    $mailAudit = is_string($commerce) ? strpos($commerce, "'mail_manual_resend_queued'") : false;
+    $mailReturn = is_string($commerce) ? strpos($commerce, "return ['mailId' => \$newMailId") : false;
+    $assert($mailIdCapture !== false && $mailAudit !== false && $mailReturn !== false
+        && $mailIdCapture < $mailAudit && $mailAudit < $mailReturn,
+        'Manueller Mail-Neuversand muss seine Outbox-ID vor dem Audit sichern.');
 };
 
 $passed = 0;

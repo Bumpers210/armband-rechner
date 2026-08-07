@@ -19,6 +19,7 @@ test('AP5-Migration enthält Admin- und delivery_unknown-Vertrag', () => {
 test('Adminbereich führt keine Stripe-Erstattung aus', () => {
   const bootstrap = read('test-api-private/program/bootstrap.php');
   assert.match(bootstrap, /\['refunds'\]/);
+  assert.match(bootstrap, /\['payments'\]/);
   assert.doesNotMatch(bootstrap, /stripe.*refund|createRefund/i);
 });
 
@@ -32,7 +33,9 @@ test('Admin-Sitzung verwendet getrennte sichere Cookie- und CSRF-Verträge', () 
 
 test('Brevo-Outbox verwendet Provider-Idempotenz und unbekannten Ausgang', () => {
   const worker = read('test-api-private/program/ap5-worker.php');
-  assert.match(worker, /Idempotency-Key/);
+  assert.match(worker, /['"]idempotencyKey['"]\s*=>/);
+  assert.match(worker, /brevo_idempotency_duplicate/);
+  assert.doesNotMatch(worker, /'Idempotency-Key:\s*'/);
   assert.match(worker, /delivery_unknown/);
   assert.match(worker, /CURLOPT_SSL_VERIFYPEER.*true/si);
 });
@@ -47,5 +50,7 @@ test('Privater AP5-Worker ist CLI-only und geheimnisfrei verdrahtet', () => {
 test('Admin-UI zeigt Refunds nur an', () => {
   const page = read('components/admin-console.tsx');
   assert.match(page, /Erstattungen werden hier nur angezeigt/);
+  assert.match(page, /payment_method_type/);
+  assert.match(page, /noch keine Bestellung/);
   assert.doesNotMatch(page, /refund.*POST|createRefund/i);
 });

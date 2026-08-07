@@ -46,6 +46,13 @@ final class CarmajaAp3Worker
                 $this->processEvent($event);
                 $this->commerce->completeWebhook($inboxId, true);
                 $processed++;
+            } catch (CarmajaCommerceException $error) {
+                if ($error->errorCode === 'manual_review') {
+                    $this->commerce->completeWebhook($inboxId, true);
+                    $processed++;
+                    continue;
+                }
+                $this->commerce->completeWebhook($inboxId, false, mb_substr($error->getMessage(), 0, 500));
             } catch (Throwable $error) {
                 $this->commerce->completeWebhook($inboxId, false, mb_substr($error->getMessage(), 0, 500));
             }
@@ -62,21 +69,29 @@ final class CarmajaAp3Worker
         }
 
         if ($type === 'checkout.session.completed') {
-            $metadata = is_array($object['metadata'] ?? null) ? $object['metadata'] : [];
-            $consent = $object['consent']['terms_of_service'] ?? null;
-            $this->commerce->finalizePayment((string) ($metadata['checkoutId'] ?? ''), [
-                'paymentStatus' => ($object['payment_status'] ?? null) === 'paid' ? 'succeeded' : 'pending',
-                'amountMinor' => (int) ($object['amount_total'] ?? 0),
-                'currency' => $object['currency'] ?? null,
-                'productId' => $metadata['productId'] ?? null,
-                'legalBundleId' => $metadata['legalBundleId'] ?? null,
-                'termsAccepted' => $consent === 'accepted',
-                'customerEmail' => $object['customer_details']['email'] ?? null,
-                'customerName' => $object['customer_details']['name'] ?? null,
-                'shippingAddress' => $object['shipping_details']['address'] ?? [],
-                'billingAddress' => $object['customer_details']['address'] ?? null,
-                'stripePaymentIntentId' => $object['payment_intent'] ?? null,
-            ]);
+            $currentSession = $this->retrieveCurrentCheckoutSession($object);
+            $eventData = $this->paymentEvent($currentSession);
+            if (($currentSession['payment_status'] ?? null) === 'paid') {
+                $eventData['paymentStatus'] = 'succeeded';
+                $this->commerce->finalizePayment($eventData['checkoutId'], $eventData);
+            } else {
+                $eventData['paymentStatus'] = 'processing';
+                $this->commerce->markPaymentProcessing($eventData['checkoutId'], $eventData);
+            }
+            return;
+        }
+
+        if ($type === 'checkout.session.async_payment_succeeded') {
+            $eventData = $this->paymentEvent($this->retrieveCurrentCheckoutSession($object));
+            $eventData['paymentStatus'] = 'succeeded';
+            $this->commerce->finalizePayment($eventData['checkoutId'], $eventData);
+            return;
+        }
+
+        if ($type === 'checkout.session.async_payment_failed') {
+            $eventData = $this->paymentEvent($this->retrieveCurrentCheckoutSession($object));
+            $eventData['paymentStatus'] = 'failed';
+            $this->commerce->failAsyncPayment($eventData['checkoutId'], $eventData);
             return;
         }
 
@@ -121,6 +136,20 @@ final class CarmajaAp3Worker
         }
     }
 
+    private function retrieveCurrentCheckoutSession(array $eventObject): array
+    {
+        $sessionId = $eventObject['id'] ?? null;
+        if (!is_string($sessionId) || !str_starts_with($sessionId, 'cs_')) {
+            throw new CarmajaStripeException(
+                'stripe_checkout_session_missing',
+                'Stripe-Checkout-Session fehlt.',
+                409
+            );
+        }
+
+        return $this->stripe->retrieveCheckoutSession($sessionId);
+    }
+
     private function processMetadataOutbox(): int
     {
         $rows = $this->commerce->claimMetadataOutbox(self::BATCH_SIZE, self::LEASE_SECONDS);
@@ -152,21 +181,21 @@ final class CarmajaAp3Worker
                     $this->commerce->releaseExpiredReservation((string) $row['checkout_id']);
                     $processed++;
                 } elseif ($status === 'complete') {
-                    $metadata = is_array($session['metadata'] ?? null) ? $session['metadata'] : [];
-                    $consent = $session['consent']['terms_of_service'] ?? null;
-                    $this->commerce->finalizePayment((string) ($metadata['checkoutId'] ?? $row['checkout_id']), [
-                        'paymentStatus' => ($session['payment_status'] ?? null) === 'paid' ? 'succeeded' : 'pending',
-                        'amountMinor' => (int) ($session['amount_total'] ?? 0),
-                        'currency' => $session['currency'] ?? null,
-                        'productId' => $metadata['productId'] ?? null,
-                        'legalBundleId' => $metadata['legalBundleId'] ?? null,
-                        'termsAccepted' => $consent === 'accepted',
-                        'customerEmail' => $session['customer_details']['email'] ?? null,
-                        'customerName' => $session['customer_details']['name'] ?? null,
-                        'shippingAddress' => $session['shipping_details']['address'] ?? [],
-                        'billingAddress' => $session['customer_details']['address'] ?? null,
-                        'stripePaymentIntentId' => $session['payment_intent'] ?? null,
-                    ]);
+                    $eventData = $this->paymentEvent($session, (string) $row['checkout_id']);
+                    if (($session['payment_status'] ?? null) === 'paid') {
+                        $eventData['paymentStatus'] = 'succeeded';
+                        $this->commerce->finalizePayment($eventData['checkoutId'], $eventData);
+                    } elseif (in_array(
+                        $eventData['paymentIntentStatus'],
+                        ['requires_payment_method', 'canceled'],
+                        true
+                    )) {
+                        $eventData['paymentStatus'] = 'failed';
+                        $this->commerce->failAsyncPayment($eventData['checkoutId'], $eventData);
+                    } else {
+                        $eventData['paymentStatus'] = 'processing';
+                        $this->commerce->markPaymentProcessing($eventData['checkoutId'], $eventData);
+                    }
                     $processed++;
                 }
             } catch (Throwable) {
@@ -174,6 +203,46 @@ final class CarmajaAp3Worker
             }
         }
         return $processed;
+    }
+
+    private function paymentEvent(array $session, ?string $fallbackCheckoutId = null): array
+    {
+        $metadata = is_array($session['metadata'] ?? null) ? $session['metadata'] : [];
+        $paymentIntent = $session['payment_intent'] ?? null;
+        if (is_array($paymentIntent)) {
+            $intent = $paymentIntent;
+        } elseif (is_string($paymentIntent) && $paymentIntent !== '') {
+            $intent = $this->stripe->retrievePaymentIntent($paymentIntent);
+        } else {
+            throw new CarmajaStripeException(
+                'stripe_payment_intent_missing',
+                'Stripe-Zahlungseinheit fehlt.',
+                409
+            );
+        }
+        $paymentIntentId = is_string($intent['id'] ?? null)
+            ? $intent['id']
+            : (is_string($paymentIntent) ? $paymentIntent : '');
+        $paymentMethod = $intent['payment_method'] ?? null;
+        $paymentMethodType = is_array($paymentMethod) && is_string($paymentMethod['type'] ?? null)
+            ? $paymentMethod['type']
+            : null;
+
+        return [
+            'checkoutId' => (string) ($metadata['checkoutId'] ?? $fallbackCheckoutId ?? ''),
+            'paymentIntentStatus' => $intent['status'] ?? null,
+            'paymentMethodType' => $paymentMethodType,
+            'amountMinor' => (int) ($session['amount_total'] ?? 0),
+            'currency' => $session['currency'] ?? null,
+            'productId' => $metadata['productId'] ?? null,
+            'legalBundleId' => $metadata['legalBundleId'] ?? null,
+            'termsAccepted' => ($session['consent']['terms_of_service'] ?? null) === 'accepted',
+            'customerEmail' => $session['customer_details']['email'] ?? null,
+            'customerName' => $session['customer_details']['name'] ?? null,
+            'shippingAddress' => $session['shipping_details']['address'] ?? [],
+            'billingAddress' => $session['customer_details']['address'] ?? null,
+            'stripePaymentIntentId' => $paymentIntentId,
+        ];
     }
 
     private function requiredConfig(string $key): string

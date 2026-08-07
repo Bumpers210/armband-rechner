@@ -13,9 +13,22 @@ type Order = {
   order_number: string;
   status: string;
   payment_status: string;
+  payment_method_type: string | null;
   refund_status: string;
   shipment_status: string | null;
   tracking_number: string | null;
+};
+
+type Payment = {
+  payment_id: string;
+  checkout_id: string;
+  order_id: string | null;
+  payment_method_type: string | null;
+  payment_status: string;
+  verification_status: string;
+  refund_status: string;
+  dispute_status: string;
+  checkout_state: string;
 };
 
 export function AdminConsole() {
@@ -23,6 +36,7 @@ export function AdminConsole() {
   const [password, setPassword] = useState('');
   const [csrf, setCsrf] = useState('');
   const [orders, setOrders] = useState<Order[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [message, setMessage] = useState('');
 
   async function login(event: FormEvent) {
@@ -44,6 +58,9 @@ export function AdminConsole() {
     const list = await fetch(`${apiOrigin}/admin/v1/orders`, { credentials: 'include' });
     const data = await list.json().catch(() => null);
     setOrders(Array.isArray(data?.orders) ? data.orders : []);
+    const paymentList = await fetch(`${apiOrigin}/admin/v1/payments`, { credentials: 'include' });
+    const paymentData = await paymentList.json().catch(() => null);
+    setPayments(Array.isArray(paymentData?.payments) ? paymentData.payments : []);
     setMessage('Angemeldet.');
   }
 
@@ -80,11 +97,28 @@ export function AdminConsole() {
             <ul>
               {orders.map((order) => (
                 <li key={order.order_id}>
-                  <strong>{order.order_number}</strong> – {order.payment_status} / {order.shipment_status ?? 'not_ready'}
+                  <strong>{order.order_number}</strong> – {order.payment_method_type ?? 'unbekannt'} / {order.payment_status} / {order.shipment_status ?? 'not_ready'}
                   {order.refund_status !== 'none' ? ` – Erstattung: ${order.refund_status}` : ''}
                   {order.shipment_status === 'ready' && (
                     <button type="button" onClick={() => void markShipped(order.order_id)}>Als versandt markieren</button>
                   )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+      {csrf !== '' && (
+        <section aria-label="Zahlungen">
+          <h2>Zahlungen</h2>
+          {payments.length === 0 ? <p>Keine Zahlungen gefunden.</p> : (
+            <ul>
+              {payments.map((payment) => (
+                <li key={payment.payment_id}>
+                  <strong>{payment.payment_method_type ?? 'noch nicht gewählt'}</strong>
+                  {' – '}{payment.payment_status} / Prüfung: {payment.verification_status}
+                  {' / Checkout: '}{payment.checkout_state}
+                  {payment.order_id === null ? ' – noch keine Bestellung' : ''}
                 </li>
               ))}
             </ul>

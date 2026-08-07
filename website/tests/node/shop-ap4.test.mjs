@@ -63,3 +63,13 @@ test("Erfolgs-, Abbruch- und Fehlerseite existieren", async () => {
     assert.match(page, /Zurück zu den Armbändern/);
   }
 });
+
+test("AP3b-Erfolgsseite zeigt asynchrone SEPA-Bearbeitung ohne verfrühte Bestellung", async () => {
+  const page = await source("app/shop/success/page.tsx");
+  const status = await source("components/checkout-status.tsx");
+  assert.match(page, /CheckoutStatusPanel/);
+  assert.match(status, /payment_status === "processing"/);
+  assert.match(status, /SEPA-Lastschrift/);
+  assert.match(status, /erst nach der Zahlungsbestätigung/);
+  assert.match(status, /cache: "no-store"/);
+});
