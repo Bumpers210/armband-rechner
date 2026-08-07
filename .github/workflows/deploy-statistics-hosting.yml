@@ -178,8 +178,19 @@ jobs:
           test -n "$CARMAJA_PRODUCTION_SSH_PRIVATE_KEY"
           test -n "$CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS"
           install -d -m 700 "$HOME/.ssh"
-          printf '%s' "${CARMAJA_PRODUCTION_SSH_PRIVATE_KEY//$'\r'/}" | base64 --decode > "$HOME/.ssh/carmaja_statistics_hosting"
-          printf '%s\n' "${CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS//$'\r'/}" > "$HOME/.ssh/known_hosts"
+          private_key_payload=${CARMAJA_PRODUCTION_SSH_PRIVATE_KEY//$'\r'/}
+          private_key_payload=${private_key_payload//$'\n'/}
+          private_key_payload=${private_key_payload#$'\xEF\xBB\xBF'}
+          private_key_payload_length=${#private_key_payload}
+          known_hosts_payload=${CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS//$'\r'/}
+          known_hosts_payload=${known_hosts_payload#$'\xEF\xBB\xBF'}
+          printf 'SSH_PRIVATE_KEY_BASE64_LENGTH=%s\n' "$private_key_payload_length"
+          if [[ ! "$private_key_payload" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]; then
+            printf '%s\n' 'Production SSH key secret is not canonical Base64.' >&2
+            exit 1
+          fi
+          printf '%s' "$private_key_payload" | base64 --decode > "$HOME/.ssh/carmaja_statistics_hosting"
+          printf '%s\n' "$known_hosts_payload" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/carmaja_statistics_hosting" "$HOME/.ssh/known_hosts"
           ssh-keygen -y -f "$HOME/.ssh/carmaja_statistics_hosting" > /dev/null
           ssh-keygen -F "$CARMAJA_PRODUCTION_SSH_HOST" -f "$HOME/.ssh/known_hosts" > /dev/null || ssh-keygen -F "[$CARMAJA_PRODUCTION_SSH_HOST]:${CARMAJA_PRODUCTION_SSH_PORT:-22}" -f "$HOME/.ssh/known_hosts" > /dev/null
