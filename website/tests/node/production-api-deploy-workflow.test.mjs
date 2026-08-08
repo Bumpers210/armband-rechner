@@ -51,6 +51,8 @@ test("Produktions-API-Workflow ist manuell, gegated und hält Runtime-Daten aus 
   assert.match(workflow, /activation_failure stage_public_entry/);
   assert.match(workflow, /activation_failure activate_public_entry/);
   assert.match(workflow, /activation_failure private_diagnostics/);
+  assert.match(workflow, /index_replaced=false/);
+  assert.match(workflow, /elif test "\$index_replaced" = true; then/);
   assert.doesNotMatch(workflow, /website\/out|website\/hosting/);
   assert.doesNotMatch(workflow, /ssh-keyscan|StrictHostKeyChecking=no|scp -O|sshpass/);
   assert.doesNotMatch(workflow, /^(REMOTE_CHECK|REMOTE_PREPARE|REMOTE_ACTIVATE)$/m);
