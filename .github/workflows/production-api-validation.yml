@@ -6,18 +6,24 @@ on:
       - main
     paths:
       - '.github/workflows/production-api-validation.yml'
+      - '.github/workflows/deploy-production-api.yml'
       - 'website/production-api-private/**'
       - 'website/production-api-public/**'
       - 'website/production-api-tests/**'
+      - 'website/scripts/configure-production-api-environment.ps1'
+      - 'website/tests/node/production-api-deploy-workflow.test.mjs'
   push:
     branches:
       - release/production-product-management
       - fix/production-api-backup-auth
     paths:
       - '.github/workflows/production-api-validation.yml'
+      - '.github/workflows/deploy-production-api.yml'
       - 'website/production-api-private/**'
       - 'website/production-api-public/**'
       - 'website/production-api-tests/**'
+      - 'website/scripts/configure-production-api-environment.ps1'
+      - 'website/tests/node/production-api-deploy-workflow.test.mjs'
 
 permissions:
   contents: read

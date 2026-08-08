@@ -1,0 +1,411 @@
+name: Deploy guarded production product API
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit_sha:
+        description: "Exakter Commit-SHA des geprueften API-Artefakts"
+        required: true
+        type: string
+      deployment_confirmation:
+        description: "Zur Bestaetigung exakt DEPLOY_PRODUCTION_API eingeben"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carmaja-production-product-api
+  cancel-in-progress: false
+
+env:
+  CARMAJA_REPOSITORY: Bumpers210/armband-rechner
+  CARMAJA_PRODUCTION_BRANCH: main
+  CARMAJA_PRODUCTION_PUBLISH_ENABLED: "false"
+  CARMAJA_GITHUB_ADAPTER_ENABLED: "false"
+
+jobs:
+  build-production-api:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      release-id: ${{ steps.release.outputs.release-id }}
+      archive-sha256: ${{ steps.package.outputs.archive-sha256 }}
+
+    steps:
+      - name: Check out exact API candidate
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Guard manual candidate identity and disabled publishers
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_REF_NAME" = "$CARMAJA_PRODUCTION_BRANCH"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
+          test "$CARMAJA_GITHUB_ADAPTER_ENABLED" = "false"
+
+      - name: Set up PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: json, mbstring, gd, exif
+          coverage: none
+
+      - name: Lint and test the API artifact
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(php -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;')" = "8.4"
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find website/production-api-private website/production-api-public website/production-api-tests -type f -name '*.php' -print0)
+          php website/production-api-tests/production-bootstrap-test.php
+          php website/production-api-tests/production-admin-test.php
+          php website/production-api-tests/production-api-test.php
+
+      - name: Build verified API artifact without runtime configuration
+        id: package
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          package_root=".production-api-deploy-package/root"
+          rm -rf ".production-api-deploy-package"
+          mkdir -p "$package_root/private/program" "$package_root/public"
+          cp website/production-api-private/program/*.php "$package_root/private/program/"
+          cp website/production-api-public/index.php "$package_root/public/index.php"
+          cp website/production-api-public/.htaccess "$package_root/public/.htaccess"
+          ! find "$package_root" -type f \( -name 'runtime-config.php' -o -name 'github-token' -o -name '*.secret' \) -print -quit | grep -q .
+          find "$package_root" -type f -print0 | sort -z | xargs -0 sha256sum > .production-api-deploy-package/manifest.sha256
+          tar -C "$package_root" -czf .production-api-deploy-package/product-api.tar.gz .
+          archive_sha256="$(sha256sum .production-api-deploy-package/product-api.tar.gz | awk '{print $1}')"
+          printf '%s  product-api.tar.gz\n' "$archive_sha256" > .production-api-deploy-package/product-api.tar.gz.sha256
+          printf 'archive-sha256=%s\n' "$archive_sha256" >> "$GITHUB_OUTPUT"
+
+      - name: Bind artifact to this workflow attempt
+        id: release
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          release_id="${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          printf 'release-id=%s\n' "$release_id" >> "$GITHUB_OUTPUT"
+
+      - name: Upload verified private API artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Carmaja-Produktion-Produkt-API-${{ github.sha }}
+          path: |
+            .production-api-deploy-package/product-api.tar.gz
+            .production-api-deploy-package/product-api.tar.gz.sha256
+            .production-api-deploy-package/manifest.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+  validate-manual-production-api-deploy:
+    needs: build-production-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: carmaja-production
+    env:
+      CARMAJA_EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+      CARMAJA_DEPLOYMENT_CONFIRMATION: ${{ inputs.deployment_confirmation }}
+      CARMAJA_PRODUCTION_API_DEPLOY_ENABLED: ${{ vars.CARMAJA_PRODUCTION_API_DEPLOY_ENABLED }}
+      CARMAJA_PRODUCTION_API_WEBROOT: ${{ vars.CARMAJA_PRODUCTION_API_WEBROOT }}
+      CARMAJA_PRODUCTION_PRIVATE_DIR: ${{ vars.CARMAJA_PRODUCTION_PRIVATE_DIR }}
+      CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE: ${{ vars.CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE }}
+      CARMAJA_PRODUCTION_API_RUNTIME_CONFIG: ${{ vars.CARMAJA_PRODUCTION_API_RUNTIME_CONFIG }}
+
+    steps:
+      - name: Validate explicit production API deployment request
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_REF_NAME" = "$CARMAJA_PRODUCTION_BRANCH"
+          test "$CARMAJA_EXPECTED_COMMIT_SHA" = "$GITHUB_SHA"
+          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION_API"
+          test "$CARMAJA_PRODUCTION_API_DEPLOY_ENABLED" = "true"
+          test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
+          test "$CARMAJA_GITHUB_ADAPTER_ENABLED" = "false"
+          for value in \
+            "$CARMAJA_PRODUCTION_API_WEBROOT" \
+            "$CARMAJA_PRODUCTION_PRIVATE_DIR" \
+            "$CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE" \
+            "$CARMAJA_PRODUCTION_API_RUNTIME_CONFIG"; do
+            [[ "$value" =~ ^/[A-Za-z0-9._/-]+$ ]]
+            [[ "$value" != *".."* ]]
+          done
+          printf '%s\n' 'PRODUCTION_API_DEPLOY_GUARD_OK=identity-and-configuration'
+
+  deploy-production-api:
+    needs:
+      - build-production-api
+      - validate-manual-production-api-deploy
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_name == 'main' && inputs.expected_commit_sha == github.sha && inputs.deployment_confirmation == 'DEPLOY_PRODUCTION_API' && vars.CARMAJA_PRODUCTION_API_DEPLOY_ENABLED == 'true' && needs.validate-manual-production-api-deploy.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: carmaja-production
+    env:
+      CARMAJA_EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+      CARMAJA_DEPLOYMENT_CONFIRMATION: ${{ inputs.deployment_confirmation }}
+      CARMAJA_PRODUCTION_API_DEPLOY_ENABLED: ${{ vars.CARMAJA_PRODUCTION_API_DEPLOY_ENABLED }}
+      CARMAJA_PRODUCTION_API_WEBROOT: ${{ vars.CARMAJA_PRODUCTION_API_WEBROOT }}
+      CARMAJA_PRODUCTION_PRIVATE_DIR: ${{ vars.CARMAJA_PRODUCTION_PRIVATE_DIR }}
+      CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE: ${{ vars.CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE }}
+      CARMAJA_PRODUCTION_API_RUNTIME_CONFIG: ${{ vars.CARMAJA_PRODUCTION_API_RUNTIME_CONFIG }}
+      CARMAJA_PRODUCTION_SSH_HOST: ${{ secrets.CARMAJA_PRODUCTION_SSH_HOST }}
+      CARMAJA_PRODUCTION_SSH_USER: ${{ secrets.CARMAJA_PRODUCTION_SSH_USER }}
+      CARMAJA_PRODUCTION_SSH_PORT: ${{ secrets.CARMAJA_PRODUCTION_SSH_PORT }}
+      CARMAJA_PRODUCTION_SSH_PRIVATE_KEY: ${{ secrets.CARMAJA_PRODUCTION_SSH_PRIVATE_KEY }}
+      CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS: ${{ secrets.CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS }}
+
+    steps:
+      - name: Check out exact deployment helper
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Download verified API artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Carmaja-Produktion-Produkt-API-${{ github.sha }}
+          path: .production-api-deploy-package
+
+      - name: Guard artifact and protected deployment inputs
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$CARMAJA_EXPECTED_COMMIT_SHA" = "$GITHUB_SHA"
+          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION_API"
+          test "$CARMAJA_PRODUCTION_API_DEPLOY_ENABLED" = "true"
+          test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
+          test "$CARMAJA_GITHUB_ADAPTER_ENABLED" = "false"
+          test "${#CARMAJA_PRODUCTION_SSH_HOST}" -gt 0
+          test "${#CARMAJA_PRODUCTION_SSH_USER}" -gt 0
+          test "${#CARMAJA_PRODUCTION_SSH_PRIVATE_KEY}" -gt 0
+          test "${#CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS}" -gt 0
+          [[ "$CARMAJA_PRODUCTION_SSH_HOST" =~ ^[A-Za-z0-9.-]+$ ]]
+          [[ "$CARMAJA_PRODUCTION_SSH_USER" =~ ^[A-Za-z0-9._-]+$ ]]
+          [[ "${CARMAJA_PRODUCTION_SSH_PORT:-22}" =~ ^[0-9]{1,5}$ ]]
+          test "$((10#${CARMAJA_PRODUCTION_SSH_PORT:-22}))" -ge 1
+          test "$((10#${CARMAJA_PRODUCTION_SSH_PORT:-22}))" -le 65535
+          for value in \
+            "$CARMAJA_PRODUCTION_API_WEBROOT" \
+            "$CARMAJA_PRODUCTION_PRIVATE_DIR" \
+            "$CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE" \
+            "$CARMAJA_PRODUCTION_API_RUNTIME_CONFIG"; do
+            [[ "$value" =~ ^/[A-Za-z0-9._/-]+$ ]]
+            [[ "$value" != *".."* ]]
+          done
+          test "$(find .production-api-deploy-package -maxdepth 1 -type f | wc -l)" -eq 3
+          (
+            cd .production-api-deploy-package
+            sha256sum -c product-api.tar.gz.sha256
+          )
+          test "$(sha256sum .production-api-deploy-package/product-api.tar.gz | awk '{print $1}')" = "${{ needs.build-production-api.outputs.archive-sha256 }}"
+          tar -tzf .production-api-deploy-package/product-api.tar.gz | sort > .production-api-deploy-package/archive-paths.txt
+          diff -u <(printf '%s\n' ./ ./private/ ./private/program/ ./private/program/bootstrap.php ./private/program/product-admin.php ./private/program/product-api-diagnostics.php ./private/program/product-api.php ./private/program/product-maintenance.php ./public/ ./public/.htaccess ./public/index.php | sort) .production-api-deploy-package/archive-paths.txt
+          printf '%s\n' 'PRODUCTION_API_DEPLOY_GUARD_OK=artifact-and-inputs'
+
+      - name: Prepare pinned SSH client
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          private_key_payload=${CARMAJA_PRODUCTION_SSH_PRIVATE_KEY//$'\r'/}
+          private_key_payload=${private_key_payload//$'\n'/}
+          private_key_payload=${private_key_payload#$'\xEF\xBB\xBF'}
+          known_hosts_payload=${CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS//$'\r'/}
+          known_hosts_payload=${known_hosts_payload#$'\xEF\xBB\xBF'}
+          [[ "$private_key_payload" =~ ^[A-Za-z0-9+/]+={0,2}$ ]]
+          printf '%s' "$private_key_payload" | base64 --decode > "$HOME/.ssh/carmaja_production_api_deploy"
+          printf '%s\n' "$known_hosts_payload" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/carmaja_production_api_deploy" "$HOME/.ssh/known_hosts"
+          ssh-keygen -y -f "$HOME/.ssh/carmaja_production_api_deploy" > /dev/null
+          ssh-keygen -F "$CARMAJA_PRODUCTION_SSH_HOST" -f "$HOME/.ssh/known_hosts" > /dev/null \
+            || ssh-keygen -F "[$CARMAJA_PRODUCTION_SSH_HOST]:${CARMAJA_PRODUCTION_SSH_PORT:-22}" -f "$HOME/.ssh/known_hosts" > /dev/null
+
+      - name: Verify private API paths without writes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          PORT="${CARMAJA_PRODUCTION_SSH_PORT:-22}"
+          REMOTE="${CARMAJA_PRODUCTION_SSH_USER}@${CARMAJA_PRODUCTION_SSH_HOST}"
+          api_webroot_b64="$(printf '%s' "$CARMAJA_PRODUCTION_API_WEBROOT" | base64 -w0)"
+          private_dir_b64="$(printf '%s' "$CARMAJA_PRODUCTION_PRIVATE_DIR" | base64 -w0)"
+          workspace_b64="$(printf '%s' "$CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE" | base64 -w0)"
+          runtime_config_b64="$(printf '%s' "$CARMAJA_PRODUCTION_API_RUNTIME_CONFIG" | base64 -w0)"
+          ssh -i "$HOME/.ssh/carmaja_production_api_deploy" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" "$REMOTE" "env CARMAJA_API_WEBROOT_B64=$api_webroot_b64 CARMAJA_PRIVATE_DIR_B64=$private_dir_b64 CARMAJA_WORKSPACE_B64=$workspace_b64 CARMAJA_RUNTIME_CONFIG_B64=$runtime_config_b64 sh -s" <<'REMOTE_CHECK'
+            set -eu
+            fail() { printf '%s\n' 'PRODUCTION_API_REMOTE_GUARD_FAILED' >&2; exit 1; }
+            decode() { printf '%s' "$1" | base64 --decode 2>/dev/null || fail; }
+            api_webroot="$(decode "$CARMAJA_API_WEBROOT_B64")"
+            private_dir="$(decode "$CARMAJA_PRIVATE_DIR_B64")"
+            workspace="$(decode "$CARMAJA_WORKSPACE_B64")"
+            runtime_config="$(decode "$CARMAJA_RUNTIME_CONFIG_B64")"
+            for path in "$api_webroot" "$private_dir" "$workspace" "$runtime_config"; do
+              case "$path" in /*) ;; *) fail ;; esac
+              case "$path" in *..*) fail ;; esac
+            done
+            api_real="$(realpath "$api_webroot" 2>/dev/null)" || fail
+            private_real="$(realpath "$private_dir" 2>/dev/null)" || fail
+            workspace_real="$(realpath "$workspace" 2>/dev/null)" || fail
+            runtime_real="$(realpath "$runtime_config" 2>/dev/null)" || fail
+            test "$api_real" = "$api_webroot" || fail
+            test "$private_real" = "$private_dir" || fail
+            test "$workspace_real" = "$workspace" || fail
+            test "$runtime_real" = "$runtime_config" || fail
+            test -d "$api_real" && test -w "$api_real" || fail
+            test -d "$private_real" && test -w "$private_real" || fail
+            test -d "$workspace_real" && test -w "$workspace_real" || fail
+            test -f "$runtime_real" && test -r "$runtime_real" || fail
+            case "$runtime_real" in "$private_real"/*) ;; *) fail ;; esac
+            for left in "$api_real" "$private_real" "$workspace_real"; do
+              for right in "$api_real" "$private_real" "$workspace_real"; do
+                test "$left" = "$right" && continue
+                case "$left" in "$right"/*) fail ;; esac
+              done
+            done
+            test "$(/usr/bin/php8.4 -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;' 2>/dev/null)" = "8.4" || fail
+            CARMAJA_CONFIG_FILE="$runtime_real" /usr/bin/php8.4 "$private_real/program/product-api-diagnostics.php" >/dev/null 2>&1 || fail
+            printf '%s\n' 'PRODUCTION_API_REMOTE_GUARD_OK=readonly'
+REMOTE_CHECK
+
+      - name: Upload API artifact to isolated workspace
+        shell: bash
+        env:
+          CARMAJA_RELEASE_ID: ${{ needs.build-production-api.outputs.release-id }}
+        run: |
+          set -Eeuo pipefail
+          PORT="${CARMAJA_PRODUCTION_SSH_PORT:-22}"
+          REMOTE="${CARMAJA_PRODUCTION_SSH_USER}@${CARMAJA_PRODUCTION_SSH_HOST}"
+          workspace_b64="$(printf '%s' "$CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE" | base64 -w0)"
+          ssh -i "$HOME/.ssh/carmaja_production_api_deploy" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" "$REMOTE" "env CARMAJA_WORKSPACE_B64=$workspace_b64 sh -s" <<'REMOTE_PREPARE'
+            set -eu
+            umask 027
+            workspace="$(printf '%s' "$CARMAJA_WORKSPACE_B64" | base64 --decode 2>/dev/null)"
+            test -n "$workspace"
+            mkdir -p "$workspace/incoming" "$workspace/releases" "$workspace/backups" "$workspace/locks"
+            chmod 0750 "$workspace" "$workspace/incoming" "$workspace/releases" "$workspace/backups" "$workspace/locks"
+REMOTE_PREPARE
+          SCP=(scp -i "$HOME/.ssh/carmaja_production_api_deploy" -P "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
+          "${SCP[@]}" .production-api-deploy-package/product-api.tar.gz "$REMOTE:${CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE}/incoming/${CARMAJA_RELEASE_ID}.tar.gz"
+          "${SCP[@]}" .production-api-deploy-package/product-api.tar.gz.sha256 "$REMOTE:${CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE}/incoming/${CARMAJA_RELEASE_ID}.tar.gz.sha256"
+          "${SCP[@]}" .production-api-deploy-package/manifest.sha256 "$REMOTE:${CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE}/incoming/${CARMAJA_RELEASE_ID}.manifest.sha256"
+
+      - name: Activate API artifact and run private diagnostics
+        shell: bash
+        env:
+          CARMAJA_RELEASE_ID: ${{ needs.build-production-api.outputs.release-id }}
+          CARMAJA_ARCHIVE_SHA256: ${{ needs.build-production-api.outputs.archive-sha256 }}
+        run: |
+          set -Eeuo pipefail
+          PORT="${CARMAJA_PRODUCTION_SSH_PORT:-22}"
+          REMOTE="${CARMAJA_PRODUCTION_SSH_USER}@${CARMAJA_PRODUCTION_SSH_HOST}"
+          api_webroot_b64="$(printf '%s' "$CARMAJA_PRODUCTION_API_WEBROOT" | base64 -w0)"
+          private_dir_b64="$(printf '%s' "$CARMAJA_PRODUCTION_PRIVATE_DIR" | base64 -w0)"
+          workspace_b64="$(printf '%s' "$CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE" | base64 -w0)"
+          runtime_config_b64="$(printf '%s' "$CARMAJA_PRODUCTION_API_RUNTIME_CONFIG" | base64 -w0)"
+          release_id_b64="$(printf '%s' "$CARMAJA_RELEASE_ID" | base64 -w0)"
+          archive_sha256_b64="$(printf '%s' "$CARMAJA_ARCHIVE_SHA256" | base64 -w0)"
+          ssh -i "$HOME/.ssh/carmaja_production_api_deploy" -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" "$REMOTE" "env CARMAJA_API_WEBROOT_B64=$api_webroot_b64 CARMAJA_PRIVATE_DIR_B64=$private_dir_b64 CARMAJA_WORKSPACE_B64=$workspace_b64 CARMAJA_RUNTIME_CONFIG_B64=$runtime_config_b64 CARMAJA_RELEASE_ID_B64=$release_id_b64 CARMAJA_ARCHIVE_SHA256_B64=$archive_sha256_b64 sh -s" <<'REMOTE_ACTIVATE'
+            set -eu
+            umask 027
+            fail() { printf '%s\n' 'PRODUCTION_API_ACTIVATION_FAILED' >&2; exit 1; }
+            decode() { printf '%s' "$1" | base64 --decode 2>/dev/null || fail; }
+            api_webroot="$(decode "$CARMAJA_API_WEBROOT_B64")"
+            private_dir="$(decode "$CARMAJA_PRIVATE_DIR_B64")"
+            workspace="$(decode "$CARMAJA_WORKSPACE_B64")"
+            runtime_config="$(decode "$CARMAJA_RUNTIME_CONFIG_B64")"
+            release_id="$(decode "$CARMAJA_RELEASE_ID_B64")"
+            archive_sha256="$(decode "$CARMAJA_ARCHIVE_SHA256_B64")"
+            case "$release_id" in *[!A-Za-z0-9.-]*|'') fail ;; esac
+            test "${#archive_sha256}" -eq 64 || fail
+            archive="$workspace/incoming/$release_id.tar.gz"
+            checksum="$workspace/incoming/$release_id.tar.gz.sha256"
+            manifest="$workspace/incoming/$release_id.manifest.sha256"
+            test -f "$archive" && test -f "$checksum" && test -f "$manifest" || fail
+            (cd "$workspace/incoming" && sha256sum -c "$release_id.tar.gz.sha256") >/dev/null 2>&1 || fail
+            test "$(sha256sum "$archive" | awk '{print $1}')" = "$archive_sha256" || fail
+            lock="$workspace/locks/product-api-deploy.lock"
+            mkdir "$lock" 2>/dev/null || fail
+            stage="$workspace/releases/.staging-$release_id"
+            release="$workspace/releases/$release_id"
+            backup="$workspace/backups/$release_id"
+            cleanup() { rm -rf "$stage"; rmdir "$lock" 2>/dev/null || true; }
+            trap cleanup EXIT
+            rm -rf "$stage" "$release"
+            mkdir "$stage" "$release" "$backup"
+            tar -xzf "$archive" -C "$stage" >/dev/null 2>&1 || fail
+            test -f "$stage/private/program/bootstrap.php" || fail
+            test -f "$stage/public/index.php" || fail
+            test -f "$stage/public/.htaccess" || fail
+            test "$(find "$stage" -type f | wc -l)" -eq 7 || fail
+            cp "$manifest" "$release/manifest.sha256"
+            cp "$archive" "$release/product-api.tar.gz"
+            cp "$checksum" "$release/product-api.tar.gz.sha256"
+            had_program=false
+            had_index=false
+            had_htaccess=false
+            rollback() {
+              if test -e "$private_dir/program"; then rm -rf "$private_dir/program"; fi
+              if test "$had_program" = true; then mv "$backup/program" "$private_dir/program"; fi
+              if test "$had_index" = true; then cp "$backup/index.php" "$api_webroot/index.php"; else rm -f "$api_webroot/index.php"; fi
+              if test "$had_htaccess" = true; then cp "$backup/.htaccess" "$api_webroot/.htaccess"; else rm -f "$api_webroot/.htaccess"; fi
+            }
+            if test -e "$private_dir/program"; then mv "$private_dir/program" "$backup/program"; had_program=true; fi
+            if test -f "$api_webroot/index.php"; then cp -p "$api_webroot/index.php" "$backup/index.php"; had_index=true; fi
+            if test -f "$api_webroot/.htaccess"; then cp -p "$api_webroot/.htaccess" "$backup/.htaccess"; had_htaccess=true; fi
+            if ! mv "$stage/private/program" "$private_dir/program" || ! cp "$stage/public/index.php" "$api_webroot/.index.php.$release_id" || ! mv "$api_webroot/.index.php.$release_id" "$api_webroot/index.php" || ! cp "$stage/public/.htaccess" "$api_webroot/..htaccess.$release_id" || ! mv "$api_webroot/..htaccess.$release_id" "$api_webroot/.htaccess" || ! CARMAJA_CONFIG_FILE="$runtime_config" /usr/bin/php8.4 "$private_dir/program/product-api-diagnostics.php" >/dev/null 2>&1; then
+              rollback
+              printf '%s\n' 'PRODUCTION_API_ROLLBACK_OK=activation' >&2
+              fail
+            fi
+            printf '%s\n' 'PRODUCTION_API_ACTIVATION_OK=private-diagnostics'
+REMOTE_ACTIVATE
+
+      - name: Verify unauthenticated public API router without writes
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          status="$(curl --silent --show-error --location --max-time 15 --output /dev/null --write-out '%{http_code}' https://api.carmaja-perlen.de/)"
+          test "$status" = "401"
+          printf '%s\n' 'PRODUCTION_API_HTTP_SMOKE_OK=unauthenticated-router'
+
+  reset-production-api-deploy-gate:
+    needs:
+      - build-production-api
+      - validate-manual-production-api-deploy
+      - deploy-production-api
+    if: ${{ github.event_name == 'workflow_dispatch' && always() && vars.CARMAJA_PRODUCTION_API_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: carmaja-production
+    permissions: {}
+    steps:
+      - name: Disable production API deployment independently of result
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.CARMAJA_PRODUCTION_VARIABLES_TOKEN }}
+          script: |
+            await github.rest.actions.updateRepoVariable({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: "CARMAJA_PRODUCTION_API_DEPLOY_ENABLED",
+              value: "false",
+            });
