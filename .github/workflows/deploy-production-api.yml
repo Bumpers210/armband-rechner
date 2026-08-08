@@ -363,6 +363,7 @@ jobs:
             cp "$archive" "$release/product-api.tar.gz"
             cp "$checksum" "$release/product-api.tar.gz.sha256"
             had_index=false
+            index_replaced=false
             program_replaced=false
             previous_program="$private_dir/.product-api-previous-$release_id"
             next_program="$private_dir/.product-api-next-$release_id"
@@ -375,7 +376,11 @@ jobs:
                 rm -rf "$private_dir/program"
               fi
               if test -e "$next_program"; then rm -rf "$next_program"; fi
-              if test "$had_index" = true; then cp "$backup/index.php" "$api_webroot/index.php"; else rm -f "$api_webroot/index.php"; fi
+              if test "$had_index" = true; then
+                cp "$backup/index.php" "$api_webroot/index.php"
+              elif test "$index_replaced" = true; then
+                rm -f "$api_webroot/index.php"
+              fi
               rm -f "$api_webroot/.index.php.$release_id"
             }
             activation_failure() {
@@ -414,6 +419,7 @@ jobs:
             if ! mv "$api_webroot/.index.php.$release_id" "$api_webroot/index.php"; then
               activation_failure activate_public_entry
             fi
+            index_replaced=true
             if ! CARMAJA_CONFIG_FILE="$runtime_config" /usr/bin/php8.4 "$private_dir/program/product-api-diagnostics.php" >/dev/null 2>&1; then
               activation_failure private_diagnostics
             fi
