@@ -38,6 +38,12 @@ test("Produktions-API-Workflow ist manuell, gegated und hält Runtime-Daten aus 
   assert.match(workflow, /SFTP_WORKSPACE_PATH="\$\{CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE#\/home\/www\/\}"/);
   assert.match(workflow, /SFTP_INCOMING_PATH="\$SFTP_WORKSPACE_PATH\/incoming"/);
   assert.doesNotMatch(workflow, /\$REMOTE:\$\{CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE\}/);
+  assert.match(workflow, /PRODUCTION_API_ACTIVATION_PHASE=backup_private_program/);
+  assert.match(workflow, /PRODUCTION_API_ACTIVATION_PHASE=backup_public_entry/);
+  assert.match(workflow, /activation_failure install_private_program/);
+  assert.match(workflow, /activation_failure stage_public_entry/);
+  assert.match(workflow, /activation_failure activate_public_entry/);
+  assert.match(workflow, /activation_failure private_diagnostics/);
   assert.doesNotMatch(workflow, /website\/out|website\/hosting/);
   assert.doesNotMatch(workflow, /ssh-keyscan|StrictHostKeyChecking=no|scp -O|sshpass/);
   assert.doesNotMatch(workflow, /^(REMOTE_CHECK|REMOTE_PREPARE|REMOTE_ACTIVATE)$/m);
