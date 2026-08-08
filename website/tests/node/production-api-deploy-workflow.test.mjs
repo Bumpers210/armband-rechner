@@ -31,9 +31,13 @@ test("Produktions-API-Workflow ist manuell, gegated und hält Runtime-Daten aus 
   assert.match(workflow, /PRODUCTION_API_HTTP_SMOKE_OK=unauthenticated-router/);
   assert.match(workflow, /https:\/\/api\.carmaja-perlen\.de\//);
   assert.match(workflow, /reset-production-api-deploy-gate:/);
-  assert.match(workflow, /updateRepoVariable/);
+  assert.match(workflow, /updateEnvironmentVariable/);
+  assert.match(workflow, /environment_name: "carmaja-production"/);
   assert.doesNotMatch(workflow, /if: .*vars\.CARMAJA_PRODUCTION_API_DEPLOY_ENABLED/m);
   assert.match(workflow, /reset-production-api-deploy-gate:[\s\S]*?if: \$\{\{ github\.event_name == 'workflow_dispatch' && always\(\) \}\}/);
+  assert.match(workflow, /SFTP_WORKSPACE_PATH="\$\{CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE#\/home\/www\/\}"/);
+  assert.match(workflow, /SFTP_INCOMING_PATH="\$SFTP_WORKSPACE_PATH\/incoming"/);
+  assert.doesNotMatch(workflow, /\$REMOTE:\$\{CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE\}/);
   assert.doesNotMatch(workflow, /website\/out|website\/hosting/);
   assert.doesNotMatch(workflow, /ssh-keyscan|StrictHostKeyChecking=no|scp -O|sshpass/);
   assert.doesNotMatch(workflow, /^(REMOTE_CHECK|REMOTE_PREPARE|REMOTE_ACTIVATE)$/m);
