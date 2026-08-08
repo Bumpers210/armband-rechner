@@ -9,7 +9,7 @@ plugins {
 val productionVersionCode = 4
 val productionVersionName = "1.1.2"
 val betaVersionCode = 5
-val betaVersionName = "1.1.0-beta.4"
+val betaVersionName = "1.1.3-beta.1"
 val productionProductApiBaseUrl = "https://api.carmaja-perlen.de/"
 val testProductApiBaseUrl = "https://test-api.carmaja-perlen.de/"
 val productionSigningPropertiesFile = rootProject.file(".signing/production-keystore.properties")
@@ -135,7 +135,6 @@ android {
 
         create("beta") {
             initWith(getByName("debug"))
-            applicationIdSuffix = ".test"
             isDebuggable = true
             signingConfig = if (betaSigningReady) {
                 signingConfigs.getByName("beta")
