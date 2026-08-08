@@ -33,8 +33,13 @@ const productsData = loadPublicProductsV2(productsFile, imagesDirectory);
 
 export const publicProducts = productsData.products;
 
+const includeUnavailableTestProducts =
+  process.env.CARMAJA_SITE_TARGET === "test";
+
 export const visibleProducts = publicProducts
-  .filter((product) => product.salesEnabled)
+  .filter(
+    (product) => product.salesEnabled || includeUnavailableTestProducts,
+  )
   .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
 export const detailProducts = publicProducts

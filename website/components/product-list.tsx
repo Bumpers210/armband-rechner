@@ -29,6 +29,11 @@ export function ProductList({
                 {product.publicTitle}
               </Link>
             </Heading>
+            {!product.salesEnabled ? (
+              <p className="product-status product-status--sold">
+                Nicht verfügbar
+              </p>
+            ) : null}
             <p>{product.description}</p>
             <dl className="product-facts">
               <div>

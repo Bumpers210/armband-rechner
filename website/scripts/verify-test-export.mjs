@@ -161,13 +161,15 @@ const expectedSitemap = [
   `${siteUrl}ueber-mich/`,
   `${siteUrl}material-pflege/`,
   `${siteUrl}kontakt/`,
-  ...enabled.map((product) => `${siteUrl}armbaender/${product.slug}/`),
+  ...source.products.map(
+    (product) => `${siteUrl}armbaender/${product.slug}/`,
+  ),
 ];
 
 assert(
   sitemapLocations.length === expectedSitemap.length &&
     expectedSitemap.every((location) => sitemapLocations.includes(location)),
-  "Testsitemap enthält nicht exakt Startseite, Übersicht und kaufbare v2-Produkte.",
+  "Testsitemap enthält nicht exakt Startseite, Übersicht und sichtbare v2-Testprodukte.",
 );
 
 for (const product of enabled) {
@@ -224,7 +226,9 @@ for (const product of unavailable) {
 
   assert(await exists(detailPath), `Nicht verfügbare Detailseite fehlt: ${product.sku}`);
   assert(
-      !overviewHtml.includes(product.description) &&
+      overviewHtml.includes(product.publicTitle) &&
+      overviewHtml.includes(product.description) &&
+      overviewHtml.includes("Nicht verfügbar") &&
       detailHtml.includes("Nicht verfügbar") &&
       !detailHtml.toLowerCase().includes("vinted") &&
       !detailHtml.toLowerCase().includes("marktplatz"),
