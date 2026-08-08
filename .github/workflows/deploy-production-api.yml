@@ -455,9 +455,12 @@ jobs:
         with:
           github-token: ${{ secrets.CARMAJA_PRODUCTION_VARIABLES_TOKEN }}
           script: |
-            await github.rest.actions.updateEnvironmentVariable({
+            const repository = await github.rest.repos.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
+            });
+            await github.rest.actions.updateEnvironmentVariable({
+              repository_id: repository.data.id,
               environment_name: "carmaja-production",
               name: "CARMAJA_PRODUCTION_API_DEPLOY_ENABLED",
               value: "false",
