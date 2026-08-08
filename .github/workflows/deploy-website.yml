@@ -1,13 +1,16 @@
 name: Deploy website to IONOS
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "website/**"
-      - ".github/workflows/deploy-website.yml"
   workflow_dispatch:
+    inputs:
+      release_commit:
+        description: "Vollständiger, geprüfter Commit-SHA auf main"
+        required: true
+        type: string
+      confirmation:
+        description: "Exakt DEPLOY-CARMAJA-PRODUCTION eingeben"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,7 +21,13 @@ concurrency:
 
 jobs:
   deploy:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.sha == inputs.release_commit &&
+      inputs.confirmation == 'DEPLOY-CARMAJA-PRODUCTION' &&
+      vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
+    environment: carmaja-production
     defaults:
       run:
         working-directory: website
@@ -26,6 +35,19 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Verify pinned production release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test "${GITHUB_SHA}" = "${{ inputs.release_commit }}"
+          case "${GITHUB_SHA}" in
+            *[!0-9a-f]*|'') exit 1 ;;
+          esac
+          test "${#GITHUB_SHA}" -eq 40
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -46,14 +68,17 @@ jobs:
       - name: Prepare SSH
         env:
           IONOS_SSH_PRIVATE_KEY: ${{ secrets.IONOS_SSH_PRIVATE_KEY }}
-          IONOS_SSH_HOST: ${{ secrets.IONOS_SSH_HOST }}
-          IONOS_SSH_PORT: ${{ secrets.IONOS_SSH_PORT }}
+          IONOS_SSH_KNOWN_HOSTS: ${{ secrets.IONOS_SSH_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
+          test -n "$IONOS_SSH_PRIVATE_KEY"
+          test -n "$IONOS_SSH_KNOWN_HOSTS"
           mkdir -p "$HOME/.ssh"
           chmod 700 "$HOME/.ssh"
           printf '%s\n' "$IONOS_SSH_PRIVATE_KEY" > "$HOME/.ssh/ionos_deploy_key"
           chmod 600 "$HOME/.ssh/ionos_deploy_key"
-          ssh-keyscan -p "${IONOS_SSH_PORT:-22}" "$IONOS_SSH_HOST" >> "$HOME/.ssh/known_hosts"
+          printf '%s\n' "$IONOS_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
 
       - name: Deploy without deleting private data
         env:
@@ -64,7 +89,7 @@ jobs:
         run: |
           set -eu
           REMOTE="${IONOS_SSH_USER}@${IONOS_SSH_HOST}"
-          SSH="ssh -i $HOME/.ssh/ionos_deploy_key -p ${IONOS_SSH_PORT:-22}"
+          SSH="ssh -i $HOME/.ssh/ionos_deploy_key -p ${IONOS_SSH_PORT:-22} -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$HOME/.ssh/known_hosts"
           RSYNC_RSH="$SSH"
 
           mkdir -p out/images/products

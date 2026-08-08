@@ -167,6 +167,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'stripeSdkVersion',
         'stripeApiVersion',
         'stripeWebhookApiVersion',
+        'stripePaymentMethodTypes',
         'stripeSuccessUrl',
         'stripeCancelUrl',
         'activeLegalBundleId',
@@ -241,6 +242,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $stripeSdkVersion = carmaja_bootstrap_optional_string($config, 'stripeSdkVersion');
     $stripeApiVersion = carmaja_bootstrap_optional_string($config, 'stripeApiVersion');
     $stripeWebhookApiVersion = carmaja_bootstrap_optional_string($config, 'stripeWebhookApiVersion');
+    $stripePaymentMethodTypes = $config['stripePaymentMethodTypes'] ?? null;
     $stripeSuccessUrl = carmaja_bootstrap_optional_string($config, 'stripeSuccessUrl');
     $stripeCancelUrl = carmaja_bootstrap_optional_string($config, 'stripeCancelUrl');
     $activeLegalBundleId = carmaja_bootstrap_optional_string($config, 'activeLegalBundleId');
@@ -256,6 +258,9 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
 
     if (strlen($tokenPepper) < 32 || !is_bool($githubAdapterEnabled)
         || !is_bool($commerceRequireTls)
+        || ($stripePaymentMethodTypes !== null
+            && (!is_array($stripePaymentMethodTypes)
+                || $stripePaymentMethodTypes !== ['card', 'paypal', 'klarna', 'sepa_debit']))
         || ($shippingAmountMinor !== null && !is_int($shippingAmountMinor))
         || ($shippingMinBusinessDays !== null && !is_int($shippingMinBusinessDays))
         || ($shippingMaxBusinessDays !== null && !is_int($shippingMaxBusinessDays))) {
@@ -265,10 +270,16 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         );
     }
 
-    if ($githubBranch !== null && $githubBranch !== 'test/product-management-beta') {
+    $productionMainReference = $publishTarget === 'production'
+        && $githubBranch === 'main'
+        && !$githubAdapterEnabled
+        && !$productionPublishEnabled;
+    if ($githubBranch !== null
+        && $githubBranch !== 'test/product-management-beta'
+        && !$productionMainReference) {
         throw new CarmajaBootstrapException(
             'github_branch_invalid',
-            'GitHub-Testbranch ist nicht sicher konfiguriert.'
+            'GitHub-Branch ist nicht sicher konfiguriert.'
         );
     }
 
@@ -413,6 +424,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'stripeSdkVersion' => $stripeSdkVersion,
         'stripeApiVersion' => $stripeApiVersion,
         'stripeWebhookApiVersion' => $stripeWebhookApiVersion,
+        'stripePaymentMethodTypes' => $stripePaymentMethodTypes,
         'stripeSuccessUrl' => $stripeSuccessUrl,
         'stripeCancelUrl' => $stripeCancelUrl,
         'activeLegalBundleId' => $activeLegalBundleId,
@@ -519,8 +531,11 @@ function carmaja_bootstrap_prepare(?string $configPath = null): array
     if ($config['githubAdapterEnabled']) {
         $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER'] =
             'carmaja_api_github_publish_adapter';
+        $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2'] =
+            'carmaja_api_github_publish_adapter';
     } else {
         unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']);
+        unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2']);
     }
 
     return $config;
@@ -982,6 +997,24 @@ function carmaja_bootstrap_route_request(): never
                     ])
                 );
             }
+
+            if ($method === 'POST'
+                && ($segments[2] ?? null) === 'publish'
+                && count($segments) === 3) {
+                carmaja_api_validate_client_version_code(
+                    $_SERVER['HTTP_X_CARMAJA_APP_VERSION_CODE'] ?? null
+                );
+                carmaja_bootstrap_send(
+                    200,
+                    carmaja_api_v2_success_response([
+                        'publication' => carmaja_api_v2_publish_product(
+                            $productId,
+                            carmaja_api_json_body(),
+                            $actor
+                        ),
+                    ])
+                );
+            }
         }
 
         throw new CarmajaApiException(
@@ -989,6 +1022,15 @@ function carmaja_bootstrap_route_request(): never
             'v2-API-Endpunkt wurde nicht gefunden.',
             [],
             'endpoint_not_found'
+        );
+    }
+
+    if (($config['environment'] ?? null) === 'production') {
+        throw new CarmajaApiException(
+            410,
+            'Legacy-Produktwege sind in Produktion deaktiviert.',
+            [],
+            'legacy_product_route_disabled'
         );
     }
 

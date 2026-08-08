@@ -32,10 +32,8 @@ $lastThirtyDaysStart = $today->modify('-29 days')->format('Y-m-d');
 $todayTotal = carmaja_bucket_total($stats['days'][$todayKey] ?? []);
 $lastThirtyDaysTotal = 0;
 $overallTotal = 0;
-$vintedTotal = 0;
 $instagramTotal = 0;
 $positionTotals = array_fill_keys(CARMAJA_POSITIONS, 0);
-$productTotals = [];
 
 foreach ([$stats['days'], $stats['months']] as $periods) {
     foreach ($periods as $bucket) {
@@ -44,7 +42,6 @@ foreach ([$stats['days'], $stats['months']] as $periods) {
         }
 
         $overallTotal += carmaja_bucket_total($bucket);
-        $vintedTotal += carmaja_bucket_total($bucket, 'vinted');
         $instagramTotal += carmaja_bucket_total($bucket, 'instagram');
 
         foreach (CARMAJA_POSITIONS as $position) {
@@ -55,18 +52,6 @@ foreach ([$stats['days'], $stats['months']] as $periods) {
             );
         }
 
-        if (isset($bucket['products']) && is_array($bucket['products'])) {
-            foreach ($bucket['products'] as $slug => $amount) {
-                if (!is_string($slug)
-                    || preg_match(CARMAJA_PRODUCT_PATTERN, $slug) !== 1) {
-                    continue;
-                }
-
-                $productTotals[$slug] =
-                    max(0, (int) ($productTotals[$slug] ?? 0))
-                    + max(0, (int) $amount);
-            }
-        }
     }
 }
 
@@ -83,7 +68,6 @@ foreach ($stats['days'] as $date => $bucket) {
 
 $dailyRows = $stats['days'];
 krsort($dailyRows);
-arsort($productTotals);
 
 function carmaja_format_number(int $number): string
 {
@@ -225,10 +209,6 @@ function carmaja_escape(string $value): string
             <strong><?= carmaja_format_number($overallTotal) ?></strong>
           </div>
           <div class="metric">
-            <span>Vinted-Klicks</span>
-            <strong><?= carmaja_format_number($vintedTotal) ?></strong>
-          </div>
-          <div class="metric">
             <span>Instagram-Klicks</span>
             <strong><?= carmaja_format_number($instagramTotal) ?></strong>
           </div>
@@ -247,34 +227,6 @@ function carmaja_escape(string $value): string
         </div>
       </section>
 
-      <section aria-labelledby="products-heading">
-        <h2 id="products-heading">Produktklicks</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Produkt</th>
-                <th>Klicks</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php if ($productTotals === []): ?>
-                <tr>
-                  <td class="empty" colspan="2">Noch keine Produktklicks erfasst.</td>
-                </tr>
-              <?php else: ?>
-                <?php foreach ($productTotals as $slug => $amount): ?>
-                  <tr>
-                    <td><?= carmaja_escape((string) $slug) ?></td>
-                    <td><?= carmaja_format_number((int) $amount) ?></td>
-                  </tr>
-                <?php endforeach; ?>
-              <?php endif; ?>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
       <section aria-labelledby="daily-heading">
         <h2 id="daily-heading">Tageswerte</h2>
         <div class="table-wrap">
@@ -282,29 +234,24 @@ function carmaja_escape(string $value): string
             <thead>
               <tr>
                 <th>Datum</th>
-                <th>Vinted</th>
                 <th>Instagram</th>
                 <th>Hero</th>
                 <th>Galerie</th>
                 <th>Kontakt</th>
                 <th>Footer</th>
-                <th>Produkt</th>
                 <th>Gesamt</th>
               </tr>
             </thead>
             <tbody>
               <?php if ($dailyRows === []): ?>
                 <tr>
-                  <td class="empty" colspan="9">Noch keine Klicks erfasst.</td>
+                  <td class="empty" colspan="7">Noch keine Klicks erfasst.</td>
                 </tr>
               <?php else: ?>
                 <?php foreach ($dailyRows as $date => $bucket): ?>
                   <?php if (is_array($bucket)): ?>
                     <tr>
                       <td><?= carmaja_escape((string) $date) ?></td>
-                      <td><?= carmaja_format_number(
-                          carmaja_bucket_total($bucket, 'vinted')
-                      ) ?></td>
                       <td><?= carmaja_format_number(
                           carmaja_bucket_total($bucket, 'instagram')
                       ) ?></td>
@@ -319,9 +266,6 @@ function carmaja_escape(string $value): string
                       ) ?></td>
                       <td><?= carmaja_format_number(
                           carmaja_bucket_total($bucket, null, 'footer')
-                      ) ?></td>
-                      <td><?= carmaja_format_number(
-                          carmaja_bucket_total($bucket, null, 'product')
                       ) ?></td>
                       <td><?= carmaja_format_number(
                           carmaja_bucket_total($bucket)

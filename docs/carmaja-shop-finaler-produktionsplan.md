@@ -1,17 +1,21 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
-Stand: 2026-08-07
+Stand: 2026-08-08
 Änderungsvermerk: AP1, AP2, AP2a, AP3, AP4 und AP5 sind abgeschlossen und
 abgenommen. AP3b ist für `card`, `paypal`, `klarna` und `sepa_debit` technisch
 vollständig abgenommen; die AP6-Gesamtregression wurde danach erfolgreich
 wiederholt. Rechts-, Datenschutz- und Versandfassung vom 2026-08-07 sind dem
 freigegebenen Produktions-Legal-Bundle `cmj-production-legal-2026-08-07-v3`
-zugeordnet. AP6 ist vollständig abgenommen. AP7 bleibt nicht freigegeben.
+zugeordnet. AP6 ist vollständig abgenommen. AP7.0 hat das lokale
+Produktionspaket auf Basis des AP6-Commits vorbereitet und technisch geprüft;
+AP7 und jede Produktionsmutation bleiben nicht freigegeben.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`  
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
-Produktionsziel: ausschließlich der eigene Carmaja-Shop; Vinted und andere
-parallele Verkaufskanäle werden vor AP7 entfernt und nicht synchronisiert.
+AP6-Abschlusscommit: `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`
+Produktionsziel: ausschließlich der eigene Carmaja-Shop. Parallele externe
+Verkaufsangebote müssen vor dem produktiven Cutover deaktiviert oder gelöscht
+sein; eine Synchronisierung wird nicht entwickelt.
 
 ## 1. Status und Leitplanken
 
@@ -265,9 +269,9 @@ Legal-Snapshot. Erfolgs-, Abbruch- und Fehlerseiten sowie die dauerhaft
 öffentliche zweistufige Widerrufsfunktion sind enthalten. Statische
 Bestandswerte werden nicht als Kaufentscheidung verwendet.
 
-Der eigene Carmaja-Shop ist der einzige Verkaufskanal. Vinted-/Marktplatzlinks
+Der eigene Carmaja-Shop ist der einzige Verkaufskanal. Externe Verkaufslinks
 und -verweise sind aus den sichtbaren Produkt-, Start- und Checkoutseiten
-entfernt; es gibt keine Marktplatzsynchronisierung. Die bestehende Legacy-
+entfernt; es gibt keine Kanalsynchronisierung. Die bestehende Legacy-
 Produktverwaltung bleibt für AP1-Kompatibilität lesbar, erzeugt aber keine
 öffentlichen Shoplinks.
 
@@ -347,6 +351,37 @@ innerhalb Deutschlands als Maxibrief der Deutschen Post bis 1.000 g für
 Versicherung. Der vollständige Bericht steht in
 `website/docs/ap6-acceptance.md`. AP7 bleibt gesondert gesperrt.
 
+### AP7.0 – Lokales Produktionspaket
+
+AP7.0 wurde am 2026-08-08 ausschließlich lokal im separaten Worktree
+`G:\BS-Stein-Hart-ap7` auf `feature/shop-ap7` aus dem unveränderten AP6-Commit
+vorbereitet. Der Produktions-API-Einstieg ist von Testpfaden getrennt; private
+API-, Konfigurations- und Workerziele sind festgelegt. Der endgültige Worker
+liegt unter `/home/www/carmaja-private-shop/worker.php` und wird später per
+UnixCron `*/5 * * * *` mit `/usr/bin/php8.4` gestartet.
+
+Das automatische `main`-Deployment wurde durch einen manuellen, SHA-gepinnten
+und standardmäßig deaktivierten Produktionsworkflow ersetzt. Produktions-
+Hosting, Tracking und Export verwenden keine externen Verkaufsziele. Website
+und Publisher erwarten Produktmodell v2 ohne `stock` oder externe
+Verkaufsfelder; die Website besitzt keinen statischen Bestandsfallback.
+
+Der lokale Cutover-Adapter ist CLI-only und standardmäßig schreibfrei. Das
+versionierte Manifest bindet Schema-Migrationen, Zahlungsarten, Versand und
+Legal Bundle per Vertrag und Prüfsumme. Ohne Status `approved_for_cutover`,
+genau ein ausgewähltes autoritatives v2-Produkt, passende Produktversion und
+passenden serverseitigen `sourceHash` ist kein Apply möglich. Es wurden weder
+ein reales Produkt ausgewählt noch Produktionssecrets, Produktionsdatenbank,
+Liveprovider, Cron, Deployment, Migration oder Produktaktivierung berührt.
+
+Die lokale Regression ist bestanden: PHP 116/116; AP7-PHP 7/7; Node 77/84
+mit ausschließlich den sieben unveränderten CRLF-/Bash-Basisfehlern; AP7-Node
+4/4; Lint, Testbuild, lokaler Produktionsbuild mit künstlicher v2-Fixture,
+Exportprüfung, Android-Unit/Lint und Produktionsabhängigkeitsaudit sind grün.
+Die Readiness- und Gate-Dokumentation steht in
+`website/docs/ap7-readiness.md`. AP7.0 ist technisch bereit zur gesonderten
+Produktionsfreigabe; AP7 selbst bleibt gesperrt.
+
 ## 5. Meilensteine und kritischer Pfad
 
 | Meilenstein | Stand | Nachweis |
@@ -361,15 +396,16 @@ Versicherung. Der vollständige Bericht steht in
 | AP2a | abgeschlossen | Vier technische Legal-Seiten, Bundle-Hash-/Statusprüfung, Snapshot-Zuordnung, Testexport und Abnahmebericht bestanden |
 | AP3 | abgeschlossen | Stripe-Vertrag, Checkout-Parameter, Webhook-Inbox, Worker, PHP-8.4-Lint/API und Node-Nachweise bestanden |
 | AP3b | technisch vollständig abgenommen | Vier-Zahlungsarten-Allowlist, asynchrone Zahlung, blockierende Reservierung, Admin/Status, Sandbox- und Wiederanlaufnachweise bestanden |
-| AP4 | vollständig abgenommen | Shop-Sitzung, Token-/CSRF-/CORS-Vertrag, Live-API, Checkout-UI, Widerruf, Marktplatzentfernung und Sicherheitstests bestanden |
+| AP4 | vollständig abgenommen | Shop-Sitzung, Token-/CSRF-/CORS-Vertrag, Live-API, Checkout-UI, Widerruf, Verkaufskanalgrenze und Sicherheitstests bestanden |
 | AP5 | vollständig abgenommen | getrenntes Admin-Konto, Session/CSRF/Sperre, Admin-Verwaltung, Brevo-Outbox, Refund-Anzeige und AP5-Nachweise bestanden |
 | AP6 | vollständig abgenommen | PHP-, Node-, Android-, MySQL-, Stripe-, Brevo-, IONOS-Cron-, Backup-/Restore- und Sicherheitsnachweise bestanden; Rechts-, Datenschutz- und Versandfassung versioniert freigegeben |
+| AP7.0 | lokal technisch bereit | Produktionsverträge, manueller Deployment-Gate, v2-Website/Publisher, Cutovermanifest/-Adapter und lokale Regression bestanden; keine Produktionsmutation |
 
 Kritischer Pfad bis zur AP6-Abnahme: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5
 → AP2a → AP3 → AP4 → AP5 → AP3b → AP6. Dieser Pfad ist abgeschlossen. Der
-verbleibende Produktionspfad beginnt ausschließlich mit einer gesonderten
-ausdrücklichen AP7-Freigabe. Produktions-Cutover, Deployment und AP7 bleiben
-bis dahin gesperrt.
+verbleibende Produktionspfad beginnt nach dem abgeschlossenen AP7.0 weiterhin
+ausschließlich mit einer gesonderten ausdrücklichen AP7-Freigabe.
+Produktions-Cutover, Deployment und AP7 bleiben bis dahin gesperrt.
 
 ## 6. Aufwand und Kalenderkorridore
 
@@ -427,8 +463,9 @@ Planungskorridor von ca. 48–77 Wochen bei 5 h/Woche, 24–39 Wochen bei
 10 h/Woche und 16–26 Wochen bei 15 h/Woche. AP3b und die erneute
 AP6-Gesamtregression waren mit weiteren 52–92 Stunden geplant. Beide sind
 technisch abgeschlossen; Ist-Arbeitsstunden wurden nicht erfasst und werden
-nicht nachträglich geschätzt. AP7 besitzt weiterhin keinen freigegebenen
-Ausführungs- oder belastbaren Restkorridor.
+nicht nachträglich geschätzt. AP7.0 ist lokal abgeschlossen; Ist-Stunden
+werden nicht nachträglich geschätzt. AP7 besitzt weiterhin keinen
+freigegebenen Ausführungs- oder belastbaren Restkorridor.
 
 Die Kalenderkorridore enthalten keinen externen IONOS-, Stripe-, Brevo- oder
 Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
@@ -446,11 +483,13 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP4 | freigegeben und vollständig abgenommen |
 | AP5 | freigegeben und vollständig abgenommen |
 | AP6 | vollständig abgenommen |
+| AP7.0 | lokal technisch bereit; keine Produktionsfreigabe |
 | AP7 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 
 Die Praxisnachweise von AP2 bis AP6 einschließlich AP3b sind bestanden. Die
 freigegebenen Rechts-, Datenschutz- und Versandfassungen sind dem
 Produktions-Legal-Bundle `cmj-production-legal-2026-08-07-v3` zugeordnet.
+AP7.0 hat ausschließlich lokale Produktionsartefakte und Gates vorbereitet.
 AP7, Deployment und Produktions-Cutover bleiben unangetastet und benötigen
 einen gesonderten ausdrücklichen Auftrag.

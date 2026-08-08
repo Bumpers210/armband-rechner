@@ -692,6 +692,113 @@ function carmaja_api_v2_public_product_from_draft(array $draft): array
     return $public;
 }
 
+function carmaja_api_v2_public_product_with_blobs(array $draft): array
+{
+    $public = carmaja_api_v2_public_product_from_draft($draft);
+    $blobs = [];
+
+    foreach ($draft['images'] ?? [] as $index => $image) {
+        $sourcePath = is_array($image) ? ($image['path'] ?? null) : null;
+        $fileName = sprintf('%02d.jpg', $index + 1);
+        if (!is_string($sourcePath) || !is_file($sourcePath)
+            || ($image['fileName'] ?? null) !== $fileName) {
+            throw new CarmajaApiException(
+                409,
+                'v2-Produktbilder sind nicht vollständig hochgeladen.',
+                [],
+                'product_images_incomplete'
+            );
+        }
+        $blobs[] = [
+            '_sourcePath' => $sourcePath,
+            '_repoPath' => 'website/public/images/products/'
+                . $public['sku'] . '/' . $fileName,
+        ];
+    }
+    $public['_imageBlobs'] = $blobs;
+    return $public;
+}
+
+function carmaja_api_v2_publish_product(
+    string $productId,
+    array $body,
+    array $actor
+): array {
+    carmaja_api_validate_draft_id($productId);
+    carmaja_api_reject_unknown_fields($body, [
+        'expectedProductVersion', 'expectedSourceHash', 'operationId',
+    ]);
+    $expectedVersion = $body['expectedProductVersion'] ?? null;
+    $expectedHash = $body['expectedSourceHash'] ?? null;
+    $operationId = $body['operationId'] ?? null;
+    if (!is_int($expectedVersion) || $expectedVersion < 1
+        || !is_string($expectedHash)
+        || preg_match('/^[0-9a-f]{64}$/', $expectedHash) !== 1
+        || !is_string($operationId)) {
+        throw new CarmajaApiException(
+            422,
+            'v2-Publishvertrag ist ungültig.',
+            [],
+            'validation_failed'
+        );
+    }
+    carmaja_api_validate_operation_id($operationId);
+
+    return carmaja_api_with_lock('v2-product-' . $productId, function () use (
+        $productId,
+        $expectedVersion,
+        $expectedHash,
+        $operationId,
+        $actor
+    ): array {
+        $draft = carmaja_api_load_draft($productId);
+        if (!is_array($draft)
+            || ($draft['productModelVersion'] ?? null) !== CARMAJA_PRODUCT_MODEL_V2) {
+            throw new CarmajaApiException(
+                409,
+                'Produkt ist nicht als v2-Produkt verfügbar.',
+                [],
+                'product_model_migration_required'
+            );
+        }
+        $product = carmaja_api_v2_product_from_draft($draft);
+        if ($product['productVersion'] !== $expectedVersion
+            || !hash_equals($product['sourceHash'], $expectedHash)) {
+            throw new CarmajaApiException(
+                409,
+                'Produktversion oder Quellhash wurde zwischenzeitlich geändert.',
+                [],
+                'product_version_conflict'
+            );
+        }
+        $public = carmaja_api_v2_public_product_with_blobs($draft);
+        $requestHash = carmaja_api_request_hash([
+            'operationId' => $operationId,
+            'productId' => $productId,
+            'productVersion' => $expectedVersion,
+            'sourceHash' => $expectedHash,
+        ]);
+        $result = carmaja_api_run_publish_adapter_v2($public, [
+            'operationId' => $operationId,
+            'requestHash' => $requestHash,
+        ]);
+        carmaja_api_audit_best_effort('product_v2_published', [
+            'productId' => $productId,
+            'productVersion' => $expectedVersion,
+            'sourceHash' => $expectedHash,
+            'deviceId' => $actor['tokenId'] ?? null,
+            'result' => 'success',
+        ]);
+        return [
+            'productId' => $productId,
+            'productVersion' => $expectedVersion,
+            'sourceHash' => $expectedHash,
+            'commitSha' => $result['commitSha'] ?? null,
+            'deploymentStatus' => $result['deploymentStatus'] ?? 'not_started',
+        ];
+    });
+}
+
 function carmaja_api_local_publish_adapter_v2(
     array $publicProduct,
     array $operation
@@ -719,10 +826,11 @@ function carmaja_api_local_publish_adapter_v2(
     $adapterPath = carmaja_api_path(
         'products/operations/v2-' . hash('sha256', $operationId) . '.json'
     );
+    $publicProductForJson = array_diff_key($publicProduct, ['_imageBlobs' => true]);
 
     return carmaja_api_with_lock(
         'publish-adapter-v2-' . hash('sha256', $operationId),
-        function () use ($publicProduct, $productId, $operationId, $requestHash, $adapterPath): array {
+        function () use ($publicProductForJson, $productId, $operationId, $requestHash, $adapterPath): array {
             if (is_file($adapterPath)) {
                 $stored = carmaja_api_read_target_json(
                     $adapterPath,
@@ -760,14 +868,14 @@ function carmaja_api_local_publish_adapter_v2(
 
     foreach ($products as $index => $product) {
         if (is_array($product) && ($product['productId'] ?? null) === $productId) {
-            $products[$index] = $publicProduct;
+            $products[$index] = $publicProductForJson;
             $replaced = true;
             break;
         }
     }
 
     if (!$replaced) {
-        $products[] = $publicProduct;
+        $products[] = $publicProductForJson;
     }
 
     carmaja_api_write_json_atomic(

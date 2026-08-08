@@ -1,13 +1,13 @@
 import path from "node:path";
 
 import {
-  loadPublicProducts,
-  type ProductImage,
-  type ProductStatus,
-  type PublicProduct,
-} from "@/lib/public-products.mjs";
+  loadPublicProductsV2,
+  type ProductImageV2,
+  type PublicProductV2,
+} from "@/lib/public-products-v2.mjs";
 
-export type { ProductImage, ProductStatus, PublicProduct };
+export type ProductImage = ProductImageV2;
+export type PublicProduct = PublicProductV2;
 
 const fixtureMode = process.env.CARMAJA_TEST_FIXTURES === "true";
 const configuredProductsFile = process.env.CARMAJA_PRODUCTS_FILE;
@@ -30,16 +30,15 @@ const productsFile = configuredProductsFile
 const imagesDirectory = configuredImagesDirectory
   ? path.resolve(configuredImagesDirectory)
   : path.join(projectRoot, "public", "images", "products");
-const productsData = loadPublicProducts(productsFile, imagesDirectory);
+const productsData = loadPublicProductsV2(productsFile, imagesDirectory);
 
 export const publicProducts = productsData.products;
 
 export const visibleProducts = publicProducts
-  .filter((product) => product.status === "published")
+  .filter((product) => product.salesEnabled)
   .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
 export const detailProducts = publicProducts
-  .filter((product) => product.status === "published" || product.status === "sold")
   .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
 export function findDetailProduct(slug: string): PublicProduct | undefined {

@@ -9,7 +9,6 @@ const hostingDirectory = path.join(
   isTest ? "hosting-test" : "hosting",
 );
 const outputDirectory = path.join(projectRoot, isTest ? "out-test" : "out");
-const productsFile = path.join(projectRoot, "content", "products.json");
 
 if (siteTarget !== "production" && siteTarget !== "test") {
   throw new Error("Unbekanntes Websiteziel.");
@@ -56,15 +55,6 @@ if (isTest) {
       },
     );
   }
-} else {
-  await mkdir(path.join(outputDirectory, "_internal"), { recursive: true });
-  await cp(
-    productsFile,
-    path.join(outputDirectory, "_internal", "public-products.json"),
-    {
-      force: true,
-    },
-  );
 }
 
 await rm(path.join(outputDirectory, "armbaender", "__empty"), {

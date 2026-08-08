@@ -1,6 +1,8 @@
 import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
+import { loadPublicProductsV2 } from "../lib/public-products-v2.mjs";
+
 const projectRoot = process.cwd();
 const outputDirectory = path.join(projectRoot, "out");
 const siteUrl = "https://www.carmaja-perlen.de/";
@@ -8,6 +10,17 @@ const pageTitle = "Handgefertigte Edelsteinarmbänder | Carmaja-Perlen";
 const pageDescription =
   "Handgefertigte Edelsteinarmbänder aus Rosenquarz, Amazonit, Achat und weiteren echten Edelsteinen – in kleinen Stückzahlen gefertigt von Carmaja-Perlen.";
 const heroUrl = `${siteUrl}images/bracelets/hero-dunkelrot-braun-holz.jpg`;
+const fixtureMode = process.env.CARMAJA_TEST_FIXTURES === "true";
+const productsFile = fixtureMode && process.env.CARMAJA_PRODUCTS_FILE
+  ? path.resolve(process.env.CARMAJA_PRODUCTS_FILE)
+  : path.join(projectRoot, "content", "products.json");
+const productImagesDirectory = fixtureMode && process.env.CARMAJA_PRODUCT_IMAGES_DIR
+  ? path.resolve(process.env.CARMAJA_PRODUCT_IMAGES_DIR)
+  : path.join(projectRoot, "public", "images", "products");
+
+if (!fixtureMode && (process.env.CARMAJA_PRODUCTS_FILE || process.env.CARMAJA_PRODUCT_IMAGES_DIR)) {
+  throw new Error("Alternative Produktquellen sind im Produktionsbuild gesperrt.");
+}
 
 function assert(condition, message) {
   if (!condition) {
@@ -48,7 +61,6 @@ const requiredFiles = [
   "statistik/.htaccess.example",
   "private-data/.htaccess",
   "_internal/.htaccess",
-  "_internal/public-products.json",
   ".htaccess.publish.example",
 ];
 
@@ -69,9 +81,7 @@ const publishApacheRules = await readOutputFile(".htaccess.publish.example");
 const clickPhp = await readOutputFile("click.php");
 const dashboardPhp = await readOutputFile("statistik/index.php");
 const privateDataRules = await readOutputFile("private-data/.htaccess");
-const productsJson = JSON.parse(
-  await readOutputFile("_internal/public-products.json"),
-);
+const productsJson = loadPublicProductsV2(productsFile, productImagesDirectory);
 
 assert(
   rootHtml.includes("v2-page") &&
@@ -145,10 +155,7 @@ assert(
     organization.address.addressLocality === "Treuchtlingen" &&
     organization.address.addressCountry === "DE" &&
     Array.isArray(organization.sameAs) &&
-    organization.sameAs.length === 2 &&
-    organization.sameAs.includes(
-      "https://www.vinted.de/member/314105735-carmaja0",
-    ) &&
+    organization.sameAs.length === 1 &&
     organization.sameAs.includes(
       "https://www.instagram.com/carmaja_perlen/",
     ) &&
@@ -190,13 +197,8 @@ const sitemapLocations = [
 const products = Array.isArray(productsJson.products)
   ? productsJson.products
   : [];
-const publishedProducts = products.filter(
-  (product) => product.status === "published",
-);
-const soldProducts = products.filter((product) => product.status === "sold");
-const nonPublicProducts = products.filter((product) =>
-  ["draft", "ready", "disabled"].includes(product.status),
-);
+const publishedProducts = products.filter((product) => product.salesEnabled);
+const unavailableProducts = products.filter((product) => !product.salesEnabled);
 const publicProductsPayload = JSON.stringify(productsJson).toLowerCase();
 for (const forbiddenProductField of [
   "saleprice",
@@ -227,7 +229,7 @@ assert(
     ),
   "Die Sitemap enthält nicht exakt die freigegebenen öffentlichen Produktseiten.",
 );
-for (const product of [...soldProducts, ...nonPublicProducts]) {
+for (const product of unavailableProducts) {
   assert(
     !sitemapLocations.includes(`${siteUrl}armbaender/${product.slug}/`),
     `Nicht veröffentlichte Produktseite steht in der Sitemap: ${product.slug}`,
@@ -260,17 +262,15 @@ assert(
   "Kontakt- und Rechtstextseiten benötigen den freigegebenen mailto-Link.",
 );
 assert(
-  privacyHtml.includes("1. Verantwortliche Stelle") &&
-    privacyHtml.includes("4. Messung ausgehender Linkklicks") &&
-    privacyHtml.includes("10. Aktualisierung dieser Datenschutzerklärung") &&
-    privacyHtml.includes("Stand: Juli 2026"),
-  "Die vollständige Datenschutzerklärung fehlt im Export.",
+  privacyHtml.includes("1. Verantwortlicher") &&
+    privacyHtml.includes("3. Zahlung, E-Mail und Versand") &&
+    privacyHtml.includes("7. Ihre Rechte") &&
+    privacyHtml.includes("Stripe") &&
+    privacyHtml.includes("Brevo"),
+  "Die freigegebene v3-Datenschutzerklärung fehlt im Export.",
 );
 
 const expectedTrackedLinks = [
-  "/click.php?target=vinted&amp;position=hero",
-  "/click.php?target=vinted&amp;position=gallery",
-  "/click.php?target=vinted&amp;position=contact",
   "/click.php?target=instagram&amp;position=footer",
 ];
 
@@ -291,27 +291,21 @@ for (const product of publishedProducts) {
 
   assert(
     detailHtml.includes(product.publicTitle) &&
-      detailHtml.includes(`product=${product.slug}`) &&
+      detailHtml.includes(`data-product-id="${product.productId}"`) &&
+      detailHtml.includes(`data-product-version="${product.productVersion}"`) &&
       !detailHtml.toLowerCase().includes("verkaufspreis") &&
       !detailHtml.toLowerCase().includes("materialkosten"),
     `Die veröffentlichte Produktdetailseite ist unvollständig: ${product.slug}`,
   );
 }
 
-for (const product of soldProducts) {
+for (const product of unavailableProducts) {
   const detailHtml = await readOutputFile(`armbaender/${product.slug}/index.html`);
 
   assert(
-    detailHtml.includes("Verkauft") &&
+    detailHtml.includes("Nicht verfügbar") &&
       detailHtml.includes('name="robots" content="noindex, follow"'),
-    `Verkaufte Produkte müssen als noindex Detailseite erscheinen: ${product.slug}`,
-  );
-}
-
-for (const product of nonPublicProducts) {
-  assert(
-    !(await outputPathExists(`armbaender/${product.slug}/index.html`)),
-    `Nicht öffentliche Produkte dürfen nicht exportiert werden: ${product.slug}`,
+    `Nicht verfügbare Produkte müssen als noindex Detailseite erscheinen: ${product.slug}`,
   );
 }
 
@@ -337,12 +331,11 @@ for (const [name, rules] of [
 }
 
 assert(
-  clickPhp.includes("'vinted' =>") &&
-    clickPhp.includes("'instagram' =>") &&
+  clickPhp.includes("'instagram' =>") &&
+    !clickPhp.toLowerCase().includes("vinted") &&
     clickPhp.includes("http_response_code(400)") &&
     clickPhp.includes("in_array($position, CARMAJA_POSITIONS, true)") &&
-    clickPhp.includes("carmaja_product_target_url($product)") &&
-    clickPhp.includes("header('Location: ' . $redirectUrl, true, 302)"),
+    clickPhp.includes("header('Location: ' . $targetUrls[$target], true, 302)"),
   "Der Klick-Endpunkt erfüllt die statischen Whitelist-Prüfungen nicht.",
 );
 assert(

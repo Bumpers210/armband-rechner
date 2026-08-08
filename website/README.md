@@ -70,12 +70,12 @@ Suchmaschinen deren `noindex`-Metadaten lesen können.
 
 ## Klickmessung
 
-Ausgehende Vinted- und Instagram-Links verwenden
-`/click.php?target=...&position=...`.
+Der ausgehende Instagram-Link verwendet
+`/click.php?target=instagram&position=footer`.
 
 Der PHP-Endpunkt:
 
-- akzeptiert ausschließlich die Ziele `vinted` und `instagram`,
+- akzeptiert ausschließlich das Ziel `instagram`,
 - akzeptiert ausschließlich `hero`, `gallery`, `contact` und `footer`,
 - lehnt zusätzliche oder ungültige Parameter mit HTTP 400 ab,
 - leitet gültige Ziele mit HTTP 302 weiter,
@@ -100,18 +100,12 @@ erst beim ersten erfolgreichen Publish vergeben. Mutierende Anfragen verwenden
 `expectedVersion` und erhalten bei veraltetem Stand HTTP 409. Publish- und
 Statusaktionen sind über eine clientseitige `operationId` idempotent.
 
-Öffentliche Produktdaten liegen in `content/products.json`. Die Website zeigt
-keine Verkaufspreise; Vinted bleibt die verbindliche Quelle für Preis und Kauf.
-Die Produktdatei ist ausschließlich eine Build-Quelle und wird im geschützten
-Testexport weder als JSON noch unter einem internen Ersatzpfad ausgeliefert.
-Das öffentliche Produktmodell akzeptiert nur Darstellungsfelder; unbekannte
-oder interne Felder brechen den Build ab.
-Statuswirkung:
-
-- `published`: Übersicht, Detailseite und Sitemap
-- `sold`: nicht in Übersicht/Sitemap, Detailseite mit `noindex`
-- `disabled`: keine öffentliche Seite
-- `draft` und `ready`: niemals öffentlich
+Öffentliche Shop-Produktdaten verwenden ausschließlich das Produktmodell v2
+mit serverseitigem `productVersion` und `sourceHash`, Preis in Minor Units,
+Währung und `salesEnabled`. Legacy-Bestands- und externe Verkaufsfelder sind
+im öffentlichen v2-Vertrag unzulässig. Verfügbarkeit und Preis werden vor dem
+Checkout aus der Commerce-API neu geladen; statische Daten sind keine
+Bestandsquelle. Der eigene Shop ist der einzige Verkaufskanal.
 
 Setup und Restore sind in
 [`docs/product-management-setup.md`](docs/product-management-setup.md)
@@ -154,9 +148,8 @@ aktiviert sind. Der normale Produktionsbuild und `out/` werden nicht
 überschrieben.
 
 Der Testexport enthält keine Produktquelldatei, kein Klicktracking, keine
-Statistikdateien und keine PHP-Laufzeitkonfiguration. Vinted-Links werden im
-Testziel nach strenger URL-Prüfung direkt ausgegeben. Fehlt der Link oder ist
-das Produkt verkauft, wird kein Link gerendert.
+Statistikdateien und keine PHP-Laufzeitkonfiguration. Externe Verkaufslinks
+werden nicht gerendert.
 
 Der Passwortschutz des Testexports referenziert ausschließlich:
 
@@ -254,7 +247,7 @@ Das Dashboard liegt unter `/statistik/`. Es zeigt ausschließlich:
 - Klicks heute,
 - Klicks der letzten 30 Tage,
 - Klicks insgesamt,
-- Vinted- und Instagram-Klicks,
+- Instagram-Klicks,
 - Klicks nach Position,
 - eine Tabelle der Tageswerte.
 
@@ -312,7 +305,7 @@ keine externen Skripte.
    curl -I "http://carmaja-perlen.de/"
    curl -I "https://carmaja-perlen.de/impressum/"
    curl -I "https://www.carmaja-perlen.de/v2/?quelle=alt"
-   curl -I "https://www.carmaja-perlen.de/click.php?target=vinted&position=hero"
+   curl -I "https://www.carmaja-perlen.de/click.php?target=instagram&position=footer"
    curl -I "https://www.carmaja-perlen.de/private-data/clicks.json"
    curl -I "https://www.carmaja-perlen.de/statistik/"
    ```

@@ -130,13 +130,26 @@ export function scanTrackedSources(repositoryRoot) {
     }
 
     const absolutePath = path.join(repositoryRoot, ...normalized.split("/"));
-    const metadata = statSync(absolutePath);
-
-    if (!metadata.isFile() || metadata.size > 2_000_000) {
-      continue;
+    let contents;
+    try {
+      const metadata = statSync(absolutePath);
+      if (!metadata.isFile() || metadata.size > 2_000_000) {
+        continue;
+      }
+      contents = readFileSync(absolutePath);
+    } catch (error) {
+      if (error?.code !== "ENOENT") {
+        throw error;
+      }
+      contents = execFileSync("git", ["show", `:${normalized}`], {
+        cwd: repositoryRoot,
+        encoding: null,
+        maxBuffer: 2_000_001,
+      });
+      if (contents.length > 2_000_000) {
+        continue;
+      }
     }
-
-    const contents = readFileSync(absolutePath);
 
     if (contents.includes(0)) {
       continue;

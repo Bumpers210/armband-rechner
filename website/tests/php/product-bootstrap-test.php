@@ -206,7 +206,46 @@ carmaja_bootstrap_test(
             $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER'] ?? null,
             'GitHub-Testadapter wurde nicht eindeutig verdrahtet.'
         );
+        carmaja_bootstrap_test_same(
+            'carmaja_api_github_publish_adapter',
+            $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2'] ?? null,
+            'GitHub-Testadapter wurde nicht für den v2-Publisher verdrahtet.'
+        );
         unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']);
+        unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2']);
+    }
+);
+
+carmaja_bootstrap_test(
+    'Produktionskonfiguration darf main nur ohne automatischen GitHub-Adapter referenzieren',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $productionPrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-private';
+        $productionApi = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-api';
+        $productionWebsite = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-site';
+        foreach ([$productionPrivate, $productionApi, $productionWebsite] as $directory) {
+            mkdir($directory, 0750, true);
+        }
+        $productionAuth = $productionPrivate . DIRECTORY_SEPARATOR . 'auth';
+        $productionConfigDirectory = $productionPrivate . DIRECTORY_SEPARATOR . 'config';
+        mkdir($productionAuth, 0750, true);
+        mkdir($productionConfigDirectory, 0750, true);
+        $productionUsers = $productionAuth . DIRECTORY_SEPARATOR . 'api-users.json';
+        file_put_contents($productionUsers, '{"environment":"production","users":[]}');
+        $productionConfig = $productionConfigDirectory . DIRECTORY_SEPARATOR . 'runtime-config.php';
+        $config = $fixture['config'];
+        $config['environment'] = 'production';
+        $config['publishTarget'] = 'production';
+        $config['privateDir'] = $productionPrivate;
+        $config['productionPrivateDir'] = $productionPrivate;
+        $config['productionApiWebroot'] = $productionApi;
+        $config['productionWebsiteWebroot'] = $productionWebsite;
+        $config['usersFile'] = $productionUsers;
+        $config['githubBranch'] = 'main';
+        carmaja_bootstrap_test_write_config($productionConfig, $config);
+        $loaded = carmaja_bootstrap_load_config($productionConfig);
+        carmaja_bootstrap_test_same('main', $loaded['githubBranch'], 'Main-Referenz fehlt.');
+        carmaja_bootstrap_test_same(false, $loaded['githubAdapterEnabled'], 'GitHub-Adapter muss deaktiviert bleiben.');
     }
 );
 

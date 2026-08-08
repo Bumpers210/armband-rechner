@@ -2140,6 +2140,32 @@ carmaja_api_test('Publisher v2 erzeugt nur den öffentlichen v2-Vertrag', static
         'Publisher darf den Bestand auch nach dem Schreiben nicht veraendern.'
     );
     carmaja_api_test_same($beforeStock, $draft['stock'] ?? null, 'Publisher darf Bestand nicht verändern.');
+
+    $uploadDirectory = carmaja_api_path('uploads/' . $productId);
+    carmaja_api_ensure_directory($uploadDirectory);
+    $draft['images'][0]['path'] = $uploadDirectory . DIRECTORY_SEPARATOR . '01.jpg';
+    file_put_contents($draft['images'][0]['path'], 'artificial-ap7-image');
+    carmaja_api_save_draft($draft);
+    $current = carmaja_api_v2_product_from_draft(carmaja_api_load_draft($productId));
+    $publication = carmaja_api_v2_publish_product(
+        $productId,
+        [
+            'expectedProductVersion' => $current['productVersion'],
+            'expectedSourceHash' => $current['sourceHash'],
+            'operationId' => 'v2-publisher-ap7-0002',
+        ],
+        carmaja_api_test_actor()
+    );
+    carmaja_api_test_same(
+        $current['sourceHash'],
+        $publication['sourceHash'] ?? null,
+        'v2-Publishroute muss den serverseitigen Quellhash binden.'
+    );
+    carmaja_api_test_same(
+        $beforeStock,
+        (carmaja_api_load_draft($productId)['stock'] ?? null),
+        'v2-Publishroute darf den Legacy-Bestand nicht verändern.'
+    );
 });
 
 carmaja_api_test('AP1.5 sperrt Legacy-Produktfelder und alte Clientversionen', static function (): void {

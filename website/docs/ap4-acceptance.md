@@ -28,12 +28,12 @@ eindeutig zuordenbare Erklärungen werden nach Bestätigung als `manual_review`
 gespeichert. Es gibt keinen zusätzlichen E-Mail-Code und keine automatische
 Erstattung oder Wiedereinlagerung.
 
-## Marktplatzgrenze
+## Verkaufskanalgrenze
 
-Die sichtbaren Start-, Produkt- und Checkoutseiten enthalten keine Vinted-
-oder Marktplatzlinks. Es gibt keine Vinted-Synchronisierung. Legacy-Felder der
-Produktverwaltung bleiben nur für die bereits abgenommenen AP1-Kompatibilitäts-
-tests lesbar.
+Die sichtbaren Start-, Produkt- und Checkoutseiten enthalten keine externen
+Verkaufslinks. Der eigene Shop ist der einzige Verkaufskanal. Historische
+Legacy-Felder der Produktverwaltung bleiben nur für die bereits abgenommenen
+AP1-Kompatibilitätstests lesbar.
 
 ## Nachweise
 

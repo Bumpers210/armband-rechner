@@ -1,0 +1,37 @@
+{
+  "contractVersion": 1,
+  "environment": "production",
+  "sourceCommit": "runtime-selected-and-verified",
+  "paths": {
+    "privateRoot": "/home/www/carmaja-private-shop",
+    "programRoot": "/home/www/carmaja-private-shop/program",
+    "runtimeConfig": "/home/www/carmaja-private-shop/config/runtime-config.php",
+    "worker": "/home/www/carmaja-private-shop/worker.php",
+    "apiWebroot": "/home/www/carmaja-shop-api"
+  },
+  "sources": {
+    "privateProgram": "website/test-api-private/program",
+    "privateWorker": "website/test-api-private/worker.php",
+    "publicApi": "website/production-shop-api-public"
+  },
+  "runtime": {
+    "phpCli": "/usr/bin/php8.4",
+    "cron": "*/5 * * * *",
+    "workerCommand": "/usr/bin/php8.4 /home/www/carmaja-private-shop/worker.php /home/www/carmaja-private-shop/config/runtime-config.php"
+  },
+  "shop": {
+    "paymentMethodTypes": ["card", "paypal", "klarna", "sepa_debit"],
+    "shippingMethodId": "deutsche-post-maxibrief",
+    "shippingPublicName": "Deutsche Post Maxibrief",
+    "shippingAmountMinor": 270,
+    "shippingMinBusinessDays": 2,
+    "shippingMaxBusinessDays": 4,
+    "legalBundleId": "cmj-production-legal-2026-08-07-v3"
+  },
+  "guards": {
+    "copyRuntimeConfig": false,
+    "copyCredentials": false,
+    "automaticActivation": false,
+    "productionDataAccess": false
+  }
+}

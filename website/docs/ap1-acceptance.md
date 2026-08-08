@@ -9,7 +9,7 @@ Umgebung: isolierter Testbetrieb; keine Produktion und kein produktiver Cutover
 | Gate | Nachweis | Status |
 | --- | --- | --- |
 | AP1.3 Produktmodell v2 | `priceMinor`, `currency`, `salesEnabled`, serverseitige `productVersion`, deterministischer `sourceHash`, Publisher ohne Bestandsmutation | bestanden |
-| AP1.4 Migrations-Dry-Run | schreibfreier, wiederholbarer Bericht mit Datensatz- und Gesamthash; `stock`, Preis-, ID-, Versions-, Vinted- und Projektionsprüfungen | bestanden |
+| AP1.4 Migrations-Dry-Run | schreibfreier, wiederholbarer Bericht mit Datensatz- und Gesamthash; `stock`, Preis-, ID-, Versions-, externe Link- und Projektionsprüfungen | bestanden |
 | AP1.5 Legacy-Schreibsperre | `stock_write_disabled`, `client_managed_field_forbidden`, `client_update_required`, v2-Payload ohne `stock`, Inventory-Vertragsvalidierung | bestanden |
 | AP1.6 Backup/Restore | zwei getrennte MySQL-8-Testziele, PDO/TLS, InnoDB-Dump/Restore, Struktur-/Inhalts-/Prüfsummen, Manipulation, Rollback-Gates, Cleanup | bestanden |
 
@@ -20,7 +20,7 @@ Die AP1-Verträge sind untereinander konsistent:
 - Preis und Währung kommen aus dem v2-Produktlesemodell; `priceMinor >= 50` und `currency = eur` werden geprüft.
 - `productVersion` wird nur serverseitig monoton erhöht; Clients senden ausschließlich `expectedProductVersion`.
 - `sourceHash` wird serverseitig aus der kanonischen Produktdarstellung erzeugt.
-- Öffentliche v2-Daten enthalten weder `stock` noch `vintedUrl`.
+- Öffentliche v2-Daten enthalten weder `stock` noch externe Verkaufsfelder.
 - `stock` ist kein zulässiger Produkt-Schreibweg mehr und wird mit `stock_write_disabled` abgelehnt.
 - Inventory-Anpassungen verwenden `targetOnHand ∈ {0,1}`, `expectedInventoryVersion`, einen freigegebenen Grund, `correlationId` und `Idempotency-Key`.
 - `shop_sale` ist als Grund für den Shopverkauf zulässig, aber keine manuelle Betreiberaktion.

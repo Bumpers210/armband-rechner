@@ -867,6 +867,7 @@ final class CarmajaCommercePdo
             throw new CarmajaCommerceException('schema_unavailable', 'Commerce-Schema fehlt.', 500);
         }
 
+        $sql = str_replace("\r\n", "\n", $sql);
         $sql = preg_replace('/^\s*--.*$/m', '', $sql) ?? $sql;
         foreach (preg_split('/;\s*(?:\r?\n|$)/', $sql) ?: [] as $statement) {
             $statement = trim($statement);
@@ -893,6 +894,7 @@ final class CarmajaCommercePdo
         if (!is_string($sql) || trim($sql) === '') {
             throw new CarmajaCommerceException('migration_unavailable', 'VorwÃ¤rtsmigration fehlt.', 500);
         }
+        $sql = str_replace("\r\n", "\n", $sql);
         $normalized = preg_replace('/^\s*--.*$/m', '', $sql) ?? $sql;
         $checksum = hash('sha256', $normalized);
         $existing = $this->pdo->prepare('SELECT checksum FROM schema_migrations WHERE migration_id = ?');

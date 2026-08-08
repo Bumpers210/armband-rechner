@@ -15,5 +15,12 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  return <LegalBundlePage sectionKey="privacy" title="Datenschutz" />;
+  return (
+    <LegalBundlePage sectionKey="privacy" title="Datenschutz">
+      <p className="legal-contact-link">
+        Datenschutzanfragen: {" "}
+        <a href="mailto:kontakt@carmaja-perlen.de">kontakt@carmaja-perlen.de</a>
+      </p>
+    </LegalBundlePage>
+  );
 }

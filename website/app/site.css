@@ -210,22 +210,6 @@
   font-size: 1rem;
 }
 
-.v2-page .vinted-link {
-  min-height: 3.15rem;
-  padding: 0.8rem 1.25rem;
-  border: 1px solid var(--v2-clay);
-  border-radius: 3px;
-  color: var(--v2-surface);
-  background: var(--v2-clay);
-  font-weight: 700;
-}
-
-.v2-page .vinted-link:hover {
-  border-color: var(--v2-moss);
-  color: var(--v2-surface);
-  background: var(--v2-moss);
-}
-
 .v2-page .v2-introduction {
   padding-block: 4.5rem;
   background: var(--v2-surface);
@@ -493,18 +477,6 @@
 .v2-page .v2-contact-note {
   color: #cfd6c9;
   font-size: 0.8rem;
-}
-
-.v2-page .v2-closing .vinted-link {
-  border-color: var(--v2-surface);
-  color: var(--v2-moss);
-  background: var(--v2-surface);
-}
-
-.v2-page .v2-closing .vinted-link:hover {
-  border-color: var(--v2-clay);
-  color: var(--v2-surface);
-  background: var(--v2-clay);
 }
 
 .v2-page .v2-footer {

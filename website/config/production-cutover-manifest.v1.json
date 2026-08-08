@@ -1,0 +1,56 @@
+{
+  "manifestVersion": 1,
+  "environment": "production",
+  "status": "awaiting_production_product_selection",
+  "baseCommit": "bb4345fbfb26fede5bdf61be0ef6191746a98ef0",
+  "productModelVersion": 2,
+  "inventorySource": "commerce_inventory.on_hand",
+  "schemaMigrations": [
+    {
+      "migrationId": "commerce-v1-schema",
+      "path": "website/database/commerce-schema.sql",
+      "fileSha256": "df026a4b53501194481f70f47d7c1ca58bc3476957f1c2c7a5b2cff8c8e6a9ab",
+      "journalSha256": "388e3d44299ae0890fb83d4881d87aa26d7e93d30ee3af8ac07033a4106ea27b"
+    },
+    {
+      "migrationId": "commerce-v1-ap4-shop",
+      "path": "website/database/migrations/commerce-v1-ap4-shop.sql",
+      "fileSha256": "d0fbbe8a61cc252cf143292f48c625f0d01c4f93182b45e1f3a909d6b16926fc",
+      "journalSha256": "faef8c78f438f2afa11cd0387afc11b82a4142a14e7af92b1f4ee0d4d1d301b3"
+    },
+    {
+      "migrationId": "commerce-v1-ap5-admin",
+      "path": "website/database/migrations/commerce-v1-ap5-admin.sql",
+      "fileSha256": "cc18b6eb3f349b82dd535db65fc7c391bfe199b4973fa8e693b377679b9249dc",
+      "journalSha256": "4ca1b0f1955d9da87832849de3094b01b7158622e227663909e16ad333002049"
+    }
+  ],
+  "legalBundle": {
+    "legalBundleId": "cmj-production-legal-2026-08-07-v3",
+    "status": "approved",
+    "reviewManifest": "website/docs/legal-review/ap6-2026-08-07-v1/manifest.json"
+  },
+  "shipping": {
+    "methodId": "deutsche-post-maxibrief",
+    "publicName": "Deutsche Post Maxibrief",
+    "amountMinor": 270,
+    "currency": "eur",
+    "minBusinessDays": 2,
+    "maxBusinessDays": 4
+  },
+  "paymentMethodTypes": ["card", "paypal", "klarna", "sepa_debit"],
+  "selectedProducts": [],
+  "cutoverGuards": {
+    "exactlyOneSelectedProduct": true,
+    "requireProductModelV2": true,
+    "requireSourceHashMatch": true,
+    "requireLegacyStockOne": true,
+    "initialTargetOnHand": 1,
+    "initialReason": "activate_new_unique",
+    "requireEmptyCommerce": true,
+    "requireNoCommerceCheckout": true,
+    "disableLegacyStockWritesBeforeApply": true,
+    "removeMarketplaceOffersBeforeApply": true,
+    "rollbackOnlyBeforeFirstCommerceCheckout": true
+  }
+}

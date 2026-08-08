@@ -2,9 +2,8 @@
 
 declare(strict_types=1);
 
-const CARMAJA_TARGETS = ['vinted', 'instagram'];
-const CARMAJA_POSITIONS = ['hero', 'gallery', 'contact', 'footer', 'product'];
-const CARMAJA_PRODUCT_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
+const CARMAJA_TARGETS = ['instagram'];
+const CARMAJA_POSITIONS = ['hero', 'gallery', 'contact', 'footer'];
 
 function carmaja_empty_stats(): array
 {
@@ -55,8 +54,7 @@ function carmaja_increment_bucket(
     array &$bucket,
     string $target,
     string $position,
-    int $amount = 1,
-    ?string $productSlug = null
+    int $amount = 1
 ): void {
     if (!in_array($target, CARMAJA_TARGETS, true)) {
         return;
@@ -72,18 +70,6 @@ function carmaja_increment_bucket(
 
     $currentValue = $bucket[$target][$position] ?? 0;
     $bucket[$target][$position] = max(0, (int) $currentValue) + $amount;
-
-    if ($position === 'product'
-        && is_string($productSlug)
-        && preg_match(CARMAJA_PRODUCT_PATTERN, $productSlug) === 1) {
-        if (!isset($bucket['products']) || !is_array($bucket['products'])) {
-            $bucket['products'] = [];
-        }
-
-        $currentProductValue = $bucket['products'][$productSlug] ?? 0;
-        $bucket['products'][$productSlug] =
-            max(0, (int) $currentProductValue) + $amount;
-    }
 }
 
 function carmaja_merge_bucket(array &$destination, array $source): void
@@ -100,24 +86,6 @@ function carmaja_merge_bucket(array &$destination, array $source): void
                     $amount
                 );
             }
-        }
-    }
-
-    if (isset($source['products']) && is_array($source['products'])) {
-        foreach ($source['products'] as $slug => $amount) {
-            if (!is_string($slug)
-                || preg_match(CARMAJA_PRODUCT_PATTERN, $slug) !== 1) {
-                continue;
-            }
-
-            if (!isset($destination['products'])
-                || !is_array($destination['products'])) {
-                $destination['products'] = [];
-            }
-
-            $destination['products'][$slug] =
-                max(0, (int) ($destination['products'][$slug] ?? 0))
-                + max(0, (int) $amount);
         }
     }
 }
@@ -158,10 +126,8 @@ function carmaja_archive_expired_days(
 
 function carmaja_record_click(
     string $target,
-    string $position,
-    ?string $productSlug = null
+    string $position
 ): void {
-{
     date_default_timezone_set('Europe/Berlin');
 
     $path = carmaja_stats_file_path();
@@ -203,8 +169,7 @@ function carmaja_record_click(
             $stats['days'][$date],
             $target,
             $position,
-            1,
-            $productSlug
+            1
         );
 
         $encoded = json_encode(
@@ -223,47 +188,6 @@ function carmaja_record_click(
     } finally {
         fclose($handle);
     }
-}
-
-function carmaja_public_products_file_path(): string
-{
-    return __DIR__ . DIRECTORY_SEPARATOR . 'public-products.json';
-}
-
-function carmaja_product_target_url(string $slug): ?string
-{
-    if (preg_match(CARMAJA_PRODUCT_PATTERN, $slug) !== 1) {
-        return null;
-    }
-
-    $path = carmaja_public_products_file_path();
-
-    if (!is_file($path)) {
-        return null;
-    }
-
-    $decoded = json_decode((string) file_get_contents($path), true);
-
-    if (!is_array($decoded) || !is_array($decoded['products'] ?? null)) {
-        return null;
-    }
-
-    foreach ($decoded['products'] as $product) {
-        if (!is_array($product)
-            || ($product['slug'] ?? null) !== $slug
-            || ($product['status'] ?? null) !== 'published') {
-            continue;
-        }
-
-        $url = $product['vintedUrl'] ?? null;
-
-        if (is_string($url)
-            && preg_match('/^https:\/\/(?:www\.)?vinted\.de\//', $url) === 1) {
-            return $url;
-        }
-    }
-
-    return null;
 }
 
 function carmaja_read_stats(): array

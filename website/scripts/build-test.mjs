@@ -46,6 +46,37 @@ const environment = {
   NEXT_TELEMETRY_DISABLED: "1",
 };
 
+if (environment.CARMAJA_PRODUCTS_FILE === undefined) {
+  environment.CARMAJA_TEST_FIXTURES = "true";
+  environment.CARMAJA_PRODUCTS_FILE = path.join(
+    projectRoot,
+    "tests",
+    "public-products-v2.fixture.json",
+  );
+  environment.CARMAJA_PRODUCT_IMAGES_DIR = path.join(
+    projectRoot,
+    "public",
+    "images",
+    "products",
+  );
+}
+
+if (environment.CARMAJA_PRODUCTS_FILE === undefined) {
+  environment.CARMAJA_TEST_FIXTURES = "true";
+  environment.CARMAJA_PRODUCTS_FILE = path.join(
+    projectRoot,
+    "tests",
+    "fixtures",
+    "public-products-v2.json",
+  );
+  environment.CARMAJA_PRODUCT_IMAGES_DIR = path.join(
+    projectRoot,
+    "public",
+    "images",
+    "products",
+  );
+}
+
 function run(command, argumentsList) {
   const result = spawnSync(command, argumentsList, {
     cwd: projectRoot,
