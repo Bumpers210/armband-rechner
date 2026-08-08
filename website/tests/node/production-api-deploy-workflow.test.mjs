@@ -38,6 +38,11 @@ test("Produktions-API-Workflow ist manuell, gegated und hält Runtime-Daten aus 
   assert.match(workflow, /SFTP_WORKSPACE_PATH="\$\{CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE#\/home\/www\/\}"/);
   assert.match(workflow, /SFTP_INCOMING_PATH="\$SFTP_WORKSPACE_PATH\/incoming"/);
   assert.doesNotMatch(workflow, /\$REMOTE:\$\{CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE\}/);
+  assert.match(workflow, /checksum_sha256="\$\(awk 'NR == 1 \{ print \$1 \}' "\$checksum"\)"/);
+  assert.match(workflow, /test "\$checksum_name" = "product-api\.tar\.gz" \|\| fail/);
+  assert.match(workflow, /test "\$checksum_sha256" = "\$archive_sha256" \|\| fail/);
+  assert.match(workflow, /test "\$\(sha256sum "\$archive" \| awk '\{print \$1\}'\)" = "\$checksum_sha256" \|\| fail/);
+  assert.doesNotMatch(workflow, /sha256sum -c "\$release_id\.tar\.gz\.sha256"/);
   assert.match(workflow, /cp -a "\$stage\/private\/program" "\$next_program"/);
   assert.match(workflow, /cp -a "\$private_dir\/program" "\$backup\/program"/);
   assert.match(workflow, /mv "\$private_dir\/program" "\$previous_program"/);

@@ -344,8 +344,13 @@ jobs:
             checksum="$workspace/incoming/$release_id.tar.gz.sha256"
             manifest="$workspace/incoming/$release_id.manifest.sha256"
             test -f "$archive" && test -f "$checksum" && test -f "$manifest" || fail
-            (cd "$workspace/incoming" && sha256sum -c "$release_id.tar.gz.sha256") >/dev/null 2>&1 || fail
-            test "$(sha256sum "$archive" | awk '{print $1}')" = "$archive_sha256" || fail
+            checksum_sha256="$(awk 'NR == 1 { print $1 }' "$checksum")"
+            checksum_name="$(awk 'NR == 1 { print $2 }' "$checksum")"
+            case "$checksum_sha256" in *[!0-9a-f]*|'') fail ;; esac
+            test "${#checksum_sha256}" -eq 64 || fail
+            test "$checksum_name" = "product-api.tar.gz" || fail
+            test "$checksum_sha256" = "$archive_sha256" || fail
+            test "$(sha256sum "$archive" | awk '{print $1}')" = "$checksum_sha256" || fail
             lock="$workspace/locks/product-api-deploy.lock"
             mkdir "$lock" 2>/dev/null || fail
             stage="$workspace/releases/.staging-$release_id"
