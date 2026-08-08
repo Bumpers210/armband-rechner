@@ -517,6 +517,12 @@ function carmaja_bootstrap_apply_config(array $config): void
 
 function carmaja_bootstrap_prepare(?string $configPath = null): array
 {
+    if (!date_default_timezone_set('UTC')) {
+        throw new CarmajaBootstrapException(
+            'timezone_configuration_failed',
+            'UTC-Zeitzone konnte nicht aktiviert werden.'
+        );
+    }
     $config = carmaja_bootstrap_load_config($configPath);
     carmaja_bootstrap_apply_config($config);
     require_once __DIR__ . '/product-api.php';

@@ -12,15 +12,30 @@ AP7.2b-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
 AP7.3b-V2-Kettenstand: `G:\BS-Stein-Hart-ap73b`, Branch
 `codex/ap7-v2-chain`
 
+AP7.3d-Commit: `3ae346c095d8564c07ce6539a70d38a936a20ff6`
+
+AP7.3e-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
+`codex/ap7-integration`
+
+AP7.3g-Testbetriebsnachweis: IONOS-Testumgebung, abgeschlossen und bereinigt am
+2026-08-08
+
 ## Urteil
 
 Der Android-Versions- und Draft-Synchronisierungsblocker ist in AP7.2b
 geschlossen. AP7.3b hat anschließend die vollständige V2-Kette von App und
 Draft über Web-API, serverseitige Version/Hash, Publisher und öffentliche
-Projektion lokal und isoliert auf IONOS nachgewiesen. Der Release Candidate
-bleibt bis zur Anlage genau eines geeigneten realen v2-Startprodukts nicht
-bereit. AP7, Produktion, Cutover, Push, Merge und Produktionsdeployment sind
-nicht freigegeben und wurden nicht begonnen.
+Projektion lokal und isoliert auf IONOS nachgewiesen. AP7.3d hat den
+geschützten V2-Testwebsite-Stand serverseitig verifiziert; AP7.3e hat die
+vollständige V2-Kette anschließend konfliktfrei in den AP7-Integrationsbranch
+übernommen und vollständig regressionsgeprüft. AP7.3g hat danach die private
+Test-Shop-Laufzeit einschließlich aller vier Zahlungsarten, Webhooks, Worker,
+Brevo, Widerruf und IONOS-UnixCron vollständig nachgewiesen und bereinigt. Der
+AP7-Integrationsstand und die Testumgebung sind technisch bereit. Der Release
+Candidate bleibt bis zur Anlage genau eines
+geeigneten realen v2-Startprodukts und bis zur Erfüllung der Produktionsgates
+nicht produktionsbereit. AP7, Produktion, Cutover, Push, Merge und
+Produktionsdeployment sind nicht freigegeben und wurden nicht begonnen.
 
 ## Geschlossene lokale Blocker
 
@@ -52,9 +67,11 @@ nicht freigegeben und wurden nicht begonnen.
 
 ## Lokale Nachweise
 
-- PHP 8.4: alle relevanten Dateien ohne Syntaxfehler; 116/116 PHP-Tests.
-- Node: 77/84 Tests; ausschließlich die sieben unveränderten, bereits in AP6
-  dokumentierten CRLF-/Bash-Basisfehler bleiben bestehen.
+- PHP 8.4: alle relevanten Dateien ohne Syntaxfehler; 118/118 PHP-Tests.
+- Node vollständig: 121/130 Tests; ausschließlich die neun unveränderten,
+  bereits für AP7.3b gegen den sauberen Basisstand reproduzierten
+  Windows-CRLF-/Bash-Basisfehler bleiben bestehen. Die 29 gezielt
+  CRLF-unabhängigen V2-/AP7-Vertragstests bestehen vollständig.
 - `npm run lint:test`: bestanden.
 - `npm run build:test`: bestanden und Testexport verifiziert.
 - `npm run build` mit ausschließlich künstlicher v2-Fixture: bestanden und
@@ -108,6 +125,41 @@ nicht freigegeben und wurden nicht begonnen.
   `salesEnabled` blieb `false`; `stock` und `vintedUrl` waren nicht öffentlich.
   Privater Stagingbereich, Webendpunkt, künstlicher Nutzer, Token, Bild,
   Produkt und öffentliche Projektion wurden anschließend vollständig entfernt.
+- AP7.3d Testwebsite: Der geschützte Testexport verwendet ausschließlich die
+  Test-API und die öffentliche V2-Projektion. Das erhaltene Test-Armband ist
+  sichtbar, bei `salesEnabled=false` als „Nicht verfügbar“ gekennzeichnet und
+  nicht kaufbar. Detailseite, Bilder, Legal-Seiten und Footer sind erreichbar;
+  Vinted-/Marktplatzdaten fehlen. Der serverseitige Release ist `verified`.
+- AP7.3e Integration: `codex/ap7-integration` enthält den vollständigen
+  V2-Kettenstand bis Commit `3ae346c095d8564c07ce6539a70d38a936a20ff6`.
+  Bestehende AP7.2b-/`main`-Änderungen wurden erhalten. Produktions-App
+  `1.1.2`/Code `4` verwendet ausschließlich die Produktions-API; Beta
+  `1.1.3-beta.1`/Code `5` verwendet ausschließlich die Test-API und das
+  gepinnte Beta-Zertifikat. Android Unit/Lint/Beta/Release-Vertrag, alle
+  PHP-Tests, V2-/AP7-Node-Verträge, Testbuild, künstlicher Produktionsbuild,
+  Export-, Geheimwert- und Diff-Prüfung sind bestanden.
+- AP7.3g Publisher/Runtime: Die öffentliche Testprojektion erfüllt unmittelbar
+  `{version, products}`. MySQL-8-/InnoDB-Commerce, Test-Stripe, Test-Brevo,
+  Maxibrief-Testversand, Test-Legal-Bundle und privater Worker wurden nur in
+  privaten Testpfaden bereitgestellt. Das reale Test-Armband blieb unverändert
+  und nicht kaufbar; ein separates künstliches Produkt trug den Testbestand.
+- AP7.3g E2E: Shopsitzung, CSRF, CORS, `no-store`, Live-Produktdaten,
+  Checkout-Start, Karte, PayPal, Klarna und SEPA-Lastschrift, asynchrone
+  SEPA-Finalisierung, Webhook-Inbox, Worker, atomare Bestellung,
+  Bestandsänderung, Brevo-Outbox, zweistufiger Widerruf, Legal-Snapshot sowie
+  Admin-/Reviewanzeige wurden live nachgewiesen. Session-Ablauf löste
+  Reservierung und offene lokale Zahlung ohne Bestellung kontrolliert auf.
+- AP7.3g Worker: direkter Lauf, paralleler Lockversuch, Lease/Runlog und zwei
+  echte IONOS-UnixCronläufe im Abstand von fünf Minuten bestanden; alle
+  Laufzeiten lagen unter 40 Sekunden. Testcron, Worker, künstliche Daten,
+  Testwebhook, private Laufzeitkonfiguration und weitere temporäre Artefakte
+  wurden entfernt. Testwebsite und Test-API blieben fail-closed; Produktion
+  und `main` wurden nicht verändert.
+- AP7.3g Regression: 119/119 relevante PHP-Tests, 23/23 gezielte
+  V2-/Shop-Node-Tests, `npm run lint:test`, `npm run build:test`,
+  Geheimwertprüfung und `git diff --check` bestanden. Der vollständige
+  Node-Lauf bestand 122/131 Fälle und reproduzierte ausschließlich die neun
+  bereits dokumentierten CRLF-/Bash-Basisfehler.
 
 ## Verbleibende Produktionsgates
 

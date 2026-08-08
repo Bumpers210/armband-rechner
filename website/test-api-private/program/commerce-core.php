@@ -1211,7 +1211,14 @@ final class CarmajaCommercePdo
             if (!is_array($payment)) {
                 throw new CarmajaCommerceException('payment_not_found', 'Zahlungseinheit fehlt.', 409);
             }
-            if (in_array($state, ['released', 'converted'], true)) {
+            if ($state === 'converted') {
+                return;
+            }
+            if ($state === 'released') {
+                $pdo->prepare(
+                    "UPDATE payments SET status = 'canceled'
+                     WHERE checkout_id = ? AND status IN ('created','pending')"
+                )->execute([$checkoutId]);
                 return;
             }
             if ($payment['status'] === 'processing') {
@@ -1234,6 +1241,10 @@ final class CarmajaCommercePdo
                 "UPDATE reservations SET state = 'released', blocks_stock = 0,
                         released_at = UTC_TIMESTAMP(6)
                  WHERE checkout_id = ?"
+            )->execute([$checkoutId]);
+            $pdo->prepare(
+                "UPDATE payments SET status = 'canceled'
+                 WHERE checkout_id = ? AND status IN ('created','pending')"
             )->execute([$checkoutId]);
             $pdo->prepare(
                 "UPDATE checkout_sagas SET state = 'expired' WHERE checkout_id = ?

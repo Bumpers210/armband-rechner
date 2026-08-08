@@ -932,6 +932,30 @@ function carmaja_api_v2_publish_product(
     ];
 }
 
+function carmaja_api_v2_read_public_projection(string $path, mixed ...$unused): array
+{
+    $document = carmaja_api_read_json(
+        $path,
+        ['version' => CARMAJA_PRODUCT_MODEL_V2, 'products' => []]
+    );
+    $keys = array_keys($document);
+    sort($keys, SORT_STRING);
+
+    if ($keys !== ['products', 'version']
+        || ($document['version'] ?? null) !== CARMAJA_PRODUCT_MODEL_V2
+        || !is_array($document['products'] ?? null)
+        || !array_is_list($document['products'])) {
+        throw new CarmajaApiException(
+            503,
+            'Public v2 product data does not match the strict website contract.',
+            [],
+            'public_v2_projection_invalid'
+        );
+    }
+
+    return $document;
+}
+
 function carmaja_api_local_publish_adapter_v2(
     array $publicProduct,
     array $operation
@@ -989,35 +1013,35 @@ function carmaja_api_local_publish_adapter_v2(
             }
 
             $path = carmaja_api_path('products/public-products-v2.json');
-    $document = carmaja_api_read_target_json(
-        $path,
-        ['version' => CARMAJA_PRODUCT_MODEL_V2, 'products' => []],
-        'Öffentliche v2-Produktdaten'
-    );
-    $products = is_array($document['products'] ?? null)
-        ? $document['products']
-        : [];
-    $replaced = false;
+            $document = carmaja_api_v2_read_public_projection(
+                $path,
+                ['version' => CARMAJA_PRODUCT_MODEL_V2, 'products' => []],
+                'Öffentliche v2-Produktdaten'
+            );
+            $products = is_array($document['products'] ?? null)
+                ? $document['products']
+                : [];
+            $replaced = false;
 
-    foreach ($products as $index => $product) {
-        if (is_array($product) && ($product['productId'] ?? null) === $productId) {
-            $products[$index] = $publicProductForJson;
-            $replaced = true;
-            break;
-        }
-    }
+            foreach ($products as $index => $product) {
+                if (is_array($product) && ($product['productId'] ?? null) === $productId) {
+                    $products[$index] = $publicProductForJson;
+                    $replaced = true;
+                    break;
+                }
+            }
 
-    if (!$replaced) {
-        $products[] = $publicProductForJson;
-    }
+            if (!$replaced) {
+                $products[] = $publicProductForJson;
+            }
 
-    carmaja_api_write_json_atomic(
-        $path,
-        carmaja_api_target_document([
-            'version' => CARMAJA_PRODUCT_MODEL_V2,
-            'products' => array_values($products),
-        ])
-    );
+            carmaja_api_write_json_atomic(
+                $path,
+                [
+                    'version' => CARMAJA_PRODUCT_MODEL_V2,
+                    'products' => array_values($products),
+                ]
+            );
 
             $result = [
                 'commitSha' => null,

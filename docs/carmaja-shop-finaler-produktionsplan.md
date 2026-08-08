@@ -10,12 +10,18 @@ zugeordnet. AP6 ist vollständig abgenommen. AP7.0 hat das lokale
 Produktionspaket auf Basis des AP6-Commits vorbereitet und technisch geprüft.
 AP7.2b hat App `1.1.2`/Code `4` integriert; AP7.3b hat die vollständige
 V2-Produktkette lokal und mit künstlichen Daten in der bereinigten
-IONOS-Testumgebung nachgewiesen. AP7 und jede Produktionsmutation bleiben
-nicht freigegeben.
+IONOS-Testumgebung nachgewiesen. AP7.3d hat die V2-Testwebsite ausschließlich
+in der IONOS-Testumgebung bereitgestellt und serverseitig verifiziert. AP7.3e
+hat den vollständigen V2-Kettenstand einschließlich AP7.3d kontrolliert in den
+AP7-Integrationsbranch übernommen. AP7.3g hat die vollständige private
+Test-Shop-Laufzeit und den End-to-End-Betrieb mit allen vier Zahlungsarten,
+Worker, Brevo und öffentlichem Widerruf nachgewiesen und anschließend
+bereinigt. AP7 und jede Produktionsmutation bleiben nicht freigegeben.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
 AP6-Abschlusscommit: `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`
+AP7.3d-Abschlusscommit: `3ae346c095d8564c07ce6539a70d38a936a20ff6`
 Produktionsziel: ausschließlich der eigene Carmaja-Shop. Parallele externe
 Verkaufsangebote müssen vor dem produktiven Cutover deaktiviert oder gelöscht
 sein; eine Synchronisierung wird nicht entwickelt.
@@ -33,9 +39,12 @@ AP2 ist vollständig abgenommen. AP2a ist technisch abgenommen. AP3, AP4 und
 AP5 sind abgenommen. AP3b und die anschließende AP6-Gesamtregression sind
 vollständig bestanden. Die Rechts-, Datenschutz- und Versandfreigaben liegen
 für die versionierten Fassungen vom 2026-08-07 vor. AP6 ist vollständig
-abgenommen. AP7.2b und AP7.3b sind technisch geschlossen. AP7 bleibt nicht
-freigegeben. Es gibt keinen produktiven Cutover, kein Produktionsdeployment,
-keinen Push und keinen Zugriff auf Produktionsdaten.
+abgenommen. AP7.2b, AP7.3b, AP7.3d, AP7.3e und AP7.3g sind technisch
+geschlossen.
+AP7 bleibt nicht freigegeben. Das verifizierte AP7.3d-Testdeployment war auf
+die getrennte IONOS-Testwebsite begrenzt. Es gibt keinen produktiven Cutover,
+kein Produktionsdeployment, keinen Merge nach `main` und keinen Zugriff auf
+Produktionsdaten.
 
 V1 bleibt ein direkter Einzelkauf ohne Warenkorb, Kundenkonto oder parallele
 Marktplätze. Ein Checkout enthält genau ein Unikat mit Menge `1`. Nach dem
@@ -460,6 +469,81 @@ die bestehende App `1.1.2` als V2 mit gültigem Preis, `currency=eur` und
 bestandener lesender Dry-Run darf eine weiterhin gesperrte Manifestbindung
 vorbereiten.
 
+### AP7.3d – V2-Testwebsite
+
+AP7.3d wurde am 2026-08-08 ausschließlich auf der geschützten IONOS-Testwebsite
+bereitgestellt. Der Testexport verwendet die öffentliche V2-Projektion und
+zeigt auch ein veröffentlichtes Produkt mit `salesEnabled=false` sichtbar als
+„Nicht verfügbar“, ohne Kaufmöglichkeit. Produktdetailseite, Bilder,
+Rechtstextseiten und Footer sind erreichbar; Vinted-/Marktplatzlinks,
+`stock`, `vintedUrl` und produktive API-Ziele fehlen im Export. Der aktive
+Testrelease wurde nach Server- und manueller Sichtprüfung als `verified`
+markiert. Das Test-Armband und die Testumgebung blieben für weitere
+Geräteprüfungen erhalten; Produktion und Commerce-Bestand wurden nicht
+verändert.
+
+Der geprüfte Stand ist im lokalen Commit
+`3ae346c095d8564c07ce6539a70d38a936a20ff6` auf
+`codex/ap7-v2-chain` gesichert.
+
+### AP7.3e – AP7-Integrationsstand
+
+AP7.3e hat am 2026-08-08 den vollständigen V2-Kettenstand einschließlich
+AP7.3d per konfliktfreiem Fast-forward in `codex/ap7-integration` übernommen.
+Die zuvor vorhandenen AP7.2b-/`main`-Änderungen wurden vorab gesichert und
+dreiseitig geprüft; alle gültigen Änderungen sind im V2-Zielstand enthalten.
+Veraltete Beta-Versions-, Paketsuffix- und Legacy-Payloadvarianten wurden nicht
+wieder eingeführt.
+
+Die Produktions-App bleibt bei `versionName=1.1.2`, `versionCode=4`, Paket
+`de.carmajaperlen.armbandrechner` und ausschließlich produktiver Produkt-API.
+Die Beta bleibt bei `versionName=1.1.3-beta.1`, `versionCode=5`, demselben Paket,
+dem gepinnten Beta-Zertifikat und ausschließlich der Test-API. Website und
+Publisher verwenden den öffentlichen V2-Vertrag ohne `stock` und `vintedUrl`.
+
+Bestanden sind `testDebugUnitTest`, `lintDebug`, das stabil signierte
+`assembleBeta`, der explizit unsignierte Produktions-Prüfbuild, 118/118
+PHP-Tests, 29/29 CRLF-unabhängige V2-/AP7-Node-Verträge, `npm run lint:test`,
+`npm run build:test`, ein künstlicher Produktionsbuild, beide Exportprüfungen,
+`npm audit --omit=dev`, Geheimwertprüfung und `git diff --check`. Der
+vollständige Node-Lauf reproduziert unverändert 121/130 bestandene Fälle und
+exakt die neun dokumentierten Windows-CRLF-/Bash-Basisfehler. Test-Armband,
+Test-API und Testwebsite wurden durch AP7.3e nicht verändert oder bereinigt.
+
+### AP7.3g – vollständige Test-Shop-Laufzeit
+
+AP7.3g hat am 2026-08-08 ausschließlich in der IONOS-Testumgebung die private
+Commerce-Laufzeit mit MySQL 8/InnoDB, Test-Stripe, Test-Brevo, Testversand,
+Test-Legal-Bundle, privatem Worker und IONOS-UnixCron wiederhergestellt. Die
+öffentliche V2-Projektion verwendet nun unmittelbar den strikten Vertrag
+`{version, products}`. Das vorhandene reale Test-Armband blieb unverändert mit
+`salesEnabled=false`; sämtliche Käufe verwendeten ein separates künstliches
+V2-Testprodukt mit künstlichem Bestand.
+
+Live nachgewiesen wurden Shopsitzung, CSRF, CORS-Preflight, `no-store`,
+Live-Preis und -Verfügbarkeit, Checkout-Start sowie erfolgreiche
+Testzahlungen mit Karte, PayPal, Klarna und SEPA-Lastschrift. Bei SEPA blieb
+der Checkout bis zum asynchron bestätigten Zahlungserfolg in Bearbeitung;
+vorher entstanden weder Bestellung noch Bestandsabgang. Webhook-Inbox, Worker,
+atomare Bestellfinalisierung, Bestandsänderung, Mail-Outbox/Brevo,
+zweistufiger Widerruf, Legal-Snapshot und die vorgesehenen Admin-/Reviewlisten
+wurden gemeinsam geprüft. Ein bestätigter Session-Ablauf gab die Reservierung
+frei, stornierte die noch offene lokale Zahlung und erzeugte keine Bestellung.
+
+Die Abschlussregression bestand 119/119 relevante PHP-Tests, 23/23 gezielte
+V2-/Shop-Node-Tests, `npm run lint:test`, `npm run build:test`,
+Geheimwertprüfung und `git diff --check`. Der vollständige Node-Lauf bestand
+122/131 Fälle; die neun übrigen Fälle sind ausschließlich die bereits gegen
+den sauberen Basisstand reproduzierten CRLF-/Bash-Basisfehler.
+
+Der Worker-Nachweis umfasst direkten Lauf, parallelen Lockversuch, Lease und
+Runlog sowie zwei echte IONOS-Cronläufe im Fünf-Minuten-Takt; sämtliche Läufe
+blieben deutlich unter 40 Sekunden. Nach Abschluss wurden künstliches Produkt,
+Commerce-Testdaten, temporärer Cron, Worker, Laufmarker, Testwebhook, private
+AP7.3g-Konfiguration und Testartefakte entfernt. Das reale Test-Armband blieb
+erhalten; Testwebsite und Test-API wurden fail-closed hinterlassen. Produktion,
+`main`, Produktivdaten und produktive Providerkonfiguration blieben unverändert.
+
 ## 5. Meilensteine und kritischer Pfad
 
 | Meilenstein | Stand | Nachweis |
@@ -480,6 +564,9 @@ vorbereiten.
 | AP7.0 | lokal technisch bereit | Produktionsverträge, manueller Deployment-Gate, v2-Website/Publisher, Cutovermanifest/-Adapter und lokale Regression bestanden; keine Produktionsmutation |
 | AP7.2b | App- und Draft-Synchronisierungsblocker geschlossen | App `1.1.2`/Code `4`, vollständiges Messwert-Mapping, Android-Prüfbuild und relevante Vertragsregression bestanden; reales v2-Startprodukt ausstehend |
 | AP7.3b | vollständige V2-Produktkette technisch geschlossen | App/Draft, API, serverseitige Version/Hash, Publisher und öffentliche V2-Projektion lokal und auf IONOS mit künstlichen Daten nachgewiesen und bereinigt; reales v2-Startprodukt ausstehend |
+| AP7.3d | V2-Testwebsite verifiziert | V2-Testprodukt sichtbar und nicht kaufbar; Test-API, Produktdetail, Bilder, Legal-Seiten und Verkaufskanalgrenze live geprüft; Produktion unverändert |
+| AP7.3e | AP7-Integrationsstand bereit | V2-Kette einschließlich AP7.3d übernommen; App-, PHP-, Node-, Test-/Produktionsbuild-, Export- und Geheimwertregression bestanden |
+| AP7.3g | Testumgebung vollständig AP7-fähig | vollständige private Testlaufzeit, vier Zahlungsarten, Webhooks, Worker/Cron, Bestellung, Brevo, Widerruf, Legal-Snapshot, Admin/Review und Cleanup nachgewiesen |
 
 Kritischer Pfad bis zur AP6-Abnahme: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5
 → AP2a → AP3 → AP4 → AP5 → AP3b → AP6. Dieser Pfad ist abgeschlossen. Der
@@ -566,6 +653,9 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP7.0 | lokal technisch bereit; keine Produktionsfreigabe |
 | AP7.2b | App- und Draft-Synchronisierungsblocker geschlossen; Startprodukt ausstehend |
 | AP7.3b | vollständige V2-Produktkette technisch geschlossen; Startprodukt ausstehend |
+| AP7.3d | V2-Testwebsite serverseitig verifiziert; keine Produktionsfreigabe |
+| AP7.3e | AP7-Integrationsstand technisch bereit; Startprodukt und Produktionsgates ausstehend |
+| AP7.3g | Testumgebung vollständig AP7-fähig und bereinigt; keine Produktionsfreigabe |
 | AP7 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 

@@ -2065,10 +2065,17 @@ carmaja_api_test('V2-Kette speichert, lädt Bilder hoch und publiziert ohne Lega
     carmaja_api_test_same(6, $published['pearlSizeMm'], 'Perlengröße ging verloren.');
     carmaja_api_test_same(false, $published['salesEnabled'], 'Kettentest darf keine Verkaufsfreigabe aktivieren.');
 
-    $publicDocument = carmaja_api_read_target_json(
+    $publicDocument = carmaja_api_v2_read_public_projection(
         carmaja_api_path('products/public-products-v2.json'),
         [],
         'v2-Kettentest-Publikation'
+    );
+    $publicDocumentKeys = array_keys($publicDocument);
+    sort($publicDocumentKeys, SORT_STRING);
+    carmaja_api_test_same(
+        ['products', 'version'],
+        $publicDocumentKeys,
+        'Public V2 projection must match the strict website contract.'
     );
     $public = $publicDocument['products'][0] ?? [];
     carmaja_api_test_same(17.5, $public['braceletSizeCm'] ?? null, 'Öffentlicher Umfang fehlt.');
@@ -2219,7 +2226,7 @@ carmaja_api_test('Publisher v2 erzeugt nur den öffentlichen v2-Vertrag', static
         409,
         'publish_adapter_conflict'
     );
-    $stored = carmaja_api_read_target_json(
+    $stored = carmaja_api_v2_read_public_projection(
         carmaja_api_path('products/public-products-v2.json'),
         [],
         'v2-Publisherdaten'

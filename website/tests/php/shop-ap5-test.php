@@ -73,6 +73,33 @@ $tests['Brevo-Erfolg mit Nachrichten-ID'] = static function () use ($assert): vo
     ]);
     $assert($result['outcome'] === 'sent' && $result['brevoMessageId'] === '<synthetic-1>', 'Brevo-Erfolg nicht gespeichert.');
 };
+$tests['Brevo rendert fachliche Outboxdaten erst beim Versand'] = static function () use ($assert): void {
+    $requests = [];
+    $client = new CarmajaBrevoClient([
+        'brevoApiKey' => 'synthetic', 'brevoSenderEmail' => 'test@example.invalid',
+    ], static function (array $request) use (&$requests): array {
+        $requests[] = $request;
+        return ['status' => 201, 'body' => '{"messageId":"<synthetic-rendered>"}'];
+    });
+    $result = $client->send([
+        'dedupe_key' => 'order-confirmation:rendered',
+        'message_type' => 'order_confirmation',
+        'recipient' => 'buyer@example.invalid',
+        'payload' => '{"orderNumber":"TEST-2026-000001"}',
+    ]);
+    $assert($result['outcome'] === 'sent', 'Fachliche Bestellmail wurde nicht versendet.');
+    $assert(str_contains((string) ($requests[0]['subject'] ?? ''), 'TEST-2026-000001'), 'Bestellnummer fehlt im Betreff.');
+    $assert(str_contains((string) ($requests[0]['htmlContent'] ?? ''), 'TEST-2026-000001'), 'Bestellnummer fehlt im Inhalt.');
+
+    $withdrawal = $client->send([
+        'dedupe_key' => 'withdrawal-receipt:rendered',
+        'message_type' => 'withdrawal_receipt',
+        'recipient' => 'buyer@example.invalid',
+        'payload' => '{"withdrawalId":"withdrawal-test","receivedAt":"2026-08-08T18:00:00Z"}',
+    ]);
+    $assert($withdrawal['outcome'] === 'sent', 'Fachliche Widerrufsmail wurde nicht versendet.');
+    $assert(str_contains((string) ($requests[1]['htmlContent'] ?? ''), '2026-08-08T18:00:00Z'), 'Eingangszeit fehlt.');
+};
 $tests['Brevo-unklarer Ausgang wird nicht blind erneut gesendet'] = static function () use ($assert): void {
     $client = new CarmajaBrevoClient([
         'brevoApiKey' => 'synthetic', 'brevoSenderEmail' => 'test@example.invalid',

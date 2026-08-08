@@ -173,6 +173,13 @@ $tests = [
             'Payload konnte nicht wiederhergestellt werden.'
         );
     },
+    'Bestaetigt abgelaufene unbezahlte Sessions stornieren die Zahlungseinheit' => static function (): void {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/test-api-private/program/commerce-core.php');
+        stripe_ap3_assert(is_string($source)
+            && str_contains($source, "UPDATE payments SET status = 'canceled'")
+            && str_contains($source, "status IN ('created','pending')"),
+            'Unbezahlte Zahlungseinheit bleibt nach bestaetigtem Sessionablauf offen.');
+    },
 ];
 
 $passed = 0;

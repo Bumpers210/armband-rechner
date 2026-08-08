@@ -27,18 +27,19 @@ final class CarmajaBrevoClient
         if (!is_array($payload)) {
             return ['outcome' => 'failed', 'error' => 'mail_payload_invalid'];
         }
+        $content = $this->renderContent($row, $payload);
+        if ($content === null) {
+            return ['outcome' => 'failed', 'error' => 'mail_content_missing'];
+        }
         $request = [
             'sender' => [
                 'email' => $senderEmail,
                 'name' => (string) ($this->config['brevoSenderName'] ?? 'Carmaja-Perlen Shop'),
             ],
             'to' => [['email' => (string) $row['recipient']]],
-            'subject' => (string) ($payload['subject'] ?? 'Carmaja-Perlen Shop'),
-            'htmlContent' => (string) ($payload['htmlContent'] ?? $payload['textContent'] ?? ''),
+            'subject' => $content['subject'],
+            'htmlContent' => $content['htmlContent'],
         ];
-        if ($request['htmlContent'] === '') {
-            return ['outcome' => 'failed', 'error' => 'mail_content_missing'];
-        }
         $request['headers'] = [
             'idempotencyKey' => $this->providerIdempotencyKey((string) $row['dedupe_key']),
         ];
@@ -113,6 +114,49 @@ final class CarmajaBrevoClient
             throw new RuntimeException('brevo_transport_failed');
         }
         return ['status' => $status, 'body' => (string) $body];
+    }
+
+    /** @return null|array{subject:string,htmlContent:string} */
+    private function renderContent(array $row, array $payload): ?array
+    {
+        $subject = trim((string) ($payload['subject'] ?? ''));
+        $htmlContent = trim((string) ($payload['htmlContent'] ?? $payload['textContent'] ?? ''));
+        if ($subject !== '' && $htmlContent !== '') {
+            return ['subject' => $subject, 'htmlContent' => $htmlContent];
+        }
+
+        $messageType = (string) ($row['message_type'] ?? '');
+        $orderNumber = htmlspecialchars(trim((string) ($payload['orderNumber'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        if ($messageType === 'order_confirmation' && $orderNumber !== '') {
+            return [
+                'subject' => 'Bestellbestätigung ' . $orderNumber,
+                'htmlContent' => '<p>Vielen Dank für Ihre Bestellung.</p><p>Bestellnummer: <strong>'
+                    . $orderNumber . '</strong></p>',
+            ];
+        }
+        if ($messageType === 'shipping_confirmation' && $orderNumber !== '') {
+            $trackingNumber = htmlspecialchars(trim((string) ($payload['trackingNumber'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $tracking = $trackingNumber !== ''
+                ? '<p>Sendungsreferenz: <strong>' . $trackingNumber . '</strong></p>'
+                : '';
+            return [
+                'subject' => 'Versandbestätigung ' . $orderNumber,
+                'htmlContent' => '<p>Ihre Bestellung ' . $orderNumber . ' wurde versendet.</p>' . $tracking,
+            ];
+        }
+        if ($messageType === 'withdrawal_receipt') {
+            $withdrawalId = htmlspecialchars(trim((string) ($payload['withdrawalId'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $receivedAt = htmlspecialchars(trim((string) ($payload['receivedAt'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            if ($withdrawalId === '' || $receivedAt === '') {
+                return null;
+            }
+            return [
+                'subject' => 'Eingangsbestätigung Ihres Widerrufs',
+                'htmlContent' => '<p>Ihr Widerruf ist bei uns eingegangen.</p><p>Vorgang: <strong>'
+                    . $withdrawalId . '</strong><br>Eingangszeit: ' . $receivedAt . '</p>',
+            ];
+        }
+        return null;
     }
 }
 

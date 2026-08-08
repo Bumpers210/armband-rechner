@@ -24,6 +24,12 @@ test("AP4-Public-API definiert Cookies, CORS und No-Store", async () => {
   }
 });
 
+test("AP4-Bootstrap interpretiert MySQL-DATETIME verbindlich als UTC", async () => {
+  const bootstrap = await source("test-api-private/program/bootstrap.php");
+  assert.match(bootstrap, /date_default_timezone_set\('UTC'\)/);
+  assert.match(bootstrap, /timezone_configuration_failed/);
+});
+
 test("AP4-Checkout verwendet nur Live-Daten und keinen statischen Bestand", async () => {
   const page = await source("app/armbaender/[slug]/page.tsx");
   const buyNow = await source("components/shop-buy-now.tsx");
