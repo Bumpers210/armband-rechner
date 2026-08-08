@@ -53,4 +53,6 @@ explizite Deploy-Gate sowie die geschuetzten SSH-Secrets. Er paketiert weder
 eine Runtime-Konfiguration noch private Daten, Website-Export oder Publisher.
 Vor dem ersten Lauf muss IONOS die Webserver-Variable `CARMAJA_BOOTSTRAP_FILE`
 auf den privaten `program/bootstrap.php`-Pfad setzen; diese Servereinstellung
-liegt bewusst ausserhalb des Repositorys und wird nicht vom Workflow erzeugt.
+liegt bewusst ausserhalb des Repositorys. Der Workflow aktualisiert keine
+bestehende API-`.htaccess`, damit diese private Bootstrap-Verknuepfung erhalten
+bleibt.

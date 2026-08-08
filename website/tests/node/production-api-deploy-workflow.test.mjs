@@ -26,7 +26,7 @@ test("Produktions-API-Workflow ist manuell, gegated und hält Runtime-Daten aus 
   assert.match(workflow, /CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE: \$\{\{ vars\.CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE \}\}/);
   assert.match(workflow, /CARMAJA_PRODUCTION_API_RUNTIME_CONFIG: \$\{\{ vars\.CARMAJA_PRODUCTION_API_RUNTIME_CONFIG \}\}/);
   assert.match(workflow, /runtime-config\.php' -o -name 'github-token' -o -name '\*\.secret'/);
-  assert.match(workflow, /cp website\/production-api-public\/\.htaccess/);
+  assert.doesNotMatch(workflow, /production-api-public\/\.htaccess|\$api_webroot\/\.htaccess/);
   assert.match(workflow, /product-api-diagnostics\.php/);
   assert.match(workflow, /PRODUCTION_API_HTTP_SMOKE_OK=unauthenticated-router/);
   assert.match(workflow, /https:\/\/api\.carmaja-perlen\.de\//);
