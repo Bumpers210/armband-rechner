@@ -6,11 +6,11 @@ Die Hostingdateien unter `website/hosting/` werden nicht vom normalen Website-De
 
 `CARMAJA_STATS_FILE` zeigt auf `/home/www/carmaja/private-data/clicks.json`. Die Statistik speichert ausschliesslich aggregierte Linkklicks sowie Seitenaufrufe pro Tag und Monat. Seitenaufrufe werden nach kanonischer öffentlicher Route und beim Einstieg nach einer festen Herkunftskategorie gespeichert. IP-Adressen, Cookies, User-Agents, Referer und vollständige Herkunfts-URLs werden nicht gespeichert.
 
-Die Version-3-Statistik liest vorhandene Version-1- und Version-2-Daten weiter. Beim naechsten Schreibvorgang wird sie atomar mit einem stabilen Lock und einem Austausch im selben privaten Verzeichnis aktualisiert.
+Die Version-3-Statistik liest vorhandene Version-1- und Version-2-Daten weiter. Nicht mehr unterstützte Marktplatz- und Produktklickzähler werden bei der Normalisierung verworfen. Beim nächsten Schreibvorgang wird die verbleibende Statistik atomar mit einem stabilen Lock und einem Austausch im selben privaten Verzeichnis aktualisiert.
 
 `pageview.php` akzeptiert ausschliesslich `POST` mit einer tatsächlich veröffentlichten kanonischen Route. Die Website ordnet beim ersten Aufruf eines geladenen Dokuments nur einen der Kategorien `google`, `other-search`, `instagram`, `other-social`, `direct-unknown` oder `other-website` zu. Interne Navigationen erhalten keine neue Herkunftszuordnung.
 
-Produktklicks sind nur erlaubt, wenn die statische Detailseite fuer den CP-Slug existiert und dort der Vinted-Link gerendert wird. Damit sind `sold`, `disabled` und unbekannte Produkte ausgeschlossen.
+Externe Linkklicks sind ausschließlich für die fest hinterlegte Instagram-Adresse und die erlaubten Positionen vorgesehen. Produkt- oder Marktplatzparameter werden abgelehnt; der Kaufweg läuft direkt über den Carmaja-Shop.
 
 ## Statistikbereich
 

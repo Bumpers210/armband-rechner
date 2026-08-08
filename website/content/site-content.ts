@@ -109,6 +109,8 @@ export type SiteContent = {
       contactHeading: string;
       emailLabel: string;
       email: string;
+      phoneLabel: string;
+      phone: string;
       disputeHeading: string;
       disputeText: string;
     };
@@ -285,7 +287,7 @@ export const siteContent: SiteContent = {
     title: "Persönliche Anfragen",
     customText: "Individuelle Anfertigungen sind auf Anfrage möglich.",
     contactText:
-      "Fragen zu Größen, Materialien oder individuellen Anfertigungen beantworten wir gerne per E-Mail.",
+      "Fragen zu Größen, Materialien oder individuellen Anfertigungen beantworten wir gerne per E-Mail. Der Kauf erfolgt sicher direkt über den Carmaja-Shop.",
     email: "kontakt@carmaja-perlen.de",
   },
   legal: {
@@ -300,6 +302,8 @@ export const siteContent: SiteContent = {
       contactHeading: "Kontakt",
       emailLabel: "E-Mail",
       email: "kontakt@carmaja-perlen.de",
+      phoneLabel: "Telefon",
+      phone: "01523 3671027",
       disputeHeading: "Verbraucherstreitbeilegung",
       disputeText:
         "Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",

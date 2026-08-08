@@ -8,12 +8,12 @@ const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const websiteDirectory = path.resolve(testDirectory, "../..");
 const readSource = (relativePath) => readFileSync(path.join(websiteDirectory, relativePath), "utf8");
 
-test("Produktions-Klickhandler begrenzt Parameter und veroeffentlichte Produktlinks", () => {
+test("Produktions-Klickhandler erlaubt nur freigegebene externe Ziele", () => {
   const source = readSource("hosting/click.php");
 
-  assert.match(source, /\['target', 'position', 'product'\]/);
-  assert.match(source, /carmaja_is_published_product_slug/);
-  assert.match(source, /position === 'product'/);
+  assert.match(source, /\['target', 'position'\]/);
+  assert.match(source, /'instagram' => 'https:\/\/www\.instagram\.com/);
+  assert.doesNotMatch(source, /vinted|marketplace|productSlug/i);
   assert.match(source, /http_response_code\(400\)/);
   assert.match(source, /header\('Location: ' \./);
 });
@@ -23,12 +23,11 @@ test("Tracking verwendet einen stabilen Lock und atomaren Austausch", () => {
 
   assert.match(source, /CARMAJA_STATS_VERSION = 3/);
   assert.match(source, /CARMAJA_STATS_FILE/);
-  assert.match(source, /CARMAJA_PRODUCT_PAGES_DIR/);
   assert.match(source, /flock\(\$lockHandle, \$lockType\)/);
   assert.match(source, /tempnam\(\s*dirname\(\$path\), '\.clicks-'/);
   assert.match(source, /rename\(\$temporaryPath, \$path\)/);
-  assert.match(source, /'products'/);
   assert.match(source, /'pageviews'/);
+  assert.doesNotMatch(source, /vinted|marketplace|productSlug/i);
   assert.match(source, /CARMAJA_PAGEVIEW_SOURCES/);
   assert.doesNotMatch(source, /user.?agent|referer|referrer|\$_COOKIE/i);
 });

@@ -44,12 +44,8 @@ export function ProductList({
                 </dd>
               </div>
               <div>
-                <dt>Armbandgröße</dt>
-                <dd>{product.displayBraceletSize}</dd>
-              </div>
-              <div>
-                <dt>Perlengröße</dt>
-                <dd>{product.displayPearlSize ?? "Noch nicht hinterlegt"}</dd>
+                <dt>Größe</dt>
+                <dd>{product.displaySize}</dd>
               </div>
             </dl>
             <Link className="product-detail-link" href={`/armbaender/${product.slug}/`}>

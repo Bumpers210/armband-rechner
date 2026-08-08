@@ -61,7 +61,7 @@ function run_click_request(string $clickPath, array $query, array $environment):
         2 => ['pipe', 'w'],
     ];
     $process = proc_open(
-        escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($runner),
+        [PHP_BINARY, '-d', 'display_errors=0', '-r', $runner],
         $descriptors,
         $pipes,
         null,
@@ -75,7 +75,10 @@ function run_click_request(string $clickPath, array $query, array $environment):
     $errors = stream_get_contents($pipes[2]);
     fclose($pipes[1]);
     fclose($pipes[2]);
-    expect_true(proc_close($process) === 0, 'Klickhandler ist fehlgeschlagen: ' . trim($errors));
+    expect_true(
+        proc_close($process) === 0,
+        'Klickhandler ist fehlgeschlagen: ' . trim($errors . "\n" . $output),
+    );
     $marker = strrpos($output, '__CARMAJA_RESULT__');
     expect_true($marker !== false, 'Klickhandler lieferte kein Testergebnis.');
     $result = json_decode(substr($output, $marker + strlen('__CARMAJA_RESULT__')), true, 512, JSON_THROW_ON_ERROR);
@@ -99,7 +102,7 @@ function run_pageview_request(string $pageviewPath, array $parameters, array $en
         2 => ['pipe', 'w'],
     ];
     $process = proc_open(
-        escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($runner),
+        [PHP_BINARY, '-d', 'display_errors=0', '-r', $runner],
         $descriptors,
         $pipes,
         null,
@@ -127,53 +130,38 @@ $websiteRoot = dirname(__DIR__, 2);
 $hostingRoot = $websiteRoot . DIRECTORY_SEPARATOR . 'hosting';
 $testRoot = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'carmaja-click-statistics-' . bin2hex(random_bytes(8));
 $statsPath = $testRoot . DIRECTORY_SEPARATOR . 'private' . DIRECTORY_SEPARATOR . 'clicks.json';
-$productRoot = $testRoot . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'armbaender';
 $pageRoot = $testRoot . DIRECTORY_SEPARATOR . 'public';
 
 try {
-    mkdir($productRoot . DIRECTORY_SEPARATOR . 'cp-2026-0001', 0750, true);
-    mkdir($productRoot . DIRECTORY_SEPARATOR . 'cp-2026-0002', 0750, true);
     mkdir(dirname($statsPath), 0750, true);
     mkdir($pageRoot . DIRECTORY_SEPARATOR . 'kontakt', 0750, true);
+    mkdir($pageRoot . DIRECTORY_SEPARATOR . 'armbaender', 0750, true);
     file_put_contents($pageRoot . DIRECTORY_SEPARATOR . 'index.html', '<main>Startseite</main>');
     file_put_contents($pageRoot . DIRECTORY_SEPARATOR . 'kontakt' . DIRECTORY_SEPARATOR . 'index.html', '<main>Kontakt</main>');
     file_put_contents($pageRoot . DIRECTORY_SEPARATOR . 'armbaender' . DIRECTORY_SEPARATOR . 'index.html', '<main>Armbänder</main>');
-    file_put_contents(
-        $productRoot . DIRECTORY_SEPARATOR . 'cp-2026-0001' . DIRECTORY_SEPARATOR . 'index.html',
-        '<a href="/click.php?target=vinted&amp;position=product&amp;product=cp-2026-0001">Vinted</a>',
-    );
-    file_put_contents($productRoot . DIRECTORY_SEPARATOR . 'cp-2026-0002' . DIRECTORY_SEPARATOR . 'index.html', '<p>sold</p>');
     file_put_contents($statsPath, json_encode([
         'version' => 1,
-        'days' => ['2026-07-01' => ['vinted' => ['footer' => 3]]],
+        'days' => ['2026-07-01' => [
+            'instagram' => ['footer' => 3],
+            'vinted' => ['footer' => 7],
+        ]],
         'months' => [],
     ], JSON_THROW_ON_ERROR));
 
     putenv('CARMAJA_STATS_FILE=' . $statsPath);
-    putenv('CARMAJA_PRODUCT_PAGES_DIR=' . $productRoot);
     putenv('CARMAJA_PAGE_ROOT=' . $pageRoot);
     require $hostingRoot . DIRECTORY_SEPARATOR . '_internal' . DIRECTORY_SEPARATOR . 'tracking.php';
 
-    expect_true(carmaja_is_published_product_slug('cp-2026-0001'), 'Published Produkt wurde nicht erkannt.');
-    expect_true(!carmaja_is_published_product_slug('cp-2026-0002'), 'Sold Produkt wurde akzeptiert.');
-    expect_true(!carmaja_is_published_product_slug('cp-2026-9999'), 'Unbekanntes Produkt wurde akzeptiert.');
-
-    carmaja_record_click('vinted', 'product', 'cp-2026-0001');
+    carmaja_record_click('instagram', 'footer');
     $afterDirectWrite = read_json($statsPath);
-    expect_true(($afterDirectWrite['days']['2026-07-01']['vinted']['footer'] ?? 0) === 3, 'Bestehende Statistikdaten gingen verloren.');
+    expect_true(($afterDirectWrite['days']['2026-07-01']['instagram']['footer'] ?? 0) === 3, 'Bestehende Instagram-Statistikdaten gingen verloren.');
+    expect_true(!isset($afterDirectWrite['days']['2026-07-01']['vinted']), 'Veraltete Marktplatzdaten wurden nicht entfernt.');
 
     $environment = array_merge(getenv() ?: [], [
         'CARMAJA_STATS_FILE' => $statsPath,
-        'CARMAJA_PRODUCT_PAGES_DIR' => $productRoot,
         'CARMAJA_PAGE_ROOT' => $pageRoot,
     ]);
     $clickPath = $hostingRoot . DIRECTORY_SEPARATOR . 'click.php';
-    $productResult = run_click_request($clickPath, [
-        'target' => 'vinted',
-        'position' => 'product',
-        'product' => 'cp-2026-0001',
-    ], $environment);
-    expect_true(($productResult['status'] ?? 0) === 302, 'Gueltiger Produktlink leitet nicht weiter.');
     $instagramResult = run_click_request($clickPath, [
         'target' => 'instagram',
         'position' => 'footer',
@@ -202,11 +190,10 @@ try {
     expect_true(($wrongMethod['status'] ?? 0) === 405, 'Falsche Methode fuer Seitenaufruf wurde akzeptiert.');
 
     foreach ([
-        'target=vinted&position=product&product=cp-2026-0002',
-        'target=vinted&position=product&product=cp-2026-9999',
-        'target=vinted&position=product',
+        'target=vinted&position=footer',
+        'target=instagram&position=product',
+        'target=instagram&position=footer&product=cp-2026-0001',
         'target=invalid&position=footer',
-        'target=vinted&position=footer&product=cp-2026-0001',
     ] as $query) {
         parse_str($query, $parameters);
         $result = run_click_request($clickPath, $parameters, $environment);
@@ -215,26 +202,32 @@ try {
 
     mkdir($testRoot . DIRECTORY_SEPARATOR . 'stats-directory', 0750, true);
     $failedCounterResult = run_click_request($clickPath, [
-        'target' => 'vinted',
-        'position' => 'product',
-        'product' => 'cp-2026-0001',
+        'target' => 'instagram',
+        'position' => 'footer',
     ], array_merge($environment, ['CARMAJA_STATS_FILE' => $testRoot . DIRECTORY_SEPARATOR . 'stats-directory']));
-    expect_true(($failedCounterResult['status'] ?? 0) === 302, 'Zaehlerfehler verhindert die Weiterleitung.');
+    expect_true(
+        ($failedCounterResult['status'] ?? 0) === 302,
+        'Zaehlerfehler verhindert die Weiterleitung: ' . json_encode($failedCounterResult),
+    );
 
     $parallel = [];
     for ($index = 0; $index < 8; ++$index) {
         $code = 'putenv(' . var_export('CARMAJA_STATS_FILE=' . $statsPath, true) . ');'
             . 'require ' . var_export($hostingRoot . DIRECTORY_SEPARATOR . '_internal' . DIRECTORY_SEPARATOR . 'tracking.php', true) . ';'
-            . 'carmaja_record_click("vinted", "product", "cp-2026-0001");';
-        $parallel[] = proc_open(escapeshellarg(PHP_BINARY) . ' -r ' . escapeshellarg($code), [STDIN, STDOUT, STDERR], $childPipes);
+            . 'carmaja_record_click("instagram", "footer");';
+        $parallel[] = proc_open(
+            [PHP_BINARY, '-d', 'display_errors=0', '-r', $code],
+            [STDIN, STDOUT, STDERR],
+            $childPipes,
+        );
     }
     foreach ($parallel as $process) {
         expect_true(is_resource($process) && proc_close($process) === 0, 'Paralleler Schreibvorgang ist fehlgeschlagen.');
     }
 
     $finalStats = read_json($statsPath);
-    $productCount = $finalStats['days'][(new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d')]['products']['cp-2026-0001'] ?? 0;
-    expect_true($productCount === 10, 'Parallele Produktzaehlungen gingen verloren.');
+    $todayStats = $finalStats['days'][(new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d')] ?? [];
+    expect_true(($todayStats['instagram']['footer'] ?? 0) === 10, 'Parallele Instagram-Zaehlungen gingen verloren.');
     expect_true(($finalStats['days'][(new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d')]['pageviews']['/']['views'] ?? 0) === 1, 'Seitenaufruf der Startseite fehlt.');
     expect_true(($finalStats['days'][(new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d')]['pageviews']['/']['sources']['google'] ?? 0) === 1, 'Google-Herkunft fehlt.');
     expect_true(($finalStats['days'][(new DateTimeImmutable('today', new DateTimeZone('Europe/Berlin')))->format('Y-m-d')]['pageviews']['/kontakt/']['sources']['instagram'] ?? 0) === 1, 'Instagram-Herkunft fehlt.');

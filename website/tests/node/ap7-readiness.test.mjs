@@ -1,0 +1,106 @@
+import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import test from "node:test";
+
+const projectRoot = process.cwd();
+const repositoryRoot = path.dirname(projectRoot);
+
+async function text(relativePath) {
+  return readFile(path.join(repositoryRoot, relativePath), "utf8");
+}
+
+test("Produktionsdeployment ist manuell, gepinnt und fail-closed", async () => {
+  const workflow = await text(".github/workflows/deploy-website.yml");
+  const entry = await text("website/production-shop-api-public/index.php");
+  const apache = await text("website/production-shop-api-public/.htaccess");
+
+  assert.doesNotMatch(workflow, /^\s*push\s*:/m);
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /CARMAJA_PRODUCTION_DEPLOY_ENABLED/);
+  assert.match(workflow, /DEPLOY-CARMAJA-PRODUCTION/);
+  assert.match(workflow, /environment:\s*\n\s+name: carmaja-production/);
+  assert.match(workflow, /CARMAJA_PRODUCTION_SSH_KNOWN_HOSTS/);
+  assert.match(workflow, /StrictHostKeyChecking=yes/);
+  assert.doesNotMatch(workflow, /ssh-keyscan/);
+  assert.match(entry, /CARMAJA_BOOTSTRAP_FILE/);
+  assert.doesNotMatch(`${entry}\n${apache}`, /carmaja-private-test|test-api/);
+  assert.match(apache, /\/home\/www\/carmaja-private-shop\/program\/bootstrap\.php/);
+});
+
+test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und vier Zahlungsarten identisch", async () => {
+  const deployment = JSON.parse(await text("website/config/production-shop-deployment.json"));
+  const cutover = JSON.parse(await text("website/config/production-cutover-manifest.v1.json"));
+  const runtime = await text("website/config/runtime-config.production.example.php");
+  const bootstrap = await text("website/test-api-private/program/bootstrap.php");
+
+  const methods = ["card", "paypal", "klarna", "sepa_debit"];
+  assert.deepEqual(deployment.shop.paymentMethodTypes, methods);
+  assert.deepEqual(cutover.paymentMethodTypes, methods);
+  for (const method of methods) {
+    assert.match(runtime, new RegExp(`['\"]${method}['\"]`));
+    assert.match(bootstrap, new RegExp(`['\"]${method}['\"]`));
+  }
+  assert.equal(deployment.shop.shippingAmountMinor, 270);
+  assert.equal(cutover.shipping.amountMinor, 270);
+  assert.match(runtime, /'shippingAmountMinor'\s*=>\s*270/);
+  assert.equal(deployment.shop.legalBundleId, "cmj-production-legal-2026-08-07-v3");
+  assert.equal(cutover.legalBundle.legalBundleId, deployment.shop.legalBundleId);
+  assert.match(runtime, /cmj-production-legal-2026-08-07-v3/);
+  assert.equal(deployment.paths.worker, "/home/www/carmaja-private-shop/worker.php");
+  assert.equal(deployment.runtime.cron, "*/5 * * * *");
+  assert.equal(
+    deployment.runtime.workerCommand,
+    "/usr/bin/php8.4 /home/www/carmaja-private-shop/worker.php /home/www/carmaja-private-shop/config/runtime-config.php",
+  );
+});
+
+test("Website und v2-Publisher besitzen keinen produktiven Legacy-Verkaufsweg", async () => {
+  const products = await text("website/content/products.ts");
+  const detail = await text("website/app/armbaender/[slug]/page.tsx");
+  const publisher = await text("website/test-api-private/program/product-api-v2.php");
+  const bootstrap = await text("website/test-api-private/program/bootstrap.php");
+  const hosting = await Promise.all([
+    text("website/hosting/click.php"),
+    text("website/hosting/_internal/tracking.php"),
+    text("website/hosting/statistik/index.php"),
+  ]);
+
+  assert.match(products, /loadPublicProductsV2/);
+  assert.doesNotMatch(products, /loadPublicProducts,/);
+  assert.match(products, /product\.salesEnabled/);
+  assert.match(detail, /productId=\{product\.productId\}/);
+  assert.match(publisher, /product_v2_published/);
+  assert.match(publisher, /array_key_exists\('stock'/);
+  assert.match(publisher, /array_key_exists\('vintedUrl'/);
+  assert.match(bootstrap, /legacy_product_route_disabled/);
+  assert.doesNotMatch(hosting.join("\n").toLowerCase(), /vinted|marketplace/);
+  assert.doesNotMatch(hosting.join("\n"), /public-products\.json/);
+});
+
+test("Cutovermanifest ist versioniert, hashgebunden und ohne Produktionsauswahl blockiert", async () => {
+  const manifest = JSON.parse(await text("website/config/production-cutover-manifest.v1.json"));
+  assert.equal(manifest.manifestVersion, 1);
+  assert.equal(manifest.status, "awaiting_production_product_selection");
+  assert.deepEqual(manifest.selectedProducts, []);
+  assert.equal(manifest.cutoverGuards.exactlyOneSelectedProduct, true);
+  assert.equal(manifest.cutoverGuards.requireNoCommerceCheckout, true);
+  assert.equal(manifest.cutoverGuards.rollbackOnlyBeforeFirstCommerceCheckout, true);
+
+  for (const migration of manifest.schemaMigrations) {
+    const bytes = await readFile(path.join(repositoryRoot, migration.path));
+    const canonical = bytes.toString("utf8").replaceAll("\r\n", "\n");
+    const fileHash = createHash("sha256").update(canonical).digest("hex");
+    const journal = canonical.replace(/^\s*--.*$/gm, "");
+    const journalHash = createHash("sha256").update(journal).digest("hex");
+    assert.equal(fileHash, migration.fileSha256, migration.path);
+    assert.equal(journalHash, migration.journalSha256, migration.path);
+  }
+
+  const adapter = await text("website/scripts/production-cutover.php");
+  assert.match(adapter, /APPLY-CARMAJA-PRODUCTION-CUTOVER/);
+  assert.match(adapter, /commerce_not_empty/);
+  assert.match(adapter, /commerce_tls_not_active/);
+  assert.match(adapter, /product_selection_not_approved/);
+});

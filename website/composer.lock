@@ -1,0 +1,60 @@
+{
+  "_readme": [
+    "This file locks the dependencies of your project to a known state.",
+    "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+    "This file is @generated automatically"
+  ],
+  "content-hash": "aa417ee43852b45e0b33a47f3492d064",
+  "packages": [
+    {
+      "name": "stripe/stripe-php",
+      "version": "20.3.0",
+      "source": {
+        "type": "git",
+        "url": "https://github.com/stripe/stripe-php.git",
+        "reference": "266f0b05890172184cca66a0688abaf1a96b08d8"
+      },
+      "dist": {
+        "type": "zip",
+        "url": "https://api.github.com/repos/stripe/stripe-php/zipball/266f0b05890172184cca66a0688abaf1a96b08d8",
+        "reference": "266f0b05890172184cca66a0688abaf1a96b08d8",
+        "shasum": ""
+      },
+      "require": {
+        "ext-curl": "*",
+        "ext-json": "*",
+        "php": ">=7.2.0",
+        "ext-mbstring": "*"
+      },
+      "type": "library",
+      "autoload": {
+        "psr-4": {
+          "Stripe\\": "lib/"
+        },
+        "files": [
+          "lib/version_check.php"
+        ]
+      },
+      "notification-url": "https://packagist.org/downloads/",
+      "license": [
+        "MIT"
+      ],
+      "description": "Stripe PHP bindings",
+      "support": {
+        "issues": "https://github.com/stripe/stripe-php/issues",
+        "source": "https://github.com/stripe/stripe-php/tree/v20.3.0"
+      }
+    }
+  ],
+  "packages-dev": [],
+  "aliases": [],
+  "minimum-stability": "stable",
+  "stability-flags": {},
+  "prefer-stable": true,
+  "prefer-lowest": false,
+  "platform": {
+    "php": ">=8.4"
+  },
+  "platform-dev": {},
+  "plugin-api-version": "2.6.0"
+}

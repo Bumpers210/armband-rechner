@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ProductList } from "@/components/product-list";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { siteTarget } from "@/config/site-target";
 import { visibleProducts } from "@/content/products";
 
 export const metadata: Metadata = {
@@ -12,6 +13,13 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/armbaender/",
   },
+  robots: siteTarget.isTest
+    ? {
+        index: false,
+        follow: false,
+        noimageindex: true,
+      }
+    : undefined,
 };
 
 export default function ProductsPage() {

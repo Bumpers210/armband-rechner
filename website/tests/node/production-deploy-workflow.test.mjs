@@ -11,14 +11,13 @@ async function readRepositoryFile(relativePath) {
   return readFile(path.join(repositoryRoot, ...relativePath.split("/")), "utf8");
 }
 
-test("Produktionsworkflow trennt Push-Builds von einem expliziten manuellen Produktionsdeploy", async () => {
+test("Produktionsworkflow trennt PR-Builds von einem expliziten manuellen Produktionsdeploy", async () => {
   const workflow = await readRepositoryFile(".github/workflows/deploy-website.yml");
 
   assert.match(workflow, /workflow_dispatch:\s*\n\s+inputs:\s*\n\s+expected_commit_sha:/);
   assert.match(workflow, /deployment_confirmation:/);
   assert.match(workflow, /pull_request:\s*\n\s+branches:\s*\n\s+- main/);
-  assert.match(workflow, /release\/production-product-management/);
-  assert.match(workflow, /- main/);
+  assert.doesNotMatch(workflow, /^\s*push\s*:/m);
   assert.match(workflow, /build-production-site:/);
   assert.match(workflow, /validate-manual-production-deploy:/);
   assert.match(workflow, /deploy-production-site:/);
@@ -44,7 +43,7 @@ test("Produktionsworkflow trennt Push-Builds von einem expliziten manuellen Prod
   assert.match(workflow, /github\.ref == 'refs\/heads\/main'/);
   assert.match(workflow, /github\.ref_name == 'main'/);
   assert.match(workflow, /inputs\.expected_commit_sha == github\.sha/);
-  assert.match(workflow, /inputs\.deployment_confirmation == 'DEPLOY_PRODUCTION'/);
+  assert.match(workflow, /inputs\.deployment_confirmation == 'DEPLOY-CARMAJA-PRODUCTION'/);
   assert.match(workflow, /needs\.validate-manual-production-deploy\.result == 'success'/);
   assert.match(workflow, /environment:\s*\n\s+name: carmaja-production/);
   assert.match(workflow, /CARMAJA_PRODUCTION_PUBLISH_ENABLED: "false"/);
@@ -70,14 +69,14 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.ok(resetStart > deployStart);
   assert.match(validation, /test "\$GITHUB_REF" = "refs\/heads\/main"/);
   assert.match(validation, /test "\$CARMAJA_EXPECTED_COMMIT_SHA" = "\$GITHUB_SHA"/);
-  assert.match(validation, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"/);
+  assert.match(validation, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY-CARMAJA-PRODUCTION"/);
   assert.match(validation, /test "\$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"/);
   assert.match(validation, /test "\$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"/);
   assert.match(validation, /environment:\s*\n\s+name: carmaja-production/);
   assert.doesNotMatch(validation, /CARMAJA_PRODUCTION_VARIABLES_TOKEN|secrets\./);
   assert.match(deploy, /test "\$GITHUB_EVENT_NAME" = "workflow_dispatch"/);
   assert.match(deploy, /test "\$CARMAJA_EXPECTED_COMMIT_SHA" = "\$GITHUB_SHA"/);
-  assert.match(deploy, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"/);
+  assert.match(deploy, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY-CARMAJA-PRODUCTION"/);
   assert.match(reset, /needs:\s*\n\s+- build-production-site\s*\n\s+- validate-manual-production-deploy\s*\n\s+- deploy-production-site/);
   assert.match(reset, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && always\(\) && vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' \}\}/);
   assert.match(reset, /environment:\s*\n\s+name: carmaja-production/);
@@ -139,7 +138,7 @@ test("Interne Pull Requests nach main validieren nur den Produktionsbuild", asyn
   assert.match(deploy, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
   assert.match(reset, /if: \$\{\{ github\.event_name == 'workflow_dispatch' && always\(\)/);
   assert.doesNotMatch(workflow, /- fix\/production-bootstrap-rollback-records/);
-  assert.match(workflow, /push:\s*\n\s+branches:\s*\n\s+- release\/production-product-management\s*\n\s+- main/);
+  assert.doesNotMatch(workflow, /^\s*push\s*:/m);
 });
 
 test("Erstdeploy-Bootstrap ist auf den bestaetigten Kandidaten beschraenkt und fasst den Webroot nicht an", async () => {

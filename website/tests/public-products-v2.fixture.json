@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "products": [
+    {
+      "productModelVersion": 2,
+      "productId": "70000000-0000-4000-8000-000000000001",
+      "productVersion": 1,
+      "sourceHash": "7777777777777777777777777777777777777777777777777777777777777777",
+      "sku": "CP-2026-0001",
+      "slug": "ap7-kuenstliches-testarmband",
+      "title": "Künstliches AP7-Testarmband",
+      "description": "Ausschließlich künstliche Daten für den lokalen AP7-Testexport.",
+      "materials": ["Testmaterial"],
+      "metalElements": [],
+      "size": "18 cm",
+      "priceMinor": 2500,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "71000000-0000-4000-8000-000000000001",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0001/01.jpg",
+          "alt": "Künstliches AP7-Testarmband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        }
+      ],
+      "updatedAt": "2026-08-08T00:00:00.000Z"
+    }
+  ]
+}

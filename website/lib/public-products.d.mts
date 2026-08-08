@@ -36,6 +36,7 @@ export function formatMeasurement(
   unit: string,
   location?: string,
 ): string;
+export function formatProductSize(value: unknown, location?: string): string;
 export function readJpegDimensions(filePath: string): {
   width: number;
   height: number;
