@@ -14,6 +14,21 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: new URL("/armbaender/", siteContent.metadata.siteUrl).toString(),
     },
     {
+      url: new URL("/steinwissen/", siteContent.metadata.siteUrl).toString(),
+    },
+    {
+      url: new URL(
+        "/steinwissen/spirituelle-bedeutung/",
+        siteContent.metadata.siteUrl,
+      ).toString(),
+    },
+    {
+      url: new URL(
+        "/steinwissen/natursteinkunde/",
+        siteContent.metadata.siteUrl,
+      ).toString(),
+    },
+    {
       url: new URL("/ueber-mich/", siteContent.metadata.siteUrl).toString(),
     },
     {

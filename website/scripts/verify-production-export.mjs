@@ -61,6 +61,34 @@ export async function verifyProductionExport({
   assert.equal(sourceProducts.version, 1, "Produktquelldatei hat keine unterstuetzte Version.");
 
   const files = await collectFiles(verifiedOutputDirectory);
+  for (const route of [
+    ["steinwissen", "index.html"],
+    ["steinwissen", "spirituelle-bedeutung", "index.html"],
+    ["steinwissen", "natursteinkunde", "index.html"],
+  ]) {
+    assert.equal(
+      await fileExists(path.join(verifiedOutputDirectory, ...route)),
+      true,
+      `Steinwissen-Route fehlt im Produktionsexport: /${route.slice(0, -1).join("/")}/`,
+    );
+  }
+  for (const image of [
+    "natural-stones-texture.jpg",
+    "polished-gemstones-colours.jpg",
+  ]) {
+    assert.equal(
+      await fileExists(
+        path.join(
+          verifiedOutputDirectory,
+          "images",
+          "stone-knowledge",
+          image,
+        ),
+      ),
+      true,
+      `Steinwissen-Bild fehlt im Produktionsexport: ${image}`,
+    );
+  }
   assert.equal(
     files.some((filePath) => path.basename(filePath) === "products.json"),
     false,
@@ -94,6 +122,10 @@ export async function verifyProductionExport({
     "careInstructions",
     "deviceToken",
     "expectedVersion",
+    "stoneKnowledgeInventory",
+    "app-active-materials",
+    "Black Stone",
+    "images.pexels.com",
   ]) {
     assert.equal(
       exportText.includes(forbiddenValue),

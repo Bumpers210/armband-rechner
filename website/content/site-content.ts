@@ -132,6 +132,7 @@ export const siteContent: SiteContent = {
   },
   navigation: [
     { label: "Armbänder", href: "/armbaender/" },
+    { label: "Steinwissen", href: "/steinwissen/" },
     { label: "Über mich", href: "/ueber-mich/" },
     { label: "Material & Pflege", href: "/material-pflege/" },
     { label: "Kontakt", href: "/kontakt/" },
