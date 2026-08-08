@@ -81,7 +81,6 @@ jobs:
           mkdir -p "$package_root/private/program" "$package_root/public"
           cp website/production-api-private/program/*.php "$package_root/private/program/"
           cp website/production-api-public/index.php "$package_root/public/index.php"
-          cp website/production-api-public/.htaccess "$package_root/public/.htaccess"
           ! find "$package_root" -type f \( -name 'runtime-config.php' -o -name 'github-token' -o -name '*.secret' \) -print -quit | grep -q .
           find "$package_root" -type f -print0 | sort -z | xargs -0 sha256sum > .production-api-deploy-package/manifest.sha256
           tar -C "$package_root" -czf .production-api-deploy-package/product-api.tar.gz .
@@ -219,7 +218,7 @@ jobs:
           )
           test "$(sha256sum .production-api-deploy-package/product-api.tar.gz | awk '{print $1}')" = "${{ needs.build-production-api.outputs.archive-sha256 }}"
           tar -tzf .production-api-deploy-package/product-api.tar.gz | sort > .production-api-deploy-package/archive-paths.txt
-          diff -u <(printf '%s\n' ./ ./private/ ./private/program/ ./private/program/bootstrap.php ./private/program/product-admin.php ./private/program/product-api-diagnostics.php ./private/program/product-api.php ./private/program/product-maintenance.php ./public/ ./public/.htaccess ./public/index.php | sort) .production-api-deploy-package/archive-paths.txt
+          diff -u <(printf '%s\n' ./ ./private/ ./private/program/ ./private/program/bootstrap.php ./private/program/product-admin.php ./private/program/product-api-diagnostics.php ./private/program/product-api.php ./private/program/product-maintenance.php ./public/ ./public/index.php | sort) .production-api-deploy-package/archive-paths.txt
           printf '%s\n' 'PRODUCTION_API_DEPLOY_GUARD_OK=artifact-and-inputs'
 
       - name: Prepare pinned SSH client
@@ -354,24 +353,20 @@ REMOTE_PREPARE
             tar -xzf "$archive" -C "$stage" >/dev/null 2>&1 || fail
             test -f "$stage/private/program/bootstrap.php" || fail
             test -f "$stage/public/index.php" || fail
-            test -f "$stage/public/.htaccess" || fail
-            test "$(find "$stage" -type f | wc -l)" -eq 7 || fail
+            test "$(find "$stage" -type f | wc -l)" -eq 6 || fail
             cp "$manifest" "$release/manifest.sha256"
             cp "$archive" "$release/product-api.tar.gz"
             cp "$checksum" "$release/product-api.tar.gz.sha256"
             had_program=false
             had_index=false
-            had_htaccess=false
             rollback() {
               if test -e "$private_dir/program"; then rm -rf "$private_dir/program"; fi
               if test "$had_program" = true; then mv "$backup/program" "$private_dir/program"; fi
               if test "$had_index" = true; then cp "$backup/index.php" "$api_webroot/index.php"; else rm -f "$api_webroot/index.php"; fi
-              if test "$had_htaccess" = true; then cp "$backup/.htaccess" "$api_webroot/.htaccess"; else rm -f "$api_webroot/.htaccess"; fi
             }
             if test -e "$private_dir/program"; then mv "$private_dir/program" "$backup/program"; had_program=true; fi
             if test -f "$api_webroot/index.php"; then cp -p "$api_webroot/index.php" "$backup/index.php"; had_index=true; fi
-            if test -f "$api_webroot/.htaccess"; then cp -p "$api_webroot/.htaccess" "$backup/.htaccess"; had_htaccess=true; fi
-            if ! mv "$stage/private/program" "$private_dir/program" || ! cp "$stage/public/index.php" "$api_webroot/.index.php.$release_id" || ! mv "$api_webroot/.index.php.$release_id" "$api_webroot/index.php" || ! cp "$stage/public/.htaccess" "$api_webroot/..htaccess.$release_id" || ! mv "$api_webroot/..htaccess.$release_id" "$api_webroot/.htaccess" || ! CARMAJA_CONFIG_FILE="$runtime_config" /usr/bin/php8.4 "$private_dir/program/product-api-diagnostics.php" >/dev/null 2>&1; then
+            if ! mv "$stage/private/program" "$private_dir/program" || ! cp "$stage/public/index.php" "$api_webroot/.index.php.$release_id" || ! mv "$api_webroot/.index.php.$release_id" "$api_webroot/index.php" || ! CARMAJA_CONFIG_FILE="$runtime_config" /usr/bin/php8.4 "$private_dir/program/product-api-diagnostics.php" >/dev/null 2>&1; then
               rollback
               printf '%s\n' 'PRODUCTION_API_ROLLBACK_OK=activation' >&2
               fail
