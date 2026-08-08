@@ -25,7 +25,8 @@ data class ProductV2(
     val description: String,
     val materials: List<String>,
     val metalElements: List<String>,
-    val braceletSize: String,
+    val braceletSizeCm: String,
+    val pearlSizeMm: String,
     val careInstructions: List<String>,
     val images: List<ProductImageV2>,
     val priceMinor: Int,
@@ -43,7 +44,8 @@ data class ProductV2Update(
     val description: String,
     val materials: List<String>,
     val metalElements: List<String>,
-    val braceletSize: String,
+    val braceletSizeCm: String,
+    val pearlSizeMm: String,
     val careInstructions: List<String>,
     val images: List<ProductImageV2>,
     val priceMinor: Int,
@@ -56,7 +58,8 @@ data class ProductV2Update(
         .put("description", description)
         .put("materials", JSONArray(materials))
         .put("metalElements", JSONArray(metalElements))
-        .put("braceletSize", braceletSize)
+        .put("braceletSizeCm", braceletSizeCm.toBigDecimal())
+        .put("pearlSizeMm", pearlSizeMm.toBigDecimal())
         .put("careInstructions", JSONArray(careInstructions))
         .put(
             "images",

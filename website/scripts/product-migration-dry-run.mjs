@@ -22,7 +22,8 @@ const SOURCE_REQUIRED_FIELDS = [
   "description",
   "materials",
   "metalElements",
-  "braceletSize",
+  "braceletSizeCm",
+  "pearlSizeMm",
   "careInstructions",
   "images",
   "priceMinor",
@@ -43,7 +44,8 @@ const PUBLIC_REQUIRED_FIELDS = [
   "description",
   "materials",
   "metalElements",
-  "size",
+  "braceletSizeCm",
+  "pearlSizeMm",
   "priceMinor",
   "currency",
   "salesEnabled",
@@ -335,7 +337,7 @@ function sourceCanonicalProduct(product) {
     : [];
 
   return {
-    braceletSize: product.braceletSize ?? "",
+    braceletSizeCm: product.braceletSizeCm ?? 0,
     careInstructions: Array.isArray(product.careInstructions) ? product.careInstructions : [],
     currency: product.currency ?? "",
     description: product.description ?? product.shortDescription ?? "",
@@ -344,6 +346,7 @@ function sourceCanonicalProduct(product) {
     metalElements: Array.isArray(product.metalElements) ? product.metalElements : [],
     productModelVersion: PRODUCT_MODEL_VERSION,
     name: product.name ?? product.title ?? "",
+    pearlSizeMm: product.pearlSizeMm ?? 0,
     priceMinor: Number.isInteger(product.priceMinor) ? product.priceMinor : 0,
     productId: product.productId ?? "",
     productVersion: Number.isInteger(product.productVersion) ? product.productVersion : 0,
@@ -366,7 +369,8 @@ function expectedPublicProjection(product) {
     description: product.description ?? product.shortDescription ?? "",
     materials: Array.isArray(product.materials) ? product.materials : [],
     metalElements: Array.isArray(product.metalElements) ? product.metalElements : [],
-    size: product.braceletSize ?? product.size ?? "",
+    braceletSizeCm: product.braceletSizeCm ?? null,
+    pearlSizeMm: product.pearlSizeMm ?? null,
     priceMinor: product.priceMinor ?? null,
     currency: product.currency ?? null,
     salesEnabled: product.salesEnabled ?? null,
@@ -468,6 +472,12 @@ function validateSourceRecord(product, index, findings) {
     findings.push(createFinding("sales_enabled_invalid", dataset, productId, `${path}.salesEnabled`, "Boolean erwartet."));
   }
 
+  for (const field of ["braceletSizeCm", "pearlSizeMm"]) {
+    if (typeof product[field] !== "number" || !Number.isFinite(product[field]) || product[field] <= 0) {
+      findings.push(createFinding("measurement_invalid", dataset, productId, `${path}.${field}`, "Positive Zahl erwartet."));
+    }
+  }
+
   if (!isIsoDate(product.updatedAt)) {
     findings.push(createFinding("updated_at_invalid", dataset, productId, `${path}.updatedAt`, "ISO-Zeitstempel erwartet."));
   }
@@ -557,6 +567,12 @@ function validatePublicRecord(product, index, findings) {
 
   if (typeof product.salesEnabled !== "boolean") {
     findings.push(createFinding("sales_enabled_invalid", dataset, productId, `${path}.salesEnabled`, "Boolean erwartet."));
+  }
+
+  for (const field of ["braceletSizeCm", "pearlSizeMm"]) {
+    if (typeof product[field] !== "number" || !Number.isFinite(product[field]) || product[field] <= 0) {
+      findings.push(createFinding("measurement_invalid", dataset, productId, `${path}.${field}`, "Positive Zahl erwartet."));
+    }
   }
 
   if (!isIsoDate(product.updatedAt)) {

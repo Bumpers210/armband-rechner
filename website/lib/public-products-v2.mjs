@@ -1,20 +1,21 @@
 import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
-import { formatProductSize, publicProductName, readJpegDimensions } from "./public-products.mjs";
+import { formatMeasurement, publicProductName, readJpegDimensions } from "./public-products.mjs";
 
 const ROOT_KEYS = ["products", "version"];
 const PRODUCT_KEYS = [
   "currency",
+  "braceletSizeCm",
   "description",
   "images",
   "materials",
   "metalElements",
+  "pearlSizeMm",
   "priceMinor",
   "productId",
   "productModelVersion",
   "productVersion",
   "salesEnabled",
-  "size",
   "slug",
   "sku",
   "sourceHash",
@@ -80,6 +81,13 @@ function requireStringList(value, location, { allowEmpty = true } = {}) {
   }
 
   return normalized;
+}
+
+function requirePositiveNumber(value, location) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value > 1000) {
+    fail(location, "Positive Zahl bis 1000 erwartet.");
+  }
+  return value;
 }
 
 function validateImage(value, product, index, imageCount, imageRoot) {
@@ -185,7 +193,8 @@ function validateProduct(value, index, imageRoot) {
   }
 
   requireString(product.title, `${location}.title`, 120);
-  const size = requireString(product.size, `${location}.size`, 60);
+  const braceletSizeCm = requirePositiveNumber(product.braceletSizeCm, `${location}.braceletSizeCm`);
+  const pearlSizeMm = requirePositiveNumber(product.pearlSizeMm, `${location}.pearlSizeMm`);
 
   if (!Array.isArray(product.images) || product.images.length < 1 || product.images.length > 5) {
     fail(`${location}.images`, "Ein bis fünf Bilder erwartet.");
@@ -202,8 +211,10 @@ function validateProduct(value, index, imageRoot) {
     description: requireString(product.description, `${location}.description`, 500),
     materials: requireStringList(product.materials, `${location}.materials`, { allowEmpty: false }),
     metalElements: requireStringList(product.metalElements, `${location}.metalElements`),
-    size,
-    displaySize: formatProductSize(size, `${location}.size`),
+    braceletSizeCm,
+    displaySize: formatMeasurement(braceletSizeCm, "cm", `${location}.braceletSizeCm`),
+    pearlSizeMm,
+    displayPearlSize: formatMeasurement(pearlSizeMm, "mm", `${location}.pearlSizeMm`),
     priceMinor: product.priceMinor,
     currency: product.currency,
     salesEnabled: product.salesEnabled,

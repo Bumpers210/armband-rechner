@@ -972,7 +972,32 @@ function carmaja_bootstrap_route_request(): never
                 carmaja_bootstrap_send(
                     200,
                     carmaja_api_v2_success_response([
-                        'product' => carmaja_api_v2_product_from_draft($draft),
+                        'product' => carmaja_api_v2_product_response_from_draft($draft),
+                    ])
+                );
+            }
+
+            if ($method === 'POST'
+                && ($segments[2] ?? null) === 'images'
+                && count($segments) === 3) {
+                carmaja_api_validate_client_version_code(
+                    $_SERVER['HTTP_X_CARMAJA_APP_VERSION_CODE'] ?? null
+                );
+                $draft = carmaja_api_load_draft($productId);
+                if (!is_array($draft)
+                    || ($draft['productModelVersion'] ?? null) !== CARMAJA_PRODUCT_MODEL_V2) {
+                    throw new CarmajaApiException(
+                        409,
+                        'Produkt ist noch nicht auf das v2-Modell synchronisiert.',
+                        [],
+                        'product_model_migration_required'
+                    );
+                }
+                $savedDraft = carmaja_api_upload_images($productId, $_POST, $actor);
+                carmaja_bootstrap_send(
+                    200,
+                    carmaja_api_v2_success_response([
+                        'product' => carmaja_api_v2_product_response_from_draft($savedDraft),
                     ])
                 );
             }
@@ -1007,7 +1032,7 @@ function carmaja_bootstrap_route_request(): never
                 carmaja_bootstrap_send(
                     200,
                     carmaja_api_v2_success_response([
-                        'publication' => carmaja_api_v2_publish_product(
+                        ...carmaja_api_v2_publish_product(
                             $productId,
                             carmaja_api_json_body(),
                             $actor

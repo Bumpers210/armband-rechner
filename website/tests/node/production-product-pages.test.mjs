@@ -35,7 +35,7 @@ test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async 
   const gallery = await source("components/product-image-gallery.tsx");
   const careContent = await source("content/site-content.ts");
 
-  assert.match(publicProducts, /formatProductSize/);
+  assert.match(publicProducts, /formatMeasurement/);
   assert.match(publicProducts, /productVersion/);
   assert.match(publicProducts, /sourceHash/);
   assert.match(publicProducts, /priceMinor/);
@@ -49,7 +49,9 @@ test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async 
   assert.doesNotMatch(detail, /product\.title/);
   assert.doesNotMatch(detail, /product\.stock/);
   assert.match(detail, /displaySize/);
+  assert.match(detail, /displayPearlSize/);
   assert.match(overview, /displaySize/);
+  assert.match(overview, /displayPearlSize/);
   assert.match(careContent, /care:/);
   assert.match(gallery, /role="dialog"/);
   assert.match(gallery, /const handleKeyDown/);

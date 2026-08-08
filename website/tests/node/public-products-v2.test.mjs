@@ -27,7 +27,8 @@ function product(overrides = {}) {
     description: "Ein Produkt für die isolierte v2-Prüfung.",
     materials: ["Rosenquarz"],
     metalElements: [],
-    size: "17 cm",
+    braceletSizeCm: 17,
+    pearlSizeMm: 6,
     priceMinor: 2490,
     currency: "eur",
     salesEnabled: true,
@@ -75,6 +76,8 @@ test("öffentlicher v2-Vertrag akzeptiert Preis, Währung und Verkaufsfreigabe",
     assert.equal(loaded.products[0].priceMinor, 2490);
     assert.equal(loaded.products[0].currency, "eur");
     assert.equal(loaded.products[0].salesEnabled, true);
+    assert.equal(loaded.products[0].braceletSizeCm, 17);
+    assert.equal(loaded.products[0].pearlSizeMm, 6);
     assert.equal("stock" in loaded.products[0], false);
     assert.equal("vintedUrl" in loaded.products[0], false);
   } finally {

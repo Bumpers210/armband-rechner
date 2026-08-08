@@ -19,8 +19,10 @@ export type PublicProductV2 = {
   description: string;
   materials: string[];
   metalElements: string[];
-  size: string;
+  braceletSizeCm: number;
   displaySize: string;
+  pearlSizeMm: number;
+  displayPearlSize: string;
   priceMinor: number;
   currency: "eur";
   salesEnabled: boolean;

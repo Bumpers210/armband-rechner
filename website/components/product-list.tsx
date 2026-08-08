@@ -47,6 +47,10 @@ export function ProductList({
                 <dt>Größe</dt>
                 <dd>{product.displaySize}</dd>
               </div>
+              <div>
+                <dt>Perlengröße</dt>
+                <dd>{product.displayPearlSize}</dd>
+              </div>
             </dl>
             <Link className="product-detail-link" href={`/armbaender/${product.slug}/`}>
               Details ansehen

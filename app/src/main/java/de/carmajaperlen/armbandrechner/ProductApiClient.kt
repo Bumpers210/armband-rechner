@@ -17,6 +17,8 @@ data class ProductServerImage(
 data class ProductServerUpdate(
     val draftId: String,
     val version: Int,
+    val productVersion: Int,
+    val sourceHash: String,
     val sku: String?,
     val slug: String?,
     val status: ProductStatus,
@@ -24,11 +26,13 @@ data class ProductServerUpdate(
     val name: String,
     val materials: List<String>,
     val metalElements: List<String>,
-    val braceletSize: String,
-    val stock: Int,
+    val braceletSizeCm: String,
+    val pearlSizeMm: String,
     val shortDescription: String,
     val careInstructions: List<String>,
-    val vintedUrl: String,
+    val priceMinor: Int,
+    val currency: String,
+    val salesEnabled: Boolean,
     val images: List<ProductServerImage>,
 )
 
@@ -58,7 +62,9 @@ class ProductConflictException(
     errorCode: String,
     fields: Map<String, String>,
     message: String,
-    val currentVersion: Int? = fields["currentVersion"]?.toIntOrNull(),
+    val currentVersion: Int? = (
+        fields["currentVersion"] ?: fields["currentProductVersion"]
+    )?.toIntOrNull(),
     val serverUpdatedAt: String? = fields["updatedAt"],
 ) : ProductApiException(409, errorCode, fields, message)
 
@@ -75,7 +81,7 @@ open class ProductApiClient {
     ): ProductLoginResult {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "login",
+            path = "v2/login",
             method = "POST",
             token = null,
             body = JSONObject()
@@ -93,12 +99,19 @@ open class ProductApiClient {
     }
 
     open fun saveDraft(baseUrl: String, token: String, draft: ProductDraft): ProductServerUpdate {
+        val idempotencyKey = requireNotNull(draft.pendingV2SaveOperationId) {
+            "V2-Speichern benötigt eine persistierte Idempotenz-ID."
+        }
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "products/${draft.draftId}",
+            path = "v2/products/${draft.draftId}",
             method = "PUT",
             token = token,
             body = draft.toSaveJson(),
+            headers = mapOf(
+                APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString(),
+                "Idempotency-Key" to idempotencyKey,
+            ),
         )
         return response.getJSONObject("product").toServerUpdate()
     }
@@ -106,7 +119,7 @@ open class ProductApiClient {
     open fun getDraft(baseUrl: String, token: String, draftId: String): ProductServerUpdate {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "products/$draftId",
+            path = "v2/products/$draftId",
             method = "GET",
             token = token,
             body = null,
@@ -124,9 +137,10 @@ open class ProductApiClient {
         val boundary = "CarmajaBoundary${UUID.randomUUID()}"
         val connection = openConnection(
             baseUrl = baseUrl,
-            path = "products/${draft.draftId}/images",
+            path = "v2/products/${draft.draftId}/images",
             method = "POST",
             token = token,
+            headers = mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString()),
         ).apply {
             setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
         }
@@ -161,41 +175,49 @@ open class ProductApiClient {
     }
 
     fun publish(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
-        return postStatus(baseUrl, token, draft, operationId, "publish")
-    }
-
-    fun markSold(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
-        return postStatus(baseUrl, token, draft, operationId, "sold")
-    }
-
-    fun disable(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
-        return postStatus(baseUrl, token, draft, operationId, "disable")
-    }
-
-    private fun postStatus(
-        baseUrl: String,
-        token: String,
-        draft: ProductDraft,
-        operationId: String,
-        action: String,
-    ): PublishResult {
+        val sourceHash = draft.sourceHash
+            ?: throw ProductApiException(
+                409,
+                "source_hash_missing",
+                message = "Produkt muss vor der Veröffentlichung vollständig synchronisiert sein.",
+            )
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "products/${draft.draftId}/$action",
+            path = "v2/products/${draft.draftId}/publish",
             method = "POST",
             token = token,
             body = JSONObject()
-                .put("expectedVersion", draft.version)
+                .put("expectedProductVersion", draft.productVersion)
+                .put("expectedSourceHash", sourceHash)
                 .put("operationId", operationId),
+            headers = mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString()),
         )
+        val publication = response.getJSONObject("publication")
+        val product = response.getJSONObject("product").toServerUpdate()
         return PublishResult(
-            draftId = response.getString("draftId"),
-            sku = response.optStringOrNull("sku"),
-            version = response.getInt("version"),
-            operationId = response.getString("operationId"),
-            commitSha = response.optStringOrNull("commitSha"),
-            deploymentStatus = response.getString("deploymentStatus"),
-            status = ProductStatus.fromWireName(response.optString("status")),
+            draftId = product.draftId,
+            sku = product.sku,
+            version = product.version,
+            operationId = publication.optString("operationId", operationId),
+            commitSha = publication.optStringOrNull("commitSha"),
+            deploymentStatus = publication.optString("deploymentStatus", "not_started"),
+            status = product.status,
+        )
+    }
+
+    fun markSold(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
+        throw ProductApiException(
+            410,
+            "commerce_status_managed",
+            message = "Verkäufe werden ausschließlich durch den Commerce-Kern bestätigt.",
+        )
+    }
+
+    fun disable(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
+        throw ProductApiException(
+            410,
+            "commerce_status_managed",
+            message = "Nichtverfügbarkeit wird über den versionierten Commerce-Vertrag verwaltet.",
         )
     }
 
@@ -205,8 +227,9 @@ open class ProductApiClient {
         method: String,
         token: String?,
         body: JSONObject?,
+        headers: Map<String, String> = emptyMap(),
     ): JSONObject {
-        val connection = openConnection(baseUrl, path, method, token).apply {
+        val connection = openConnection(baseUrl, path, method, token, headers).apply {
             if (body != null) {
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
             }
@@ -224,8 +247,9 @@ open class ProductApiClient {
         path: String,
         method: String,
         token: String?,
+        headers: Map<String, String> = emptyMap(),
     ): HttpURLConnection {
-        val normalizedBase = requireProductionApiBaseUrl(baseUrl).trimEnd('/')
+        val normalizedBase = requireKnownProductApiBaseUrl(baseUrl).trimEnd('/')
         val connection = (URL("$normalizedBase/$path").openConnection() as HttpURLConnection)
         connection.connectTimeout = 15_000
         connection.readTimeout = 30_000
@@ -238,6 +262,7 @@ open class ProductApiClient {
             "Carmaja-Perlen-Produktverwaltung/${BuildConfig.VERSION_NAME}",
         )
         token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+        headers.forEach(connection::setRequestProperty)
         return connection
     }
 
@@ -281,20 +306,45 @@ open class ProductApiClient {
     }
 }
 
+data class ProductApiEndpoint(
+    val publishTarget: String,
+    val baseUrl: String,
+) {
+    val isTest: Boolean
+        get() = publishTarget == "test"
+
+    val environmentLabel: String
+        get() = if (isTest) "TESTUMGEBUNG" else "PRODUKTIVUMGEBUNG"
+
+    val host: String
+        get() = URI(baseUrl).host.orEmpty()
+
+}
+
 internal fun requireMatchingPublishTarget(expected: String, actual: String) {
-    if (expected != "production" || actual != expected) {
+    if (expected !in PRODUCT_PUBLISH_TARGETS || actual != expected) {
         throw ProductTargetMismatchException(
-            "Produktions-App und API verwenden unterschiedliche Veröffentlichungsziele.",
+            "App und API verwenden unterschiedliche Veröffentlichungsziele.",
         )
     }
 }
 
-internal fun requireProductionApiBaseUrl(value: String): String {
-    val normalized = value.trim().trimEnd('/')
+internal fun requireProductApiEndpoint(baseUrl: String, publishTarget: String): ProductApiEndpoint {
+    val expectedHost = when (publishTarget) {
+        "test" -> TEST_PRODUCT_API_HOST
+        "production" -> PRODUCTION_PRODUCT_API_HOST
+        else -> throw ProductApiException(
+            0,
+            "invalid_publish_target",
+            message = "Die Produktverwaltung ist nicht für ein bekanntes Veröffentlichungsziel konfiguriert.",
+        )
+    }
+
+    val normalized = valueForApiEndpoint(baseUrl)
     val valid = runCatching {
         val uri = URI(normalized)
         uri.scheme == "https" &&
-            uri.host == "api.carmaja-perlen.de" &&
+            uri.host == expectedHost &&
             uri.port == -1 &&
             uri.userInfo == null &&
             uri.path.orEmpty().isEmpty() &&
@@ -305,36 +355,70 @@ internal fun requireProductionApiBaseUrl(value: String): String {
     if (!valid) {
         throw ProductApiException(
             0,
-            "production_api_endpoint_required",
-            message = "Die Produktions-App darf ausschließlich die konfigurierte Produktions-API verwenden.",
+            "product_api_endpoint_required",
+            message = "Die Produktverwaltung darf ausschließlich die konfigurierte API verwenden.",
+        )
+    }
+
+    return ProductApiEndpoint(publishTarget = publishTarget, baseUrl = "$normalized/")
+}
+
+internal fun requireKnownProductApiBaseUrl(value: String): String {
+    val normalized = valueForApiEndpoint(value)
+    val valid = runCatching {
+        val uri = URI(normalized)
+        uri.scheme == "https" &&
+            uri.host in PRODUCT_API_HOSTS &&
+            uri.port == -1 &&
+            uri.userInfo == null &&
+            uri.path.orEmpty().isEmpty() &&
+            uri.query == null &&
+            uri.fragment == null
+    }.getOrDefault(false)
+
+    if (!valid) {
+        throw ProductApiException(
+            0,
+            "product_api_endpoint_required",
+            message = "Die Produktverwaltung darf ausschließlich bekannte API-Endpunkte verwenden.",
         )
     }
 
     return "$normalized/"
 }
 
+private fun valueForApiEndpoint(value: String): String = value.trim().trimEnd('/')
+
+private const val TEST_PRODUCT_API_HOST = "test-api.carmaja-perlen.de"
+private const val PRODUCTION_PRODUCT_API_HOST = "api.carmaja-perlen.de"
+private val PRODUCT_API_HOSTS = setOf(TEST_PRODUCT_API_HOST, PRODUCTION_PRODUCT_API_HOST)
+private val PRODUCT_PUBLISH_TARGETS = setOf("test", "production")
+
 internal fun ProductDraft.toSaveJson(): JSONObject {
-    val saveStatus = when (status) {
-        ProductStatus.Draft -> ProductStatus.Draft
-        else -> ProductStatus.Ready
+    val imagesV2 = images.mapIndexed { index, image ->
+        ProductImageV2(
+            imageId = image.imageId,
+            fileName = "%02d.jpg".format(index + 1),
+            alt = image.alt.ifBlank { name },
+            width = image.width,
+            height = image.height,
+            isMain = index == 0,
+        )
     }
-    val payload = JSONObject()
-        .put("draftId", draftId)
-        .put("expectedVersion", version)
-        .put("status", saveStatus.wireName)
-        .put("name", name)
-        .put("materials", JSONArray(materials))
-        .put("metalElements", JSONArray(metalElements))
-        .put("braceletSize", braceletSize)
-        .put("stock", stock)
-        .put("shortDescription", shortDescription)
-        .put("internalCalculation", internalCalculation.toJson())
-
-    if (vintedUrl.isNotBlank()) {
-        payload.put("vintedUrl", vintedUrl.trim())
-    }
-
-    return payload
+    return ProductV2Update(
+        expectedProductVersion = productVersion,
+        name = name,
+        description = shortDescription,
+        materials = materials,
+        metalElements = metalElements,
+        braceletSizeCm = braceletSizeCm,
+        pearlSizeMm = pearlSizeMm,
+        careInstructions = careInstructions,
+        images = imagesV2,
+        priceMinor = priceMinor,
+        currency = currency,
+        salesEnabled = salesEnabled,
+    ).toJson()
 }
 
 private fun CalculationSnapshot.toJson(): JSONObject {
@@ -370,8 +454,10 @@ private fun JSONObject.toServerUpdate(): ProductServerUpdate {
     }.orEmpty()
 
     return ProductServerUpdate(
-        draftId = getString("draftId"),
-        version = getInt("version"),
+        draftId = optString("draftId").ifBlank { getString("productId") },
+        version = optInt("version", 0),
+        productVersion = getInt("productVersion"),
+        sourceHash = getString("sourceHash"),
         sku = optStringOrNull("sku"),
         slug = optStringOrNull("slug"),
         status = ProductStatus.fromWireName(optString("status", "draft")),
@@ -379,11 +465,13 @@ private fun JSONObject.toServerUpdate(): ProductServerUpdate {
         name = optString("name"),
         materials = optStringList("materials"),
         metalElements = optStringList("metalElements"),
-        braceletSize = optString("braceletSize"),
-        stock = optInt("stock", 1),
+        braceletSizeCm = opt("braceletSizeCm")?.toString().orEmpty(),
+        pearlSizeMm = opt("pearlSizeMm")?.toString().orEmpty(),
         shortDescription = optString("shortDescription"),
         careInstructions = optStringList("careInstructions"),
-        vintedUrl = optString("vintedUrl"),
+        priceMinor = getInt("priceMinor"),
+        currency = getString("currency"),
+        salesEnabled = getBoolean("salesEnabled"),
         images = serverImages,
     )
 }

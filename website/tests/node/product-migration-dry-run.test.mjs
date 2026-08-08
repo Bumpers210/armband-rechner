@@ -26,7 +26,8 @@ function sourceProduct(overrides = {}) {
     description: "Ein Testarmband.",
     materials: ["Rosenquarz"],
     metalElements: [],
-    braceletSize: "18 cm",
+    braceletSizeCm: 18,
+    pearlSizeMm: 6,
     careInstructions: [],
     images: [
       {
@@ -46,7 +47,7 @@ function sourceProduct(overrides = {}) {
     ...overrides,
   };
   const canonical = {
-    braceletSize: product.braceletSize,
+    braceletSizeCm: product.braceletSizeCm,
     careInstructions: product.careInstructions,
     currency: product.currency,
     description: product.description,
@@ -55,6 +56,7 @@ function sourceProduct(overrides = {}) {
     metalElements: product.metalElements,
     productModelVersion: 2,
     name: product.name,
+    pearlSizeMm: product.pearlSizeMm,
     priceMinor: product.priceMinor,
     productId: product.productId,
     productVersion: product.productVersion,
@@ -79,7 +81,8 @@ function publicProductFromSource(source, overrides = {}) {
     description: product.description,
     materials: product.materials,
     metalElements: product.metalElements,
-    size: product.braceletSize,
+    braceletSizeCm: product.braceletSizeCm,
+    pearlSizeMm: product.pearlSizeMm,
     priceMinor: product.priceMinor,
     currency: product.currency,
     salesEnabled: product.salesEnabled,

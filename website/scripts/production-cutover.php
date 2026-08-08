@@ -98,7 +98,7 @@ function carmaja_cutover_canonicalize(mixed $value): mixed
 function carmaja_cutover_source_hash(array $product): string
 {
     $canonical = [
-        'braceletSize' => (string) ($product['braceletSize'] ?? ''),
+        'braceletSizeCm' => $product['braceletSizeCm'] ?? 0,
         'careInstructions' => array_values($product['careInstructions'] ?? []),
         'currency' => (string) ($product['currency'] ?? ''),
         'description' => (string) ($product['description'] ?? ''),
@@ -107,6 +107,7 @@ function carmaja_cutover_source_hash(array $product): string
         'metalElements' => array_values($product['metalElements'] ?? []),
         'productModelVersion' => 2,
         'name' => (string) ($product['name'] ?? ''),
+        'pearlSizeMm' => $product['pearlSizeMm'] ?? 0,
         'priceMinor' => (int) ($product['priceMinor'] ?? 0),
         'productId' => (string) ($product['productId'] ?? ''),
         'productVersion' => (int) ($product['productVersion'] ?? 0),
@@ -165,7 +166,10 @@ function carmaja_cutover_selected_product(array $manifest, array $productSource)
         || !is_string($product['name'] ?? null)
         || trim($product['name']) === ''
         || !is_string($product['description'] ?? null)
-        || !is_string($product['braceletSize'] ?? null)
+        || (!is_int($product['braceletSizeCm'] ?? null) && !is_float($product['braceletSizeCm'] ?? null))
+        || (float) $product['braceletSizeCm'] <= 0
+        || (!is_int($product['pearlSizeMm'] ?? null) && !is_float($product['pearlSizeMm'] ?? null))
+        || (float) $product['pearlSizeMm'] <= 0
         || !is_array($product['materials'] ?? null)
         || !is_array($product['metalElements'] ?? null)
         || !is_array($product['careInstructions'] ?? null)
@@ -275,7 +279,7 @@ function carmaja_cutover_apply(PDO $pdo, array $manifest, array $product): void
             $product['name'], $product['description'],
             json_encode($product['materials'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
             json_encode($product['metalElements'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-            $product['braceletSize'], implode("\n", $product['careInstructions']),
+            (string) $product['braceletSizeCm'], implode("\n", $product['careInstructions']),
             json_encode($product['images'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
             $product['priceMinor'], $product['currency'],
         ]);

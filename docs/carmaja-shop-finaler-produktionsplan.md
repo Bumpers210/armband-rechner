@@ -7,8 +7,11 @@ vollständig abgenommen; die AP6-Gesamtregression wurde danach erfolgreich
 wiederholt. Rechts-, Datenschutz- und Versandfassung vom 2026-08-07 sind dem
 freigegebenen Produktions-Legal-Bundle `cmj-production-legal-2026-08-07-v3`
 zugeordnet. AP6 ist vollständig abgenommen. AP7.0 hat das lokale
-Produktionspaket auf Basis des AP6-Commits vorbereitet und technisch geprüft;
-AP7 und jede Produktionsmutation bleiben nicht freigegeben.
+Produktionspaket auf Basis des AP6-Commits vorbereitet und technisch geprüft.
+AP7.2b hat App `1.1.2`/Code `4` integriert; AP7.3b hat die vollständige
+V2-Produktkette lokal und mit künstlichen Daten in der bereinigten
+IONOS-Testumgebung nachgewiesen. AP7 und jede Produktionsmutation bleiben
+nicht freigegeben.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
@@ -30,8 +33,9 @@ AP2 ist vollständig abgenommen. AP2a ist technisch abgenommen. AP3, AP4 und
 AP5 sind abgenommen. AP3b und die anschließende AP6-Gesamtregression sind
 vollständig bestanden. Die Rechts-, Datenschutz- und Versandfreigaben liegen
 für die versionierten Fassungen vom 2026-08-07 vor. AP6 ist vollständig
-abgenommen. AP7 bleibt nicht freigegeben. Es gibt keinen produktiven Cutover,
-kein Deployment, keinen Push und keinen Zugriff auf Produktionsdaten.
+abgenommen. AP7.2b und AP7.3b sind technisch geschlossen. AP7 bleibt nicht
+freigegeben. Es gibt keinen produktiven Cutover, kein Produktionsdeployment,
+keinen Push und keinen Zugriff auf Produktionsdaten.
 
 V1 bleibt ein direkter Einzelkauf ohne Warenkorb, Kundenkonto oder parallele
 Marktplätze. Ein Checkout enthält genau ein Unikat mit Menge `1`. Nach dem
@@ -382,6 +386,80 @@ Die Readiness- und Gate-Dokumentation steht in
 `website/docs/ap7-readiness.md`. AP7.0 ist technisch bereit zur gesonderten
 Produktionsfreigabe; AP7 selbst bleibt gesperrt.
 
+### AP7.2b – App v1.1.2 und Draft-Synchronisierung
+
+AP7.2b wurde am 2026-08-08 ausschließlich lokal im Integrations-Worktree
+`G:\BS-Stein-Hart-ap7-integration` auf `codex/ap7-integration` durchgeführt.
+Der autoritative App-Stand `app-v1.1.2` aus Commit
+`4cbd0489628d0c5e7e347d376df67bd12342fe5e` ersetzt den vorläufigen
+AP7.2a-Vertrag `2`/`1.1.0`. Der Produktionsbuild verwendet verbindlich
+`versionCode 4` und `versionName 1.1.2`. Die vorhandenen Felder
+`braceletSizeCm` und `pearlSizeMm` werden ohne parallele Neuentwicklung durch
+Draft, Editor, lokalen Speicher, API, Server und Synchronisierer geführt. Die
+bereits integrierten AP7-Shopmodelle und -verträge bleiben erhalten; andere
+Dateien des Tags, insbesondere Produktionshosting, wurden nicht übernommen.
+
+`testDebugUnitTest`, `lintDebug` und der explizit freigegebene, weiterhin als
+unsigniert verifizierte CI-Prüfbuild sowie 21/21 relevante
+Node-Vertragstests, 46/46 Product-API-Tests, 10/10 Bootstrap-Tests und der
+Produktions-Bootstrap-Test sind bestanden. Der unsignierte Prüfbuild ist nur
+über den fest benannten Gradle-Schalter zulässig; ohne ihn bleibt
+`assembleRelease` bei fehlender Produktionssignatur gesperrt. Der explizite
+Draft-Roundtrip weist Laden, Bearbeiten, V2-Speichern/Synchronisieren und
+erneutes Laden von Armbandumfang und Perlengröße ohne Wertverlust nach. Der
+Android-Versions- und Draft-Synchronisierungsblocker ist damit geschlossen.
+
+Der Release Candidate bleibt bis zur Anlage genau eines geeigneten realen
+v2-Startprodukts nicht bereit. Dieses Produkt muss über die bestehende
+Produktverwaltung mit gültigem `priceMinor`, `currency=eur` und
+`salesEnabled=false` gespeichert und veröffentlicht werden; `productVersion`
+und `sourceHash` entstehen serverseitig. Weder `stock` noch Commerce-Bestand
+dürfen dabei verändert werden. Produktionsdaten, Deployment, Merge, Migration,
+Produktaktivierung und Cutover bleiben gesperrt.
+
+### AP7.3b – Vollständige V2-Produktkette
+
+AP7.3b wurde am 2026-08-08 im separaten Worktree
+`G:\BS-Stein-Hart-ap73b` auf `codex/ap7-v2-chain` durchgeführt. Die App
+verwendet für Draft, Editor, lokalen Speicher, Speichern, Bild-Upload,
+Publizieren und Synchronisieren das Produktmodell V2. Der vollständige PUT
+führt `priceMinor`, `currency`, `salesEnabled`, `braceletSizeCm`,
+`pearlSizeMm` und `expectedProductVersion`; Wiederholungen verwenden eine
+persistierte V2-Idempotenz-ID. `productVersion` und `sourceHash` entstehen
+ausschließlich serverseitig. Legacy-Leseverträglichkeit bleibt begrenzt
+erhalten; V2-Schreibwege lehnen `stock`, `vintedUrl`, clientseitige Versionen
+und clientseitige Hashes ab.
+
+Der V2-Publisher ist an den echten Publish-Ablauf gebunden. Die öffentliche
+Projektion führt Preis, EUR-Währung, Verkaufsfreigabe, Version, Hash und beide
+Maße konsistent und enthält weder `stock` noch `vintedUrl`. Die leere
+Produktionsquelle und die Produktions-Exportprüfung verwenden ebenfalls
+Schema V2.
+
+Lokal bestanden `testDebugUnitTest`, `lintDebug`, stabil signiertes
+`assembleBeta`, 118/118 PHP-Tests, die V2-relevanten Node-Verträge,
+`npm run lint:test`, `npm run build:test`, `npm run build` und
+`git diff --check`. Von 130 vollständigen Node-Testfällen bestehen 121; die
+neun übrigen Fälle betreffen ausschließlich gegenüber der Ausgangsbasis
+unveränderte CRLF-/Bash-Dateien und sind nicht durch AP7.3b verursacht. Ein
+Emulator für Instrumentierungstests war nicht angeschlossen.
+
+In der IONOS-Testumgebung bestand ein vollständig isolierter, token-geschützter
+Web-SAPI-Roundtrip mit einem künstlichen Produkt und `salesEnabled=false`:
+V2-Login, idempotentes Speichern, Bild-Upload, serverseitige Version/Hash,
+Publisher, öffentliche V2-Allowlist sowie erneutes Laden ohne Verlust von
+Preis, Währung, Verkaufsfreigabe, Armbandumfang oder Perlengröße. Sämtliche
+temporären Endpunkte, privaten Konfigurationen, Token, Nutzer, Produktdaten,
+Bilder und Projektionen wurden danach entfernt. Testwebsite, Produktion,
+Commerce-Bestand, reales Produkt, Manifest, Push, Merge und Cutover blieben
+unverändert.
+
+Der nächste zulässige Schritt ist ausschließlich, genau ein reales Unikat über
+die bestehende App `1.1.2` als V2 mit gültigem Preis, `currency=eur` und
+`salesEnabled=false` zu speichern und zu veröffentlichen. Erst ein danach
+bestandener lesender Dry-Run darf eine weiterhin gesperrte Manifestbindung
+vorbereiten.
+
 ## 5. Meilensteine und kritischer Pfad
 
 | Meilenstein | Stand | Nachweis |
@@ -400,6 +478,8 @@ Produktionsfreigabe; AP7 selbst bleibt gesperrt.
 | AP5 | vollständig abgenommen | getrenntes Admin-Konto, Session/CSRF/Sperre, Admin-Verwaltung, Brevo-Outbox, Refund-Anzeige und AP5-Nachweise bestanden |
 | AP6 | vollständig abgenommen | PHP-, Node-, Android-, MySQL-, Stripe-, Brevo-, IONOS-Cron-, Backup-/Restore- und Sicherheitsnachweise bestanden; Rechts-, Datenschutz- und Versandfassung versioniert freigegeben |
 | AP7.0 | lokal technisch bereit | Produktionsverträge, manueller Deployment-Gate, v2-Website/Publisher, Cutovermanifest/-Adapter und lokale Regression bestanden; keine Produktionsmutation |
+| AP7.2b | App- und Draft-Synchronisierungsblocker geschlossen | App `1.1.2`/Code `4`, vollständiges Messwert-Mapping, Android-Prüfbuild und relevante Vertragsregression bestanden; reales v2-Startprodukt ausstehend |
+| AP7.3b | vollständige V2-Produktkette technisch geschlossen | App/Draft, API, serverseitige Version/Hash, Publisher und öffentliche V2-Projektion lokal und auf IONOS mit künstlichen Daten nachgewiesen und bereinigt; reales v2-Startprodukt ausstehend |
 
 Kritischer Pfad bis zur AP6-Abnahme: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5
 → AP2a → AP3 → AP4 → AP5 → AP3b → AP6. Dieser Pfad ist abgeschlossen. Der
@@ -484,6 +564,8 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP5 | freigegeben und vollständig abgenommen |
 | AP6 | vollständig abgenommen |
 | AP7.0 | lokal technisch bereit; keine Produktionsfreigabe |
+| AP7.2b | App- und Draft-Synchronisierungsblocker geschlossen; Startprodukt ausstehend |
+| AP7.3b | vollständige V2-Produktkette technisch geschlossen; Startprodukt ausstehend |
 | AP7 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 

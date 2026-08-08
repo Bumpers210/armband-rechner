@@ -1928,7 +1928,8 @@ carmaja_api_test('Produktmodell v2 erzeugt Version und sourceHash serverseitig',
         'description' => 'V2-Beschreibung.',
         'materials' => ['Rosenquarz'],
         'metalElements' => [],
-        'braceletSize' => '18 cm',
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
         'careInstructions' => [],
         'images' => [],
         'priceMinor' => 2490,
@@ -1949,6 +1950,11 @@ carmaja_api_test('Produktmodell v2 erzeugt Version und sourceHash serverseitig',
         is_string($first['sourceHash'] ?? null)
             && preg_match('/^[0-9a-f]{64}$/', $first['sourceHash']) === 1,
         'sourceHash muss ein serverseitiger SHA-256-Hash sein.'
+    );
+    carmaja_api_test_same(
+        'f31f10410c31d160b40d78e79a922db5b73b955b1b23056d0ba710715dceea92',
+        $first['sourceHash'],
+        'PHP- und Node-Kanonisierung müssen denselben sourceHash erzeugen.'
     );
     carmaja_api_test_assert(
         !array_key_exists('stock', $first) && !array_key_exists('vintedUrl', $first),
@@ -1992,6 +1998,87 @@ carmaja_api_test('Produktmodell v2 erzeugt Version und sourceHash serverseitig',
     );
 });
 
+carmaja_api_test('V2-Kette speichert, lädt Bilder hoch und publiziert ohne Legacy-Felder', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '55555555-5555-4555-8555-555555555555';
+    $imageId = '66666666-6666-4666-8666-666666666666';
+    $body = [
+        'expectedProductVersion' => 0,
+        'name' => 'Künstliches V2-Kettentestarmband',
+        'description' => 'Ausschließlich künstliche Testdaten.',
+        'materials' => ['Testmaterial'],
+        'metalElements' => ['Testspacer Edelstahl'],
+        'braceletSizeCm' => 17.5,
+        'pearlSizeMm' => 6,
+        'careInstructions' => [],
+        'images' => [[
+            'imageId' => $imageId,
+            'fileName' => '01.jpg',
+            'alt' => 'Künstliches V2-Kettentestarmband',
+            'width' => 120,
+            'height' => 80,
+            'isMain' => true,
+        ]],
+        'priceMinor' => 2790,
+        'currency' => 'eur',
+        'salesEnabled' => false,
+    ];
+    $saved = carmaja_api_v2_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v2-chain-save-0001'
+    );
+    carmaja_api_test_same([], $saved['images'], 'Metadaten-PUT darf kein Bild als hochgeladen bestätigen.');
+
+    $source = carmaja_api_path('v2-chain-source.jpg');
+    carmaja_api_test_create_jpeg($source, 120, 80);
+    carmaja_api_test_prepare_image_upload(
+        $saved['version'],
+        $imageId,
+        [$imageId],
+        $source,
+        'Künstliches V2-Kettentestarmband'
+    );
+    $GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS'] = true;
+    try {
+        $uploadedDraft = carmaja_api_upload_images($productId, $_POST, carmaja_api_test_actor());
+    } finally {
+        unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS']);
+    }
+    $uploaded = carmaja_api_v2_product_response_from_draft($uploadedDraft);
+    carmaja_api_test_same(1, count($uploaded['images']), 'V2-Upload wurde nicht bestätigt.');
+    carmaja_api_test_same($saved['sourceHash'], $uploaded['sourceHash'], 'Bildtransfer darf den Produkthash nicht verändern.');
+
+    $publication = carmaja_api_v2_publish_product(
+        $productId,
+        [
+            'expectedProductVersion' => $uploaded['productVersion'],
+            'expectedSourceHash' => $uploaded['sourceHash'],
+            'operationId' => 'v2-chain-publish-0001',
+        ],
+        carmaja_api_test_actor()
+    );
+    $published = $publication['product'];
+    carmaja_api_test_same('published', $published['status'], 'V2-Produkt wurde nicht veröffentlicht.');
+    carmaja_api_test_same(17.5, $published['braceletSizeCm'], 'Armbandumfang ging verloren.');
+    carmaja_api_test_same(6, $published['pearlSizeMm'], 'Perlengröße ging verloren.');
+    carmaja_api_test_same(false, $published['salesEnabled'], 'Kettentest darf keine Verkaufsfreigabe aktivieren.');
+
+    $publicDocument = carmaja_api_read_target_json(
+        carmaja_api_path('products/public-products-v2.json'),
+        [],
+        'v2-Kettentest-Publikation'
+    );
+    $public = $publicDocument['products'][0] ?? [];
+    carmaja_api_test_same(17.5, $public['braceletSizeCm'] ?? null, 'Öffentlicher Umfang fehlt.');
+    carmaja_api_test_same(6, $public['pearlSizeMm'] ?? null, 'Öffentliche Perlengröße fehlt.');
+    carmaja_api_test_assert(
+        !array_key_exists('stock', $public) && !array_key_exists('vintedUrl', $public),
+        'Öffentliche V2-Projektion enthält Legacy-Felder.'
+    );
+});
+
 carmaja_api_test('Produktmodell v2 verwendet eine deterministische Kanonisierung', static function (): void {
     carmaja_api_test_fixture();
     $left = [
@@ -2001,7 +2088,8 @@ carmaja_api_test('Produktmodell v2 verwendet eine deterministische Kanonisierung
         'description' => 'Beschreibung',
         'materials' => ['Rosenquarz'],
         'metalElements' => [],
-        'braceletSize' => '18 cm',
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
         'careInstructions' => [],
         'images' => [],
         'priceMinor' => 2490,
@@ -2014,7 +2102,8 @@ carmaja_api_test('Produktmodell v2 verwendet eine deterministische Kanonisierung
         'priceMinor' => 2490,
         'images' => [],
         'careInstructions' => [],
-        'braceletSize' => '18 cm',
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
         'metalElements' => [],
         'materials' => ['Rosenquarz'],
         'description' => 'Beschreibung',
@@ -2038,7 +2127,8 @@ carmaja_api_test('Produktmodell v2 lehnt clientseitige Legacy- und Versionsfelde
         'description' => 'V2-Beschreibung.',
         'materials' => ['Rosenquarz'],
         'metalElements' => [],
-        'braceletSize' => '18 cm',
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
         'careInstructions' => [],
         'images' => [],
         'priceMinor' => 2490,
@@ -2048,6 +2138,7 @@ carmaja_api_test('Produktmodell v2 lehnt clientseitige Legacy- und Versionsfelde
 
     foreach ([
         ['stock' => 1, 'error' => 'stock_write_disabled'],
+        ['vintedUrl' => 'https://example.invalid', 'error' => 'legacy_product_field_forbidden'],
         ['sourceHash' => str_repeat('a', 64), 'error' => 'client_managed_field_forbidden'],
         ['productVersion' => 9, 'error' => 'client_managed_field_forbidden'],
     ] as $case) {
@@ -2081,7 +2172,8 @@ carmaja_api_test('Publisher v2 erzeugt nur den öffentlichen v2-Vertrag', static
         'description' => 'Öffentliche v2-Abbildung.',
         'materials' => ['Amazonit'],
         'metalElements' => [],
-        'braceletSize' => '18 cm',
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
         'careInstructions' => [],
         'images' => [[
             'imageId' => '44444444-4444-4444-8444-444444444444',
@@ -2143,8 +2235,10 @@ carmaja_api_test('Publisher v2 erzeugt nur den öffentlichen v2-Vertrag', static
 
     $uploadDirectory = carmaja_api_path('uploads/' . $productId);
     carmaja_api_ensure_directory($uploadDirectory);
-    $draft['images'][0]['path'] = $uploadDirectory . DIRECTORY_SEPARATOR . '01.jpg';
-    file_put_contents($draft['images'][0]['path'], 'artificial-ap7-image');
+    $uploadedImage = $draft['imageManifest'][0];
+    $uploadedImage['path'] = $uploadDirectory . DIRECTORY_SEPARATOR . '01.jpg';
+    file_put_contents($uploadedImage['path'], 'artificial-ap7-image');
+    $draft['images'] = [$uploadedImage];
     carmaja_api_save_draft($draft);
     $current = carmaja_api_v2_product_from_draft(carmaja_api_load_draft($productId));
     $publication = carmaja_api_v2_publish_product(
@@ -2158,7 +2252,7 @@ carmaja_api_test('Publisher v2 erzeugt nur den öffentlichen v2-Vertrag', static
     );
     carmaja_api_test_same(
         $current['sourceHash'],
-        $publication['sourceHash'] ?? null,
+        $publication['publication']['sourceHash'] ?? null,
         'v2-Publishroute muss den serverseitigen Quellhash binden.'
     );
     carmaja_api_test_same(

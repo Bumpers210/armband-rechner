@@ -140,6 +140,10 @@ export default async function ProductDetailPage({
                 <dt>Größe</dt>
                 <dd>{product.displaySize}</dd>
               </div>
+              <div>
+                <dt>Perlengröße</dt>
+                <dd>{product.displayPearlSize}</dd>
+              </div>
             </dl>
 
             <section className="product-care" aria-labelledby="care-heading">

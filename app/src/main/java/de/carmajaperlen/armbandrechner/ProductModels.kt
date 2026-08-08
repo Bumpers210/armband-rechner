@@ -1,7 +1,7 @@
 package de.carmajaperlen.armbandrechner
 
 import java.math.BigDecimal
-import java.net.URI
+import java.math.RoundingMode
 import java.util.UUID
 
 enum class ProductStatus(val wireName: String) {
@@ -53,20 +53,26 @@ data class ProductDraft(
     val sku: String? = null,
     val slug: String? = null,
     val version: Int = 0,
+    val productVersion: Int = 0,
+    val sourceHash: String? = null,
     val status: ProductStatus = ProductStatus.Draft,
     val name: String = "",
     val materials: List<String> = emptyList(),
     val metalElements: List<String> = emptyList(),
-    val braceletSize: String = "",
-    val stock: Int = 1,
+    val modelVersion: Int = PRODUCT_MODEL_VERSION,
+    val braceletSizeCm: String = "",
+    val pearlSizeMm: String = "",
     val shortDescription: String = "",
     val careInstructions: List<String> = emptyList(),
-    val vintedUrl: String = "",
+    val priceMinor: Int = 0,
+    val currency: String = "eur",
+    val salesEnabled: Boolean = false,
     val internalCalculation: CalculationSnapshot,
     val images: List<ProductImage> = emptyList(),
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val serverUpdatedAt: String? = null,
+    val pendingV2SaveOperationId: String? = null,
     val pendingPublishOperationId: String? = null,
     val pendingSoldOperationId: String? = null,
     val pendingDisableOperationId: String? = null,
@@ -81,11 +87,11 @@ data class ProductDraft(
         return buildMap {
             if (name.isBlank()) put("name", "Produktname ist erforderlich.")
             if (materials.isEmpty()) put("materials", "Mindestens ein Material ist erforderlich.")
-            if (braceletSize.isBlank()) put("braceletSize", "Armbandgröße ist erforderlich.")
+            if (braceletSizeCm.isBlank()) put("braceletSizeCm", "Armbandgröße ist erforderlich.")
+            if (pearlSizeMm.isBlank()) put("pearlSizeMm", "Perlengröße ist erforderlich.")
             if (shortDescription.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
-            if (vintedUrl.isNotBlank() && !isValidVintedUrl(vintedUrl)) {
-                put("vintedUrl", "Vinted-Link ist ungültig.")
-            }
+            if (priceMinor < 50) put("priceMinor", "Verkaufspreis muss mindestens 0,50 € betragen.")
+            if (currency != "eur") put("currency", "Für V1 ist ausschließlich EUR zulässig.")
             if (images.isEmpty()) put("images", "Mindestens ein Hauptfoto ist erforderlich.")
         }
     }
@@ -124,7 +130,7 @@ data class ProductDraft(
                 draftId = UUID.randomUUID().toString(),
                 materials = selectedMaterials,
                 metalElements = selectedSpacers,
-                stock = 1,
+                priceMinor = totals.recommendedSalePrice.toMinorUnits(),
                 internalCalculation = snapshot,
                 createdAtMillis = nowMillis,
                 updatedAtMillis = nowMillis,
@@ -153,19 +159,29 @@ internal fun ProductDraft.prepareForPublish(
     )
 }
 
-fun isValidVintedUrl(value: String): Boolean {
-    return runCatching {
-        val uri = URI(value.trim())
-        uri.scheme == "https" &&
-            uri.host?.lowercase() in setOf("vinted.de", "www.vinted.de") &&
-            uri.port == -1 &&
-            uri.userInfo == null &&
-            uri.query.orEmpty()
-                .split("&")
-                .mapNotNull { it.substringBefore("=", "").lowercase().takeIf(String::isNotBlank) }
-                .none { it in setOf("url", "redirect", "redirect_url", "redirect_uri", "next", "target") }
-    }.getOrDefault(false)
+const val PRODUCT_MODEL_VERSION = 2
+
+internal fun normalizeMeasurement(value: String): String? {
+    val normalized = value.trim().replace(',', '.')
+    val number = normalized.toBigDecimalOrNull()?.takeIf { it.signum() > 0 } ?: return null
+    return number.stripTrailingZeros().toPlainString()
 }
+
+internal fun displayMeasurement(value: String, unit: String): String {
+    return "${value.replace('.', ',')} $unit"
+}
+
+internal fun parsePriceMinor(value: String): Int? {
+    val normalized = value.trim().replace(',', '.')
+    val amount = normalized.toBigDecimalOrNull()?.takeIf { it.signum() >= 0 } ?: return null
+    val cents = runCatching {
+        amount.setScale(2, RoundingMode.UNNECESSARY).movePointRight(2).intValueExact()
+    }.getOrNull() ?: return null
+    return cents.takeIf { it >= 50 }
+}
+
+internal fun displayPriceMinor(value: Int): String =
+    BigDecimal(value).movePointLeft(2).setScale(2).toPlainString().replace('.', ',')
 
 fun List<String>.toMultilineText(): String = joinToString("\n")
 
@@ -174,3 +190,6 @@ fun multilineTextToList(value: String): List<String> {
 }
 
 private fun BigDecimal.toPlain(): String = setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()
+
+private fun BigDecimal.toMinorUnits(): Int =
+    setScale(2, RoundingMode.HALF_UP).movePointRight(2).intValueExact()

@@ -6,11 +6,21 @@ Basis: AP6-Commit `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`
 
 Worktree: `G:\BS-Stein-Hart-ap7`, Branch `feature/shop-ap7`
 
+AP7.2b-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
+`codex/ap7-integration`
+
+AP7.3b-V2-Kettenstand: `G:\BS-Stein-Hart-ap73b`, Branch
+`codex/ap7-v2-chain`
+
 ## Urteil
 
-Das lokale Produktionspaket ist technisch zur gesonderten AP7-
-Produktionsfreigabe bereit. AP7, Produktion, Cutover, Push, Merge und
-Deployment sind nicht freigegeben und wurden nicht begonnen.
+Der Android-Versions- und Draft-Synchronisierungsblocker ist in AP7.2b
+geschlossen. AP7.3b hat anschließend die vollständige V2-Kette von App und
+Draft über Web-API, serverseitige Version/Hash, Publisher und öffentliche
+Projektion lokal und isoliert auf IONOS nachgewiesen. Der Release Candidate
+bleibt bis zur Anlage genau eines geeigneten realen v2-Startprodukts nicht
+bereit. AP7, Produktion, Cutover, Push, Merge und Produktionsdeployment sind
+nicht freigegeben und wurden nicht begonnen.
 
 ## Geschlossene lokale Blocker
 
@@ -50,11 +60,54 @@ Deployment sind nicht freigegeben und wurden nicht begonnen.
 - `npm run build` mit ausschließlich künstlicher v2-Fixture: bestanden und
   Produktionsexport verifiziert.
 - `npm audit --omit=dev`: 0 bekannte Schwachstellen.
-- Android: `testDebugUnitTest` und `lintDebug` bestanden. Es gibt keine AP7-
-  Änderung unter `app/**`; die stabile Beta-Signierung und `assembleBeta`
-  bleiben durch die AP6-Abnahme nachgewiesen und wurden ohne erneute
-  Secret-Kopie nicht wiederholt.
+- Android AP7.2b: Der autoritative App-Stand `app-v1.1.2` aus Commit
+  `4cbd0489628d0c5e7e347d376df67bd12342fe5e` ist kontrolliert integriert.
+  Der Produktionsbuild verwendet `versionCode 4` und `versionName 1.1.2`.
+  `braceletSizeCm` und `pearlSizeMm` bleiben im Draft-, Editor-, lokalen
+  Speicher-, API-, Server- und Synchronisierungsweg erhalten. Die bereits
+  integrierten AP7-Shopmodelle wurden nicht überschrieben.
+- `testDebugUnitTest`, `lintDebug` und der explizit freigegebene, weiterhin
+  als unsigniert verifizierte CI-Prüfbuild sind bestanden. Außerhalb dieses
+  eng begrenzten Prüfschalters bleibt `assembleRelease` ohne
+  Produktionssignatur gesperrt. Das APK weist Paket
+  `de.carmajaperlen.armbandrechner`, `versionCode 4` und `versionName 1.1.2`
+  aus.
+- Der explizite Unit-Roundtrip lädt einen bestehenden Draft, ändert
+  Armbandumfang und Perlengröße, speichert und synchronisiert V2 und lädt
+  beide Werte identisch erneut. Der entsprechende Repository-/Gerätetest ist
+  kompiliert und gelintet; lokal stand kein Emulator für seine Ausführung zur
+  Verfügung.
 - AP7-Vertragstests: PHP 7/7 und Node 4/4 bestanden.
+- AP7.2b-Vertragstests: 21/21 relevante Node-Tests, 46/46 Product-API-Tests,
+  10/10 Bootstrap-Tests und der Produktions-Bootstrap-Test bestanden.
+- AP7.3b: App-Speichern verwendet den vollständigen V2-Payload mit
+  `expectedProductVersion` und einer über unklare Ausgänge stabilen
+  Idempotenz-ID. `productVersion` und `sourceHash` werden ausschließlich
+  serverseitig erzeugt. Preis, EUR-Währung, Verkaufsfreigabe,
+  `braceletSizeCm` und `pearlSizeMm` bleiben nach Speichern, Bildtransfer,
+  Publizieren und erneutem Laden identisch.
+- AP7.3b Android: `testDebugUnitTest`, `lintDebug` und das mit dem vorhandenen
+  stabilen Beta-Zertifikat gebaute `assembleBeta` sind bestanden. Lokal war
+  kein Emulator für Instrumentierungstests angeschlossen.
+- AP7.3b PHP: 118/118 Tests und die Lints der geänderten V2-Dateien mit PHP
+  8.4.23 bestanden. Die künstliche Kette prüft zusätzlich Idempotenz,
+  serverseitigen Hash und die öffentliche Legacy-Feldsperre.
+- AP7.3b Node/Build: alle 121 fachlich ausführbaren Tests bestanden; die neun
+  fehlgeschlagenen Shell-Testfälle liegen vollständig in gegenüber der Basis
+  unveränderten CRLF-Dateien. `npm run lint:test`, `npm run build:test` und
+  `npm run build` einschließlich V2-Produktionsexport sind bestanden.
+  Ein temporärer sauberer Worktree auf Basiscommit `2ad2c6c4e028c3ff81a0574540e9842753725d7f`
+  reproduzierte exakt dieselben neun Fehlernamen bei identischen 22 Fällen
+  (`13` bestanden, `9` fehlgeschlagen). Alle 21 beteiligten Test- und
+  Shellpfade waren bytegleich und enthielten bereits auf der Basis CRLF; der
+  temporäre Worktree wurde anschließend vollständig entfernt.
+- AP7.3b IONOS: Ein token-geschützter Web-SAPI-Endpunkt unter einem eigenen
+  temporären Testunterordner wies mit ausschließlich künstlichen Daten den
+  Ablauf V2-Login → idempotentes Speichern → Bild-Upload → serverseitige
+  Version/Hash → Publisher → öffentliche V2-Allowlist → erneutes Laden nach.
+  `salesEnabled` blieb `false`; `stock` und `vintedUrl` waren nicht öffentlich.
+  Privater Stagingbereich, Webendpunkt, künstlicher Nutzer, Token, Bild,
+  Produkt und öffentliche Projektion wurden anschließend vollständig entfernt.
 
 ## Verbleibende Produktionsgates
 
@@ -62,11 +115,12 @@ Deployment sind nicht freigegeben und wurden nicht begonnen.
    prüfen, committen, pushen und über den vorgesehenen Reviewweg übernehmen.
 2. Alle parallelen externen Verkaufsangebote nachweislich deaktivieren oder
    löschen; der eigene Shop bleibt der einzige Verkaufskanal.
-3. Genau ein reales Produkt aus der autoritativen Produktverwaltung als v2-
-   Datensatz auswählen. Produkt-ID, Version, serverseitiger `sourceHash`,
-   Preis, EUR, Bilder, `salesEnabled`, bisheriger `stock=1` und Zielbestand
-   `onHand=1` müssen bestätigt und in ein separat freigegebenes
-   Cutovermanifest eingetragen werden.
+3. Genau ein reales Unikat über die nun nachgewiesene V2-Produktkette vollständig
+   als v2-Datensatz mit gültigem `priceMinor`, `currency=eur` und
+   `salesEnabled=false` speichern und veröffentlichen. `productVersion` und
+   `sourceHash` entstehen ausschließlich serverseitig; `stock` und
+   Commerce-Bestand bleiben unverändert. Erst danach folgen der getrennte
+   Dry-Run und die noch nicht freigegebene Manifestauswahl.
 4. Produktive MySQL-8-/InnoDB-Datenbank, private Runtime-Secrets und aktive
    TLS-Sitzung nachweisen. Die akzeptierte fehlende CA-/Hostidentitätsprüfung
    bleibt als V1-Restrisiko dokumentiert.
