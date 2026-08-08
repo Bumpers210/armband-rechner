@@ -283,7 +283,7 @@ jobs:
             test "$(/usr/bin/php8.4 -r 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;' 2>/dev/null)" = "8.4" || fail
             CARMAJA_CONFIG_FILE="$runtime_real" /usr/bin/php8.4 "$private_real/program/product-api-diagnostics.php" >/dev/null 2>&1 || fail
             printf '%s\n' 'PRODUCTION_API_REMOTE_GUARD_OK=readonly'
-REMOTE_CHECK
+          REMOTE_CHECK
 
       - name: Upload API artifact to isolated workspace
         shell: bash
@@ -301,7 +301,7 @@ REMOTE_CHECK
             test -n "$workspace"
             mkdir -p "$workspace/incoming" "$workspace/releases" "$workspace/backups" "$workspace/locks"
             chmod 0750 "$workspace" "$workspace/incoming" "$workspace/releases" "$workspace/backups" "$workspace/locks"
-REMOTE_PREPARE
+          REMOTE_PREPARE
           SCP=(scp -i "$HOME/.ssh/carmaja_production_api_deploy" -P "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts")
           "${SCP[@]}" .production-api-deploy-package/product-api.tar.gz "$REMOTE:${CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE}/incoming/${CARMAJA_RELEASE_ID}.tar.gz"
           "${SCP[@]}" .production-api-deploy-package/product-api.tar.gz.sha256 "$REMOTE:${CARMAJA_PRODUCTION_API_DEPLOY_WORKSPACE}/incoming/${CARMAJA_RELEASE_ID}.tar.gz.sha256"
@@ -372,7 +372,7 @@ REMOTE_PREPARE
               fail
             fi
             printf '%s\n' 'PRODUCTION_API_ACTIVATION_OK=private-diagnostics'
-REMOTE_ACTIVATE
+          REMOTE_ACTIVATE
 
       - name: Verify unauthenticated public API router without writes
         shell: bash

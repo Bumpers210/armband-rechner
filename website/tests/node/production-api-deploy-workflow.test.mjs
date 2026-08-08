@@ -34,6 +34,10 @@ test("Produktions-API-Workflow ist manuell, gegated und hält Runtime-Daten aus 
   assert.match(workflow, /updateRepoVariable/);
   assert.doesNotMatch(workflow, /website\/out|website\/hosting/);
   assert.doesNotMatch(workflow, /ssh-keyscan|StrictHostKeyChecking=no|scp -O|sshpass/);
+  assert.doesNotMatch(workflow, /^(REMOTE_CHECK|REMOTE_PREPARE|REMOTE_ACTIVATE)$/m);
+  assert.match(workflow, /^ {10}REMOTE_CHECK$/m);
+  assert.match(workflow, /^ {10}REMOTE_PREPARE$/m);
+  assert.match(workflow, /^ {10}REMOTE_ACTIVATE$/m);
 });
 
 test("Interaktiver Einrichter speichert nur geschützte Pfadvariablen und hält das Gate geschlossen", async () => {
