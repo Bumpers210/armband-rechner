@@ -362,37 +362,52 @@ jobs:
             cp "$manifest" "$release/manifest.sha256"
             cp "$archive" "$release/product-api.tar.gz"
             cp "$checksum" "$release/product-api.tar.gz.sha256"
-            had_program=false
             had_index=false
+            program_replaced=false
+            previous_program="$private_dir/.product-api-previous-$release_id"
+            next_program="$private_dir/.product-api-next-$release_id"
+            test ! -e "$previous_program" && test ! -e "$next_program" || fail
             rollback() {
-              if test -e "$private_dir/program"; then rm -rf "$private_dir/program"; fi
-              if test "$had_program" = true; then mv "$backup/program" "$private_dir/program"; fi
+              if test -e "$previous_program"; then
+                if test -e "$private_dir/program"; then rm -rf "$private_dir/program"; fi
+                mv "$previous_program" "$private_dir/program"
+              elif test "$program_replaced" = true && test -e "$private_dir/program"; then
+                rm -rf "$private_dir/program"
+              fi
+              if test -e "$next_program"; then rm -rf "$next_program"; fi
               if test "$had_index" = true; then cp "$backup/index.php" "$api_webroot/index.php"; else rm -f "$api_webroot/index.php"; fi
               rm -f "$api_webroot/.index.php.$release_id"
             }
             activation_failure() {
-              rollback
-              printf '%s\n' 'PRODUCTION_API_ROLLBACK_OK=activation' >&2
+              if rollback; then
+                printf '%s\n' 'PRODUCTION_API_ROLLBACK_OK=activation' >&2
+              else
+                printf '%s\n' 'PRODUCTION_API_ROLLBACK_FAILED=activation' >&2
+              fi
               printf 'PRODUCTION_API_ACTIVATION_PHASE=%s\n' "$1" >&2
               fail
             }
+            if ! cp -a "$stage/private/program" "$next_program"; then
+              activation_failure stage_private_program
+            fi
             if test -e "$private_dir/program"; then
-              if ! mv "$private_dir/program" "$backup/program"; then
-                printf '%s\n' 'PRODUCTION_API_ACTIVATION_PHASE=backup_private_program' >&2
-                fail
+              if ! cp -a "$private_dir/program" "$backup/program"; then
+                activation_failure backup_private_program
               fi
-              had_program=true
+              if ! mv "$private_dir/program" "$previous_program"; then
+                activation_failure stage_previous_private_program
+              fi
             fi
             if test -f "$api_webroot/index.php"; then
               if ! cp -p "$api_webroot/index.php" "$backup/index.php"; then
-                printf '%s\n' 'PRODUCTION_API_ACTIVATION_PHASE=backup_public_entry' >&2
-                fail
+                activation_failure backup_public_entry
               fi
               had_index=true
             fi
-            if ! mv "$stage/private/program" "$private_dir/program"; then
-              activation_failure install_private_program
+            if ! mv "$next_program" "$private_dir/program"; then
+              activation_failure activate_private_program
             fi
+            program_replaced=true
             if ! cp "$stage/public/index.php" "$api_webroot/.index.php.$release_id"; then
               activation_failure stage_public_entry
             fi
