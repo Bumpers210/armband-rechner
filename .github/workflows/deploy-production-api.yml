@@ -368,13 +368,39 @@ jobs:
               if test -e "$private_dir/program"; then rm -rf "$private_dir/program"; fi
               if test "$had_program" = true; then mv "$backup/program" "$private_dir/program"; fi
               if test "$had_index" = true; then cp "$backup/index.php" "$api_webroot/index.php"; else rm -f "$api_webroot/index.php"; fi
+              rm -f "$api_webroot/.index.php.$release_id"
             }
-            if test -e "$private_dir/program"; then mv "$private_dir/program" "$backup/program"; had_program=true; fi
-            if test -f "$api_webroot/index.php"; then cp -p "$api_webroot/index.php" "$backup/index.php"; had_index=true; fi
-            if ! mv "$stage/private/program" "$private_dir/program" || ! cp "$stage/public/index.php" "$api_webroot/.index.php.$release_id" || ! mv "$api_webroot/.index.php.$release_id" "$api_webroot/index.php" || ! CARMAJA_CONFIG_FILE="$runtime_config" /usr/bin/php8.4 "$private_dir/program/product-api-diagnostics.php" >/dev/null 2>&1; then
+            activation_failure() {
               rollback
               printf '%s\n' 'PRODUCTION_API_ROLLBACK_OK=activation' >&2
+              printf 'PRODUCTION_API_ACTIVATION_PHASE=%s\n' "$1" >&2
               fail
+            }
+            if test -e "$private_dir/program"; then
+              if ! mv "$private_dir/program" "$backup/program"; then
+                printf '%s\n' 'PRODUCTION_API_ACTIVATION_PHASE=backup_private_program' >&2
+                fail
+              fi
+              had_program=true
+            fi
+            if test -f "$api_webroot/index.php"; then
+              if ! cp -p "$api_webroot/index.php" "$backup/index.php"; then
+                printf '%s\n' 'PRODUCTION_API_ACTIVATION_PHASE=backup_public_entry' >&2
+                fail
+              fi
+              had_index=true
+            fi
+            if ! mv "$stage/private/program" "$private_dir/program"; then
+              activation_failure install_private_program
+            fi
+            if ! cp "$stage/public/index.php" "$api_webroot/.index.php.$release_id"; then
+              activation_failure stage_public_entry
+            fi
+            if ! mv "$api_webroot/.index.php.$release_id" "$api_webroot/index.php"; then
+              activation_failure activate_public_entry
+            fi
+            if ! CARMAJA_CONFIG_FILE="$runtime_config" /usr/bin/php8.4 "$private_dir/program/product-api-diagnostics.php" >/dev/null 2>&1; then
+              activation_failure private_diagnostics
             fi
             printf '%s\n' 'PRODUCTION_API_ACTIVATION_OK=private-diagnostics'
           REMOTE_ACTIVATE
