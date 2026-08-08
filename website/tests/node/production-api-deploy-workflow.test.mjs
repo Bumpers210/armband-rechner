@@ -32,6 +32,8 @@ test("Produktions-API-Workflow ist manuell, gegated und hält Runtime-Daten aus 
   assert.match(workflow, /https:\/\/api\.carmaja-perlen\.de\//);
   assert.match(workflow, /reset-production-api-deploy-gate:/);
   assert.match(workflow, /updateRepoVariable/);
+  assert.doesNotMatch(workflow, /if: .*vars\.CARMAJA_PRODUCTION_API_DEPLOY_ENABLED/m);
+  assert.match(workflow, /reset-production-api-deploy-gate:[\s\S]*?if: \$\{\{ github\.event_name == 'workflow_dispatch' && always\(\) \}\}/);
   assert.doesNotMatch(workflow, /website\/out|website\/hosting/);
   assert.doesNotMatch(workflow, /ssh-keyscan|StrictHostKeyChecking=no|scp -O|sshpass/);
   assert.doesNotMatch(workflow, /^(REMOTE_CHECK|REMOTE_PREPARE|REMOTE_ACTIVATE)$/m);

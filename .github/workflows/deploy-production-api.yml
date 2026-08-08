@@ -150,7 +150,7 @@ jobs:
     needs:
       - build-production-api
       - validate-manual-production-api-deploy
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_name == 'main' && inputs.expected_commit_sha == github.sha && inputs.deployment_confirmation == 'DEPLOY_PRODUCTION_API' && vars.CARMAJA_PRODUCTION_API_DEPLOY_ENABLED == 'true' && needs.validate-manual-production-api-deploy.result == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_name == 'main' && inputs.expected_commit_sha == github.sha && inputs.deployment_confirmation == 'DEPLOY_PRODUCTION_API' && needs.validate-manual-production-api-deploy.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -387,7 +387,7 @@ jobs:
       - build-production-api
       - validate-manual-production-api-deploy
       - deploy-production-api
-    if: ${{ github.event_name == 'workflow_dispatch' && always() && vars.CARMAJA_PRODUCTION_API_DEPLOY_ENABLED == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && always() }}
     runs-on: ubuntu-latest
     environment:
       name: carmaja-production
