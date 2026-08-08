@@ -17,6 +17,8 @@ function carmaja_maintenance_usage(): string
         '  product-maintenance.php backup',
         '  product-maintenance.php restore --backup <Backup-ID> --dry-run',
         '  product-maintenance.php restore --backup <Backup-ID>',
+        '  product-maintenance.php migrate-v2 --dry-run',
+        '  product-maintenance.php migrate-v2 --apply',
     ]) . PHP_EOL;
 }
 
@@ -52,6 +54,19 @@ function carmaja_maintenance_confirm_restore(string $backup): bool
     return is_string($confirmation) && trim($confirmation) === 'WIEDERHERSTELLEN';
 }
 
+function carmaja_maintenance_confirm_product_model_migration(): bool
+{
+    fwrite(
+        STDERR,
+        'V2-Produktmigration erstellt zuerst ein Backup. Tippen Sie '
+            . CARMAJA_PRODUCT_MODEL_MIGRATION_CONFIRMATION . ': '
+    );
+    $confirmation = fgets(STDIN);
+
+    return is_string($confirmation)
+        && trim($confirmation) === CARMAJA_PRODUCT_MODEL_MIGRATION_CONFIRMATION;
+}
+
 function carmaja_maintenance_main(array $argv): int
 {
     try {
@@ -60,6 +75,14 @@ function carmaja_maintenance_main(array $argv): int
 
         if ($arguments === ['backup']) {
             $result = carmaja_api_create_backup();
+        } elseif ($arguments === ['migrate-v2', '--dry-run']) {
+            $result = carmaja_api_migrate_product_model_v2(false);
+        } elseif ($arguments === ['migrate-v2', '--apply']) {
+            if (!carmaja_maintenance_confirm_product_model_migration()) {
+                throw new RuntimeException('V2-Produktmigration wurde nicht bestätigt.');
+            }
+
+            $result = carmaja_api_migrate_product_model_v2(true);
         } elseif (($arguments[0] ?? null) === 'restore') {
             $backup = null;
             $dryRun = false;

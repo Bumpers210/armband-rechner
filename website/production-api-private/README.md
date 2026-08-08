@@ -41,6 +41,28 @@ Eine echte Wiederherstellung verlangt die interaktive Eingabe
 und tauscht die gesicherten Datenverzeichnisse unter Lock mit Rueckrollzustand
 aus. Konfiguration, Pepper und GitHub-Token-Datei sind nicht Teil eines Backups.
 
+## Produktmodell V2
+
+Die API akzeptiert ausschliesslich Produktmodellversion 2 mit numerischen
+`braceletSizeCm` und `pearlSizeMm`. V1-Anfragen mit `braceletSize`, `stock` oder
+`vintedUrl` werden ohne Seiteneffekt abgelehnt.
+
+Die private Migration wird immer zuerst als Dry-Run ausgefuehrt:
+
+```sh
+CARMAJA_CONFIG_FILE=/absoluter/privater/pfad/config/runtime-config.php \
+  /usr/bin/php8.4 product-maintenance.php migrate-v2 --dry-run
+```
+
+`migrate-v2 --apply` verlangt die interaktive Bestaetigung `MIGRIEREN_V2`,
+erstellt vor dem ersten Schreibvorgang ein Backup und prueft dieses per
+Restore-Dry-Run. Nur eindeutig numerische V1-Armbandgroessen werden nach cm
+uebernommen. Fehlende Perlengroessen bleiben bewusst offen und blockieren die
+naechste Speicherung oder Veroeffentlichung bis zur manuellen Pflege. Der
+Migrationsbericht liegt ausschliesslich im privaten Auditbereich.
+
+`commerceInventory.onHand` wird vom Migrationsadapter nicht angesprochen.
+
 ## Publisher
 
 Die Vorlage setzt `productionPublishEnabled` und `githubAdapterEnabled` auf

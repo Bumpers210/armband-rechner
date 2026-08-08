@@ -168,18 +168,18 @@ function production_api_actor(): array
 
 function production_api_ready_payload(string $draftId, int $version): array
 {
+    // Entspricht dem JSON-Payload von Produktverwaltung 1.1.2.
     return [
+        'modelVersion' => 2,
         'draftId' => $draftId,
         'expectedVersion' => $version,
         'status' => 'ready',
         'name' => 'Produkt ohne Testbindung',
         'materials' => ['Rosenquarz'],
         'metalElements' => ['Spacer Edelstahl'],
-        'braceletSize' => '18 cm',
-        'stock' => 1,
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
         'shortDescription' => 'Handgefertigtes Armband.',
-        'careInstructions' => [],
-        'vintedUrl' => 'https://www.vinted.de/items/1234567890',
         'internalCalculation' => [],
     ];
 }
@@ -261,9 +261,50 @@ try {
         'Aktives Geraet-Token fuer die Backuppruefung wurde nicht akzeptiert.'
     );
 
+    production_api_assert(carmaja_api_json_values_equal(6, 6.0), 'JSON-Zahlen 6 und 6.0 sind nicht gleichwertig.');
+    production_api_assert(!carmaja_api_json_values_equal('6', 6), 'String und Zahl wurden gleichgesetzt.');
+    production_api_assert(!carmaja_api_json_values_equal(true, 1), 'Boolean und Zahl wurden gleichgesetzt.');
+    production_api_assert(!carmaja_api_json_values_equal(6, 6.1), 'Verschiedene Zahlen wurden gleichgesetzt.');
+    production_api_assert(
+        !carmaja_api_json_values_equal(9007199254740992, 9007199254740993),
+        'Große verschiedene Ganzzahlen wurden gleichgesetzt.'
+    );
+    production_api_assert(
+        carmaja_api_json_values_equal(carmaja_api_legacy_bracelet_size_to_cm(17.5), 17.5)
+            && carmaja_api_json_values_equal(carmaja_api_legacy_bracelet_size_to_cm('17,5 cm'), 17.5)
+            && carmaja_api_json_values_equal(carmaja_api_legacy_bracelet_size_to_cm('17.5'), 17.5)
+            && carmaja_api_legacy_bracelet_size_to_cm('17-18 cm') === null,
+        'V1-Armbandgrößen werden nicht kontrolliert nach cm normalisiert.'
+    );
+
     $draftId = 'd3b07384-d9a0-4bce-9f64-56ef7d22f777';
+    production_api_expect(409, 'product_model_version_unsupported', static function () use ($draftId): void {
+        $payload = production_api_ready_payload($draftId, 0);
+        unset($payload['modelVersion']);
+        carmaja_api_save_product($draftId, $payload, production_api_actor());
+    });
+    production_api_expect(409, 'legacy_product_model_unsupported', static function () use ($draftId): void {
+        $payload = production_api_ready_payload($draftId, 0);
+        $payload['stock'] = 1;
+        carmaja_api_save_product($draftId, $payload, production_api_actor());
+    });
+    production_api_expect(422, 'validation_failed', static function () use ($draftId): void {
+        $payload = production_api_ready_payload($draftId, 0);
+        $payload['braceletSizeCm'] = '18';
+        carmaja_api_save_product($draftId, $payload, production_api_actor());
+    });
+    production_api_expect(422, 'validation_failed', static function () use ($draftId): void {
+        $payload = production_api_ready_payload($draftId, 0);
+        $payload['pearlSizeMm'] = true;
+        carmaja_api_save_product($draftId, $payload, production_api_actor());
+    });
     $draft = carmaja_api_save_product($draftId, production_api_ready_payload($draftId, 0), production_api_actor());
     production_api_assert($draft['version'] === 1, 'Erste Entwurfsversion fehlt.');
+    production_api_assert(
+        carmaja_api_json_values_equal($draft['braceletSizeCm'], 18)
+            && carmaja_api_json_values_equal($draft['pearlSizeMm'], 6),
+        'V2-Maßangaben wurden nicht als Zahlen gespeichert.'
+    );
     production_api_expect(409, 'version_conflict', static function () use ($draftId): void {
         carmaja_api_save_product($draftId, production_api_ready_payload($draftId, 0), production_api_actor());
     });
@@ -326,6 +367,15 @@ try {
         'Oeffentliche Produktdaten'
     );
     production_api_assert(count($public['products'] ?? []) === 1, 'Idempotenz hat doppelte Produktdaten erzeugt.');
+    $publicProduct = $public['products'][0] ?? [];
+    production_api_assert(
+        isset($publicProduct['braceletSizeCm'], $publicProduct['pearlSizeMm'])
+            && !array_key_exists('size', $publicProduct)
+            && !array_key_exists('stock', $publicProduct)
+            && !array_key_exists('vintedUrl', $publicProduct)
+            && !array_key_exists('commerceInventory', $publicProduct),
+        'Der öffentliche Produktadapter gibt kein reines V2-Produktmodell aus.'
+    );
     putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=false');
 
     $invalid = $fixture['root'] . DIRECTORY_SEPARATOR . 'invalid.jpg';
@@ -339,6 +389,96 @@ try {
             false
         );
     });
+
+    $legacyDraftId = 'd3b07384-d9a0-4bce-9f64-56ef7d22f779';
+    $legacyDraftPath = $fixture['private'] . DIRECTORY_SEPARATOR . 'drafts'
+        . DIRECTORY_SEPARATOR . $legacyDraftId . '.json';
+    carmaja_api_save_draft([
+        'environment' => 'production',
+        'draftId' => $legacyDraftId,
+        'version' => 7,
+        'status' => 'ready',
+        'name' => 'V1-Entwurf',
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSize' => '17,5 cm',
+        'stock' => 3,
+        'vintedUrl' => 'https://www.vinted.de/items/1234567890',
+        'shortDescription' => 'Bestehender Entwurf.',
+        'careInstructions' => [],
+        'internalCalculation' => [],
+        'images' => [],
+        'createdAt' => carmaja_api_now(),
+        'updatedAt' => carmaja_api_now(),
+        'commerceInventory' => ['onHand' => 11],
+    ]);
+    $ambiguousLegacyDraftId = 'd3b07384-d9a0-4bce-9f64-56ef7d22f780';
+    carmaja_api_save_draft([
+        'environment' => 'production',
+        'draftId' => $ambiguousLegacyDraftId,
+        'version' => 2,
+        'status' => 'draft',
+        'name' => 'Unklare V1-Größe',
+        'materials' => [],
+        'metalElements' => [],
+        'braceletSize' => '17-18 cm',
+        'shortDescription' => '',
+        'careInstructions' => [],
+        'internalCalculation' => [],
+        'images' => [],
+        'createdAt' => carmaja_api_now(),
+        'updatedAt' => carmaja_api_now(),
+        'commerceInventory' => ['onHand' => 4],
+    ]);
+    $legacyBeforeDryRun = file_get_contents($legacyDraftPath);
+    $migrationDryRun = carmaja_api_migrate_product_model_v2(false);
+    production_api_assert(
+        $migrationDryRun['status'] === 'dry_run'
+            && $migrationDryRun['writePerformed'] === false
+            && $migrationDryRun['draftsMigrated'] === 2
+            && $migrationDryRun['braceletSizeConverted'] === 1
+            && $migrationDryRun['braceletSizeNeedsManualReview'] === 1
+            && $migrationDryRun['pearlSizeMissing'] === 2,
+        'V2-Migrations-Dry-Run meldet den Legacy-Bestand nicht korrekt.'
+    );
+    production_api_assert(
+        file_get_contents($legacyDraftPath) === $legacyBeforeDryRun,
+        'V2-Migrations-Dry-Run hat Entwurfsdaten verändert.'
+    );
+    $migration = carmaja_api_migrate_product_model_v2(true);
+    production_api_assert(
+        $migration['status'] === 'migrated'
+            && $migration['writePerformed'] === true
+            && is_string($migration['backup'])
+            && $migration['restoreDryRun'] === 'dry_run',
+        'V2-Migration hat Backup und Restore-Dry-Run nicht nachgewiesen.'
+    );
+    $migratedLegacyDraft = carmaja_api_load_draft($legacyDraftId);
+    production_api_assert(
+        ($migratedLegacyDraft['modelVersion'] ?? null) === 2
+            && carmaja_api_json_values_equal($migratedLegacyDraft['braceletSizeCm'] ?? null, 17.5)
+            && !array_key_exists('pearlSizeMm', $migratedLegacyDraft)
+            && !array_key_exists('braceletSize', $migratedLegacyDraft)
+            && !array_key_exists('stock', $migratedLegacyDraft)
+            && !array_key_exists('vintedUrl', $migratedLegacyDraft)
+            && ($migratedLegacyDraft['commerceInventory']['onHand'] ?? null) === 11,
+        'V2-Migration behandelt V1-Entwurf oder Commerce-Bestand nicht korrekt.'
+    );
+    production_api_expect(422, 'product_not_publishable', static function () use ($migratedLegacyDraft): void {
+        carmaja_api_require_publishable($migratedLegacyDraft, 'production');
+    });
+    $migratedAmbiguousDraft = carmaja_api_load_draft($ambiguousLegacyDraftId);
+    production_api_assert(
+        !array_key_exists('braceletSizeCm', $migratedAmbiguousDraft)
+            && ($migratedAmbiguousDraft['commerceInventory']['onHand'] ?? null) === 4,
+        'Mehrdeutige Armbandgröße oder Commerce-Bestand wurde unzulässig verändert.'
+    );
+    $repeatMigration = carmaja_api_migrate_product_model_v2(true);
+    production_api_assert(
+        $repeatMigration['status'] === 'already_migrated'
+            && $repeatMigration['writePerformed'] === false,
+        'Wiederholte V2-Migration ist nicht idempotent.'
+    );
 
     $backup = carmaja_api_create_backup();
     production_api_assert($backup['status'] === 'created', 'Backup wurde nicht erstellt.');

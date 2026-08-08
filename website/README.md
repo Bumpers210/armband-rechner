@@ -13,6 +13,10 @@ npm run build
 
 Der Produktionsbuild exportiert nach `out/`. Die Produktquelldatei unter `content/products.json` wird nicht in den oeffentlichen Export uebernommen.
 
+Die geschützte Testwebsite verwendet ausschließlich die manuell verwaltete
+Basic-Auth-Datei `/home/www/carmaja-test-auth/test-website.htpasswd`. Sie liegt
+außerhalb von Webroot, Export, Manifest und Deploymentworkspace.
+
 ## Produktionsdeployment
 
 Der Produktionsworkflow baut auf `release/production-product-management` und `main`, darf aber ausschliesslich von `main` aus deployen. `CARMAJA_PRODUCTION_DEPLOY_ENABLED` ist als Repository-Variable standardmaessig `false`. Ein freigegebener Lauf setzt sie nur kurz auf exakt `true`; der Workflow setzt sie am Ende unabhaengig vom Ergebnis wieder auf `false`.

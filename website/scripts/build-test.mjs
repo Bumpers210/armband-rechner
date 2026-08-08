@@ -1,4 +1,5 @@
-import { rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
@@ -45,36 +46,39 @@ const environment = {
   CARMAJA_PRODUCTION_DEPLOY_ENABLED: "false",
   NEXT_TELEMETRY_DISABLED: "1",
 };
+let generatedFixtureRoot = null;
 
 if (environment.CARMAJA_PRODUCTS_FILE === undefined) {
+  generatedFixtureRoot = await mkdtemp(
+    path.join(os.tmpdir(), "carmaja-build-test-"),
+  );
+  const generatedImageDirectory = path.join(
+    generatedFixtureRoot,
+    "images",
+    "products",
+  );
+  const generatedProductDirectory = path.join(
+    generatedImageDirectory,
+    "CP-2026-0001",
+  );
+  await mkdir(generatedProductDirectory, { recursive: true });
+  await cp(
+    path.join(
+      projectRoot,
+      "public",
+      "images",
+      "bracelets",
+      "hero-dunkelrot-braun-holz.jpg",
+    ),
+    path.join(generatedProductDirectory, "01.jpg"),
+  );
   environment.CARMAJA_TEST_FIXTURES = "true";
   environment.CARMAJA_PRODUCTS_FILE = path.join(
     projectRoot,
     "tests",
     "public-products-v2.fixture.json",
   );
-  environment.CARMAJA_PRODUCT_IMAGES_DIR = path.join(
-    projectRoot,
-    "public",
-    "images",
-    "products",
-  );
-}
-
-if (environment.CARMAJA_PRODUCTS_FILE === undefined) {
-  environment.CARMAJA_TEST_FIXTURES = "true";
-  environment.CARMAJA_PRODUCTS_FILE = path.join(
-    projectRoot,
-    "tests",
-    "fixtures",
-    "public-products-v2.json",
-  );
-  environment.CARMAJA_PRODUCT_IMAGES_DIR = path.join(
-    projectRoot,
-    "public",
-    "images",
-    "products",
-  );
+  environment.CARMAJA_PRODUCT_IMAGES_DIR = generatedImageDirectory;
 }
 
 function run(command, argumentsList) {
@@ -85,18 +89,26 @@ function run(command, argumentsList) {
   });
 
   if (result.status !== 0) {
-    process.exit(result.status ?? 1);
+    throw new Error(
+      `Testbuild-Schritt fehlgeschlagen (${result.status ?? "unbekannt"}).`,
+    );
   }
 }
 
-run(process.execPath, [
-  path.join(projectRoot, "node_modules", "next", "dist", "bin", "next"),
-  "build",
-]);
-await writeFile(
-  path.join(outputDirectory, "robots.txt"),
-  "User-agent: *\nDisallow: /\n",
-  "utf8",
-);
-run(process.execPath, [path.join(projectRoot, "scripts", "copy-hosting-files.mjs")]);
-run(process.execPath, [path.join(projectRoot, "scripts", "verify-test-export.mjs")]);
+try {
+  run(process.execPath, [
+    path.join(projectRoot, "node_modules", "next", "dist", "bin", "next"),
+    "build",
+  ]);
+  await writeFile(
+    path.join(outputDirectory, "robots.txt"),
+    "User-agent: *\nDisallow: /\n",
+    "utf8",
+  );
+  run(process.execPath, [path.join(projectRoot, "scripts", "copy-hosting-files.mjs")]);
+  run(process.execPath, [path.join(projectRoot, "scripts", "verify-test-export.mjs")]);
+} finally {
+  if (generatedFixtureRoot !== null) {
+    await rm(generatedFixtureRoot, { recursive: true, force: true });
+  }
+}

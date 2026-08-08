@@ -158,6 +158,9 @@ const sitemapLocations = [
 const expectedSitemap = [
   siteUrl,
   `${siteUrl}armbaender/`,
+  `${siteUrl}ueber-mich/`,
+  `${siteUrl}material-pflege/`,
+  `${siteUrl}kontakt/`,
   ...enabled.map((product) => `${siteUrl}armbaender/${product.slug}/`),
 ];
 

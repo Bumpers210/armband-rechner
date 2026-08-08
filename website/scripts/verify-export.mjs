@@ -69,6 +69,7 @@ for (const relativePath of requiredFiles) {
 }
 
 const rootHtml = await readOutputFile("index.html");
+const contactHtml = await readOutputFile("kontakt/index.html");
 const imprintHtml = await readOutputFile("impressum/index.html");
 const privacyHtml = await readOutputFile("datenschutz/index.html");
 const rootHead = readHead(rootHtml);
@@ -217,6 +218,9 @@ for (const forbiddenProductField of [
 const expectedSitemapLocations = [
   siteUrl,
   `${siteUrl}armbaender/`,
+  `${siteUrl}ueber-mich/`,
+  `${siteUrl}material-pflege/`,
+  `${siteUrl}kontakt/`,
   ...publishedProducts.map(
     (product) => `${siteUrl}armbaender/${product.slug}/`,
   ),
@@ -256,7 +260,7 @@ assert(
 );
 
 assert(
-  rootHtml.includes("mailto:kontakt@carmaja-perlen.de") &&
+  contactHtml.includes("mailto:kontakt@carmaja-perlen.de") &&
     imprintHtml.includes("mailto:kontakt@carmaja-perlen.de") &&
     privacyHtml.includes("mailto:kontakt@carmaja-perlen.de"),
   "Kontakt- und Rechtstextseiten benötigen den freigegebenen mailto-Link.",
@@ -340,7 +344,7 @@ assert(
 );
 assert(
   dashboardPhp.includes("REMOTE_USER") &&
-    dashboardPhp.includes("http_response_code(503)"),
+    dashboardPhp.includes("http_response_code(403)"),
   "Das Dashboard benötigt die zusätzliche serverseitige Authentifizierungssperre.",
 );
 assert(
