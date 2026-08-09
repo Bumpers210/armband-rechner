@@ -17,8 +17,11 @@ AP7-Integrationsbranch übernommen. AP7.3g hat die vollständige private
 Test-Shop-Laufzeit und den End-to-End-Betrieb mit allen vier Zahlungsarten,
 Worker, Brevo und öffentlichem Widerruf nachgewiesen und anschließend
 bereinigt. AP7.5 hat den getesteten Produktvertrag V2 in das manuell gegatete
-Produktions-API-Artefakt übernommen und lokal verifiziert. AP7 und jede
-Produktionsmutation bleiben nicht freigegeben.
+Produktions-API-Artefakt übernommen und lokal verifiziert. AP7.7a ergänzt den
+privaten verschlüsselten IONOS-Backupdienst und den kontrollierten
+OneDrive-Pull; der isolierte IONOS-E2E mit künstlichen Daten ist bestanden,
+während Produktionsaktivierung und OneDrive-Pull ausstehen. AP7
+und jede Produktionsmutation bleiben nicht freigegeben.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
@@ -571,6 +574,48 @@ die eingeschränkte Sandbox blockierter temporärer Export bleiben Aufgaben des
 Linux-PR-CI-Nachweises. Weder Deployment noch Produktionszugriff,
 V2-Migration, Produktanlage oder Cutover wurden ausgeführt.
 
+### AP7.7a – verschlüsseltes Produktionsbackup und OneDrive-Pull
+
+Der lokale Produktionsvertrag enthält einen ausschließlich privaten
+CLI-Backupdienst ohne HTTP-Route. Er streamt den Commerce-Dump mit
+`mysqldump --single-transaction` und die ausdrücklich erlaubten autoritativen
+Produktdaten ohne dauerhaftes unverschlüsseltes Zwischenarchiv in
+`sodium_crypto_secretstream_xchacha20poly1305`. Ein HMAC-geschütztes Manifest
+bindet UTC-Zeit, Backup-ID, Key-ID, Schemajournal, Größen und SHA-256-Hashes;
+der `ready`-Marker wird zuletzt atomar veröffentlicht. `flock`, ein
+40-Sekunden-Limit, Änderungsprüfung der Produktdateien, vollständiger
+Fehler-Cleanup und eine siebentägige, das jüngste bestätigte Backup schonende
+Serverrotation sind verbindlich.
+
+Der IONOS-Testhost stellt für das MySQL-8-Ziel den kompatiblen MariaDB-Client
+10.11 bereit. Deshalb verwendet der CLI-Vertrag `ssl`,
+`--single-transaction`, `--events`, `--routines`, `--triggers`,
+`--order-by-primary` und `--no-tablespaces`. Dump und Restore werden nur nach
+einem nicht leeren `Ssl_cipher` der jeweiligen CLI-Sitzung fortgesetzt. Ein
+fehlender CA-/Hostidentitätsnachweis bleibt das bereits akzeptierte
+V1-Restrisiko; eine aktive TLS-Sitzung ist weiterhin zwingend.
+
+Der getrennte Backup-Cron ist für `17 * * * *` vorgesehen. Der Windows-Agent
+läuft bei Anmeldung und anschließend alle 30 Minuten, prüft den exakten
+OneDrive-Stamm `D:\Carmaja-OneDrive`, OneDrive-Prozess, freien Speicher,
+Größen und Hashes. Unvollständige Transfers liegen außerhalb von OneDrive im
+eindeutig markierten Stagingordner `D:\Carmaja-Backup-Incoming`; die geprüfte
+Sicherung wird auf demselben Laufwerk atomar in OneDrive verschoben und erst
+danach quittiert. OneDrive erhält 48 stündliche, 30 tägliche und 12
+monatliche verschlüsselte Stände; der Schlüssel bleibt im Passwortmanager und
+in einer getrennten Offlinekopie.
+
+Server-RPO ist eine Stunde, Offsite-RPO bis 24 Stunden und RTO vier Stunden.
+Die lokale Implementierung, ihre Kryptografie-/Vertragstests und der isolierte
+IONOS-E2E mit zwei getrennten MySQL-8-Testdatenbanken sind bestanden. Der Lauf
+hat aktive TLS-Sitzungen, verschlüsseltes Backup, Lock, Restore, semantischen
+Schema-/Inhaltsvergleich, Quittierung und vollständigen Cleanup nachgewiesen.
+OneDrive-Umzug, Schlüsselübertragung, Produktions-Cron, erster Pull und der
+produktive Restore-Dry-Run benötigen weiterhin getrennte Gates.
+Bis zum bestandenen Restore bleiben Publisher, Deployments, Produktanlage,
+Migration, Shopaktivierung und Cutover gesperrt. Der Betriebsvertrag steht in
+`website/docs/production-backup-onedrive.md`.
+
 ## 5. Meilensteine und kritischer Pfad
 
 | Meilenstein | Stand | Nachweis |
@@ -595,6 +640,7 @@ V2-Migration, Produktanlage oder Cutover wurden ausgeführt.
 | AP7.3e | AP7-Integrationsstand bereit | V2-Kette einschließlich AP7.3d übernommen; App-, PHP-, Node-, Test-/Produktionsbuild-, Export- und Geheimwertregression bestanden |
 | AP7.3g | Testumgebung vollständig AP7-fähig | vollständige private Testlaufzeit, vier Zahlungsarten, Webhooks, Worker/Cron, Bestellung, Brevo, Widerruf, Legal-Snapshot, Admin/Review und Cleanup nachgewiesen |
 | AP7.5 | produktives V2-API-Artefakt lokal bereit | produktiver Bootstrap und `/v2`-Router, fail-closed Publisher, Sieben-Dateien-Allowlist, PHP-/Node-/Artefaktnachweise bestanden; kein Deployment |
+| AP7.7a | Implementierung und isolierter IONOS-Test-E2E bestanden | private CLI, Secretstream-Verschlüsselung, HMAC-Manifest, MySQL-8-Backup/Restore mit semantischem Vergleich, Lock und vollständigem Cleanup nachgewiesen; OneDrive- und Produktionsaktivierung ausstehend |
 
 Kritischer Pfad bis zur AP6-Abnahme: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5
 → AP2a → AP3 → AP4 → AP5 → AP3b → AP6. Dieser Pfad ist abgeschlossen. Der
@@ -685,6 +731,7 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP7.3e | AP7-Integrationsstand technisch bereit; Startprodukt und Produktionsgates ausstehend |
 | AP7.3g | Testumgebung vollständig AP7-fähig und bereinigt; keine Produktionsfreigabe |
 | AP7.5 | produktionsfähiges V2-Produkt-API-Artefakt lokal bereit; PR-/CI-Nachweis und Produktionsfreigabe getrennt |
+| AP7.7a | verschlüsselter Backupvertrag lokal implementiert und isolierter IONOS-Test-E2E bestanden; OneDrive-/Produktionsaktivierung und produktives Restore-Gate ausstehend |
 | AP7 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 

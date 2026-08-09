@@ -142,6 +142,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'publishTarget',
         'productionPublishEnabled',
         'privateDir',
+        'productPrivateDir',
         'testPrivateDir',
         'testApiWebroot',
         'testWebsiteWebroot',
@@ -159,6 +160,16 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'commercePassword',
         'commerceTlsCaPath',
         'commerceRequireTls',
+        'commerceRestoreDsn',
+        'commerceRestoreUser',
+        'commerceRestorePassword',
+        'commerceRestoreTlsCaPath',
+        'commerceRestoreRequireTls',
+        'backupDirectory',
+        'backupOffsiteTarget',
+        'backupEncryptionKeyFile',
+        'backupEncryptionKey',
+        'backupEncryptionKeyId',
         'stripeSecretKey',
         'stripeWebhookSecret',
         'stripeWebhookPayloadKey',
@@ -205,9 +216,11 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     }
 
     $privateDir = carmaja_bootstrap_required_path($config, 'privateDir');
-    $testPrivateDir = carmaja_bootstrap_required_path($config, 'testPrivateDir');
-    $testApiWebroot = carmaja_bootstrap_required_path($config, 'testApiWebroot');
-    $testWebsiteWebroot = carmaja_bootstrap_required_path($config, 'testWebsiteWebroot');
+    $productPrivateDir = carmaja_bootstrap_optional_path($config, 'productPrivateDir')
+        ?? $privateDir;
+    $testPrivateDir = carmaja_bootstrap_optional_path($config, 'testPrivateDir');
+    $testApiWebroot = carmaja_bootstrap_optional_path($config, 'testApiWebroot');
+    $testWebsiteWebroot = carmaja_bootstrap_optional_path($config, 'testWebsiteWebroot');
     $productionPrivateDir = carmaja_bootstrap_optional_path(
         $config,
         'productionPrivateDir'
@@ -234,6 +247,16 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $commercePassword = carmaja_bootstrap_optional_string($config, 'commercePassword');
     $commerceTlsCaPath = carmaja_bootstrap_optional_path($config, 'commerceTlsCaPath');
     $commerceRequireTls = $config['commerceRequireTls'] ?? false;
+    $commerceRestoreDsn = carmaja_bootstrap_optional_string($config, 'commerceRestoreDsn');
+    $commerceRestoreUser = carmaja_bootstrap_optional_string($config, 'commerceRestoreUser');
+    $commerceRestorePassword = carmaja_bootstrap_optional_string($config, 'commerceRestorePassword');
+    $commerceRestoreTlsCaPath = carmaja_bootstrap_optional_path($config, 'commerceRestoreTlsCaPath');
+    $commerceRestoreRequireTls = $config['commerceRestoreRequireTls'] ?? false;
+    $backupDirectory = carmaja_bootstrap_optional_path($config, 'backupDirectory');
+    $backupOffsiteTarget = carmaja_bootstrap_optional_string($config, 'backupOffsiteTarget');
+    $backupEncryptionKeyFile = carmaja_bootstrap_optional_path($config, 'backupEncryptionKeyFile');
+    $backupEncryptionKey = carmaja_bootstrap_optional_string($config, 'backupEncryptionKey');
+    $backupEncryptionKeyId = carmaja_bootstrap_optional_string($config, 'backupEncryptionKeyId');
     $stripeSecretKey = carmaja_bootstrap_optional_string($config, 'stripeSecretKey');
     $stripeWebhookSecret = carmaja_bootstrap_optional_string($config, 'stripeWebhookSecret');
     $stripeWebhookPayloadKey = carmaja_bootstrap_optional_string($config, 'stripeWebhookPayloadKey');
@@ -258,6 +281,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
 
     if (strlen($tokenPepper) < 32 || !is_bool($githubAdapterEnabled)
         || !is_bool($commerceRequireTls)
+        || !is_bool($commerceRestoreRequireTls)
         || ($stripePaymentMethodTypes !== null
             && (!is_array($stripePaymentMethodTypes)
                 || $stripePaymentMethodTypes !== ['card', 'paypal', 'klarna', 'sepa_debit']))
@@ -303,6 +327,23 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         );
     }
 
+    if ($publishTarget === 'production' && $githubTokenFile !== null) {
+        throw new CarmajaBootstrapException(
+            'production_github_token_forbidden',
+            'Produktionskonfiguration darf keinen Legacy-GitHub-Token referenzieren.'
+        );
+    }
+
+    if ($publishTarget === 'test'
+        && ($testPrivateDir === null
+            || $testApiWebroot === null
+            || $testWebsiteWebroot === null)) {
+        throw new CarmajaBootstrapException(
+            'test_paths_required',
+            'Testpfade sind nicht vollstÃ¤ndig konfiguriert.'
+        );
+    }
+
     if ($publishTarget === 'production'
         && ($productionPrivateDir === null
             || $productionApiWebroot === null
@@ -310,6 +351,15 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         throw new CarmajaBootstrapException(
             'production_paths_required',
             'Produktionspfade sind nicht vollständig konfiguriert.'
+        );
+    }
+
+    if ($publishTarget === 'production'
+        && carmaja_bootstrap_normalize_path($productPrivateDir)
+            === carmaja_bootstrap_normalize_path($privateDir)) {
+        throw new CarmajaBootstrapException(
+            'production_private_paths_not_separated',
+            'Produktdaten und Shop-Laufzeitdaten mÃ¼ssen getrennt bleiben.'
         );
     }
 
@@ -331,6 +381,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         $testApiWebroot,
         $testWebsiteWebroot,
         $productionPrivateDir,
+        $publishTarget === 'production' ? $productPrivateDir : null,
         $productionApiWebroot,
         $productionWebsiteWebroot,
     ], static fn (?string $path): bool => $path !== null);
@@ -368,7 +419,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         $productionWebsiteWebroot,
     ], static fn (?string $path): bool => $path !== null);
 
-    foreach ([$testPrivateDir, $productionPrivateDir] as $privatePath) {
+    foreach ([$testPrivateDir, $productionPrivateDir, $productPrivateDir] as $privatePath) {
         if ($privatePath === null) {
             continue;
         }
@@ -384,8 +435,12 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         }
     }
 
-    if (!carmaja_bootstrap_path_is_inside($usersFile, $privateDir)
+    if (!carmaja_bootstrap_path_is_inside($usersFile, $productPrivateDir)
         || !carmaja_bootstrap_path_is_inside($configFile, $privateDir)
+        || ($backupDirectory !== null
+            && !carmaja_bootstrap_path_is_inside($backupDirectory, $privateDir))
+        || ($backupEncryptionKeyFile !== null
+            && !carmaja_bootstrap_path_is_inside($backupEncryptionKeyFile, $privateDir))
         || ($githubTokenFile !== null
             && !carmaja_bootstrap_path_is_inside($githubTokenFile, $privateDir))) {
         throw new CarmajaBootstrapException(
@@ -399,6 +454,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'publishTarget' => $publishTarget,
         'productionPublishEnabled' => $productionPublishEnabled,
         'privateDir' => $privateDir,
+        'productPrivateDir' => $productPrivateDir,
         'testPrivateDir' => $testPrivateDir,
         'testApiWebroot' => $testApiWebroot,
         'testWebsiteWebroot' => $testWebsiteWebroot,
@@ -416,6 +472,16 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'commercePassword' => $commercePassword,
         'commerceTlsCaPath' => $commerceTlsCaPath,
         'commerceRequireTls' => $commerceRequireTls,
+        'commerceRestoreDsn' => $commerceRestoreDsn,
+        'commerceRestoreUser' => $commerceRestoreUser,
+        'commerceRestorePassword' => $commerceRestorePassword,
+        'commerceRestoreTlsCaPath' => $commerceRestoreTlsCaPath,
+        'commerceRestoreRequireTls' => $commerceRestoreRequireTls,
+        'backupDirectory' => $backupDirectory,
+        'backupOffsiteTarget' => $backupOffsiteTarget,
+        'backupEncryptionKeyFile' => $backupEncryptionKeyFile,
+        'backupEncryptionKey' => $backupEncryptionKey,
+        'backupEncryptionKeyId' => $backupEncryptionKeyId,
         'stripeSecretKey' => $stripeSecretKey,
         'stripeWebhookSecret' => $stripeWebhookSecret,
         'stripeWebhookPayloadKey' => $stripeWebhookPayloadKey,
@@ -491,9 +557,12 @@ function carmaja_bootstrap_apply_config(array $config): void
         'CARMAJA_PUBLISH_TARGET' => $config['publishTarget'],
         'CARMAJA_PRODUCTION_PUBLISH_ENABLED' =>
             $config['productionPublishEnabled'] ? 'true' : 'false',
-        'CARMAJA_PRIVATE_DIR' => $config['privateDir'],
+        'CARMAJA_RUNTIME_PRIVATE_DIR' => $config['privateDir'],
+        'CARMAJA_PRIVATE_DIR' => $config['productPrivateDir'],
         'CARMAJA_TEST_PRIVATE_DIR' => $config['testPrivateDir'],
-        'CARMAJA_PRODUCTION_PRIVATE_DIR' => $config['productionPrivateDir'],
+        'CARMAJA_PRODUCTION_PRIVATE_DIR' => $config['publishTarget'] === 'production'
+            ? $config['productPrivateDir']
+            : $config['productionPrivateDir'],
         'CARMAJA_PUBLIC_WEBROOT' => $config['publishTarget'] === 'test'
             ? $config['testApiWebroot']
             : $config['productionApiWebroot'],

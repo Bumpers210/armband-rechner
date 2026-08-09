@@ -49,7 +49,24 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und vier Zahlungsa
   assert.equal(cutover.legalBundle.legalBundleId, deployment.shop.legalBundleId);
   assert.match(runtime, /cmj-production-legal-2026-08-07-v3/);
   assert.equal(deployment.paths.worker, "/home/www/carmaja-private-shop/worker.php");
+  assert.equal(deployment.paths.backupCli, "/home/www/carmaja-private-shop/backup.php");
+  assert.equal(deployment.paths.backupDirectory, "/home/www/carmaja-private-shop/backups");
+  assert.equal(deployment.paths.websiteWebroot, "/home/www/carmaja");
+  assert.equal(deployment.paths.apiWebroot, "/home/www/carmaja-production-api");
+  assert.equal(deployment.paths.productPrivateRoot, "/home/www/carmaja-private-production");
+  assert.equal(deployment.paths.shopPrivateRoot, "/home/www/carmaja-private-shop");
+  assert.match(runtime, /'productPrivateDir'\s*=>\s*'\/home\/www\/carmaja-private-production'/);
+  assert.match(runtime, /'productionApiWebroot'\s*=>\s*'\/home\/www\/carmaja-production-api'/);
+  assert.match(runtime, /'productionWebsiteWebroot'\s*=>\s*'\/home\/www\/carmaja'/);
+  assert.doesNotMatch(runtime, /carmaja-shop-api|carmaja-site|carmaja-private-test|githubTokenFile/);
+  assert.match(runtime, /'commerceRestoreRequireTls'\s*=>\s*true/);
+  assert.match(runtime, /'backupDirectory'\s*=>\s*'\/home\/www\/carmaja-private-shop\/backups'/);
+  assert.match(runtime, /'backupOffsiteTarget'\s*=>\s*'onedrive-pull:\/\/carmaja-production\/Carmaja-Perlen\/Backups'/);
+  assert.equal(deployment.guards.publisherEnabled, false);
+  assert.equal(deployment.guards.automaticApiDeployment, false);
+  assert.equal(deployment.guards.automaticWebsiteDeployment, false);
   assert.equal(deployment.runtime.cron, "*/5 * * * *");
+  assert.equal(deployment.runtime.backupCron, "17 * * * *");
   assert.equal(
     deployment.runtime.workerCommand,
     "/usr/bin/php8.4 /home/www/carmaja-private-shop/worker.php /home/www/carmaja-private-shop/config/runtime-config.php",

@@ -11,7 +11,12 @@ werden nach `/home/www/carmaja-private-shop/program`, der CLI-Worker nach
 `/home/www/carmaja-private-shop/worker.php` und die ausschließlich private
 Laufzeitkonfiguration nach
 `/home/www/carmaja-private-shop/config/runtime-config.php` bereitgestellt.
-Der öffentliche API-Webroot ist `/home/www/carmaja-shop-api`.
+Produktdaten verbleiben getrennt unter `/home/www/carmaja-private-production`.
+Website und öffentliche API verwenden ausschließlich die bestehenden Webroots
+`/home/www/carmaja` und `/home/www/carmaja-production-api`. Produkt-API und
+Shop-API teilen diesen API-Webroot; die Shop-Routen liegen unter
+`https://api.carmaja-perlen.de/shop/v1`. Ein zweiter Shop-API-Webroot ist
+unzulässig.
 
 Der Produktionsworker wird ausschließlich so gestartet:
 
@@ -21,6 +26,23 @@ Der Produktionsworker wird ausschließlich so gestartet:
 
 Der IONOS-UnixCron verwendet `*/5 * * * *`. Laufzeitkonfiguration,
 Zugangsdaten, Logs, Datenbankdumps und Backups sind niemals Deploymentinhalt.
+Der aktive Produktionsvertrag enthält keine GitHub-Tokenreferenz. Publisher,
+API-, Website- und sonstige automatische Deployments bleiben bis zu ihrer
+jeweiligen separaten Freigabe deaktiviert und fail-closed.
+
+Der davon getrennte private Backupdienst liegt unter
+`/home/www/carmaja-private-shop/backup.php` und besitzt keine HTTP-Route. Sein
+separater UnixCron läuft stündlich um Minute 17 mit maximal 40 Sekunden:
+
+```text
+17 * * * *
+/usr/bin/php8.4 /home/www/carmaja-private-shop/backup.php create /home/www/carmaja-private-shop/config/runtime-config.php
+```
+
+Verschlüsselte Backups liegen unter
+`/home/www/carmaja-private-shop/backups`; der Offsite-Vertrag ist
+`onedrive-pull://carmaja-production/Carmaja-Perlen/Backups`. Details und
+Aktivierungsreihenfolge stehen in `website/docs/production-backup-onedrive.md`.
 
 ## 2. Getrennte Freigaben
 
@@ -44,7 +66,8 @@ ausgeschlossen.
 ## 3. Reihenfolge und Stop-Grenzen
 
 1. Produktionssecrets und Zielidentitäten nur auf Vorhandensein prüfen.
-2. MySQL-Backup erzeugen, getrennt speichern und Restoretest nachweisen.
+2. Verschlüsseltes Produkt- und MySQL-Backup erzeugen, per geprüftem
+   OneDrive-Pull offsite speichern und Restoretest nachweisen.
 3. Schema-Migrationsmanifest und Dateihashes prüfen.
 4. Private API-/Worker-Artefakte im Staging prüfen; noch nicht aktivieren.
 5. Website-Artefakt im Staging prüfen; noch nicht aktivieren.
