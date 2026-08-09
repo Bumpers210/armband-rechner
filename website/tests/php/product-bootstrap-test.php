@@ -220,13 +220,14 @@ carmaja_bootstrap_test(
     'Produktionskonfiguration darf main nur ohne automatischen GitHub-Adapter referenzieren',
     static function (): void {
         $fixture = carmaja_bootstrap_test_fixture();
-        $productionPrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-private';
+        $productionPrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-runtime-private';
+        $productionProductPrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-product-private';
         $productionApi = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-api';
         $productionWebsite = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-site';
-        foreach ([$productionPrivate, $productionApi, $productionWebsite] as $directory) {
+        foreach ([$productionPrivate, $productionProductPrivate, $productionApi, $productionWebsite] as $directory) {
             mkdir($directory, 0750, true);
         }
-        $productionAuth = $productionPrivate . DIRECTORY_SEPARATOR . 'auth';
+        $productionAuth = $productionProductPrivate . DIRECTORY_SEPARATOR . 'auth';
         $productionConfigDirectory = $productionPrivate . DIRECTORY_SEPARATOR . 'config';
         mkdir($productionAuth, 0750, true);
         mkdir($productionConfigDirectory, 0750, true);
@@ -237,15 +238,72 @@ carmaja_bootstrap_test(
         $config['environment'] = 'production';
         $config['publishTarget'] = 'production';
         $config['privateDir'] = $productionPrivate;
+        $config['productPrivateDir'] = $productionProductPrivate;
+        unset($config['testPrivateDir'], $config['testApiWebroot'], $config['testWebsiteWebroot']);
         $config['productionPrivateDir'] = $productionPrivate;
         $config['productionApiWebroot'] = $productionApi;
         $config['productionWebsiteWebroot'] = $productionWebsite;
         $config['usersFile'] = $productionUsers;
+        $config['backupEncryptionKeyFile'] = $productionConfigDirectory
+            . DIRECTORY_SEPARATOR
+            . 'backup-key.php';
         $config['githubBranch'] = 'main';
         carmaja_bootstrap_test_write_config($productionConfig, $config);
         $loaded = carmaja_bootstrap_load_config($productionConfig);
         carmaja_bootstrap_test_same('main', $loaded['githubBranch'], 'Main-Referenz fehlt.');
         carmaja_bootstrap_test_same(false, $loaded['githubAdapterEnabled'], 'GitHub-Adapter muss deaktiviert bleiben.');
+        carmaja_bootstrap_test_same(
+            $productionProductPrivate,
+            $loaded['productPrivateDir'],
+            'Produktdatenpfad wurde nicht getrennt geladen.'
+        );
+        carmaja_bootstrap_test_same(
+            $config['backupEncryptionKeyFile'],
+            $loaded['backupEncryptionKeyFile'],
+            'Private Backup-Schlüsseldatei wurde nicht geladen.'
+        );
+    }
+);
+
+carmaja_bootstrap_test(
+    'Produktionskonfiguration lehnt Legacy-GitHub-Token ab',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $runtimePrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-runtime-private';
+        $productPrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-product-private';
+        $apiWebroot = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-api';
+        $websiteWebroot = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-site';
+        foreach ([$runtimePrivate, $productPrivate, $apiWebroot, $websiteWebroot] as $directory) {
+            mkdir($directory, 0750, true);
+        }
+        mkdir($runtimePrivate . DIRECTORY_SEPARATOR . 'config', 0750, true);
+        mkdir($productPrivate . DIRECTORY_SEPARATOR . 'auth', 0750, true);
+        $usersFile = $productPrivate . DIRECTORY_SEPARATOR . 'auth' . DIRECTORY_SEPARATOR . 'api-users.json';
+        file_put_contents($usersFile, '{"environment":"production","users":[]}');
+        $tokenFile = $runtimePrivate . DIRECTORY_SEPARATOR . 'github-token';
+        file_put_contents($tokenFile, 'legacy-token-placeholder');
+        $configFile = $runtimePrivate . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'runtime-config.php';
+        $config = [
+            'environment' => 'production',
+            'publishTarget' => 'production',
+            'productionPublishEnabled' => false,
+            'privateDir' => $runtimePrivate,
+            'productPrivateDir' => $productPrivate,
+            'productionPrivateDir' => $runtimePrivate,
+            'productionApiWebroot' => $apiWebroot,
+            'productionWebsiteWebroot' => $websiteWebroot,
+            'usersFile' => $usersFile,
+            'tokenPepper' => str_repeat('p', 48),
+            'githubAdapterEnabled' => false,
+            'githubBranch' => 'main',
+            'githubTokenFile' => $tokenFile,
+        ];
+        carmaja_bootstrap_test_write_config($configFile, $config);
+
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config($configFile),
+            'production_github_token_forbidden'
+        );
     }
 );
 

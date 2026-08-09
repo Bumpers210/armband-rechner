@@ -119,14 +119,22 @@ Fehlersichtbarkeit.
 
 ## 8. Backup und Restore
 
-- [ ] Unmittelbar vor Migration vollständiges Produkt- und Commerce-Backup
-  erstellen.
-- [ ] Datenbankdump verschlüsseln, Prüfsumme und Key-ID speichern und an das
-  getrennte Offsite-Ziel übertragen.
+- [ ] OneDrive über den vorgesehenen Microsoft-Ablauf vollständig auf
+  `D:\Carmaja-OneDrive` umziehen; `D:\Carmaja-Perlen` bleibt unsynchronisiert.
+- [ ] 32-Byte-Backupschlüssel lokal erzeugen, im Passwortmanager und getrennt
+  offline sichern; private Serverdatei und Runtime mit Modus `0600` prüfen.
+- [ ] Stündlichen privaten Backupdienst (`17 * * * *`) und 30-minütigen
+  Windows-Pull ohne HTTP-Route nachweisen.
+- [ ] Unmittelbar vor Migration vollständiges verschlüsseltes Produkt- und
+  Commerce-Backup erstellen.
+- [ ] Dateigrößen, SHA-256, Manifest-HMAC, Key-ID, atomare OneDrive-Ablage und
+  Sichtbarkeit in OneDrive Web prüfen; erst danach Download quittieren.
 - [ ] Restore-Dry-Run in ein isoliertes Ziel durchführen; Struktur, Inhalt und
   Prüfsummen vergleichen.
-- [ ] RPO, RTO, Aufbewahrung, Alarmierung und Zugriff einer dokumentierten
-  Notfallperson bestätigen.
+- [ ] Server-RPO 1 Stunde, Offsite-RPO bis 24 Stunden, RTO 4 Stunden,
+  Serverrotation 7 Tage sowie OneDrive-Rotation 48/30/12 bestätigen.
+- [ ] Alarm nach 90 Minuten ohne Serverbackup und nach 24 Stunden ohne
+  bestätigten Download sowie Zugriff der dokumentierten Notfallperson prüfen.
 
 **Stop:** fehlendes Backup, fehlende Entschlüsselbarkeit oder nicht
 bestandener Restore.
@@ -135,7 +143,9 @@ bestandener Restore.
 
 - [ ] Private Programme nach `/home/www/carmaja-private-shop/program`, Worker
   nach `/home/www/carmaja-private-shop/worker.php` und öffentlichen Einstieg
-  nach `/home/www/carmaja-shop-api` staged bereitstellen.
+  in den bestehenden Webroot `/home/www/carmaja-production-api` staged
+  bereitstellen. Die Shop-API bleibt unter `/shop/v1`; ein zweiter
+  öffentlicher API-Webroot ist ausgeschlossen.
 - [ ] Release-SHA und alle Artefakthashes vor atomarer Aktivierung prüfen.
 - [ ] Öffentlicher Einstieg darf nur den privaten Produktions-Bootstrap laden;
   keine Testpfade oder Runtime-Konfiguration im Webroot.
@@ -159,6 +169,8 @@ bestandener Restore.
 - [ ] Alarm für ausbleibenden erfolgreichen Lauf, dauerhafte Outboxfehler,
   Reviewcases, Webhookrückstand und knappen Speicher aktivieren.
 - [ ] Manuellen privaten Notlauf und Stripe-Abgleich dokumentieren.
+- [ ] Den separaten Backup-Cron `17 * * * *` und `backup status` ohne Secrets
+  prüfen; Worker- und Backup-Cron dürfen sich nicht gegenseitig ersetzen.
 
 **Stop:** kein echter Schedulernachweis oder fehlendes Monitoring.
 

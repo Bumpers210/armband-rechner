@@ -3,21 +3,33 @@
   "environment": "production",
   "sourceCommit": "runtime-selected-and-verified",
   "paths": {
+    "websiteWebroot": "/home/www/carmaja",
+    "apiWebroot": "/home/www/carmaja-production-api",
+    "productPrivateRoot": "/home/www/carmaja-private-production",
+    "shopPrivateRoot": "/home/www/carmaja-private-shop",
     "privateRoot": "/home/www/carmaja-private-shop",
     "programRoot": "/home/www/carmaja-private-shop/program",
     "runtimeConfig": "/home/www/carmaja-private-shop/config/runtime-config.php",
     "worker": "/home/www/carmaja-private-shop/worker.php",
-    "apiWebroot": "/home/www/carmaja-shop-api"
+    "backupCli": "/home/www/carmaja-private-shop/backup.php",
+    "backupDirectory": "/home/www/carmaja-private-shop/backups",
+    "backupKeyFile": "/home/www/carmaja-private-shop/config/backup-key.php"
   },
   "sources": {
     "privateProgram": "website/test-api-private/program",
     "privateWorker": "website/test-api-private/worker.php",
+    "privateBackupCli": "website/test-api-private/backup.php",
     "publicApi": "website/production-shop-api-public"
   },
   "runtime": {
     "phpCli": "/usr/bin/php8.4",
     "cron": "*/5 * * * *",
-    "workerCommand": "/usr/bin/php8.4 /home/www/carmaja-private-shop/worker.php /home/www/carmaja-private-shop/config/runtime-config.php"
+    "workerCommand": "/usr/bin/php8.4 /home/www/carmaja-private-shop/worker.php /home/www/carmaja-private-shop/config/runtime-config.php",
+    "backupCron": "17 * * * *",
+    "backupCommand": "/usr/bin/php8.4 /home/www/carmaja-private-shop/backup.php create /home/www/carmaja-private-shop/config/runtime-config.php",
+    "backupOffsiteTarget": "onedrive-pull://carmaja-production/Carmaja-Perlen/Backups",
+    "backupServerRetentionDays": 7,
+    "backupExecutionLimitSeconds": 40
   },
   "shop": {
     "paymentMethodTypes": ["card", "paypal", "klarna", "sepa_debit"],
@@ -32,6 +44,9 @@
     "copyRuntimeConfig": false,
     "copyCredentials": false,
     "automaticActivation": false,
-    "productionDataAccess": false
+    "productionDataAccess": false,
+    "publisherEnabled": false,
+    "automaticApiDeployment": false,
+    "automaticWebsiteDeployment": false
   }
 }

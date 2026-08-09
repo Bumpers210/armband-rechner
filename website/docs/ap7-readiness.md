@@ -178,6 +178,14 @@ sind nicht freigegeben und wurden nicht begonnen.
   Windows-Sandbox waren die neun bekannten Bash-/CRLF-Fälle sowie ein
   temporärer Export-Schreibtest nicht lokal ausführbar. Die Linux-PR-CI bleibt
   der verbindliche Vollnachweis.
+- AP7.7a Backup-E2E: Der private Backupdienst wurde mit zwei getrennten,
+  anfangs leeren MySQL-8-Testdatenbanken und ausschließlich künstlichen Daten
+  auf IONOS nachgewiesen. Aktive TLS-Sitzungen, Secretstream-Verschlüsselung,
+  HMAC-Manifest, Lock, Dump/Restore, semantischer Schema-/Inhaltsvergleich,
+  idempotente Quittierung und Status bestanden. Beide Testdatenbanken sowie
+  Runtime, Programme, Backupverzeichnisse und lokaler DPAPI-Cache wurden
+  vollständig bereinigt. OneDrive-Pull und Produktions-Restore bleiben eigene
+  Gates.
 
 ## Verbleibende Produktionsgates
 
@@ -201,9 +209,12 @@ sind nicht freigegeben und wurden nicht begonnen.
 6. Stripe-Livekonto, Webhook, Payload-Schlüssel, Terms-URL, vier
    Zahlungsarten und alle deaktivierten Checkout-Optionen verifizieren;
    Brevo-Liveabsender und -Zugang getrennt verifizieren.
-7. Verschlüsseltes Offsite-Backup samt Schlüsselzugriff und Restore-Dry-Run
-   nachweisen. Danach UnixCron `*/5` einrichten, zwei Läufe und Monitoring
-   prüfen.
+7. OneDrive kontrolliert nach `D:\Carmaja-OneDrive` verschieben, den lokal
+   erzeugten 32-Byte-Schlüssel in Passwortmanager und Offlinekopie sichern,
+   den privaten stündlichen Backup-Cron sowie den 30-minütigen Windows-Pull
+   abnehmen und die verschlüsselten Archive in OneDrive Web nachweisen. Danach
+   den Restore-Dry-Run vollständig bestehen. Erst anschließend UnixCron `*/5`
+   für den Shopworker einrichten, zwei Läufe und Monitoring prüfen.
 8. Unmittelbar vor dem Cutover Wartungs-/Stopmodus aktivieren, vollständiges
    Produkt- und Commerce-Backup erstellen, Datenbankmigrationen prüfen und
    alte `stock`-Schreibwege sperren.
