@@ -1,6 +1,6 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
-Stand: 2026-08-08
+Stand: 2026-08-09
 Änderungsvermerk: AP1, AP2, AP2a, AP3, AP4 und AP5 sind abgeschlossen und
 abgenommen. AP3b ist für `card`, `paypal`, `klarna` und `sepa_debit` technisch
 vollständig abgenommen; die AP6-Gesamtregression wurde danach erfolgreich
@@ -16,7 +16,9 @@ hat den vollständigen V2-Kettenstand einschließlich AP7.3d kontrolliert in den
 AP7-Integrationsbranch übernommen. AP7.3g hat die vollständige private
 Test-Shop-Laufzeit und den End-to-End-Betrieb mit allen vier Zahlungsarten,
 Worker, Brevo und öffentlichem Widerruf nachgewiesen und anschließend
-bereinigt. AP7 und jede Produktionsmutation bleiben nicht freigegeben.
+bereinigt. AP7.5 hat den getesteten Produktvertrag V2 in das manuell gegatete
+Produktions-API-Artefakt übernommen und lokal verifiziert. AP7 und jede
+Produktionsmutation bleiben nicht freigegeben.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
@@ -544,6 +546,31 @@ AP7.3g-Konfiguration und Testartefakte entfernt. Das reale Test-Armband blieb
 erhalten; Testwebsite und Test-API wurden fail-closed hinterlassen. Produktion,
 `main`, Produktivdaten und produktive Providerkonfiguration blieben unverändert.
 
+### AP7.5 – produktionsfähiges V2-Produkt-API-Artefakt
+
+AP7.5 bindet den in AP7.3b nachgewiesenen `product-api-v2.php`-Vertrag an den
+privaten Produktions-Bootstrap und dessen `/v2`-Routing. Das manuelle,
+SHA-gepinnte Produktions-API-Artefakt enthält dadurch V1 und V2, aber keine
+Shopprogramme, Runtime-Konfiguration, Secrets oder Testpfade. Die bestehende
+Legacy-Routenführung bleibt unverändert.
+
+Publisher, GitHub-Adapter und automatische Deployments bleiben standardmäßig
+deaktiviert. Ein V2-Publish wird bei ausgeschaltetem Produktionspublisher vor
+jeder Produktmutation mit `production_publish_disabled` abgelehnt. Die
+Artefakt-Allowlist erwartet exakt sieben Dateien; Staging und Aktivierung
+prüfen V2-Datei, PHP-8.4-Syntax, Dateizahl und den Ausschluss bekannter
+Testpfade.
+
+Lokal bestanden sind die PHP-8.4-Lints aller elf produktiven API-/Testdateien,
+Product-API 47/47, Bootstrap 10/10, AP7-Vertrag 7/7,
+Produktions-Bootstrap, Produktions-Admin, der neue produktive V2-Test, beide
+Workflow-Vertragstests, `npm run lint:test`, Artefakt-Allowlist, SHA-256 und
+`git diff --check`. Der vollständige Node-Lauf zeigte keine neue fachliche
+Regression; die bereits dokumentierten Windows-Bash-/CRLF-Fälle und ein durch
+die eingeschränkte Sandbox blockierter temporärer Export bleiben Aufgaben des
+Linux-PR-CI-Nachweises. Weder Deployment noch Produktionszugriff,
+V2-Migration, Produktanlage oder Cutover wurden ausgeführt.
+
 ## 5. Meilensteine und kritischer Pfad
 
 | Meilenstein | Stand | Nachweis |
@@ -567,6 +594,7 @@ erhalten; Testwebsite und Test-API wurden fail-closed hinterlassen. Produktion,
 | AP7.3d | V2-Testwebsite verifiziert | V2-Testprodukt sichtbar und nicht kaufbar; Test-API, Produktdetail, Bilder, Legal-Seiten und Verkaufskanalgrenze live geprüft; Produktion unverändert |
 | AP7.3e | AP7-Integrationsstand bereit | V2-Kette einschließlich AP7.3d übernommen; App-, PHP-, Node-, Test-/Produktionsbuild-, Export- und Geheimwertregression bestanden |
 | AP7.3g | Testumgebung vollständig AP7-fähig | vollständige private Testlaufzeit, vier Zahlungsarten, Webhooks, Worker/Cron, Bestellung, Brevo, Widerruf, Legal-Snapshot, Admin/Review und Cleanup nachgewiesen |
+| AP7.5 | produktives V2-API-Artefakt lokal bereit | produktiver Bootstrap und `/v2`-Router, fail-closed Publisher, Sieben-Dateien-Allowlist, PHP-/Node-/Artefaktnachweise bestanden; kein Deployment |
 
 Kritischer Pfad bis zur AP6-Abnahme: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5
 → AP2a → AP3 → AP4 → AP5 → AP3b → AP6. Dieser Pfad ist abgeschlossen. Der
@@ -656,6 +684,7 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP7.3d | V2-Testwebsite serverseitig verifiziert; keine Produktionsfreigabe |
 | AP7.3e | AP7-Integrationsstand technisch bereit; Startprodukt und Produktionsgates ausstehend |
 | AP7.3g | Testumgebung vollständig AP7-fähig und bereinigt; keine Produktionsfreigabe |
+| AP7.5 | produktionsfähiges V2-Produkt-API-Artefakt lokal bereit; PR-/CI-Nachweis und Produktionsfreigabe getrennt |
 | AP7 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 

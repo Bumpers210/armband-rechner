@@ -1,6 +1,6 @@
 # AP7.0 – lokale Produktionsbereitschaft
 
-Stand: 2026-08-08
+Stand: 2026-08-09
 
 Basis: AP6-Commit `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`
 
@@ -30,12 +30,14 @@ geschützten V2-Testwebsite-Stand serverseitig verifiziert; AP7.3e hat die
 vollständige V2-Kette anschließend konfliktfrei in den AP7-Integrationsbranch
 übernommen und vollständig regressionsgeprüft. AP7.3g hat danach die private
 Test-Shop-Laufzeit einschließlich aller vier Zahlungsarten, Webhooks, Worker,
-Brevo, Widerruf und IONOS-UnixCron vollständig nachgewiesen und bereinigt. Der
-AP7-Integrationsstand und die Testumgebung sind technisch bereit. Der Release
-Candidate bleibt bis zur Anlage genau eines
+Brevo, Widerruf und IONOS-UnixCron vollständig nachgewiesen und bereinigt.
+AP7.5 bindet den getesteten Produktvertrag V2 nun auch an das ausschließlich
+manuell ausführbare Produktions-API-Artefakt; Publisher und automatische
+Deployments bleiben gesperrt. Der AP7-Integrationsstand und die Testumgebung
+sind technisch bereit. Der Release Candidate bleibt bis zur Anlage genau eines
 geeigneten realen v2-Startprodukts und bis zur Erfüllung der Produktionsgates
-nicht produktionsbereit. AP7, Produktion, Cutover, Push, Merge und
-Produktionsdeployment sind nicht freigegeben und wurden nicht begonnen.
+nicht produktionsbereit. Merge, Produktion, Cutover und Produktionsdeployment
+sind nicht freigegeben und wurden nicht begonnen.
 
 ## Geschlossene lokale Blocker
 
@@ -44,6 +46,11 @@ Produktionsdeployment sind nicht freigegeben und wurden nicht begonnen.
 - Der öffentliche Produktions-API-Einstieg lädt ausschließlich einen explizit
   gesetzten privaten Bootstrap außerhalb seines Webroots und besitzt keinen
   Testpfad-Fallback.
+- Das private Produktions-API-Artefakt enthält den getesteten
+  `product-api-v2.php`-Vertrag. Der Produktions-Bootstrap routet `/v2`, ohne
+  Shopprogramme oder Testkonfiguration einzubinden. Bei deaktiviertem
+  Produktionspublisher wird ein V2-Publish vor jeder Produktmutation mit
+  `production_publish_disabled` abgelehnt.
 - Der Deploymentvertrag trennt statische Website, öffentlichen API-Webroot,
   privates Programm, private Konfiguration und Worker. Der endgültige private
   Workerpfad ist `/home/www/carmaja-private-shop/worker.php`; UnixCron startet
@@ -160,11 +167,23 @@ Produktionsdeployment sind nicht freigegeben und wurden nicht begonnen.
   Geheimwertprüfung und `git diff --check` bestanden. Der vollständige
   Node-Lauf bestand 122/131 Fälle und reproduzierte ausschließlich die neun
   bereits dokumentierten CRLF-/Bash-Basisfehler.
+- AP7.5 Produktionsartefakt: 11 produktive PHP-Dateien wurden mit PHP 8.4.23
+  gelintet. Product-API 47/47, Bootstrap 10/10, AP7-Vertrag 7/7 sowie
+  Produktions-Bootstrap, Produktions-Admin und der neue produktive
+  V2-Vertrag sind bestanden. Die zwei Workflow-Vertragstests und
+  `npm run lint:test` sind bestanden. Eine lokale Artefaktsimulation enthielt
+  exakt sieben erlaubte Dateien, keine Runtime-/Secretdatei und keinen
+  Testpfad; SHA-256-Prüfung und Cleanup waren erfolgreich. Der vollständige
+  Node-Lauf blieb fachlich unverändert; unter der eingeschränkten
+  Windows-Sandbox waren die neun bekannten Bash-/CRLF-Fälle sowie ein
+  temporärer Export-Schreibtest nicht lokal ausführbar. Die Linux-PR-CI bleibt
+  der verbindliche Vollnachweis.
 
 ## Verbleibende Produktionsgates
 
-1. AP7 ausdrücklich schriftlich freigeben und den lokalen Stand kontrolliert
-   prüfen, committen, pushen und über den vorgesehenen Reviewweg übernehmen.
+1. Den AP7.5-Stand über PR #38 vollständig prüfen und erst nach gesonderter
+   Freigabe nach `main` übernehmen. Kein PR- oder Branchereignis deployt die
+   Produktions-API automatisch.
 2. Alle parallelen externen Verkaufsangebote nachweislich deaktivieren oder
    löschen; der eigene Shop bleibt der einzige Verkaufskanal.
 3. Genau ein reales Unikat über die nun nachgewiesene V2-Produktkette vollständig

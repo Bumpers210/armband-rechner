@@ -70,6 +70,7 @@ jobs:
           php website/production-api-tests/production-bootstrap-test.php
           php website/production-api-tests/production-admin-test.php
           php website/production-api-tests/production-api-test.php
+          php website/production-api-tests/production-v2-api-test.php
 
       - name: Build verified API artifact without runtime configuration
         id: package
@@ -81,7 +82,9 @@ jobs:
           mkdir -p "$package_root/private/program" "$package_root/public"
           cp website/production-api-private/program/*.php "$package_root/private/program/"
           cp website/production-api-public/index.php "$package_root/public/index.php"
+          test -f "$package_root/private/program/product-api-v2.php"
           ! find "$package_root" -type f \( -name 'runtime-config.php' -o -name 'github-token' -o -name '*.secret' \) -print -quit | grep -q .
+          ! grep -R -E 'carmaja-private-test|test-api\.carmaja-perlen\.de|test/product-management-beta' "$package_root"
           find "$package_root" -type f -print0 | sort -z | xargs -0 sha256sum > .production-api-deploy-package/manifest.sha256
           tar -C "$package_root" -czf .production-api-deploy-package/product-api.tar.gz .
           archive_sha256="$(sha256sum .production-api-deploy-package/product-api.tar.gz | awk '{print $1}')"
@@ -218,7 +221,7 @@ jobs:
           )
           test "$(sha256sum .production-api-deploy-package/product-api.tar.gz | awk '{print $1}')" = "${{ needs.build-production-api.outputs.archive-sha256 }}"
           tar -tzf .production-api-deploy-package/product-api.tar.gz | sort > .production-api-deploy-package/archive-paths.txt
-          diff -u <(printf '%s\n' ./ ./private/ ./private/program/ ./private/program/bootstrap.php ./private/program/product-admin.php ./private/program/product-api-diagnostics.php ./private/program/product-api.php ./private/program/product-maintenance.php ./public/ ./public/index.php | sort) .production-api-deploy-package/archive-paths.txt
+          diff -u <(printf '%s\n' ./ ./private/ ./private/program/ ./private/program/bootstrap.php ./private/program/product-admin.php ./private/program/product-api-diagnostics.php ./private/program/product-api-v2.php ./private/program/product-api.php ./private/program/product-maintenance.php ./public/ ./public/index.php | sort) .production-api-deploy-package/archive-paths.txt
           printf '%s\n' 'PRODUCTION_API_DEPLOY_GUARD_OK=artifact-and-inputs'
 
       - name: Prepare pinned SSH client
@@ -362,8 +365,13 @@ jobs:
             mkdir "$stage" "$release" "$backup"
             tar -xzf "$archive" -C "$stage" >/dev/null 2>&1 || fail
             test -f "$stage/private/program/bootstrap.php" || fail
+            test -f "$stage/private/program/product-api-v2.php" || fail
             test -f "$stage/public/index.php" || fail
-            test "$(find "$stage" -type f | wc -l)" -eq 6 || fail
+            test "$(find "$stage" -type f | wc -l)" -eq 7 || fail
+            if grep -R -E 'carmaja-private-test|test-api\.carmaja-perlen\.de|test/product-management-beta' "$stage" >/dev/null 2>&1; then
+              fail
+            fi
+            /usr/bin/php8.4 -l "$stage/private/program/product-api-v2.php" >/dev/null 2>&1 || fail
             cp "$manifest" "$release/manifest.sha256"
             cp "$archive" "$release/product-api.tar.gz"
             cp "$checksum" "$release/product-api.tar.gz.sha256"
