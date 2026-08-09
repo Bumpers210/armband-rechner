@@ -123,6 +123,20 @@ jobs:
       - name: Build and verify production export
         run: npm run build
 
+      - name: Exclude separately managed production hosting files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(realpath out)" = "$GITHUB_WORKSPACE/website/out"
+          rm -rf -- \
+            out/.htaccess \
+            out/.htaccess.publish.example \
+            out/click.php \
+            out/pageview.php \
+            out/_internal \
+            out/private-data \
+            out/statistik
+
       - name: Bind release to workflow commit
         id: release
         shell: bash

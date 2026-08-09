@@ -29,6 +29,16 @@ test("Produktionsworkflow trennt PR-Builds von einem expliziten manuellen Produk
   assert.match(buildSection, /Scan sources and create production deployment manifest/);
   assert.match(buildSection, /Package only verified production export/);
   assert.match(buildSection, /Upload verified production deployment artifact/);
+  assert.match(buildSection, /Exclude separately managed production hosting files/);
+  assert.match(buildSection, /test "\$\(realpath out\)" = "\$GITHUB_WORKSPACE\/website\/out"/);
+  assert.match(buildSection, /out\/\.htaccess/);
+  assert.match(buildSection, /out\/_internal/);
+  assert.match(buildSection, /out\/private-data/);
+  assert.match(buildSection, /out\/statistik/);
+  assert.ok(
+    buildSection.indexOf("Exclude separately managed production hosting files") <
+      buildSection.indexOf("Scan sources and create production deployment manifest"),
+  );
   assert.match(buildSection, /CARMAJA_PULL_REQUEST_BASE_REPOSITORY/);
   assert.match(buildSection, /CARMAJA_PULL_REQUEST_HEAD_REPOSITORY/);
   assert.match(buildSection, /CARMAJA_MANIFEST_SOURCE_BRANCH: \$\{\{ github\.event_name == 'pull_request' && github\.base_ref \|\| github\.ref_name \}\}/);
