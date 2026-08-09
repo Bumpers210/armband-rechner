@@ -144,6 +144,29 @@ try {
     production_bootstrap_assert(is_string($runtime) && str_contains($runtime, "'githubBranch' => 'main'"), 'Fester Produktionsbranch fehlt.');
     $diagnostics = file_get_contents(dirname(__DIR__) . '/production-api-private/program/product-api.php');
     production_bootstrap_assert(is_string($diagnostics) && str_contains($diagnostics, 'PHP_MAJOR_VERSION !== 8 || PHP_MINOR_VERSION !== 4'), 'PHP-8.4-Diagnose fehlt.');
+    $bootstrapSource = file_get_contents(
+        dirname(__DIR__) . '/production-api-private/program/bootstrap.php'
+    );
+    production_bootstrap_assert(
+        is_string($bootstrapSource)
+            && str_contains($bootstrapSource, "require_once __DIR__ . '/product-api-v2.php'")
+            && str_contains($bootstrapSource, "(\$segments[0] ?? null) === 'v2'"),
+        'Produktions-Bootstrap bindet den v2-Router nicht ein.'
+    );
+    file_put_contents(
+        $fixture['configFile'],
+        "<?php return " . var_export($fixture['config'], true) . ";\n"
+    );
+    $prepared = carmaja_bootstrap_prepare($fixture['configFile']);
+    production_bootstrap_assert(
+        $prepared['publishTarget'] === 'production'
+            && function_exists('carmaja_api_v2_put_product'),
+        'Produktions-Bootstrap stellt den v2-Produktvertrag nicht bereit.'
+    );
+    production_bootstrap_assert(
+        !isset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2']),
+        'v2-Publisher muss im sicheren Standard deaktiviert bleiben.'
+    );
     echo "production-bootstrap: OK\n";
 } finally {
     production_bootstrap_remove_tree($fixture['root']);

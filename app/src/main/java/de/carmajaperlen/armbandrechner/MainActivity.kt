@@ -48,7 +48,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -110,14 +113,14 @@ class MainActivity : ComponentActivity() {
                             value,
                         )
                     },
-                    onBraceletSizeChange = { value ->
+                    onBraceletSizeCmChange = { value ->
                         productViewModel.updateSelectedEditor(
-                            ProductEditorField.BraceletSize,
+                            ProductEditorField.BraceletSizeCm,
                             value,
                         )
                     },
-                    onStockChange = { value ->
-                        productViewModel.updateSelectedEditor(ProductEditorField.Stock, value)
+                    onPearlSizeMmChange = { value ->
+                        productViewModel.updateSelectedEditor(ProductEditorField.PearlSizeMm, value)
                     },
                     onShortDescriptionChange = { value ->
                         productViewModel.updateSelectedEditor(
@@ -125,18 +128,13 @@ class MainActivity : ComponentActivity() {
                             value,
                         )
                     },
-                    onVintedUrlChange = { value ->
-                        productViewModel.updateSelectedEditor(
-                            ProductEditorField.VintedUrl,
-                            value,
-                        )
+                    onPriceChange = { value ->
+                        productViewModel.updateSelectedEditor(ProductEditorField.Price, value)
                     },
                     onImagesPicked = productViewModel::addImages,
                     onSave = productViewModel::saveSelected,
                     onSync = productViewModel::syncSelected,
                     onPublish = productViewModel::publishSelected,
-                    onMarkSold = productViewModel::markSelectedSold,
-                    onDisable = productViewModel::disableSelected,
                     onDiscardSelected = productViewModel::discardSelected,
                     onMessageShown = productViewModel::consumeMessage,
                 )
@@ -183,6 +181,8 @@ internal fun ArmbandCalculatorScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val pearlPrices = state.prices.filterNot(PriceItem::isSpacer)
     val spacerPrices = state.prices.filter(PriceItem::isSpacer)
+    var pearlsExpanded by rememberSaveable { mutableStateOf(true) }
+    var spacersExpanded by rememberSaveable { mutableStateOf(true) }
     LaunchedEffect(state.notice) {
         state.notice?.let {
             snackbarHostState.showSnackbar(it)
@@ -202,7 +202,11 @@ internal fun ArmbandCalculatorScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Carmaja-Perlen Produktverwaltung",
+                        text = if (productState?.apiEndpoint?.isTest == true) {
+                            "Carmaja Test"
+                        } else {
+                            "Armband-Rechner"
+                        },
                         fontWeight = FontWeight.SemiBold,
                     )
                 },
@@ -248,8 +252,10 @@ internal fun ArmbandCalculatorScreen(
             }
 
             item {
-                SectionHeading(
+                CollapsibleSectionHeading(
                     text = "Perlen",
+                    expanded = pearlsExpanded,
+                    onToggle = { pearlsExpanded = !pearlsExpanded },
                     modifier = Modifier.padding(
                         start = 16.dp,
                         top = 20.dp,
@@ -272,7 +278,7 @@ internal fun ArmbandCalculatorScreen(
                     )
                 }
 
-                else -> items(
+                pearlsExpanded -> items(
                     items = pearlPrices,
                     key = { it.name },
                 ) { item ->
@@ -290,8 +296,10 @@ internal fun ArmbandCalculatorScreen(
 
             if (!state.loadingStoredData && spacerPrices.isNotEmpty()) {
                 item {
-                    SectionHeading(
-                        text = "Spacer",
+                    CollapsibleSectionHeading(
+                        text = "Edelsteinspacer",
+                        expanded = spacersExpanded,
+                        onToggle = { spacersExpanded = !spacersExpanded },
                         modifier = Modifier.padding(
                             start = 16.dp,
                             top = 20.dp,
@@ -300,7 +308,7 @@ internal fun ArmbandCalculatorScreen(
                         ),
                     )
                 }
-                items(
+                if (spacersExpanded) items(
                     items = spacerPrices,
                     key = { it.name },
                 ) { item ->
@@ -684,6 +692,26 @@ internal fun SectionHeading(
         fontWeight = FontWeight.SemiBold,
         modifier = modifier,
     )
+}
+
+@Composable
+internal fun CollapsibleSectionHeading(
+    text: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TextButton(
+        onClick = onToggle,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "$text ${if (expanded) "ausgeklappt" else "eingeklappt"}" },
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(if (expanded) "Ausgeklappt ▲" else "Eingeklappt ▼")
+        }
+    }
 }
 
 private fun formatMoney(value: BigDecimal): String {

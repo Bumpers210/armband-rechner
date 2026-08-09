@@ -1,0 +1,171 @@
+name: Build Android test APK
+
+on:
+  push:
+    branches:
+      - test/product-management-beta
+    paths:
+      - ".github/workflows/android-test-apk.yml"
+      - "app/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - "gradle/**"
+      - "gradlew"
+      - "gradlew.bat"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-test-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-apk:
+    runs-on: ubuntu-latest
+    env:
+      CARMAJA_BETA_STORE_PASSWORD: ${{ secrets.CARMAJA_BETA_STORE_PASSWORD }}
+      CARMAJA_BETA_KEY_PASSWORD: ${{ secrets.CARMAJA_BETA_KEY_PASSWORD }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare pinned beta signing key
+        shell: bash
+        env:
+          CARMAJA_BETA_KEYSTORE_BASE64: ${{ secrets.CARMAJA_BETA_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${CARMAJA_BETA_KEYSTORE_BASE64:-}" ||
+                -z "${CARMAJA_BETA_STORE_PASSWORD:-}" ||
+                -z "${CARMAJA_BETA_KEY_PASSWORD:-}" ]]; then
+            echo "::error::Stable beta signing secrets are incomplete."
+            exit 1
+          fi
+
+          keystore="${RUNNER_TEMP}/carmaja-product-management-beta.jks"
+          printf '%s' "${CARMAJA_BETA_KEYSTORE_BASE64}" | base64 --decode > "${keystore}"
+          chmod 600 "${keystore}"
+          echo "CARMAJA_BETA_KEYSTORE_PATH=${keystore}" >> "${GITHUB_ENV}"
+
+          expected="235ee4d746fdf5490df3c292f882a76429795e99feaeb58dea37443e944d5d2a"
+          actual="$(
+            keytool -list -v \
+              -alias carmaja-product-management-beta \
+              -keystore "${keystore}" \
+              -storepass:env CARMAJA_BETA_STORE_PASSWORD 2>/dev/null |
+              awk '/SHA256:/{gsub(":", "", $2); print tolower($2); exit}'
+          )"
+          if [[ "${actual}" != "${expected}" ]]; then
+            echo "::error::The beta signing certificate does not match the pinned certificate."
+            exit 1
+          fi
+          echo "BETA_KEYSTORE_OK"
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Run Android lint
+        run: ./gradlew lintDebug
+
+      - name: Build signed beta APK
+        run: ./gradlew assembleBeta
+
+      - name: Verify beta package and stable signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="app/build/outputs/apk/beta/app-beta.apk"
+          aapt="${ANDROID_HOME}/build-tools/36.0.0/aapt"
+          expected="235ee4d746fdf5490df3c292f882a76429795e99feaeb58dea37443e944d5d2a"
+          badging="$("${aapt}" dump badging "${apk}")"
+          package_name="$(printf '%s\n' "${badging}" | sed -n "1s/^package: name='\([^']*\)'.*/\1/p")"
+          version_code="$(printf '%s\n' "${badging}" | sed -n "1s/.*versionCode='\([^']*\)'.*/\1/p")"
+
+          if [[ "${package_name}" != "de.carmajaperlen.armbandrechner" ||
+                ! "${version_code}" =~ ^[0-9]+$ ||
+                "${version_code}" -le 4 ]]; then
+            echo "::error::The beta APK does not satisfy the installed-app upgrade contract."
+            exit 1
+          fi
+
+          actual="$(
+            "${ANDROID_HOME}/build-tools/36.0.0/apksigner" \
+              verify --print-certs "${apk}" |
+              sed -n 's/^Signer #1 certificate SHA-256 digest: //p'
+          )"
+          if [[ "${actual}" != "${expected}" ]]; then
+            echo "::error::The built APK is not signed with the pinned beta certificate."
+            exit 1
+          fi
+          echo "BETA_APK_SIGNATURE_OK"
+
+      - name: Prepare test artifact
+        id: beta_artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="app/build/outputs/apk/beta/app-beta.apk"
+          aapt="${ANDROID_HOME}/build-tools/36.0.0/aapt"
+          test -f "${apk}"
+          test -x "${aapt}"
+
+          badging="$("${aapt}" dump badging "${apk}")"
+          version_code="$(printf '%s\n' "${badging}" | sed -n "1s/.*versionCode='\([^']*\)'.*/\1/p")"
+          version_name="$(printf '%s\n' "${badging}" | sed -n "1s/.*versionName='\([^']*\)'.*/\1/p")"
+          [[ "${version_code}" =~ ^[0-9]+$ ]]
+          [[ "${version_name}" =~ ^[0-9A-Za-z._-]+$ ]]
+
+          artifact_name="Carmaja-Perlen-Produktverwaltung-Test-${version_name}-code${version_code}"
+          mkdir -p artifact
+          cp "${apk}" "artifact/${artifact_name}.apk"
+          sha256sum "artifact/${artifact_name}.apk" > "artifact/${artifact_name}.apk.sha256"
+          printf '%s\n' '235ee4d746fdf5490df3c292f882a76429795e99feaeb58dea37443e944d5d2a' > artifact/BETA-CERTIFICATE-SHA256.txt
+          printf 'artifact_name=%s\n' "${artifact_name}" >> "${GITHUB_OUTPUT}"
+          cat > artifact/INSTALLATION.txt <<EOF
+          Carmaja-Perlen Produktverwaltung Test
+
+          App-Name: Carmaja-Perlen Produktverwaltung Test
+          Paketname: de.carmajaperlen.armbandrechner
+          Version: ${version_name}
+          VersionCode: ${version_code}
+          API: https://test-api.carmaja-perlen.de/
+
+          Diese APK ist mit dem fest gepinnten Carmaja-Beta-Zertifikat signiert
+          und aktualisiert nur eine mit demselben Beta-Zertifikat signierte Installation.
+          Sie nutzt die getrennte Test-API und loest kein produktives IONOS-Deployment aus.
+
+          Installation:
+          1. APK aus diesem GitHub-Actions-Artefakt herunterladen.
+          2. SHA-256-Datei und Beta-Zertifikat pruefen.
+          3. APK auf dem Beta-Test-Smartphone installieren.
+          4. Spaetere stabil beta-signierte APKs mit hoeherem VersionCode koennen als Update installiert werden.
+          EOF
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.beta_artifact.outputs.artifact_name }}
+          path: artifact/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove beta signing key
+        if: always()
+        shell: bash
+        run: rm -f "${CARMAJA_BETA_KEYSTORE_PATH:-}"

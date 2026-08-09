@@ -36,7 +36,6 @@ $todayTotal = carmaja_bucket_total($stats['days'][$todayKey] ?? []);
 $lastThirtyDaysTotal = 0;
 $overallTotal = 0;
 $targetTotals = array_fill_keys(CARMAJA_TARGETS, 0);
-$productTotals = [];
 
 foreach ([$stats['days'], $stats['months']] as $periods) {
     foreach ($periods as $bucket) {
@@ -53,13 +52,6 @@ foreach ([$stats['days'], $stats['months']] as $periods) {
 
         foreach (CARMAJA_PAGEVIEW_SOURCES as $source) {
             $pageviewSourceTotals[$source] += carmaja_bucket_pageview_source_total($bucket, $source);
-        }
-
-        foreach ($bucket['products'] ?? [] as $slug => $count) {
-            if (is_string($slug) && preg_match(CARMAJA_PRODUCT_SLUG_PATTERN, $slug)) {
-                $productTotals[$slug] = ($productTotals[$slug] ?? 0)
-                    + carmaja_bucket_product_total($bucket, $slug);
-            }
         }
 
         foreach ($bucket['pageviews'] ?? [] as $path => $pageview) {
@@ -85,7 +77,6 @@ foreach ($stats['days'] as $date => $bucket) {
 
 $dailyRows = $stats['days'];
 krsort($dailyRows);
-ksort($productTotals);
 arsort($pageviewRouteTotals);
 
 $pageviewSourceLabels = [
@@ -178,32 +169,17 @@ function carmaja_escape(string $value): string
           <?php endforeach; ?>
         </div>
       </section>
-      <section aria-labelledby="products-heading">
-        <h2 id="products-heading">Produktklicks</h2>
-        <div class="table-wrap">
-          <table><thead><tr><th>Produkt</th><th>Klicks</th></tr></thead><tbody>
-            <?php if ($productTotals === []): ?>
-              <tr><td class="empty" colspan="2">Noch keine Produktklicks erfasst.</td></tr>
-            <?php else: ?>
-              <?php foreach ($productTotals as $slug => $total): ?>
-                <tr><td><?= carmaja_escape($slug) ?></td><td><?= carmaja_format_number($total) ?></td></tr>
-              <?php endforeach; ?>
-            <?php endif; ?>
-          </tbody></table>
-        </div>
-      </section>
       <section aria-labelledby="daily-heading">
         <h2 id="daily-heading">Tageswerte</h2>
         <div class="table-wrap">
-          <table><thead><tr><th>Datum</th><th>Seitenaufrufe</th><th>Vinted</th><th>Instagram</th><th>Linkklicks</th></tr></thead><tbody>
+          <table><thead><tr><th>Datum</th><th>Seitenaufrufe</th><th>Instagram</th><th>Linkklicks</th></tr></thead><tbody>
             <?php if ($dailyRows === []): ?>
-              <tr><td class="empty" colspan="5">Noch keine Statistikdaten erfasst.</td></tr>
+              <tr><td class="empty" colspan="4">Noch keine Statistikdaten erfasst.</td></tr>
             <?php else: ?>
               <?php foreach ($dailyRows as $date => $bucket): ?>
                 <tr>
                   <td><?= carmaja_escape((string) $date) ?></td>
                   <td><?= carmaja_format_number(carmaja_bucket_pageview_total($bucket)) ?></td>
-                  <td><?= carmaja_format_number(carmaja_bucket_total($bucket, 'vinted')) ?></td>
                   <td><?= carmaja_format_number(carmaja_bucket_total($bucket, 'instagram')) ?></td>
                   <td><?= carmaja_format_number(carmaja_bucket_total($bucket)) ?></td>
                 </tr>

@@ -62,16 +62,14 @@ data class ProductUiActions(
     val onNameChange: (TextFieldValue) -> Unit = {},
     val onMaterialsChange: (TextFieldValue) -> Unit = {},
     val onMetalElementsChange: (TextFieldValue) -> Unit = {},
-    val onBraceletSizeChange: (TextFieldValue) -> Unit = {},
-    val onStockChange: (TextFieldValue) -> Unit = {},
+    val onBraceletSizeCmChange: (TextFieldValue) -> Unit = {},
+    val onPearlSizeMmChange: (TextFieldValue) -> Unit = {},
     val onShortDescriptionChange: (TextFieldValue) -> Unit = {},
-    val onVintedUrlChange: (TextFieldValue) -> Unit = {},
+    val onPriceChange: (TextFieldValue) -> Unit = {},
     val onImagesPicked: (List<Uri>) -> Unit = {},
     val onSave: () -> Unit = {},
     val onSync: () -> Unit = {},
     val onPublish: () -> Unit = {},
-    val onMarkSold: () -> Unit = {},
-    val onDisable: () -> Unit = {},
     val onDiscardSelected: () -> Unit = {},
     val onMessageShown: () -> Unit = {},
 ) {
@@ -105,24 +103,31 @@ internal fun ProductLoginScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 32.dp),
     ) {
+        val apiEndpoint = state.apiEndpoint
         Text(
             text = "Carmaja-Perlen Produktverwaltung",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.SemiBold,
         )
-        Text(
-            text = "PRODUKTIONSUMGEBUNG",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.testTag("login-production-environment"),
-        )
-        Text(
-            text = "Produktions-API: api.carmaja-perlen.de",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.testTag("login-api-environment"),
-        )
+        apiEndpoint?.let { endpoint ->
+            Text(
+                text = endpoint.environmentLabel,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (endpoint.isTest) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.primary
+                },
+                modifier = Modifier.testTag("login-api-environment-label"),
+            )
+            Text(
+                text = "API: ${endpoint.host}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("login-api-environment"),
+            )
+        }
         OutlinedTextField(
             value = state.loginEditor.username,
             onValueChange = actions.onUsernameChange,
@@ -223,19 +228,21 @@ internal fun ProductManagementSection(
             .padding(horizontal = 16.dp, vertical = 20.dp),
     ) {
         SectionHeading(text = "Produktverwaltung")
-        Text(
-            text = "PRODUKTION · Carmaja Produktverwaltung",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.testTag("product-production-environment"),
-        )
-        Text(
-            text = "Produktions-API: api.carmaja-perlen.de",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.testTag("product-api-environment"),
-        )
+        state.apiEndpoint?.takeIf(ProductApiEndpoint::isTest)?.let { endpoint ->
+            Text(
+                text = "TEST · Carmaja Produktverwaltung",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("product-api-environment-label"),
+            )
+            Text(
+                text = "API: ${endpoint.host}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("product-api-environment"),
+            )
+        }
 
         Button(
             onClick = actions.onCreateFromCalculation,
@@ -324,28 +331,15 @@ internal fun PublishedProductView(
             )
             Text("Perlen: ${draft.materials.joinToString(", ")}")
             Text("Spacer: ${draft.metalElements.joinToString(", ")}")
+            Text("Armbandgröße: ${displayMeasurement(draft.braceletSizeCm, "cm")}")
+            Text("Perlengröße: ${displayMeasurement(draft.pearlSizeMm, "mm")}")
             Text(draft.shortDescription)
             Text("Bilder: ${draft.images.size}/5")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = actions.onMarkSold,
-                    enabled = !busy,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("published-mark-sold"),
-                ) {
-                    Text("Verkauft")
-                }
-                OutlinedButton(
-                    onClick = actions.onDisable,
-                    enabled = !busy,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("published-disable"),
-                ) {
-                    Text("Deaktivieren")
-                }
-            }
+            Text(
+                text = "Verkauf und Nichtverfügbarkeit werden vom Shop verwaltet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             OutlinedButton(
                 onClick = actions.onEdit,
                 enabled = !busy,
@@ -427,14 +421,13 @@ internal fun ProductDraftForm(
                     if (isPublishedEdit) {
                         "Änderungen erneut veröffentlichen?"
                     } else {
-                        "Auf Website veröffentlichen?"
+                        "Auf Testwebsite veröffentlichen?"
                     },
                 )
             },
             text = {
                 Text(
-                    "Das Produkt wird auf der Website veröffentlicht. " +
-                        "Ein Vinted-Link bleibt optional.",
+                    "Das Produkt wird für die geschützte Testwebsite bereitgestellt.",
                 )
             },
             confirmButton = {
@@ -448,7 +441,7 @@ internal fun ProductDraftForm(
                         if (isPublishedEdit) {
                             "Änderungen erneut veröffentlichen"
                         } else {
-                            "Auf Website veröffentlichen"
+                            "Auf Testwebsite veröffentlichen"
                         },
                     )
                 }
@@ -508,22 +501,22 @@ internal fun ProductDraftForm(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ProductTextField(
-                    value = editor.braceletSize,
-                    onValueChange = actions.onBraceletSizeChange,
-                    label = "Größe",
-                    testTag = "product-size",
-                    error = fieldErrors["braceletSize"],
+                    value = editor.braceletSizeCm,
+                    onValueChange = actions.onBraceletSizeCmChange,
+                    label = "Armbandgröße (cm)",
+                    testTag = "product-bracelet-size-cm",
+                    error = fieldErrors["braceletSizeCm"],
                     busy = busy,
                     modifier = Modifier.weight(1f),
                 )
                 ProductTextField(
-                    value = editor.stock,
-                    onValueChange = actions.onStockChange,
-                    label = "Bestand",
-                    testTag = "product-stock",
-                    error = fieldErrors["stock"],
+                    value = editor.pearlSizeMm,
+                    onValueChange = actions.onPearlSizeMmChange,
+                    label = "Perlengröße (mm)",
+                    testTag = "product-pearl-size-mm",
+                    error = fieldErrors["pearlSizeMm"],
                     busy = busy,
-                    keyboardType = KeyboardType.Number,
+                    keyboardType = KeyboardType.Decimal,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -536,13 +529,20 @@ internal fun ProductDraftForm(
                 busy = busy,
                 singleLine = false,
             )
+
             ProductTextField(
-                value = editor.vintedUrl,
-                onValueChange = actions.onVintedUrlChange,
-                label = "Vinted-Angebotslink (optional)",
-                testTag = "product-vinted-url",
-                error = fieldErrors["vintedUrl"],
+                value = editor.price,
+                onValueChange = actions.onPriceChange,
+                label = "Verkaufspreis (€)",
+                testTag = "product-price",
+                error = fieldErrors["priceMinor"],
                 busy = busy,
+                keyboardType = KeyboardType.Decimal,
+            )
+            Text(
+                text = "Währung: EUR · Verkaufsfreigabe: deaktiviert",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Text(
@@ -610,7 +610,7 @@ internal fun ProductDraftForm(
                         if (isPublishedEdit) {
                             "Änderungen erneut veröffentlichen"
                         } else {
-                            "Auf Website veröffentlichen"
+                            "Auf Testwebsite veröffentlichen"
                         },
                     )
                 }

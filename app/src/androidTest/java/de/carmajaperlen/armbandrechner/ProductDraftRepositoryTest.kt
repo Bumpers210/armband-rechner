@@ -3,11 +3,14 @@ package de.carmajaperlen.armbandrechner
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.core.app.ApplicationProvider
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -41,6 +44,27 @@ class ProductDraftRepositoryTest {
         File(context.cacheDir, "product-draft-images/$draftId").deleteRecursively()
         File(context.filesDir, "product-drafts/$draftId.json").delete()
         File(context.filesDir, "product-images/$draftId").deleteRecursively()
+    }
+
+    @Test
+    fun v2MeasurementsSurviveLocalLoadEditSaveAndReload() = runBlocking {
+        repository.saveDraft(
+            testDraft().copy(
+                braceletSizeCm = "17.5",
+                pearlSizeMm = "6",
+            ),
+        )
+        val loaded = repository.loadDrafts().single()
+        val edited = ProductDraftEditorState.fromDraft(loaded)
+            .update(ProductEditorField.BraceletSizeCm, TextFieldValue("18,0"))
+            .update(ProductEditorField.PearlSizeMm, TextFieldValue("8,0"))
+            .applyTo(loaded)
+
+        repository.saveDraft(edited)
+        val reloaded = repository.loadDrafts().single()
+
+        assertEquals("18", reloaded.braceletSizeCm)
+        assertEquals("8", reloaded.pearlSizeMm)
     }
 
     @Test
@@ -82,6 +106,45 @@ class ProductDraftRepositoryTest {
         assertTrue(savedImage.isFile)
         assertFalse(temporaryReplacement.exists())
         assertTrue(File(context.filesDir, "product-drafts/$draftId.json").isFile)
+    }
+
+    @Test
+    fun legacyDraftIsMigratedToModelVersionTwoWithoutLegacyFields() = runBlocking {
+        val draftFile = File(context.filesDir, "product-drafts/$draftId.json")
+        draftFile.parentFile?.mkdirs()
+        draftFile.writeText(
+            """
+            {
+              "draftId": "$draftId",
+              "version": 3,
+              "status": "draft",
+              "name": "Alter Entwurf",
+              "materials": [],
+              "metalElements": [],
+              "braceletSize": "17,5 cm",
+              "stock": 4,
+              "vintedUrl": "https://example.invalid/legacy",
+              "shortDescription": "",
+              "careInstructions": [],
+              "internalCalculation": { "quantities": {} },
+              "images": [],
+              "createdAtMillis": 1,
+              "updatedAtMillis": 1
+            }
+            """.trimIndent(),
+        )
+
+        val migrated = repository.loadDrafts().single()
+        val saved = repository.saveDraft(migrated)
+        val persisted = JSONObject(draftFile.readText())
+
+        assertEquals(PRODUCT_MODEL_VERSION, saved.modelVersion)
+        assertEquals("17.5", saved.braceletSizeCm)
+        assertEquals("", saved.pearlSizeMm)
+        assertFalse(persisted.has("braceletSize"))
+        assertFalse(persisted.has("stock"))
+        assertFalse(persisted.has("vintedUrl"))
+        assertEquals(PRODUCT_MODEL_VERSION, persisted.getInt("modelVersion"))
     }
 
     private fun testDraft(): ProductDraft {

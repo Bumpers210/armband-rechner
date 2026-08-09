@@ -14,7 +14,7 @@ bereit. Hinweise zur Installation befinden sich in
 
 ## Technische Basis
 
-- Paket: `de.steinhart.armbandrechner`
+- Paket: `de.carmajaperlen.armbandrechner`
 - Android: `minSdk 26`, `compileSdk 36`, `targetSdk 36`
 - JDK 17, Gradle 9.5.0, Android Gradle Plugin 9.3.0
 - integriertes Kotlin 2.2.10, Compose Compiler 2.2.10

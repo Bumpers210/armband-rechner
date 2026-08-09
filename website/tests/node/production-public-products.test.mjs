@@ -54,7 +54,6 @@ function legacyProduct(overrides = {}) {
     ...current,
     size: "17,5 cm",
     stock: 1,
-    vintedUrl: "https://legacy.invalid/items/123",
     ...overrides,
   };
 }
@@ -157,7 +156,6 @@ test("Legacy-V1-Daten werden kontrolliert nach V2 überführt", async () => {
     legacyProduct({
       size: "175 mm",
       stock: 0,
-      vintedUrl: "javascript:legacy-only",
     }),
   );
 
@@ -200,7 +198,7 @@ test("V2 lehnt Legacy-Felder und unvollständige Größen strikt ab", async () =
   await rejectsProduct(product({ stock: 1 }), /Unbekannte Felder: stock/);
   await rejectsProduct(
     product({ vintedUrl: "https://legacy.invalid/items/123" }),
-    /Unbekannte Felder: vintedUrl/,
+    /vintedUrl ist im Produktionsproduktmodell nicht erlaubt/,
   );
   await rejectsProduct(product({ size: "17 cm" }), /Unbekannte Felder: size/);
   await rejectsProduct(product({ pearlSizeMm: 0 }), /Positive Zahl/);

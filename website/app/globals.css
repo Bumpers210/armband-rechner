@@ -157,6 +157,48 @@ section[id] {
   padding-left: 1.25rem;
 }
 
+.legal-bundle-notice {
+  margin: 1.25rem 0 2rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid currentColor;
+}
+
+.legal-bundle-notice p {
+  margin: 0.5rem 0 0;
+}
+
+.legal-bundle-notice-test {
+  color: #7a3e00;
+  background: #fff4e6;
+}
+
+.legal-bundle-notice-pending {
+  color: #7a1f1f;
+  background: #fff0f0;
+}
+
+.legal-bundle-metadata {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.legal-bundle-metadata div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.legal-bundle-metadata dt {
+  font-weight: 700;
+}
+
+.legal-bundle-metadata dd {
+  margin: 0;
+}
+
 .legal-section a,
 .legal-back-link a {
   text-underline-offset: 0.25rem;

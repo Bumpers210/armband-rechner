@@ -41,8 +41,8 @@ test("Produktionsverifikation blockiert Test- und Abnahmetexte", async () => {
     await writeFile(
       current.sourceProductsPath,
       sourceText.replace(
-        '"version": 1',
-        '"version": 1,\n  "note": "Testprodukt nur fuer die Abnahme"',
+        '"version": 2',
+        '"version": 2,\n  "note": "Testprodukt nur fuer die Abnahme"',
       ),
       "utf8",
     );

@@ -70,7 +70,7 @@ jobs:
             ./gradlew connectedDebugAndroidTest
 
       - name: Build unsigned production release APK
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -Pcarmaja.allowUnsignedProductionValidation=true
 
       - name: Verify unsigned production APK
         shell: bash
@@ -91,8 +91,8 @@ jobs:
 
           badging="$("${aapt}" dump badging "${apk}")"
           grep -Fq "package: name='de.carmajaperlen.armbandrechner'" <<<"${badging}"
-          grep -Fq "versionCode='1'" <<<"${badging}"
-          grep -Fq "versionName='1.0.0'" <<<"${badging}"
+          grep -Fq "versionCode='4'" <<<"${badging}"
+          grep -Fq "versionName='1.1.2'" <<<"${badging}"
           grep -Fq "application-label:'Carmaja-Perlen Produktverwaltung'" <<<"${badging}"
 
           apk_strings="$(mktemp)"
@@ -114,14 +114,14 @@ jobs:
           set -euo pipefail
           mkdir -p artifact
           apk="app/build/outputs/apk/release/app-release-unsigned.apk"
-          artifact_apk="artifact/Carmaja-Perlen-Produktverwaltung-1.0.0-unsigned.apk"
+          artifact_apk="artifact/Carmaja-Perlen-Produktverwaltung-1.1.2-unsigned.apk"
           cp "${apk}" "${artifact_apk}"
           sha256sum "${artifact_apk}" > "${artifact_apk}.sha256"
           cat > artifact/VALIDATION.txt <<'EOF'
           App-Name: Carmaja-Perlen Produktverwaltung
           Paketname: de.carmajaperlen.armbandrechner
-          Version: 1.0.0
-          VersionCode: 1
+          Version: 1.1.2
+          VersionCode: 4
           Produkt-API: https://api.carmaja-perlen.de/
           Signatur: unsigned validation artifact
           EOF
@@ -129,7 +129,7 @@ jobs:
       - name: Upload unsigned production APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Carmaja-Perlen-Produktverwaltung-1.0.0-unsigned
+          name: Carmaja-Perlen-Produktverwaltung-1.1.2-unsigned
           path: artifact/*
           if-no-files-found: error
           retention-days: 30

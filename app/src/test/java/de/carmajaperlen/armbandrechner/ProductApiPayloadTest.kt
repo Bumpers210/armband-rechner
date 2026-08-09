@@ -6,7 +6,7 @@ import org.junit.Test
 
 class ProductApiPayloadTest {
     @Test
-    fun savePayloadContainsPearlsAndSpacersButNoCareInstructions() {
+    fun savePayloadContainsCompleteV2ContractWithoutLegacyOrServerFields() {
         val payload = productDraft().toSaveJson()
 
         assertEquals("Rosenquarz", payload.getJSONArray("materials").getString(0))
@@ -14,7 +14,15 @@ class ProductApiPayloadTest {
             "Spacer Blume Edelstahl",
             payload.getJSONArray("metalElements").getString(0),
         )
-        assertFalse(payload.has("careInstructions"))
+        assertEquals(17.5, payload.getDouble("braceletSizeCm"), 0.0)
+        assertEquals(6.0, payload.getDouble("pearlSizeMm"), 0.0)
+        assertEquals("Legacy-Pflegehinweis", payload.getJSONArray("careInstructions").getString(0))
+        assertEquals(2490, payload.getInt("priceMinor"))
+        assertEquals("eur", payload.getString("currency"))
+        assertFalse(payload.getBoolean("salesEnabled"))
+        for (field in listOf("stock", "vintedUrl", "productVersion", "sourceHash")) {
+            assertFalse(payload.has(field))
+        }
     }
 
     private fun productDraft(): ProductDraft {
@@ -22,7 +30,10 @@ class ProductApiPayloadTest {
             draftId = "019fa2e6-cf3c-7073-9275-7d3b566f54ee",
             materials = listOf("Rosenquarz"),
             metalElements = listOf("Spacer Blume Edelstahl"),
+            braceletSizeCm = "17.5",
+            pearlSizeMm = "6",
             careInstructions = listOf("Legacy-Pflegehinweis"),
+            priceMinor = 2490,
             internalCalculation = CalculationSnapshot(
                 quantities = emptyMap(),
                 workMinutes = "0",

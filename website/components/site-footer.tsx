@@ -30,6 +30,15 @@ export function SiteFooter() {
             <li>
               <Link href="/datenschutz/">Datenschutz</Link>
             </li>
+            <li>
+              <Link href="/shopbedingungen/">Shopbedingungen</Link>
+            </li>
+            <li>
+              <Link href="/widerruf/">Widerruf</Link>
+            </li>
+            <li>
+              <Link href="/versand-und-zahlung/">Versand und Zahlung</Link>
+            </li>
           </ul>
         </nav>
       </div>

@@ -22,6 +22,7 @@ data class ProductUiState(
     val selectedDraftId: String? = null,
     val editors: Map<String, ProductDraftEditorState> = emptyMap(),
     val loginEditor: ProductLoginEditorState = ProductLoginEditorState(),
+    val apiEndpoint: ProductApiEndpoint? = null,
     val sessionChecked: Boolean = false,
     val authenticated: Boolean = false,
     val editingDraftId: String? = null,
@@ -52,18 +53,20 @@ class ProductViewModel(
 
     private var apiToken: String? = null
     private val draftSession = ProductDraftSession()
+    private val apiEndpoint = requireProductApiEndpoint(
+        baseUrl = BuildConfig.DEFAULT_PRODUCT_API_BASE_URL,
+        publishTarget = BuildConfig.PRODUCT_PUBLISH_TARGET,
+    )
 
     init {
         viewModelScope.launch {
-            val canRestoreSession = BuildConfig.PRODUCT_PUBLISH_TARGET == "production" &&
-                tokenStore.isRememberedSessionEnabled()
+            val canRestoreSession = tokenStore.isRememberedSessionEnabled()
             apiToken = if (canRestoreSession) tokenStore.loadRememberedToken() else null
             if (apiToken == null) {
                 tokenStore.clearSession()
             }
             val drafts = repository.loadDrafts()
             draftSession.initialize(drafts)
-            val apiBaseUrl = BuildConfig.DEFAULT_PRODUCT_API_BASE_URL
             val deviceName = tokenStore.loadPlainSetting(
                 SecureTokenStore.SETTING_DEVICE_NAME,
                 "Android",
@@ -73,10 +76,10 @@ class ProductViewModel(
                 selectedDraftId = drafts.firstOrNull()?.draftId,
                 editors = drafts.associate { it.draftId to ProductDraftEditorState.fromDraft(it) },
                 loginEditor = ProductLoginEditorState.fromStored(
-                    apiBaseUrl = apiBaseUrl,
                     deviceName = deviceName,
                     rememberSession = apiToken != null,
                 ),
+                apiEndpoint = apiEndpoint,
                 sessionChecked = true,
                 authenticated = apiToken != null,
             )
@@ -173,7 +176,10 @@ class ProductViewModel(
         if (uris.isEmpty()) return
         runBusy {
             val updated = repository.storeTemporaryImages(
-                draft.copy(name = editorName.ifBlank { draft.name }),
+                draft.copy(
+                    name = editorName.ifBlank { draft.name },
+                    pendingV2SaveOperationId = null,
+                ),
                 uris.take(5),
             )
             draftSession.markChanged(draft.draftId)
@@ -198,7 +204,7 @@ class ProductViewModel(
                         username = editor.username.text,
                         password = editor.password.text,
                         deviceName = deviceName,
-                        expectedPublishTarget = BuildConfig.PRODUCT_PUBLISH_TARGET,
+                        expectedPublishTarget = apiEndpoint.publishTarget,
                     )
                 }
             } catch (error: ProductTargetMismatchException) {
@@ -286,7 +292,7 @@ class ProductViewModel(
             )
             _uiState.value = _uiState.value.copy(
                 message = if (result.commitSha == null) {
-                    "Veröffentlichung vorbereitet (${result.deploymentStatus})."
+                    "Für Testwebsite bereitgestellt (${result.deploymentStatus})."
                 } else {
                     "Veröffentlichung gestartet: ${result.commitSha.take(7)} (${result.deploymentStatus})."
                 },
@@ -497,18 +503,16 @@ class ProductViewModel(
             return null
         }
 
-        return editor.applyTo(draft)
+        val updated = editor.applyTo(draft)
+        return if (state.selectedHasUnsavedChanges) {
+            updated.copy(pendingV2SaveOperationId = null)
+        } else {
+            updated
+        }
     }
 
     private fun requireBaseUrl(): String {
-        if (BuildConfig.PRODUCT_PUBLISH_TARGET != "production") {
-            throw ProductApiException(
-                0,
-                "production_build_required",
-                message = "Produktverwaltung ist nur im Produktions-Build verfügbar.",
-            )
-        }
-        return requireProductionApiBaseUrl(BuildConfig.DEFAULT_PRODUCT_API_BASE_URL)
+        return apiEndpoint.baseUrl
     }
 
     private fun requireToken(): String {
@@ -565,7 +569,7 @@ class ProductViewModel(
             is ProductConflictException ->
                 "HTTP 409 · ${error.errorCode}: ${error.message}"
             is ProductTargetMismatchException ->
-                "Anmeldung abgelehnt: Die API ist nicht als Produktionsumgebung konfiguriert."
+                "Anmeldung abgelehnt: Die API stimmt nicht mit der App-Umgebung überein."
             is ProductApiException -> {
                 val status = error.statusCode.takeIf { it > 0 }?.let { "HTTP $it · " }.orEmpty()
                 "$status${error.errorCode}: ${error.message ?: "Produktserverfehler"}"

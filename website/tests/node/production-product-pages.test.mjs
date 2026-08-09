@@ -11,43 +11,46 @@ async function source(relativePath) {
   return readFile(path.join(websiteDirectory, relativePath), "utf8");
 }
 
-test("oeffentliche Routen behandeln nur freigegebene Produktstatus", async () => {
+test("oeffentliche Routen behandeln nur freigegebene v2-Produkte", async () => {
   const products = await source("content/products.ts");
   const overview = await source("app/armbaender/page.tsx");
   const detail = await source("app/armbaender/[slug]/page.tsx");
   const sitemap = await source("app/sitemap.ts");
 
-  assert.match(products, /product\.status === "published"/);
-  assert.match(products, /product\.status === "published" \|\| product\.status === "sold"/);
+  assert.match(products, /loadPublicProductsV2/);
+  assert.match(products, /product\.salesEnabled/);
+  assert.doesNotMatch(products, /product\.status/);
   assert.match(overview, /visibleProducts/);
   assert.match(detail, /detailProducts/);
   assert.match(detail, /notFound\(\)/);
-  assert.match(detail, /const isSold = product\.status === "sold"/);
+  assert.match(detail, /!product\.salesEnabled/);
   assert.match(detail, /index: false/);
   assert.match(sitemap, /visibleProducts/);
 });
 
 test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async () => {
-  const publicProducts = await source("lib/public-products.mjs");
+  const publicProducts = await source("lib/public-products-v2.mjs");
   const detail = await source("app/armbaender/[slug]/page.tsx");
   const overview = await source("components/product-list.tsx");
   const gallery = await source("components/product-image-gallery.tsx");
   const careContent = await source("content/site-content.ts");
 
   assert.match(publicProducts, /formatMeasurement/);
-  assert.match(publicProducts, /braceletSizeCm/);
-  assert.match(publicProducts, /pearlSizeMm/);
+  assert.match(publicProducts, /productVersion/);
+  assert.match(publicProducts, /sourceHash/);
+  assert.match(publicProducts, /priceMinor/);
+  assert.match(publicProducts, /salesEnabled/);
   assert.match(publicProducts, /const ROOT_KEYS = \["products", "version"\]/);
-  assert.match(publicProducts, /const PRODUCT_V2_KEYS = \[/);
+  assert.match(publicProducts, /const PRODUCT_KEYS = \[/);
   assert.match(publicProducts, /publicTitle: publicProductName/);
   assert.match(publicProducts, /alt: `\$\{publicProductName\}, Bild/);
   assert.match(detail, /siteContent\.care\.items/);
   assert.doesNotMatch(detail, /product\.careInstructions/);
   assert.doesNotMatch(detail, /product\.title/);
   assert.doesNotMatch(detail, /product\.stock/);
-  assert.match(detail, /displayBraceletSize/);
+  assert.match(detail, /displaySize/);
   assert.match(detail, /displayPearlSize/);
-  assert.match(overview, /displayBraceletSize/);
+  assert.match(overview, /displaySize/);
   assert.match(overview, /displayPearlSize/);
   assert.match(careContent, /care:/);
   assert.match(gallery, /role="dialog"/);
@@ -66,11 +69,13 @@ test("Produktion verwendet die neutrale Canonical-URL ohne Testziel", async () =
   const imprint = await source("app/impressum/page.tsx");
   const privacy = await source("app/datenschutz/page.tsx");
 
-  assert.match(target, /https:\/\/www\.carmaja-perlen\.de\//);
-  assert.doesNotMatch(target, /test\.carmaja-perlen\.de|test-api\.carmaja-perlen\.de/);
+  assert.match(target, /target === "production"/);
+  assert.match(target, /https:\/\/www\.carmaja-perlen\.de/);
+  assert.match(target, /target === "test"/);
+  assert.match(target, /https:\/\/test\.carmaja-perlen\.de/);
   assert.match(content, /siteUrl: siteTarget\.baseUrl/);
   assert.match(layout, /metadataBase: new URL\(siteContent\.metadata\.siteUrl\)/);
-  assert.match(layout, /index: true/);
+  assert.match(layout, /index: !siteTarget\.isTest/);
   assert.match(detail, /alternates:/);
   assert.match(detail, /canonical:/);
   assert.match(imprint, /canonical: "\/impressum\/"/);

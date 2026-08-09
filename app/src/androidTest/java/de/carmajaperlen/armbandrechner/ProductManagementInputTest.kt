@@ -40,7 +40,7 @@ class ProductManagementInputTest {
 
         enterText("product-name", "Handgefertigtes Edelsteinarmband")
         enterText("product-pearls", "Roter Dragon-Veins-Achat und Erdbeerquarz")
-        enterText("product-size", "Größe 17 cm")
+        enterText("product-bracelet-size-cm", "17,5")
         enterText("product-short-description", "Persönliche Anfertigung auf Anfrage")
 
         composeRule.onNodeWithTag("product-name")
@@ -50,9 +50,9 @@ class ProductManagementInputTest {
         composeRule.onNodeWithTag("product-pearls")
             .performScrollTo()
             .assertTextContains("Roter Dragon-Veins-Achat und Erdbeerquarz")
-        composeRule.onNodeWithTag("product-size")
+        composeRule.onNodeWithTag("product-bracelet-size-cm")
             .performScrollTo()
-            .assertTextContains("Größe 17 cm")
+            .assertTextContains("17,5")
         composeRule.onNodeWithTag("product-short-description")
             .performScrollTo()
             .assertTextContains("Persönliche Anfertigung auf Anfrage")
@@ -154,14 +154,13 @@ class ProductManagementInputTest {
                             onMetalElementsChange = {
                                 update(ProductEditorField.MetalElements, it)
                             },
-                            onBraceletSizeChange = {
-                                update(ProductEditorField.BraceletSize, it)
+                            onBraceletSizeCmChange = {
+                                update(ProductEditorField.BraceletSizeCm, it)
                             },
-                            onStockChange = { update(ProductEditorField.Stock, it) },
+                            onPearlSizeMmChange = { update(ProductEditorField.PearlSizeMm, it) },
                             onShortDescriptionChange = {
                                 update(ProductEditorField.ShortDescription, it)
                             },
-                            onVintedUrlChange = { update(ProductEditorField.VintedUrl, it) },
                         ),
                         onPickImages = {},
                     )

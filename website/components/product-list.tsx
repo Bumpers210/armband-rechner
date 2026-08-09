@@ -29,6 +29,11 @@ export function ProductList({
                 {product.publicTitle}
               </Link>
             </Heading>
+            {!product.salesEnabled ? (
+              <p className="product-status product-status--sold">
+                Nicht verfügbar
+              </p>
+            ) : null}
             <p>{product.description}</p>
             <dl className="product-facts">
               <div>
@@ -44,12 +49,12 @@ export function ProductList({
                 </dd>
               </div>
               <div>
-                <dt>Armbandgröße</dt>
-                <dd>{product.displayBraceletSize}</dd>
+                <dt>Größe</dt>
+                <dd>{product.displaySize}</dd>
               </div>
               <div>
                 <dt>Perlengröße</dt>
-                <dd>{product.displayPearlSize ?? "Noch nicht hinterlegt"}</dd>
+                <dd>{product.displayPearlSize}</dd>
               </div>
             </dl>
             <Link className="product-detail-link" href={`/armbaender/${product.slug}/`}>

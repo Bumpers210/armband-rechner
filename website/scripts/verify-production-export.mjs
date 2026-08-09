@@ -3,7 +3,7 @@ import { access, readdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { loadPublicProducts } from "../lib/public-products.mjs";
+import { loadPublicProductsV2 } from "../lib/public-products-v2.mjs";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const websiteDirectory = path.resolve(scriptDirectory, "..");
@@ -57,8 +57,8 @@ export async function verifyProductionExport({
     "Testdomains duerfen nicht im Produktionsinhalt stehen.",
   );
 
-  const sourceProducts = loadPublicProducts(verifiedSourceProductsPath, imageRoot);
-  assert.equal(sourceProducts.version, 1, "Produktquelldatei hat keine unterstuetzte Version.");
+  const sourceProducts = loadPublicProductsV2(verifiedSourceProductsPath, imageRoot);
+  assert.equal(sourceProducts.version, 2, "Produktquelldatei hat keine unterstuetzte Version.");
 
   const files = await collectFiles(verifiedOutputDirectory);
   assert.equal(

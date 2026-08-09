@@ -1,34 +1,6 @@
 name: Deploy guarded production website
 
 on:
-  push:
-    branches:
-      - release/production-product-management
-      - main
-    paths:
-      - ".github/workflows/deploy-website.yml"
-      - "website/app/**"
-      - "website/components/**"
-      - "website/config/**"
-      - "website/content/products.json"
-      - "website/content/products.ts"
-      - "website/content/site-content.ts"
-      - "website/lib/**"
-      - "website/public/**"
-      - "website/scripts/prepare-production-deploy.mjs"
-      - "website/scripts/bootstrap-production-first-deploy.sh"
-      - "website/scripts/production-first-deploy-inventory.v1"
-      - "website/scripts/deploy-production-site.sh"
-      - "website/scripts/run-production-deployment.sh"
-      - "website/scripts/verify-production-export.mjs"
-      - "website/tests/node/production-*.test.mjs"
-      - "website/tests/shell/**"
-      - "website/.gitignore"
-      - "website/eslint.config.mjs"
-      - "website/next.config.ts"
-      - "website/package.json"
-      - "website/package-lock.json"
-      - "website/tsconfig.json"
   pull_request:
     branches:
       - main
@@ -63,7 +35,7 @@ on:
         required: true
         type: string
       deployment_confirmation:
-        description: "Zur Bestaetigung exakt DEPLOY_PRODUCTION eingeben"
+        description: "Zur Bestaetigung exakt DEPLOY-CARMAJA-PRODUCTION eingeben"
         required: true
         type: string
 
@@ -118,12 +90,6 @@ jobs:
               test "$CARMAJA_PULL_REQUEST_HEAD_REPOSITORY" = "$CARMAJA_REPOSITORY"
               test -n "$GITHUB_HEAD_REF"
               ;;
-            push)
-              case "$GITHUB_REF_NAME" in
-                release/production-product-management|"$CARMAJA_PRODUCTION_BRANCH") ;;
-                *) exit 1 ;;
-              esac
-              ;;
             workflow_dispatch)
               test "$GITHUB_REF" = "refs/heads/main"
               test "$GITHUB_REF_NAME" = "$CARMAJA_PRODUCTION_BRANCH"
@@ -156,6 +122,20 @@ jobs:
 
       - name: Build and verify production export
         run: npm run build
+
+      - name: Exclude separately managed production hosting files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$(realpath out)" = "$GITHUB_WORKSPACE/website/out"
+          rm -rf -- \
+            out/.htaccess \
+            out/.htaccess.publish.example \
+            out/click.php \
+            out/pageview.php \
+            out/_internal \
+            out/private-data \
+            out/statistik
 
       - name: Bind release to workflow commit
         id: release
@@ -219,7 +199,7 @@ jobs:
           test "$GITHUB_REF" = "refs/heads/main"
           test "$GITHUB_REF_NAME" = "$CARMAJA_PRODUCTION_BRANCH"
           test "$CARMAJA_EXPECTED_COMMIT_SHA" = "$GITHUB_SHA"
-          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"
+          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY-CARMAJA-PRODUCTION"
           test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
           test "$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"
 
@@ -227,7 +207,7 @@ jobs:
     needs:
       - build-production-site
       - validate-manual-production-deploy
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_name == 'main' && inputs.expected_commit_sha == github.sha && inputs.deployment_confirmation == 'DEPLOY_PRODUCTION' && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' && needs.validate-manual-production-deploy.result == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_name == 'main' && inputs.expected_commit_sha == github.sha && inputs.deployment_confirmation == 'DEPLOY-CARMAJA-PRODUCTION' && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' && needs.validate-manual-production-deploy.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -271,7 +251,7 @@ jobs:
           test "$GITHUB_REF" = "refs/heads/main"
           test "$GITHUB_REF_NAME" = "main"
           test "$CARMAJA_EXPECTED_COMMIT_SHA" = "$GITHUB_SHA"
-          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY_PRODUCTION"
+          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY-CARMAJA-PRODUCTION"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$CARMAJA_SITE_TARGET" = "production"
           test "$CARMAJA_SITE_DOMAIN" = "www.carmaja-perlen.de"

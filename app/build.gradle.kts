@@ -6,8 +6,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val productionVersionCode = 1
-val productionVersionName = "1.0.0"
+val productionVersionCode = 4
+val productionVersionName = "1.1.2"
+val betaVersionCode = 5
+val betaVersionName = "1.1.3-beta.1"
+val productionProductApiBaseUrl = "https://api.carmaja-perlen.de/"
+val testProductApiBaseUrl = "https://test-api.carmaja-perlen.de/"
 val productionSigningPropertiesFile = rootProject.file(".signing/production-keystore.properties")
 val productionSigningProperties = Properties().apply {
     if (productionSigningPropertiesFile.isFile) {
@@ -30,6 +34,53 @@ val productionSigningKeyAlias = "carmaja-product-management-production"
 val productionSigningReady = productionSigningStoreFile?.isFile == true &&
     productionSigningStorePassword != null &&
     productionSigningKeyPassword != null
+val betaSigningPropertiesFile = rootProject.file(".signing/beta-keystore.properties")
+val betaSigningProperties = Properties().apply {
+    if (betaSigningPropertiesFile.isFile) {
+        betaSigningPropertiesFile.inputStream().use(::load)
+    }
+}
+val betaSigningStoreFile = System.getenv("CARMAJA_BETA_KEYSTORE_PATH")
+    ?.takeIf(String::isNotBlank)
+    ?.let(rootProject::file)
+    ?: betaSigningProperties.getProperty("storeFile")
+        ?.takeIf(String::isNotBlank)
+        ?.let { rootProject.file(".signing/$it") }
+val betaSigningStorePassword = System.getenv("CARMAJA_BETA_STORE_PASSWORD")
+    ?.takeIf(String::isNotBlank)
+    ?: betaSigningProperties.getProperty("storePassword")?.takeIf(String::isNotBlank)
+val betaSigningKeyPassword = System.getenv("CARMAJA_BETA_KEY_PASSWORD")
+    ?.takeIf(String::isNotBlank)
+    ?: betaSigningProperties.getProperty("keyPassword")?.takeIf(String::isNotBlank)
+val betaSigningKeyAlias = "carmaja-product-management-beta"
+val betaSigningReady = betaSigningStoreFile?.isFile == true &&
+    betaSigningStorePassword != null &&
+    betaSigningKeyPassword != null
+val betaBuildRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.substringAfterLast(':').contains("Beta", ignoreCase = true)
+}
+val productionReleaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
+    taskName.substringAfterLast(':').equals("assembleRelease", ignoreCase = true)
+}
+val unsignedProductionValidationRequested = providers.gradleProperty(
+    "carmaja.allowUnsignedProductionValidation",
+).orNull == "true"
+
+if (betaBuildRequested && !betaSigningReady) {
+    throw GradleException(
+        "Die stabile Beta-Signierung fehlt. Debug-Signierung ist fuer Beta-Builds nicht erlaubt.",
+    )
+}
+
+if (
+    productionReleaseBuildRequested &&
+    !productionSigningReady &&
+    !unsignedProductionValidationRequested
+) {
+    throw GradleException(
+        "Die Produktionssignierung fehlt. Unsigned oder debug-signierte Release-APKs sind nicht erlaubt.",
+    )
+}
 
 android {
     namespace = "de.carmajaperlen.armbandrechner"
@@ -47,7 +98,7 @@ android {
         buildConfigField(
             "String",
             "DEFAULT_PRODUCT_API_BASE_URL",
-            "\"https://api.carmaja-perlen.de/\"",
+            "\"$productionProductApiBaseUrl\"",
         )
         buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"production\"")
     }
@@ -61,11 +112,43 @@ android {
                 keyPassword = productionSigningKeyPassword
             }
         }
+        if (betaSigningReady) {
+            create("beta") {
+                storeFile = betaSigningStoreFile
+                storePassword = betaSigningStorePassword
+                keyAlias = betaSigningKeyAlias
+                keyPassword = betaSigningKeyPassword
+            }
+        }
     }
 
     buildTypes {
         debug {
             manifestPlaceholders["appLabel"] = "Carmaja-Perlen Produktverwaltung"
+            buildConfigField(
+                "String",
+                "DEFAULT_PRODUCT_API_BASE_URL",
+                "\"$testProductApiBaseUrl\"",
+            )
+            buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"test\"")
+        }
+
+        create("beta") {
+            initWith(getByName("debug"))
+            isDebuggable = true
+            signingConfig = if (betaSigningReady) {
+                signingConfigs.getByName("beta")
+            } else {
+                null
+            }
+            matchingFallbacks += listOf("debug")
+            manifestPlaceholders["appLabel"] = "Carmaja-Perlen Produktverwaltung Test"
+            buildConfigField(
+                "String",
+                "DEFAULT_PRODUCT_API_BASE_URL",
+                "\"$testProductApiBaseUrl\"",
+            )
+            buildConfigField("String", "PRODUCT_PUBLISH_TARGET", "\"test\"")
         }
 
         release {
@@ -98,6 +181,15 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+}
+
+androidComponents {
+    onVariants(selector().withBuildType("beta")) { variant ->
+        variant.outputs.forEach { output ->
+            output.versionCode.set(betaVersionCode)
+            output.versionName.set(betaVersionName)
+        }
     }
 }
 

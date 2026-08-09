@@ -1,3 +1,4 @@
+import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
 
 type TrackedLinkPosition = "footer";
@@ -7,7 +8,9 @@ type InstagramLinkProps = {
 };
 
 export function InstagramLink({ position }: InstagramLinkProps) {
-  const href = `${siteContent.tracking.endpoint}?target=instagram&position=${position}`;
+  const href = siteTarget.isTest
+    ? siteContent.instagram.url
+    : `${siteContent.tracking.endpoint}?target=instagram&position=${position}`;
 
   return (
     <a

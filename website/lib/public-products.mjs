@@ -138,6 +138,14 @@ function parseLegacyBraceletSizeCm(value, location) {
   return requirePositiveNumber(centimeters, location);
 }
 
+export function formatProductSize(value, location = "size") {
+  return formatMeasurement(
+    parseLegacyBraceletSizeCm(value, location),
+    "cm",
+    location,
+  );
+}
+
 export function readJpegDimensions(filePath) {
   const contents = readFileSync(filePath);
 
@@ -291,6 +299,10 @@ function validateProduct(value, index, imageRoot) {
   const hasLegacyFields = ["size", "stock", "vintedUrl"].some(
     (field) => field in product,
   );
+
+  if ("vintedUrl" in product) {
+    fail(location, "vintedUrl ist im Produktionsproduktmodell nicht erlaubt.");
+  }
 
   if (hasV2Measurements) {
     requireExactKeys(product, PRODUCT_V2_KEYS, REQUIRED_PRODUCT_V2_KEYS, location);
