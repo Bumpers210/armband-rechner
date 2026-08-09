@@ -118,6 +118,10 @@ test(
           cwd: projectRoot,
           env: {
             ...process.env,
+            CARMAJA_SITE_TARGET: "test",
+            CARMAJA_SITE_URL: "https://test.carmaja-perlen.de",
+            CARMAJA_PRODUCTION_PUBLISH_ENABLED: "false",
+            CARMAJA_PRODUCTION_DEPLOY_ENABLED: "false",
             CARMAJA_TEST_FIXTURES: "true",
             CARMAJA_PRODUCTS_FILE: productsFile,
             CARMAJA_PRODUCT_IMAGES_DIR: imageRoot,
