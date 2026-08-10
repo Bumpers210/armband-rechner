@@ -597,8 +597,10 @@ V1-Restrisiko; eine aktive TLS-Sitzung ist weiterhin zwingend.
 
 Der getrennte Backup-Cron ist für `17 * * * *` vorgesehen. Der Windows-Agent
 läuft bei Anmeldung und anschließend alle 30 Minuten, prüft den exakten
-OneDrive-Stamm `D:\Carmaja-OneDrive`, OneDrive-Prozess, freien Speicher,
-Größen und Hashes. Unvollständige Transfers liegen außerhalb von OneDrive im
+registrierten OneDrive-Kontostamm `D:\Carmaja-OneDrive\OneDrive`, getrennten
+Backupzielordner `D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive`,
+OneDrive-Prozess, freien Speicher, Größen und Hashes. Unvollständige Transfers
+liegen außerhalb von OneDrive im
 eindeutig markierten Stagingordner `D:\Carmaja-Backup-Incoming`; die geprüfte
 Sicherung wird auf demselben Laufwerk atomar in OneDrive verschoben und erst
 danach quittiert. OneDrive erhält 48 stündliche, 30 tägliche und 12

@@ -45,7 +45,9 @@ test("OneDrive-Pull prüft Pfad, Hash, freien Speicher und quittiert erst nach a
   const install = await read("website/scripts/install-production-backup-task.ps1");
   const setup = await read("website/scripts/initialize-production-backup-key.ps1");
 
-  assert.match(pull, /D:\\Carmaja-OneDrive/);
+  assert.match(pull, /D:\\Carmaja-OneDrive\\OneDrive/);
+  assert.match(pull, /D:\\Carmaja-OneDrive\\OneDrive\\Carmaja-OneDrive/);
+  assert.match(install, /-BackupTargetRoot/);
   assert.match(pull, /Get-FileHash -Algorithm SHA256/);
   assert.match(pull, /10L \* \[Math\]::Max/);
   assert.match(pull, /5GB/);

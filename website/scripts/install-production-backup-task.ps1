@@ -1,12 +1,15 @@
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
     [string]$SshAlias = 'carmaja-production-ionos',
-    [string]$OneDriveRoot = 'D:\Carmaja-OneDrive',
+    [string]$OneDriveRoot = 'D:\Carmaja-OneDrive\OneDrive',
+    [string]$BackupTargetRoot = 'D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive',
     [string]$TaskName = 'Carmaja Production Backup Pull'
 )
 
 $ErrorActionPreference = 'Stop'
-if ($SshAlias -ne 'carmaja-production-ionos' -or $OneDriveRoot -ne 'D:\Carmaja-OneDrive') {
+if ($SshAlias -ne 'carmaja-production-ionos' `
+    -or $OneDriveRoot -ne 'D:\Carmaja-OneDrive\OneDrive' `
+    -or $BackupTargetRoot -ne 'D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive') {
     throw 'Der produktive Taskvertrag wurde verändert.'
 }
 $source = Join-Path $PSScriptRoot 'pull-production-backups.ps1'
@@ -27,7 +30,7 @@ if ($PSCmdlet.ShouldProcess($agentRoot, 'privaten Backup-Agent und Windows-Task 
     if (-not (Test-Path -LiteralPath $powerShell -PathType Leaf)) {
         throw 'Windows PowerShell fuer den geplanten Task fehlt.'
     }
-    $arguments = '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $target + '" -SshAlias "' + $SshAlias + '" -OneDriveRoot "' + $OneDriveRoot + '"'
+    $arguments = '-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $target + '" -SshAlias "' + $SshAlias + '" -OneDriveRoot "' + $OneDriveRoot + '" -BackupTargetRoot "' + $BackupTargetRoot + '"'
     $action = New-ScheduledTaskAction -Execute $powerShell -Argument $arguments
     $logon = New-ScheduledTaskTrigger -AtLogOn -User ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)
     $repeat = New-ScheduledTaskTrigger -Once -At ([datetime]::Now.AddMinutes(1)) -RepetitionInterval ([timespan]::FromMinutes(30)) -RepetitionDuration ([timespan]::FromDays(3650))

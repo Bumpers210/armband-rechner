@@ -119,8 +119,10 @@ Fehlersichtbarkeit.
 
 ## 8. Backup und Restore
 
-- [ ] OneDrive über den vorgesehenen Microsoft-Ablauf vollständig auf
-  `D:\Carmaja-OneDrive` umziehen; `D:\Carmaja-Perlen` bleibt unsynchronisiert.
+- [ ] OneDrive über den vorgesehenen Microsoft-Ablauf mit dem registrierten
+  Kontostamm `D:\Carmaja-OneDrive\OneDrive` betreiben und den synchronisierten
+  Backupzielordner `D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive` nachweisen;
+  `D:\Carmaja-Perlen` bleibt unsynchronisiert.
 - [ ] 32-Byte-Backupschlüssel lokal erzeugen, im Passwortmanager und getrennt
   offline sichern; private Serverdatei und Runtime mit Modus `0600` prüfen.
 - [ ] Stündlichen privaten Backupdienst (`17 * * * *`) und 30-minütigen

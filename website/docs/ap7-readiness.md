@@ -209,7 +209,9 @@ sind nicht freigegeben und wurden nicht begonnen.
 6. Stripe-Livekonto, Webhook, Payload-Schlüssel, Terms-URL, vier
    Zahlungsarten und alle deaktivierten Checkout-Optionen verifizieren;
    Brevo-Liveabsender und -Zugang getrennt verifizieren.
-7. OneDrive kontrolliert nach `D:\Carmaja-OneDrive` verschieben, den lokal
+7. OneDrive kontrolliert mit dem registrierten Kontostamm
+   `D:\Carmaja-OneDrive\OneDrive` und dem synchronisierten Backupzielordner
+   `D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive` betreiben, den lokal
    erzeugten 32-Byte-Schlüssel in Passwortmanager und Offlinekopie sichern,
    den privaten stündlichen Backup-Cron sowie den 30-minütigen Windows-Pull
    abnehmen und die verschlüsselten Archive in OneDrive Web nachweisen. Danach

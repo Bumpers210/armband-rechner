@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$SshAlias = 'carmaja-production-ionos',
-    [string]$OneDriveRoot = 'D:\Carmaja-OneDrive',
+    [string]$OneDriveRoot = 'D:\Carmaja-OneDrive\OneDrive',
+    [string]$BackupTargetRoot = 'D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive',
     [string]$AgentRoot = (Join-Path $env:LOCALAPPDATA 'Carmaja\BackupAgent'),
     [string]$RemoteBackupRoot = 'carmaja-private-shop/backups',
     [string]$RemoteCli = '/home/www/carmaja-private-shop/backup.php',
@@ -10,7 +11,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$script:ExpectedOneDriveRoot = 'D:\Carmaja-OneDrive'
+$script:ExpectedOneDriveRoot = 'D:\Carmaja-OneDrive\OneDrive'
+$script:ExpectedBackupTargetRoot = 'D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive'
 $script:BackupNamePattern = '^[0-9]{8}T[0-9]{6}Z-[a-f0-9]{12}$'
 $script:ExpectedFiles = @('manifest.json', 'commerce.sql.gz.cmjbkp', 'product-data.tar.gz.cmjbkp')
 
@@ -27,6 +29,7 @@ function Get-FullPath([string]$Path) {
 function Assert-StaticContract {
     $expectedAgentRoot = Get-FullPath (Join-Path $env:LOCALAPPDATA 'Carmaja\BackupAgent')
     $invalidContract = $SshAlias -ne 'carmaja-production-ionos' `
+        -or -not (Get-FullPath $BackupTargetRoot).Equals((Get-FullPath $script:ExpectedBackupTargetRoot), [StringComparison]::OrdinalIgnoreCase) `
         -or (Get-FullPath $AgentRoot) -ne $expectedAgentRoot `
         -or $RemoteBackupRoot -ne 'carmaja-private-shop/backups' `
         -or $RemoteCli -ne '/home/www/carmaja-private-shop/backup.php' `
@@ -327,7 +330,7 @@ Protect-AgentDirectory $AgentRoot
 $downloaded = 0
 try {
     Assert-OneDriveReady
-    $targetRoot = Join-Path $OneDriveRoot 'Carmaja-Perlen\Backups'
+    $targetRoot = Get-FullPath $BackupTargetRoot
     $incomingRoot = Get-IncomingRoot
     New-Item -ItemType Directory -Path $targetRoot -Force | Out-Null
 

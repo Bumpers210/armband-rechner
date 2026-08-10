@@ -9,8 +9,10 @@ Produktionsaktivierung ausstehend
 Der private IONOS-Dienst erzeugt stündliche, authentifiziert verschlüsselte
 Vollbackups. Der Windows-Agent lädt ausschließlich durch einen atomaren
 `ready`-Marker veröffentlichte Sicherungen per SFTP nach
-`D:\Carmaja-OneDrive\Carmaja-Perlen\Backups`. Skripte und Zustandsdaten liegen
-nicht in OneDrive, sondern unter `%LOCALAPPDATA%\Carmaja\BackupAgent`.
+`D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive`. Der vom OneDrive-Client
+registrierte Kontostamm ist `D:\Carmaja-OneDrive\OneDrive`; beide Pfade werden
+getrennt und exakt geprüft. Skripte und Zustandsdaten liegen nicht in OneDrive,
+sondern unter `%LOCALAPPDATA%\Carmaja\BackupAgent`.
 
 * Server-RPO: 1 Stunde; Warnung nach 90 Minuten ohne fertiges Backup.
 * Offsite-RPO: bis 24 Stunden; Warnung nach 24 Stunden ohne Downloadquittung.
@@ -109,8 +111,10 @@ Anmeldung und danach alle 30 Minuten, verwendet den SSH-Alias
 `carmaja-production-ionos`, `BatchMode=yes` und
 `StrictHostKeyChecking=yes`.
 
-Der Pull prüft OneDrive-Prozess, den in der OneDrive-Kontokonfiguration
-eingetragenen Stamm, freien Speicher, Dateigrößen und SHA-256. Der SFTP-Transfer
+Der Pull prüft OneDrive-Prozess, den in der OneDrive-Kontokonfiguration exakt
+als `D:\Carmaja-OneDrive\OneDrive` eingetragenen Stamm, den getrennten
+Backupzielordner `D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive`, freien
+Speicher, Dateigrößen und SHA-256. Der SFTP-Transfer
 landet zunächst geschützt unter `D:\Carmaja-Backup-Incoming`, also außerhalb
 von OneDrive, aber auf demselben Laufwerk. Der Agent verwendet den Ordner nur,
 wenn sein eindeutiger Eigentumsmarker vorhanden ist. Erst nach vollständiger
@@ -144,7 +148,9 @@ temporäre Dateien entfernt.
 
 Vor jeder Produktionsaktivierung sind in dieser Reihenfolge erforderlich:
 
-1. OneDrive vollständig nach `D:\Carmaja-OneDrive` verschieben.
+1. OneDrive mit dem registrierten Kontostamm `D:\Carmaja-OneDrive\OneDrive`
+   betreiben und den synchronisierten Backupzielordner
+   `D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive` nachweisen.
 2. Schlüssel erzeugen und getrennt extern sichern.
 3. private Runtime vervollständigen.
 4. Backup-CLI und Backup-Cron privat bereitstellen.
