@@ -1,6 +1,6 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
-Stand: 2026-08-09
+Stand: 2026-08-10
 Änderungsvermerk: AP1, AP2, AP2a, AP3, AP4 und AP5 sind abgeschlossen und
 abgenommen. AP3b ist für `card`, `paypal`, `klarna` und `sepa_debit` technisch
 vollständig abgenommen; die AP6-Gesamtregression wurde danach erfolgreich
@@ -19,9 +19,13 @@ Worker, Brevo und öffentlichem Widerruf nachgewiesen und anschließend
 bereinigt. AP7.5 hat den getesteten Produktvertrag V2 in das manuell gegatete
 Produktions-API-Artefakt übernommen und lokal verifiziert. AP7.7a ergänzt den
 privaten verschlüsselten IONOS-Backupdienst und den kontrollierten
-OneDrive-Pull; der isolierte IONOS-E2E mit künstlichen Daten ist bestanden,
-während Produktionsaktivierung und OneDrive-Pull ausstehen. AP7
-und jede Produktionsmutation bleiben nicht freigegeben.
+OneDrive-Pull; der isolierte IONOS-E2E mit künstlichen Daten ist bestanden.
+Das reale V2-Startprodukt
+`3a37a0a2-9bd6-4410-aa9c-a465fdc411a1` ist mit
+`salesEnabled=false` in einem weiterhin unfreigegebenen Cutovermanifest
+vorbereitet; der frühere Wert `stock=1` wurde ausschließlich lesend aus der
+unveränderten Migrationssicherung `20260810-193548-5cebba9e` bestätigt. AP7
+und jede weitere Produktionsmutation bleiben nicht freigegeben.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
@@ -423,13 +427,14 @@ Draft-Roundtrip weist Laden, Bearbeiten, V2-Speichern/Synchronisieren und
 erneutes Laden von Armbandumfang und Perlengröße ohne Wertverlust nach. Der
 Android-Versions- und Draft-Synchronisierungsblocker ist damit geschlossen.
 
-Der Release Candidate bleibt bis zur Anlage genau eines geeigneten realen
-v2-Startprodukts nicht bereit. Dieses Produkt muss über die bestehende
-Produktverwaltung mit gültigem `priceMinor`, `currency=eur` und
-`salesEnabled=false` gespeichert und veröffentlicht werden; `productVersion`
-und `sourceHash` entstehen serverseitig. Weder `stock` noch Commerce-Bestand
-dürfen dabei verändert werden. Produktionsdaten, Deployment, Merge, Migration,
-Produktaktivierung und Cutover bleiben gesperrt.
+Genau ein geeignetes reales V2-Startprodukt wurde inzwischen mit gültigem
+`priceMinor`, `currency=eur`, `salesEnabled=false`, serverseitiger
+`productVersion` und serverseitigem `sourceHash` vorbereitet. Der historische
+Wert `stock=1` ist aus der unveränderten Migrationssicherung schreibfrei
+bestätigt. Das Cutovermanifest bindet diesen Stand lokal, bleibt aber
+unfreigegeben. Eine spätere Aktivierung verändert Version und Hash; beide
+müssen danach erneut geprüft und vor einer Manifestfreigabe aktualisiert
+werden. Bestandsimport, Produktaktivierung und Cutover bleiben gesperrt.
 
 ### AP7.3b – Vollständige V2-Produktkette
 
@@ -636,8 +641,8 @@ Migration, Shopaktivierung und Cutover gesperrt. Der Betriebsvertrag steht in
 | AP5 | vollständig abgenommen | getrenntes Admin-Konto, Session/CSRF/Sperre, Admin-Verwaltung, Brevo-Outbox, Refund-Anzeige und AP5-Nachweise bestanden |
 | AP6 | vollständig abgenommen | PHP-, Node-, Android-, MySQL-, Stripe-, Brevo-, IONOS-Cron-, Backup-/Restore- und Sicherheitsnachweise bestanden; Rechts-, Datenschutz- und Versandfassung versioniert freigegeben |
 | AP7.0 | lokal technisch bereit | Produktionsverträge, manueller Deployment-Gate, v2-Website/Publisher, Cutovermanifest/-Adapter und lokale Regression bestanden; keine Produktionsmutation |
-| AP7.2b | App- und Draft-Synchronisierungsblocker geschlossen | App `1.1.2`/Code `4`, vollständiges Messwert-Mapping, Android-Prüfbuild und relevante Vertragsregression bestanden; reales v2-Startprodukt ausstehend |
-| AP7.3b | vollständige V2-Produktkette technisch geschlossen | App/Draft, API, serverseitige Version/Hash, Publisher und öffentliche V2-Projektion lokal und auf IONOS mit künstlichen Daten nachgewiesen und bereinigt; reales v2-Startprodukt ausstehend |
+| AP7.2b | App- und Draft-Synchronisierungsblocker geschlossen | App `1.1.2`/Code `4`, vollständiges Messwert-Mapping, Android-Prüfbuild und relevante Vertragsregression bestanden |
+| AP7.3b | vollständige V2-Produktkette technisch geschlossen | App/Draft, API, serverseitige Version/Hash, Publisher und öffentliche V2-Projektion lokal und auf IONOS mit künstlichen Daten nachgewiesen und bereinigt |
 | AP7.3d | V2-Testwebsite verifiziert | V2-Testprodukt sichtbar und nicht kaufbar; Test-API, Produktdetail, Bilder, Legal-Seiten und Verkaufskanalgrenze live geprüft; Produktion unverändert |
 | AP7.3e | AP7-Integrationsstand bereit | V2-Kette einschließlich AP7.3d übernommen; App-, PHP-, Node-, Test-/Produktionsbuild-, Export- und Geheimwertregression bestanden |
 | AP7.3g | Testumgebung vollständig AP7-fähig | vollständige private Testlaufzeit, vier Zahlungsarten, Webhooks, Worker/Cron, Bestellung, Brevo, Widerruf, Legal-Snapshot, Admin/Review und Cleanup nachgewiesen |
@@ -727,10 +732,10 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP5 | freigegeben und vollständig abgenommen |
 | AP6 | vollständig abgenommen |
 | AP7.0 | lokal technisch bereit; keine Produktionsfreigabe |
-| AP7.2b | App- und Draft-Synchronisierungsblocker geschlossen; Startprodukt ausstehend |
-| AP7.3b | vollständige V2-Produktkette technisch geschlossen; Startprodukt ausstehend |
+| AP7.2b | App- und Draft-Synchronisierungsblocker geschlossen |
+| AP7.3b | vollständige V2-Produktkette technisch geschlossen |
 | AP7.3d | V2-Testwebsite serverseitig verifiziert; keine Produktionsfreigabe |
-| AP7.3e | AP7-Integrationsstand technisch bereit; Startprodukt und Produktionsgates ausstehend |
+| AP7.3e | AP7-Integrationsstand technisch bereit; reales Startprodukt unfreigegeben im Manifest vorbereitet, übrige Produktionsgates ausstehend |
 | AP7.3g | Testumgebung vollständig AP7-fähig und bereinigt; keine Produktionsfreigabe |
 | AP7.5 | produktionsfähiges V2-Produkt-API-Artefakt lokal bereit; PR-/CI-Nachweis und Produktionsfreigabe getrennt |
 | AP7.7a | verschlüsselter Backupvertrag lokal implementiert und isolierter IONOS-Test-E2E bestanden; OneDrive-/Produktionsaktivierung und produktives Restore-Gate ausstehend |

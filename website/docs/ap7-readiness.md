@@ -1,6 +1,6 @@
 # AP7.0 – lokale Produktionsbereitschaft
 
-Stand: 2026-08-09
+Stand: 2026-08-10
 
 Basis: AP6-Commit `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`
 
@@ -34,10 +34,12 @@ Brevo, Widerruf und IONOS-UnixCron vollständig nachgewiesen und bereinigt.
 AP7.5 bindet den getesteten Produktvertrag V2 nun auch an das ausschließlich
 manuell ausführbare Produktions-API-Artefakt; Publisher und automatische
 Deployments bleiben gesperrt. Der AP7-Integrationsstand und die Testumgebung
-sind technisch bereit. Der Release Candidate bleibt bis zur Anlage genau eines
-geeigneten realen v2-Startprodukts und bis zur Erfüllung der Produktionsgates
-nicht produktionsbereit. Merge, Produktion, Cutover und Produktionsdeployment
-sind nicht freigegeben und wurden nicht begonnen.
+sind technisch bereit. Genau ein reales V2-Startprodukt ist inzwischen lokal
+im weiterhin unfreigegebenen Cutovermanifest vorbereitet. Sein früherer
+`stock`-Wert wurde ausschließlich lesend aus der unveränderten
+Migrationssicherung bestätigt. Produktion, Cutover und Produktionsdeployment
+bleiben bis zur erneuten Versions-/Hashprüfung nach einer separat freizugebenden
+Aktivierung und bis zur Erfüllung aller übrigen Produktionsgates gesperrt.
 
 ## Geschlossene lokale Blocker
 

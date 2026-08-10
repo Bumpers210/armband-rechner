@@ -1,6 +1,6 @@
 # AP7 – endgültige Produktions-Preflight-Checkliste
 
-Stand: 2026-08-08
+Stand: 2026-08-10
 
 Status: **nicht zur Ausführung freigegeben**
 
@@ -22,26 +22,36 @@ einen Testwert ersetzt werden.
 
 ## 2. Startprodukt
 
-- [ ] Genau einen realen Datensatz aus der autoritativen Produktverwaltung
+- [x] Genau einen realen Datensatz aus der autoritativen Produktverwaltung
   auswählen.
-- [ ] Produktmodell `2`, eindeutige `productId`, monotone `productVersion` und
+- [x] Produktmodell `2`, eindeutige `productId`, monotone `productVersion` und
   serverseitigen 64-stelligen `sourceHash` nachweisen.
-- [ ] Namen, Beschreibung, Bilder, Preis `>= 50` Cent, Währung `eur`,
-  `salesEnabled`, bisheriges `stock=1` und Zielbestand `onHand=1` fachlich
-  bestätigen.
-- [ ] Produkt- und Bildprojektion mit der öffentlichen v2-Projektion
+- [x] Namen, Beschreibung, Bilder, Preis `>= 50` Cent, Währung `eur`,
+  `salesEnabled=false`, bisherigen Wert `stock=1` aus der unveränderten
+  Migrationssicherung und Zielbestand `onHand=1` fachlich bestätigen.
+- [x] Produkt- und Bildprojektion mit der öffentlichen v2-Projektion
   vergleichen; keine externen Verkaufsfelder zulassen.
-- [ ] Nur diesen Datensatz mit `legacyStock=1`, `targetOnHand=1`, erwarteter
+- [x] Nur diesen Datensatz mit `legacyStock=1`, `targetOnHand=1`, erwarteter
   Version und erwartetem Hash in
   `website/config/production-cutover-manifest.v1.json` eintragen.
 - [ ] Manifeststatus erst nach Vier-Augen-Prüfung auf
   `approved_for_cutover` setzen.
 
-**Aktueller Nachweis:** In den vorhandenen lokalen und Remote-Git-Referenzen
-existiert kein freigabefähiger realer v2-Datensatz. Die sichtbaren Kandidaten
-sind v1-Daten ohne `productId`, `productVersion`, `sourceHash` und Preis. Das
-Manifest bleibt deshalb korrekt auf `awaiting_production_product_selection`
-mit leerem `selectedProducts`-Array.
+**Aktueller Nachweis:** Produkt
+`3a37a0a2-9bd6-4410-aa9c-a465fdc411a1` ist als Produktmodell V2 mit
+`productVersion=1`, Preis 2800 Cent, Währung EUR, `salesEnabled=false` und
+serverseitigem `sourceHash`
+`09cd71d56561b08b8373c3bc804d3298b47096c470751da3407a5e0eff1e4444`
+vorbereitet. Die ausschließlich lesende Prüfung der unveränderten
+Migrationssicherung `20260810-193548-5cebba9e` bestätigte den früheren Wert
+`stock=1`. Das Manifest bindet genau dieses Produkt, bleibt mit Status
+`prepared_awaiting_cutover_approval` aber nicht ausführbar.
+
+Vor einer späteren Freigabe sind `salesEnabled=true`, die dadurch neu
+entstehenden Werte für `productVersion` und `sourceHash` sowie alle übrigen
+Produkt- und Cutovergates erneut zu prüfen und atomar im Manifest zu binden.
+Der aktuell vorbereitete Hash darf nicht freigegeben oder für den Cutover
+verwendet werden.
 
 **Stop:** kein exakt passender v2-Datensatz oder irgendein Feldkonflikt.
 

@@ -1,8 +1,8 @@
 {
   "manifestVersion": 1,
   "environment": "production",
-  "status": "awaiting_production_product_selection",
-  "baseCommit": "bb4345fbfb26fede5bdf61be0ef6191746a98ef0",
+  "status": "prepared_awaiting_cutover_approval",
+  "baseCommit": "0fa5c8e437d29e062150d308c301f6b77202c1b2",
   "productModelVersion": 2,
   "inventorySource": "commerce_inventory.on_hand",
   "schemaMigrations": [
@@ -39,7 +39,20 @@
     "maxBusinessDays": 4
   },
   "paymentMethodTypes": ["card", "paypal", "klarna", "sepa_debit"],
-  "selectedProducts": [],
+  "selectedProducts": [
+    {
+      "productId": "3a37a0a2-9bd6-4410-aa9c-a465fdc411a1",
+      "expectedProductVersion": 1,
+      "expectedSourceHash": "09cd71d56561b08b8373c3bc804d3298b47096c470751da3407a5e0eff1e4444",
+      "legacyStock": 1,
+      "targetOnHand": 1
+    }
+  ],
+  "selectionEvidence": {
+    "migrationBackupId": "20260810-193548-5cebba9e",
+    "legacyStockVerified": 1,
+    "backupUnchanged": true
+  },
   "cutoverGuards": {
     "exactlyOneSelectedProduct": true,
     "requireProductModelV2": true,
