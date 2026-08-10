@@ -66,6 +66,9 @@ test("OneDrive-Pull prüft Pfad, Hash, freien Speicher und quittiert erst nach a
   assert.match(`${pull}\n${install}\n${setup}`, /'\*' \+ \[System\.Security\.Principal\.WindowsIdentity\]::GetCurrent\(\)\.User\.Value/);
   assert.match(setup, /RandomNumberGenerator/);
   assert.match(setup, /Set-Clipboard/);
+  assert.match(setup, /Set-Clipboard -Value ' ' -ErrorAction Stop/);
+  assert.doesNotMatch(setup, /Set-Clipboard -Value ''/);
+  assert.match(setup, /Clipboard cleanup must never prevent removal of local key artifacts/);
   assert.match(setup, /GESICHERT/);
   assert.doesNotMatch(`${pull}\n${install}\n${setup}`, /backupEncryptionKey\s*=\s*['"][A-Za-z0-9+/]/);
 });
