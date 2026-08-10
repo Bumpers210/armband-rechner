@@ -57,7 +57,14 @@ try {
 finally {
     $generator.Dispose()
     [Array]::Clear($bytes, 0, $bytes.Length)
-    if (Get-Command Set-Clipboard -ErrorAction SilentlyContinue) { Set-Clipboard -Value '' }
+    try {
+        if (Get-Command Set-Clipboard -ErrorAction SilentlyContinue) {
+            Set-Clipboard -Value ' ' -ErrorAction Stop
+        }
+    }
+    catch {
+        # Clipboard cleanup must never prevent removal of local key artifacts.
+    }
     Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $batch -Force -ErrorAction SilentlyContinue
     if ($remoteUploaded -and -not $remoteSecured) {
