@@ -48,7 +48,7 @@ function carmaja_cutover_validate_contract(array $manifest, string $repositoryRo
     }
     $legal = $manifest['legalBundle'] ?? null;
     if (!is_array($legal)
-        || ($legal['legalBundleId'] ?? null) !== 'cmj-production-legal-2026-08-07-v3'
+        || ($legal['legalBundleId'] ?? null) !== 'cmj-production-legal-2026-08-11-v4'
         || ($legal['status'] ?? null) !== 'approved') {
         throw new CarmajaProductionCutoverException('legal_bundle_contract_invalid');
     }

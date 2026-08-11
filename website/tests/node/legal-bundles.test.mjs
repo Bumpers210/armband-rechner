@@ -120,9 +120,9 @@ test("freigegebene AP6-Produktionsfassung ist dem aktuellen Shopvertrag zugeordn
   assert.match(source, /zahlungspflichtig bestellen/);
 });
 
-test("Produktionskandidat v4 entfernt PayPal und bleibt bis zur Freigabe inaktiv", async () => {
+test("freigegebene Produktionsfassung v4 entfernt PayPal und ist aktiv", async () => {
   const source = await readFile(new URL("../../content/legal-bundles.ts", import.meta.url), "utf8");
-  const candidateStart = source.indexOf("const productionAwaitingTextsV4");
+  const candidateStart = source.indexOf("const productionApprovedTextsV4");
   const candidateEnd = source.indexOf("export const testLegalBundle");
   const candidate = source.slice(candidateStart, candidateEnd);
 
@@ -130,8 +130,46 @@ test("Produktionskandidat v4 entfernt PayPal und bleibt bis zur Freigabe inaktiv
   assert.doesNotMatch(candidate, /PayPal|paypal\.com/);
   assert.match(candidate, /Kredit- und Debitkarte, Apple Pay und Google Pay auf Kartenbasis, Klarna und SEPA-Lastschrift/);
   assert.match(source, /id: "cmj-production-legal-2026-08-11-v4"/);
-  assert.match(source, /status: "awaiting_external_approval"/);
-  assert.match(source, /production: \[productionLegalBundle\]/);
+  assert.match(source, /export const productionLegalBundleV4/);
+  assert.match(source, /status: "approved"/);
+  assert.match(source, /0bc420ad6dd574ae0005d63f9e6c494d6db18a71b4a9f294314209f0b4dea9f1/);
+  assert.match(source, /production: \[productionLegalBundleV4, productionLegalBundle\]/);
+});
+
+test("AP7-v4-Freigabepaket bindet die neue Fassung ohne aktive PayPal-Nennung", async () => {
+  const packageBase = new URL("../../docs/legal-review/ap7-2026-08-11-v1/", import.meta.url);
+  const manifest = JSON.parse(await readFile(new URL("manifest.json", packageBase), "utf8"));
+
+  assert.equal(manifest.status, "freigegeben");
+  assert.equal(manifest.legalBundleId, "cmj-production-legal-2026-08-11-v4");
+  assert.equal(manifest.legalBundleStatus, "approved");
+  assert.equal(
+    manifest.legalBundleContentSha256,
+    "0bc420ad6dd574ae0005d63f9e6c494d6db18a71b4a9f294314209f0b4dea9f1",
+  );
+  assert.equal(manifest.approvalEvidenceStored, false);
+
+  for (const document of manifest.documents) {
+    const bytes = await readFile(new URL(document.file, packageBase));
+    const text = bytes.toString("utf8");
+    const contentMatch = text.match(
+      /<!-- hash-begin -->\r?\n([\s\S]*?)\r?\n<!-- hash-end -->/,
+    );
+    assert.ok(contentMatch, `${document.file}: Hashbereich fehlt`);
+
+    const normalizedContent = contentMatch[1].replace(/\r\n?/g, "\n");
+    const contentHash = createHash("sha256")
+      .update(normalizedContent, "utf8")
+      .digest("hex");
+    const fileHash = createHash("sha256").update(bytes).digest("hex");
+
+    assert.equal(contentHash, document.contentSha256, `${document.file}: Inhalts-Hash`);
+    assert.equal(fileHash, document.fileSha256, `${document.file}: Datei-Hash`);
+    assert.match(text, /Status: \*\*freigegeben\*\*/);
+    if (document.file !== "09-schriftliche-freigabebestaetigung.md") {
+      assert.doesNotMatch(text, /PayPal|paypal\.com/);
+    }
+  }
 });
 
 test("freigegebenes Produktions-Bundle ist für Checkout-Snapshots zulässig", () => {

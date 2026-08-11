@@ -214,7 +214,7 @@ const productionApprovedTexts: LegalBundleTexts = {
   ],
 };
 
-const productionAwaitingTextsV4: LegalBundleTexts = {
+const productionApprovedTextsV4: LegalBundleTexts = {
   terms: productionApprovedTexts.terms.map((section) =>
     section.heading === "5. Preise und Zahlung"
       ? {
@@ -285,19 +285,26 @@ export const productionLegalBundle: LegalBundle = createLegalBundle({
   texts: productionApprovedTexts,
 });
 
-export const productionLegalBundleV4Candidate: LegalBundle = createLegalBundle({
+export const PRODUCTION_LEGAL_BUNDLE_V4_CONTENT_SHA256 =
+  "0bc420ad6dd574ae0005d63f9e6c494d6db18a71b4a9f294314209f0b4dea9f1";
+
+export const productionLegalBundleV4: LegalBundle = createLegalBundle({
   id: "cmj-production-legal-2026-08-11-v4",
   environment: "production",
   version: "v4",
-  status: "awaiting_external_approval",
+  status: "approved",
   archiveUrl: "/legal-archive/production/cmj-production-legal-2026-08-11-v4/",
   createdAt: "2026-08-11T00:00:00.000Z",
-  texts: productionAwaitingTextsV4,
+  texts: productionApprovedTextsV4,
 });
+
+if (productionLegalBundleV4.contentHash !== PRODUCTION_LEGAL_BUNDLE_V4_CONTENT_SHA256) {
+  throw new Error("Freigegebenes Produktions-Legal-Bundle v4 stimmt nicht mit dem Inhalts-Hash überein.");
+}
 
 export const legalBundlesByTarget = {
   test: [testLegalBundle],
-  production: [productionLegalBundle],
+  production: [productionLegalBundleV4, productionLegalBundle],
 } as const;
 
 export function getActiveLegalBundle(): LegalBundle {

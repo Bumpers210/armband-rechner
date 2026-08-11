@@ -44,7 +44,7 @@ return [
     'stripePaymentMethodTypes' => ['card', 'klarna', 'sepa_debit'],
     'stripeSuccessUrl' => 'https://www.carmaja-perlen.de/shop/success?session_id={CHECKOUT_SESSION_ID}',
     'stripeCancelUrl' => 'https://www.carmaja-perlen.de/shop/cancel',
-    'activeLegalBundleId' => 'cmj-production-legal-2026-08-07-v3',
+    'activeLegalBundleId' => 'cmj-production-legal-2026-08-11-v4',
     'shippingMethodId' => 'deutsche-post-maxibrief',
     'shippingPublicName' => 'Deutsche Post Maxibrief',
     'shippingAmountMinor' => 270,

@@ -80,7 +80,8 @@ fail-closed.
   eine private Produktionskonfiguration sowie genau ein autoritatives
   v2-Produkt. Es prüft den serverseitigen `sourceHash` erneut.
 - Versand (`deutsche-post-maxibrief`, 270 Cent, EUR), Legal Bundle
-  `cmj-production-legal-2026-08-07-v3` und die vier Zahlungsarten sind in
+  `cmj-production-legal-2026-08-11-v4` und die drei Stripe-Zahlungsarten
+  `card`, `klarna` und `sepa_debit` sind in
   Deploymentvertrag, Laufzeitvorlage und Cutovermanifest identisch.
 
 ## Lokale Nachweise
