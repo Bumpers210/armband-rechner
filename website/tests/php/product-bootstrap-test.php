@@ -233,6 +233,10 @@ carmaja_bootstrap_test(
         mkdir($productionConfigDirectory, 0750, true);
         $productionUsers = $productionAuth . DIRECTORY_SEPARATOR . 'api-users.json';
         file_put_contents($productionUsers, '{"environment":"production","users":[]}');
+        file_put_contents(
+            $productionProductPrivate . DIRECTORY_SEPARATOR . 'environment.json',
+            '{"environment":"production"}'
+        );
         $productionConfig = $productionConfigDirectory . DIRECTORY_SEPARATOR . 'runtime-config.php';
         $config = $fixture['config'];
         $config['environment'] = 'production';
@@ -249,7 +253,7 @@ carmaja_bootstrap_test(
             . 'backup-key.php';
         $config['githubBranch'] = 'main';
         carmaja_bootstrap_test_write_config($productionConfig, $config);
-        $loaded = carmaja_bootstrap_load_config($productionConfig);
+        $loaded = carmaja_bootstrap_prepare($productionConfig);
         carmaja_bootstrap_test_same('main', $loaded['githubBranch'], 'Main-Referenz fehlt.');
         carmaja_bootstrap_test_same(false, $loaded['githubAdapterEnabled'], 'GitHub-Adapter muss deaktiviert bleiben.');
         carmaja_bootstrap_test_same(
@@ -261,6 +265,11 @@ carmaja_bootstrap_test(
             $config['backupEncryptionKeyFile'],
             $loaded['backupEncryptionKeyFile'],
             'Private Backup-Schlüsseldatei wurde nicht geladen.'
+        );
+        carmaja_bootstrap_test_same(
+            realpath($productionProductPrivate),
+            carmaja_api_private_dir(),
+            'Produktionspfad muss ohne Testpfad sicher aktiviert werden.'
         );
     }
 );
