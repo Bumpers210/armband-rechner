@@ -1,6 +1,6 @@
 # AP7.0 – lokale Produktionsbereitschaft
 
-Stand: 2026-08-10
+Stand: 2026-08-11
 
 Basis: AP6-Commit `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`
 
@@ -189,43 +189,68 @@ Aktivierung und bis zur Erfüllung aller übrigen Produktionsgates gesperrt.
   vollständig bereinigt. OneDrive-Pull und Produktions-Restore bleiben eigene
   Gates.
 
+## Produktionsnachweis vom 2026-08-11
+
+- Der vollständige Integrationsstand ist über PR #38 nach `main` übernommen;
+  die private Bootstrapkorrektur folgte kontrolliert über PR #43. Der aktuelle
+  Produktionsbasisstand ist
+  `b1d7ea4dd18506f866ba01991707344b983934a9`.
+- Private Runtime (`0600`), Produktionspfade, MySQL-8-/InnoDB-Verbindung und
+  aktive TLS-Sitzung sind nachgewiesen. Die fehlende CA-/Hostidentitätsprüfung
+  bleibt das ausdrücklich akzeptierte V1-Restrisiko.
+- Die drei freigegebenen Migrationen sind angewendet. Ihre normalisierten
+  Datei- und Journalhashes stimmen mit dem weiterhin unfreigegebenen
+  Cutovermanifest überein. Das freigegebene Legal Bundle ist vorhanden,
+  `approved` und hashgleich.
+- Privates Shop-/Workerpaket und kombinierter öffentlicher API-Einstieg sind
+  hashgeprüft bereitgestellt. CORS, `no-store`, fail-closed Produktantworten
+  und Produkt-API-v2-Kompatibilität sind bestanden. Es entstand dabei keine
+  Reservierung, Zahlung, Bestellung, Mail oder Bestandsänderung.
+- Der Produktionsworker läuft mit `*/5 * * * *`. Direktlauf, paralleler Lock,
+  Lease, Runlog und zwei echte Cronläufe sind bestanden; beide Workerachsen
+  sind fehlerfrei und besitzen keine aktive Lease.
+- Der stündliche verschlüsselte Backupdienst und der 30-minütige Windows-Pull
+  sind aktiv. `backup status` meldet weder Server- noch Offsite-Überfälligkeit;
+  der erste produktive Restore-Dry-Run und die OneDrive-Websichtbarkeit sind
+  bereits bestanden.
+- Das reale Startprodukt stimmt weiterhin exakt mit der vorbereiteten Auswahl
+  überein: Modell 2, Version 1, Hash
+  `09cd71d56561b08b8373c3bc804d3298b47096c470751da3407a5e0eff1e4444`,
+  2800 Cent, EUR, 18 cm, 8 mm, zwei Bilder und `salesEnabled=false`. `stock`
+  und `vintedUrl` fehlen. Das Produkt ist noch nicht in Commerce importiert;
+  alle Bestands- und Geschäftsobjekte sind leer.
+- Alle externen Verkaufsangebote sind nach Betreiberbestätigung entfernt. Die
+  aktuelle Produktionswebsite enthält keine Vinted-/Marktplatzverweise, aber
+  auch noch keine Shopaktivierung.
+- Brevo Live ist lesend erreichbar; der konfigurierte Produktionsabsender ist
+  vorhanden und aktiv. Stripe Live ist lesend erreichbar. Karte und Klarna
+  sind aktiv; PayPal und SEPA-Lastschrift sind im Live-Zahlungsartenprofil noch
+  nicht verfügbar und blockieren die weitere Shopfreigabe.
+
 ## Verbleibende Produktionsgates
 
-1. Den AP7.5-Stand über PR #38 vollständig prüfen und erst nach gesonderter
-   Freigabe nach `main` übernehmen. Kein PR- oder Branchereignis deployt die
-   Produktions-API automatisch.
-2. Alle parallelen externen Verkaufsangebote nachweislich deaktivieren oder
-   löschen; der eigene Shop bleibt der einzige Verkaufskanal.
-3. Genau ein reales Unikat über die nun nachgewiesene V2-Produktkette vollständig
-   als v2-Datensatz mit gültigem `priceMinor`, `currency=eur` und
-   `salesEnabled=false` speichern und veröffentlichen. `productVersion` und
-   `sourceHash` entstehen ausschließlich serverseitig; `stock` und
-   Commerce-Bestand bleiben unverändert. Erst danach folgen der getrennte
-   Dry-Run und die noch nicht freigegebene Manifestauswahl.
-4. Produktive MySQL-8-/InnoDB-Datenbank, private Runtime-Secrets und aktive
-   TLS-Sitzung nachweisen. Die akzeptierte fehlende CA-/Hostidentitätsprüfung
-   bleibt als V1-Restrisiko dokumentiert.
-5. Privates API-/Workerpaket und öffentlichen API-Einstieg mit Prüfsummen
-   bereitstellen; Stripe-PHP 20.3.0 außerhalb des Webroots installieren und
-   den IONOS-SSH-Hostkey außerhalb des Workflows verifizieren.
-6. Stripe-Livekonto, Webhook, Payload-Schlüssel, Terms-URL, vier
-   Zahlungsarten und alle deaktivierten Checkout-Optionen verifizieren;
-   Brevo-Liveabsender und -Zugang getrennt verifizieren.
-7. OneDrive kontrolliert mit dem registrierten Kontostamm
-   `D:\Carmaja-OneDrive\OneDrive` und dem synchronisierten Backupzielordner
-   `D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive` betreiben, den lokal
-   erzeugten 32-Byte-Schlüssel in Passwortmanager und Offlinekopie sichern,
-   den privaten stündlichen Backup-Cron sowie den 30-minütigen Windows-Pull
-   abnehmen und die verschlüsselten Archive in OneDrive Web nachweisen. Danach
-   den Restore-Dry-Run vollständig bestehen. Erst anschließend UnixCron `*/5`
-   für den Shopworker einrichten, zwei Läufe und Monitoring prüfen.
-8. Unmittelbar vor dem Cutover Wartungs-/Stopmodus aktivieren, vollständiges
-   Produkt- und Commerce-Backup erstellen, Datenbankmigrationen prüfen und
-   alte `stock`-Schreibwege sperren.
-9. Cutover zuerst im Planmodus prüfen und nur nach separater Bestätigung
-   anwenden. Danach genau ein Produkt aktivieren, Smoke-Tests und eine echte
-   Testbestellung durchführen und beobachten. Weitere Produkte bleiben bis
-   zur gesonderten Freigabe deaktiviert.
+1. PayPal und SEPA-Lastschrift im Stripe-Live-Zahlungsartenprofil aktivieren
+   und anschließend die exakte Allowlist `card`, `paypal`, `klarna`,
+   `sepa_debit` erneut ausschließlich lesend nachweisen.
+2. Webhook-Allowlist, Terms-URL, deaktiviertes Link/Recovery/Promotion Codes
+   und alle übrigen Stripe-Live-Checkoutparameter ohne Zahlungserzeugung final
+   abgleichen.
+3. Den aktuellen Readiness-/Manifeststand prüfen und nach gesonderter
+   Freigabe nach `main` übernehmen. Der Manifeststatus bleibt
+   `prepared_awaiting_cutover_approval`.
+4. Unmittelbar vor dem Cutover ein neues verschlüsseltes Produkt- und
+   Commerce-Backup erzeugen, den Offsite-Abruf bestätigen und den
+   Restore-Dry-Run erneut bestehen.
+5. In einem kontrollierten Wartungsfenster `salesEnabled=true` ausschließlich
+   für das Startprodukt setzen. Die dadurch neu entstehenden Werte für
+   `productVersion` und `sourceHash` erneut lesen, prüfen und in das Manifest
+   binden.
+6. Das Manifest nach Vier-Augen-Prüfung separat freigeben, den Cutover zuerst
+   im Planmodus prüfen und erst nach ausdrücklicher Apply-Freigabe
+   `commerce_products` sowie `commerce_inventory.onHand=1` initialisieren.
+7. Publisher und Produktionswebsite in der festgelegten Reihenfolge separat
+   freigeben, genau eine echte Gastbestellung durchführen und das
+   Beobachtungsfenster ohne weitere Produktfreigabe abschließen.
 
 Jede Abweichung bei Produktidentität, Hash, Preis, Bestand, Migration,
 Zahlungszuordnung, Backup, Worker oder Monitoring stoppt neue Checkouts. Ein

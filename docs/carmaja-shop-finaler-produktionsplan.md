@@ -1,6 +1,6 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
-Stand: 2026-08-10
+Stand: 2026-08-11
 Änderungsvermerk: AP1, AP2, AP2a, AP3, AP4 und AP5 sind abgeschlossen und
 abgenommen. AP3b ist für `card`, `paypal`, `klarna` und `sepa_debit` technisch
 vollständig abgenommen; die AP6-Gesamtregression wurde danach erfolgreich
@@ -20,17 +20,22 @@ bereinigt. AP7.5 hat den getesteten Produktvertrag V2 in das manuell gegatete
 Produktions-API-Artefakt übernommen und lokal verifiziert. AP7.7a ergänzt den
 privaten verschlüsselten IONOS-Backupdienst und den kontrollierten
 OneDrive-Pull; der isolierte IONOS-E2E mit künstlichen Daten ist bestanden.
-Der private Produktions-Backupdienst, der erste verschlüsselte Abruf nach
-OneDrive und der getrennte Restore-Dry-Run sind produktiv nachgewiesen. Der
-stündliche Backup-Cron ist angelegt; sein fortlaufender Betriebsnachweis bleibt
-ein Produktionsgate. Die Produktions-V2-API ist fail-closed bereitgestellt und
-die Produktmodellmigration wurde kontrolliert ausgeführt, ohne Commerce-Bestand
-zu importieren. Das reale V2-Startprodukt
+Der private Produktions-Backupdienst, der verschlüsselte OneDrive-Abruf und der
+getrennte Restore-Dry-Run sind produktiv nachgewiesen. Stündlicher Backup-Cron
+und 30-minütiger Windows-Pull laufen ohne Überfälligkeit. Die
+Produktions-V2-API, das kombinierte öffentliche API-Gateway und der private
+Shopworker sind fail-closed bereitgestellt; zwei echte `*/5`-Cronläufe,
+Workerlock, Lease und Runlog sind bestanden. Die drei Commerce-Migrationen und
+das freigegebene Legal Bundle sind hashgleich vorhanden, ohne Produkt oder
+Bestand zu importieren. Die Produktmodellmigration wurde kontrolliert
+ausgeführt. Das reale V2-Startprodukt
 `3a37a0a2-9bd6-4410-aa9c-a465fdc411a1` ist mit
 `salesEnabled=false` in einem weiterhin unfreigegebenen Cutovermanifest
 vorbereitet; der frühere Wert `stock=1` wurde ausschließlich lesend aus der
-unveränderten Migrationssicherung `20260810-193548-5cebba9e` bestätigt. AP7
-und jede weitere Produktionsmutation bleiben nicht freigegeben.
+unveränderten Migrationssicherung `20260810-193548-5cebba9e` bestätigt. Brevo
+Live ist bereit; bei Stripe Live blockieren noch PayPal, SEPA-Lastschrift, die
+Terms-URL und der abschließende Live-Webhook-Nachweis. AP7 und jede weitere
+Produktionsmutation bleiben nicht freigegeben.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
@@ -49,17 +54,19 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Bereich | Stand | Freigabewirkung |
 | --- | --- | --- |
 | AP1 bis AP6 | vollständig abgenommen | abgeschlossen |
-| Integrationsstand `main` | `0fa5c8e437d29e062150d308c301f6b77202c1b2` | produktive Deployments bleiben einzeln gegatet |
-| Produktions-V2-API | fail-closed bereitgestellt | kein Publisher, kein Shopstart |
+| Integrationsstand `main` | `b1d7ea4dd18506f866ba01991707344b983934a9` | produktive Deployments bleiben einzeln gegatet |
+| Produktions-V2-/Shop-API | kombinierter Einstieg fail-closed bereitgestellt und per Smoke-Test geprüft | kein Checkout, kein Publisher, kein Shopstart |
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
 | Reales Startprodukt | V2, 2800 Cent, EUR, `salesEnabled=false` | nicht kaufbar |
 | Historischer Bestand | `stock=1` aus Sicherung `20260810-193548-5cebba9e` schreibfrei bestätigt | Grundlage für späteres `targetOnHand=1` |
-| Cutovermanifest | lokal in Commit `d6bf434` auf `codex/ap7-start-product-manifest` vorbereitet | nicht gepusht, Status `prepared_awaiting_cutover_approval`, nicht ausführbar |
-| Verschlüsseltes Backup | erstes Produktionsbackup, OneDrive-Abruf und Restore-Dry-Run nachgewiesen | Backupgrundlage bestanden |
-| Backup-Cron | `17 * * * *` angelegt | fortlaufender Lauf-/Alarmnachweis offen |
-| Externe Verkaufsangebote | Nachweis der vollständigen Entfernung offen | blockiert Cutover |
-| Stripe/Brevo Live | private Runtime vorhanden; abschließender Live-Vertragsnachweis offen | blockiert öffentlichen Shopstart |
-| Commerce-Schema, Shop-Worker und `*/5`-Cron | noch nicht produktiv freigegeben | blockiert Cutover |
+| Cutovermanifest | an `main` `b1d7ea4d` und den unveränderten Produktstand gebunden | Status `prepared_awaiting_cutover_approval`, nicht ausführbar |
+| Verschlüsseltes Backup | Produktionsbackup, OneDrive-Abruf, Websichtbarkeit und Restore-Dry-Run nachgewiesen | Backupgrundlage bestanden |
+| Backup-Cron und Offsite-Pull | `17 * * * *` sowie Windows-Pull im 30-Minuten-Takt aktiv; Status nicht überfällig | Alarm-/Langzeitbeobachtung bleibt laufender Betrieb |
+| Externe Verkaufsangebote | nach Betreiberbestätigung vollständig entfernt; Live-Website ohne Marktplatzverweise | Verkaufskanalgrenze bestanden |
+| Stripe Live | Konto/SDK/API lesend bestätigt; Karte und Klarna aktiv | PayPal, SEPA, Terms-URL und Live-Webhook-Nachweis offen |
+| Brevo Live | API und aktiv konfigurierter Absender lesend bestätigt | bereit; echter Versand erst mit kontrollierter Erstbestellung |
+| Commerce-Schema und Legal Bundle | drei Migrationen und Bundle v3 hashgleich; Geschäfts- und Bestandsobjekte leer | bereit für späteren Import/Cutover |
+| Shop-Worker und `*/5`-Cron | privates Artefakt, Direktlauf, Lock/Lease/Runlog und zwei echte Cronläufe bestanden | technisch bereit, ohne fällige Fachaktion |
 | Website, Publisher und Verkauf | deaktiviert beziehungsweise fail-closed | `salesEnabled=true`, Deployment und Cutover gesperrt |
 
 ```mermaid
@@ -75,39 +82,34 @@ flowchart LR
 
 ### Nächste strikt sequenzielle Schritte
 
-1. Commit `d6bf434` pushen, per Pull Request prüfen und erst nach gesonderter
-   Freigabe nach `main` übernehmen. Der Manifeststatus bleibt unverändert
-   unfreigegeben.
-2. Für das ausgewählte Unikat alle parallelen Verkaufsangebote nachweislich
-   deaktivieren oder löschen und die öffentliche Projektion erneut auf
-   Marktplatzreste prüfen.
-3. Backup-Cron, OneDrive-Pull, freien Speicher, 90-Minuten-Warnung und
-   Wiederherstellbarkeit mit einem aktuellen Backup erneut nachweisen.
-4. Produktive MySQL-/TLS-, Runtime-, Stripe-Live-, Brevo-Live-, Legal- und
-   Versandverträge schreibfrei vollständig abgleichen.
-5. Commerce-Schema, private Shopprogramme, Admin und Worker fail-closed
-   bereitstellen; anschließend den privaten Worker und UnixCron `*/5` mit zwei
-   echten Läufen abnehmen. Website und Publisher bleiben deaktiviert.
-6. Unmittelbar vor dem Cutover ein neues verschlüsseltes Backup erzeugen,
+1. PayPal und SEPA-Lastschrift im Stripe-Live-Zahlungsartenprofil aktivieren;
+   die produktive Terms-of-Service-URL hinterlegen. Danach Allowlist,
+   Live-Webhook, Consent, Link-Unterdrückung, Recovery- und Promotion-Code-
+   Sperre erneut ausschließlich lesend beziehungsweise mit einem unschädlichen
+   signierten Webhook-Test nachweisen.
+2. Den aktuellen Readiness-/Manifeststand per Pull Request prüfen und erst
+   nach gesonderter Mergefreigabe nach `main` übernehmen. Der Manifeststatus
+   bleibt unverändert unfreigegeben.
+3. Unmittelbar vor dem Cutover ein neues verschlüsseltes Backup erzeugen,
    Offsite abrufen und den Restore-Dry-Run bestehen.
-7. In einem kontrollierten Wartungsfenster `salesEnabled=true` für genau das
+4. In einem kontrollierten Wartungsfenster `salesEnabled=true` für genau das
    Startprodukt setzen. Die dadurch serverseitig neu entstehenden Werte für
    `productVersion` und `sourceHash` erneut lesen und prüfen.
-8. Das Manifest an die neue Version und den neuen Hash binden, Vier-Augen-
+5. Das Manifest an die neue Version und den neuen Hash binden, Vier-Augen-
    Prüfung durchführen und den Status erst nach gesonderter Freigabe auf
    `approved_for_cutover` setzen. Danach den Cutover zunächst nochmals im
    Planmodus ausführen.
-9. Bestands-Cutover mit `targetOnHand=1` kontrolliert anwenden, Shop-API,
+6. Bestands-Cutover mit `targetOnHand=1` kontrolliert anwenden, Shop-API,
    Website und Publisher in der festgelegten Reihenfolge aktivieren und eine
    echte Erstbestellung unter Beobachtung durchführen.
-10. Nach dem ersten erfolgreichen Commerce-Checkout ist die Rückkehr zu
+7. Nach dem ersten erfolgreichen Commerce-Checkout ist die Rückkehr zu
     `stock` als Bestandsquelle unzulässig. Weitere Produkte bleiben bis zu
     ihrer jeweiligen Freigabe deaktiviert.
 
-**Aktuelles Stopkriterium:** Vor Schritt 1 ist kein Push freigegeben. Vor
-Schritt 5 sind keine weiteren Produktionsartefakte freigegeben. Vor Schritt 7
-bleibt das Produkt nicht kaufbar. Der erste fachlich irreversible Punkt ist der
-erste erfolgreiche Commerce-Checkout nach dem Bestands-Cutover.
+**Aktuelles Stopkriterium:** Vor Schritt 1 bleiben Checkout und Shopstart wegen
+des unvollständigen Stripe-Live-Vertrags gesperrt. Vor Schritt 4 bleibt das
+Produkt nicht kaufbar. Der erste fachlich irreversible Punkt ist der erste
+erfolgreiche Commerce-Checkout nach dem Bestands-Cutover.
 
 ## 1. Status und Leitplanken
 
@@ -721,7 +723,8 @@ Migration, Shopaktivierung und Cutover gesperrt. Der Betriebsvertrag steht in
 | AP7.3e | AP7-Integrationsstand bereit | V2-Kette einschließlich AP7.3d übernommen; App-, PHP-, Node-, Test-/Produktionsbuild-, Export- und Geheimwertregression bestanden |
 | AP7.3g | Testumgebung vollständig AP7-fähig | vollständige private Testlaufzeit, vier Zahlungsarten, Webhooks, Worker/Cron, Bestellung, Brevo, Widerruf, Legal-Snapshot, Admin/Review und Cleanup nachgewiesen |
 | AP7.5 | produktives V2-API-Artefakt lokal bereit | produktiver Bootstrap und `/v2`-Router, fail-closed Publisher, Sieben-Dateien-Allowlist, PHP-/Node-/Artefaktnachweise bestanden; kein Deployment |
-| AP7.7a | Backup-E2E und produktive Grundaktivierung bestanden | private CLI, Secretstream-Verschlüsselung, HMAC-Manifest, MySQL-8-Backup/Restore, erster verschlüsselter OneDrive-Abruf und produktiver Restore-Dry-Run nachgewiesen; fortlaufender Cron-/Alarmnachweis offen |
+| AP7.7a | Backup-E2E und produktive Grundaktivierung bestanden | private CLI, Secretstream-Verschlüsselung, HMAC-Manifest, MySQL-8-Backup/Restore, verschlüsselter OneDrive-Abruf und produktiver Restore-Dry-Run nachgewiesen; stündlicher Cron und 30-minütiger Pull laufen ohne Überfälligkeit |
+| AP7 Produktionsbasis | fail-closed technisch bereit | kombinierte Produktions-API, drei Migrationen, Legal Bundle, privater Worker und zwei echte `*/5`-Cronläufe bestanden; Startprodukt nicht importiert, kein Bestand, kein Checkout |
 
 Kritischer Pfad bis zur AP6-Abnahme: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5
 → AP2a → AP3 → AP4 → AP5 → AP3b → AP6. Dieser Pfad ist abgeschlossen. Der
