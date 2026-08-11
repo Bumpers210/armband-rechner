@@ -20,7 +20,12 @@ bereinigt. AP7.5 hat den getesteten Produktvertrag V2 in das manuell gegatete
 Produktions-API-Artefakt übernommen und lokal verifiziert. AP7.7a ergänzt den
 privaten verschlüsselten IONOS-Backupdienst und den kontrollierten
 OneDrive-Pull; der isolierte IONOS-E2E mit künstlichen Daten ist bestanden.
-Das reale V2-Startprodukt
+Der private Produktions-Backupdienst, der erste verschlüsselte Abruf nach
+OneDrive und der getrennte Restore-Dry-Run sind produktiv nachgewiesen. Der
+stündliche Backup-Cron ist angelegt; sein fortlaufender Betriebsnachweis bleibt
+ein Produktionsgate. Die Produktions-V2-API ist fail-closed bereitgestellt und
+die Produktmodellmigration wurde kontrolliert ausgeführt, ohne Commerce-Bestand
+zu importieren. Das reale V2-Startprodukt
 `3a37a0a2-9bd6-4410-aa9c-a465fdc411a1` ist mit
 `salesEnabled=false` in einem weiterhin unfreigegebenen Cutovermanifest
 vorbereitet; der frühere Wert `stock=1` wurde ausschließlich lesend aus der
@@ -34,6 +39,75 @@ AP7.3d-Abschlusscommit: `3ae346c095d8564c07ce6539a70d38a936a20ff6`
 Produktionsziel: ausschließlich der eigene Carmaja-Shop. Parallele externe
 Verkaufsangebote müssen vor dem produktiven Cutover deaktiviert oder gelöscht
 sein; eine Synchronisierung wird nicht entwickelt.
+
+## Aktueller AP7-Produktionsstand
+
+Der folgende Stand ist für die weitere Ausführung verbindlich. Ältere
+Meilensteintabellen dokumentieren den jeweiligen historischen Abschluss und
+ersetzen diese aktuelle Gate-Sicht nicht.
+
+| Bereich | Stand | Freigabewirkung |
+| --- | --- | --- |
+| AP1 bis AP6 | vollständig abgenommen | abgeschlossen |
+| Integrationsstand `main` | `0fa5c8e437d29e062150d308c301f6b77202c1b2` | produktive Deployments bleiben einzeln gegatet |
+| Produktions-V2-API | fail-closed bereitgestellt | kein Publisher, kein Shopstart |
+| Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
+| Reales Startprodukt | V2, 2800 Cent, EUR, `salesEnabled=false` | nicht kaufbar |
+| Historischer Bestand | `stock=1` aus Sicherung `20260810-193548-5cebba9e` schreibfrei bestätigt | Grundlage für späteres `targetOnHand=1` |
+| Cutovermanifest | lokal in Commit `d6bf434` auf `codex/ap7-start-product-manifest` vorbereitet | nicht gepusht, Status `prepared_awaiting_cutover_approval`, nicht ausführbar |
+| Verschlüsseltes Backup | erstes Produktionsbackup, OneDrive-Abruf und Restore-Dry-Run nachgewiesen | Backupgrundlage bestanden |
+| Backup-Cron | `17 * * * *` angelegt | fortlaufender Lauf-/Alarmnachweis offen |
+| Externe Verkaufsangebote | Nachweis der vollständigen Entfernung offen | blockiert Cutover |
+| Stripe/Brevo Live | private Runtime vorhanden; abschließender Live-Vertragsnachweis offen | blockiert öffentlichen Shopstart |
+| Commerce-Schema, Shop-Worker und `*/5`-Cron | noch nicht produktiv freigegeben | blockiert Cutover |
+| Website, Publisher und Verkauf | deaktiviert beziehungsweise fail-closed | `salesEnabled=true`, Deployment und Cutover gesperrt |
+
+```mermaid
+flowchart LR
+    A["AP1–AP6\nabgenommen"] --> B["V2-API und\nProduktmigration"]
+    B --> C["Startprodukt V2\nsalesEnabled=false"]
+    C --> D["Manifest lokal vorbereitet\nnicht freigegeben"]
+    D --> E["PR, Review und\nProduktionsgates"]
+    E --> F["Manifest neu binden\nund freigeben"]
+    F --> G["Bestands-Cutover\nweiterhin gesperrt"]
+    G --> H["Kontrollierter\nShopstart"]
+```
+
+### Nächste strikt sequenzielle Schritte
+
+1. Commit `d6bf434` pushen, per Pull Request prüfen und erst nach gesonderter
+   Freigabe nach `main` übernehmen. Der Manifeststatus bleibt unverändert
+   unfreigegeben.
+2. Für das ausgewählte Unikat alle parallelen Verkaufsangebote nachweislich
+   deaktivieren oder löschen und die öffentliche Projektion erneut auf
+   Marktplatzreste prüfen.
+3. Backup-Cron, OneDrive-Pull, freien Speicher, 90-Minuten-Warnung und
+   Wiederherstellbarkeit mit einem aktuellen Backup erneut nachweisen.
+4. Produktive MySQL-/TLS-, Runtime-, Stripe-Live-, Brevo-Live-, Legal- und
+   Versandverträge schreibfrei vollständig abgleichen.
+5. Commerce-Schema, private Shopprogramme, Admin und Worker fail-closed
+   bereitstellen; anschließend den privaten Worker und UnixCron `*/5` mit zwei
+   echten Läufen abnehmen. Website und Publisher bleiben deaktiviert.
+6. Unmittelbar vor dem Cutover ein neues verschlüsseltes Backup erzeugen,
+   Offsite abrufen und den Restore-Dry-Run bestehen.
+7. In einem kontrollierten Wartungsfenster `salesEnabled=true` für genau das
+   Startprodukt setzen. Die dadurch serverseitig neu entstehenden Werte für
+   `productVersion` und `sourceHash` erneut lesen und prüfen.
+8. Das Manifest an die neue Version und den neuen Hash binden, Vier-Augen-
+   Prüfung durchführen und den Status erst nach gesonderter Freigabe auf
+   `approved_for_cutover` setzen. Danach den Cutover zunächst nochmals im
+   Planmodus ausführen.
+9. Bestands-Cutover mit `targetOnHand=1` kontrolliert anwenden, Shop-API,
+   Website und Publisher in der festgelegten Reihenfolge aktivieren und eine
+   echte Erstbestellung unter Beobachtung durchführen.
+10. Nach dem ersten erfolgreichen Commerce-Checkout ist die Rückkehr zu
+    `stock` als Bestandsquelle unzulässig. Weitere Produkte bleiben bis zu
+    ihrer jeweiligen Freigabe deaktiviert.
+
+**Aktuelles Stopkriterium:** Vor Schritt 1 ist kein Push freigegeben. Vor
+Schritt 5 sind keine weiteren Produktionsartefakte freigegeben. Vor Schritt 7
+bleibt das Produkt nicht kaufbar. Der erste fachlich irreversible Punkt ist der
+erste erfolgreiche Commerce-Checkout nach dem Bestands-Cutover.
 
 ## 1. Status und Leitplanken
 
@@ -647,13 +721,14 @@ Migration, Shopaktivierung und Cutover gesperrt. Der Betriebsvertrag steht in
 | AP7.3e | AP7-Integrationsstand bereit | V2-Kette einschließlich AP7.3d übernommen; App-, PHP-, Node-, Test-/Produktionsbuild-, Export- und Geheimwertregression bestanden |
 | AP7.3g | Testumgebung vollständig AP7-fähig | vollständige private Testlaufzeit, vier Zahlungsarten, Webhooks, Worker/Cron, Bestellung, Brevo, Widerruf, Legal-Snapshot, Admin/Review und Cleanup nachgewiesen |
 | AP7.5 | produktives V2-API-Artefakt lokal bereit | produktiver Bootstrap und `/v2`-Router, fail-closed Publisher, Sieben-Dateien-Allowlist, PHP-/Node-/Artefaktnachweise bestanden; kein Deployment |
-| AP7.7a | Implementierung und isolierter IONOS-Test-E2E bestanden | private CLI, Secretstream-Verschlüsselung, HMAC-Manifest, MySQL-8-Backup/Restore mit semantischem Vergleich, Lock und vollständigem Cleanup nachgewiesen; OneDrive- und Produktionsaktivierung ausstehend |
+| AP7.7a | Backup-E2E und produktive Grundaktivierung bestanden | private CLI, Secretstream-Verschlüsselung, HMAC-Manifest, MySQL-8-Backup/Restore, erster verschlüsselter OneDrive-Abruf und produktiver Restore-Dry-Run nachgewiesen; fortlaufender Cron-/Alarmnachweis offen |
 
 Kritischer Pfad bis zur AP6-Abnahme: AP2.1 → AP2.2 → AP2.3 → AP2.4 → AP2.5
 → AP2a → AP3 → AP4 → AP5 → AP3b → AP6. Dieser Pfad ist abgeschlossen. Der
-verbleibende Produktionspfad beginnt nach dem abgeschlossenen AP7.0 weiterhin
-ausschließlich mit einer gesonderten ausdrücklichen AP7-Freigabe.
-Produktions-Cutover, Deployment und AP7 bleiben bis dahin gesperrt.
+verbleibende Produktionspfad folgt der aktuellen Gate-Tabelle und der oben
+festgelegten strikt sequenziellen Reihenfolge. Jede weitere Produktionsmutation
+benötigt weiterhin ihre gesonderte ausdrückliche Freigabe. Produktverkauf und
+Bestands-Cutover bleiben gesperrt.
 
 ## 6. Aufwand und Kalenderkorridore
 
@@ -738,7 +813,7 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP7.3e | AP7-Integrationsstand technisch bereit; reales Startprodukt unfreigegeben im Manifest vorbereitet, übrige Produktionsgates ausstehend |
 | AP7.3g | Testumgebung vollständig AP7-fähig und bereinigt; keine Produktionsfreigabe |
 | AP7.5 | produktionsfähiges V2-Produkt-API-Artefakt lokal bereit; PR-/CI-Nachweis und Produktionsfreigabe getrennt |
-| AP7.7a | verschlüsselter Backupvertrag lokal implementiert und isolierter IONOS-Test-E2E bestanden; OneDrive-/Produktionsaktivierung und produktives Restore-Gate ausstehend |
+| AP7.7a | verschlüsseltes Produktionsbackup, OneDrive-Abruf und Restore-Dry-Run bestanden; fortlaufender Cron-/Alarmnachweis ausstehend |
 | AP7 und später | nicht freigegeben |
 | Produktion/Cutover/Deployment | nicht freigegeben |
 
