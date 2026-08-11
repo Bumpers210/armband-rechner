@@ -20,7 +20,9 @@ AP7.3e-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
 AP7.3g-Testbetriebsnachweis: IONOS-Testumgebung, abgeschlossen und bereinigt am
 2026-08-08
 
-Aktueller `main`- und Produktionswebsite-Stand:
+Aktueller `main`-Stand: `6f510f89397f671b4156fed86e2ba37a96c323e8`
+
+Aktuell bereitgestellter Produktionswebsite-Stand:
 `2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c`
 
 ## Urteil
@@ -216,6 +218,11 @@ fail-closed.
 - Der Produktionsworker läuft mit `*/5 * * * *`. Direktlauf, paralleler Lock,
   Lease, Runlog und zwei echte Cronläufe sind bestanden; beide Workerachsen
   sind fehlerfrei und besitzen keine aktive Lease.
+- Genau ein produktives Adminkonto wurde über die private CLI angelegt. Das
+  Konto ist aktiv, verwendet Argon2id und der Browser-Login wurde durch die
+  Betreiberin erfolgreich bestätigt. Der öffentliche Admin-Einstieg ist
+  erreichbar; ohne Sitzung antwortet die API korrekt mit `401`, CORS-Bindung
+  an die Produktionswebsite und `no-store`.
 - Der stündliche verschlüsselte Backupdienst und der 30-minütige Windows-Pull
   sind aktiv. `backup status` meldet weder Server- noch Offsite-Überfälligkeit;
   der erste produktive Restore-Dry-Run und die OneDrive-Websichtbarkeit sind
