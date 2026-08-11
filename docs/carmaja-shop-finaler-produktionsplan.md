@@ -37,7 +37,10 @@ Live ist bereit. Die Produktionswebsite wurde aus `main`
 `2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c` SHA-gepinnt bereitgestellt,
 serverseitig als verifiziert markiert und ausschließlich mit Website-, Legal-,
 Footer- und Fail-closed-Smoke-Tests geprüft. Die produktive Terms-of-Service-
-URL ist im Stripe-Live-Konto gespeichert. PayPal, Google Pay und
+URL ist im Stripe-Live-Konto gespeichert. Das erste produktive Adminkonto
+wurde über die private CLI angelegt, als aktiv mit Argon2id-Hash geprüft und
+der Browser-Login durch die Betreiberin erfolgreich bestätigt. PayPal, Google
+Pay und
 SEPA-Lastschrift bleiben auf Betreiberwunsch bis unmittelbar vor der
 Shopfreigabe deaktiviert; der abschließende Live-Webhook- und Checkoutnachweis
 bleibt offen. AP7-Cutover und jede weitere fachliche Produktionsmutation
@@ -60,7 +63,7 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Bereich | Stand | Freigabewirkung |
 | --- | --- | --- |
 | AP1 bis AP6 | vollständig abgenommen | abgeschlossen |
-| Integrationsstand `main` | `2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c` | produktive Deployments bleiben einzeln gegatet |
+| Integrationsstand `main` | `6f510f89397f671b4156fed86e2ba37a96c323e8` | produktive Deployments bleiben einzeln gegatet |
 | Produktions-V2-/Shop-API | kombinierter Einstieg fail-closed bereitgestellt und per Smoke-Test geprüft | kein Checkout, kein Publisher, kein Shopstart |
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
 | Reales Startprodukt | V2, 2800 Cent, EUR, `salesEnabled=false` | nicht kaufbar |
@@ -73,6 +76,7 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Brevo Live | API und aktiv konfigurierter Absender lesend bestätigt | bereit; echter Versand erst mit kontrollierter Erstbestellung |
 | Commerce-Schema und Legal Bundle | drei Migrationen und Bundle v3 hashgleich; Geschäfts- und Bestandsobjekte leer | bereit für späteren Import/Cutover |
 | Shop-Worker und `*/5`-Cron | privates Artefakt, Direktlauf, Lock/Lease/Runlog und zwei echte Cronläufe bestanden | technisch bereit, ohne fällige Fachaktion |
+| Shop-Admin | genau ein aktives Konto, Argon2id, erfolgreicher produktiver Browser-Login; unauthentifizierte API antwortet `401` und `no-store` | Betreiberzugang bereit |
 | Produktionswebsite | SHA-gepinnt aus `2cd1c5a2…` bereitgestellt, Smoke-Test und `mark_verified` bestanden | statische Website und Legal-Seiten live; kein Produkt, kein Checkout |
 | Publisher und Verkauf | deaktiviert beziehungsweise fail-closed | `salesEnabled=true`, Produktprojektion und Cutover gesperrt |
 
