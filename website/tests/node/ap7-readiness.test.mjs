@@ -96,11 +96,22 @@ test("Website und v2-Publisher besitzen keinen produktiven Legacy-Verkaufsweg", 
   assert.doesNotMatch(hosting.join("\n"), /public-products\.json/);
 });
 
-test("Cutovermanifest ist versioniert, hashgebunden und ohne Produktionsauswahl blockiert", async () => {
+test("Cutovermanifest ist versioniert, an genau ein Produkt gebunden und unfreigegeben", async () => {
   const manifest = JSON.parse(await text("website/config/production-cutover-manifest.v1.json"));
   assert.equal(manifest.manifestVersion, 1);
-  assert.equal(manifest.status, "awaiting_production_product_selection");
-  assert.deepEqual(manifest.selectedProducts, []);
+  assert.equal(manifest.status, "prepared_awaiting_cutover_approval");
+  assert.deepEqual(manifest.selectedProducts, [{
+    productId: "3a37a0a2-9bd6-4410-aa9c-a465fdc411a1",
+    expectedProductVersion: 1,
+    expectedSourceHash: "09cd71d56561b08b8373c3bc804d3298b47096c470751da3407a5e0eff1e4444",
+    legacyStock: 1,
+    targetOnHand: 1,
+  }]);
+  assert.deepEqual(manifest.selectionEvidence, {
+    migrationBackupId: "20260810-193548-5cebba9e",
+    legacyStockVerified: 1,
+    backupUnchanged: true,
+  });
   assert.equal(manifest.cutoverGuards.exactlyOneSelectedProduct, true);
   assert.equal(manifest.cutoverGuards.requireNoCommerceCheckout, true);
   assert.equal(manifest.cutoverGuards.rollbackOnlyBeforeFirstCommerceCheckout, true);

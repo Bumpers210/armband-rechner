@@ -48,7 +48,24 @@ try {
     );
     $contract = carmaja_cutover_validate_contract($manifest, $repositoryRoot);
     ap7_assert($contract['approved'] === false, 'Unfreigegebenes Manifest wurde als ausfuehrbar bewertet.');
-    ap7_assert($contract['selectedProductCount'] === 0, 'Produktionsprodukt wurde vorzeitig ausgewaehlt.');
+    ap7_assert($contract['selectedProductCount'] === 1, 'Vorbereitete Ein-Produktauswahl fehlt.');
+    ap7_assert(
+        ($manifest['selectedProducts'][0]['productId'] ?? null)
+            === '3a37a0a2-9bd6-4410-aa9c-a465fdc411a1',
+        'Unerwartetes Startprodukt im unfreigegebenen Manifest.'
+    );
+    try {
+        carmaja_cutover_selected_product($manifest, [
+            'productModelVersion' => 2,
+            'products' => [],
+        ]);
+        throw new RuntimeException('Unfreigegebene Produktauswahl wurde akzeptiert.');
+    } catch (CarmajaProductionCutoverException $error) {
+        ap7_assert(
+            $error->getMessage() === 'product_selection_not_approved',
+            'Unfreigegebenes Manifest ist nicht fail-closed.'
+        );
+    }
 
     $sourceProduct = [
         'productModelVersion' => 2,
