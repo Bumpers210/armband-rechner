@@ -1,6 +1,6 @@
 # AP7 – endgültige Produktions-Preflight-Checkliste
 
-Stand: 2026-08-10
+Stand: 2026-08-11
 
 Status: **nicht zur Ausführung freigegeben**
 
@@ -10,10 +10,10 @@ einen Testwert ersetzt werden.
 
 ## 1. Release Candidate und Freigabe
 
-- [ ] Finalen Commit von `feature/shop-ap7` prüfen und per Review freigeben.
-- [ ] Bestätigen, dass ausschließlich der freigegebene Commit nach `main`
+- [x] Finalen Integrationsstand per Pull Request und CI prüfen.
+- [x] Bestätigen, dass ausschließlich der freigegebene Commit nach `main`
   übernommen wurde.
-- [ ] `CARMAJA_PRODUCTION_DEPLOY_ENABLED` bleibt bis zum ausdrücklich
+- [x] `CARMAJA_PRODUCTION_DEPLOY_ENABLED` bleibt bis zum ausdrücklich
   freigegebenen Website-Deploy `false`.
 - [ ] Produktionsfreigabe mit Zeitfenster, Betreiberin und Stop-Verantwortung
   schriftlich dokumentieren.
@@ -57,25 +57,25 @@ verwendet werden.
 
 ## 3. Parallele Verkaufsangebote
 
-- [ ] Alle Vinted-Angebote und sonstigen parallelen Verkaufsangebote des
+- [x] Alle Vinted-Angebote und sonstigen parallelen Verkaufsangebote des
   ausgewählten Unikats deaktivieren oder löschen.
-- [ ] Öffentliche Produktseite, Produktprojektion, Hosting und Suchindex auf
+- [x] Öffentliche Produktseite, Produktprojektion, Hosting und Suchindex auf
   verbleibende externe Kauflinks prüfen.
-- [ ] Betreiberin bestätigt schriftlich, dass der eigene Shop der einzige
+- [x] Betreiberin bestätigt schriftlich, dass der eigene Shop der einzige
   Verkaufskanal ist.
 
 **Stop:** weiterhin kaufbares externes Angebot.
 
 ## 4. Produktionsdatenbank
 
-- [ ] Exakte Datenbankidentität als ausschließlich produktives Commerce-Ziel
+- [x] Exakte Datenbankidentität als ausschließlich produktives Commerce-Ziel
   bestätigen; niemals Test- oder Bestandsdatenbank verwenden.
-- [ ] MySQL 8, InnoDB, benötigte Rechte und aktive TLS-Sitzung nachweisen.
-- [ ] Fehlende CA-/Hostidentitätsprüfung als akzeptiertes V1-Restrisiko im
+- [x] MySQL 8, InnoDB, benötigte Rechte und aktive TLS-Sitzung nachweisen.
+- [x] Fehlende CA-/Hostidentitätsprüfung als akzeptiertes V1-Restrisiko im
   Produktionsprotokoll bestätigen.
-- [ ] Vorhandene Tabellen und Migrationen inventarisieren; unerwartete Daten
+- [x] Vorhandene Tabellen und Migrationen inventarisieren; unerwartete Daten
   stoppen den Lauf.
-- [ ] Migrationen und die im Manifest gebundenen Datei-/Journalhashes im
+- [x] Migrationen und die im Manifest gebundenen Datei-/Journalhashes im
   Planmodus prüfen.
 
 **Stop:** unklare Datenbankidentität, fehlendes TLS, falsche Version,
@@ -83,14 +83,14 @@ unerwartete Daten oder Hashabweichung.
 
 ## 5. Secrets und private Laufzeitkonfiguration
 
-- [ ] Private Konfiguration ausschließlich unter
+- [x] Private Konfiguration ausschließlich unter
   `/home/www/carmaja-private-shop/config/runtime-config.php` mit Modus `0600`
   anlegen.
-- [ ] Datenbank-, Stripe-, Webhook-, Payload-Verschlüsselungs-, Brevo-,
+- [x] Datenbank-, Stripe-, Webhook-, Payload-Verschlüsselungs-, Brevo-,
   Admin- und Backup-Schlüssel nur auf Vorhandensein und Trennung prüfen.
-- [ ] Keine Secrets in Repository, Webroot, URL, Cronbefehl, Logs, Manifest
+- [x] Keine Secrets in Repository, Webroot, URL, Cronbefehl, Logs, Manifest
   oder Deploymentartefakt.
-- [ ] Stripe-Payload- und Backup-Schlüssel-ID samt getrenntem
+- [x] Stripe-Payload- und Backup-Schlüssel-ID samt getrenntem
   Wiederherstellungszugriff dokumentieren.
 
 **Stop:** fehlender, offengelegter, gemeinsam genutzter oder nicht
@@ -98,12 +98,12 @@ wiederherstellbarer Schlüssel.
 
 ## 6. Stripe Live
 
-- [ ] `stripe/stripe-php` exakt `20.3.0`, API- und Webhook-Version gemäß
+- [x] `stripe/stripe-php` exakt `20.3.0`, API- und Webhook-Version gemäß
   Produktionsvertrag verifizieren.
 - [ ] Live-Webhook nur für die festgelegte Allowlist registrieren und
   Signaturprüfung mit unverändertem Rohpayload testen.
 - [ ] `card`, `paypal`, `klarna`, `sepa_debit` als exakte Allowlist prüfen.
-- [ ] Link pro Session deaktivieren; Promotion Codes, Recovery und dynamische
+- [x] Link pro Session deaktivieren; Promotion Codes, Recovery und dynamische
   weitere Zahlungsarten deaktiviert lassen.
 - [ ] 30-minütige Checkout-Laufzeit, Terms-URL, verpflichtende Zustimmung,
   Versand 270 Cent und Legal Bundle v3 in einer nicht zahlungswirksamen
@@ -114,9 +114,17 @@ wiederherstellbarer Schlüssel.
 **Stop:** Live-/Testverwechslung, abweichende Version, zusätzliche
 Zahlungsart, fehlende Zustimmung oder nicht persistierbarer Webhook.
 
+**Aktueller Live-Nachweis:** Das Livekonto, das gepinnte SDK und genau ein
+aktivierter Webhook mit der vollständigen Neun-Ereignis-Allowlist sind lesend
+bestätigt. Karte und Klarna sind aktiv. PayPal und SEPA-Lastschrift sind noch
+nicht verfügbar. Außerdem fehlt im Stripe-Livekonto noch die produktive
+Terms-of-Service-URL. Link ist im Dashboard grundsätzlich verfügbar, wird vom
+verbindlichen Sessionvertrag aber mit `wallet_options.link.display=never`
+unterdrückt. Bis zur Korrektur bleiben Checkout und Shopstart gesperrt.
+
 ## 7. Brevo Live
 
-- [ ] Verifizierten produktiven Absender und API-Zugang bestätigen.
+- [x] Verifizierten produktiven Absender und API-Zugang bestätigen.
 - [ ] Bestell-, Betreiber-, Versand- und Widerrufsvorlage gegen die
   freigegebenen Texte prüfen.
 - [ ] Idempotency-Key, Deduplizierung, `delivery_unknown`, Retry und
@@ -129,19 +137,19 @@ Fehlersichtbarkeit.
 
 ## 8. Backup und Restore
 
-- [ ] OneDrive über den vorgesehenen Microsoft-Ablauf mit dem registrierten
+- [x] OneDrive über den vorgesehenen Microsoft-Ablauf mit dem registrierten
   Kontostamm `D:\Carmaja-OneDrive\OneDrive` betreiben und den synchronisierten
   Backupzielordner `D:\Carmaja-OneDrive\OneDrive\Carmaja-OneDrive` nachweisen;
   `D:\Carmaja-Perlen` bleibt unsynchronisiert.
-- [ ] 32-Byte-Backupschlüssel lokal erzeugen, im Passwortmanager und getrennt
+- [x] 32-Byte-Backupschlüssel lokal erzeugen, im Passwortmanager und getrennt
   offline sichern; private Serverdatei und Runtime mit Modus `0600` prüfen.
-- [ ] Stündlichen privaten Backupdienst (`17 * * * *`) und 30-minütigen
+- [x] Stündlichen privaten Backupdienst (`17 * * * *`) und 30-minütigen
   Windows-Pull ohne HTTP-Route nachweisen.
 - [ ] Unmittelbar vor Migration vollständiges verschlüsseltes Produkt- und
   Commerce-Backup erstellen.
-- [ ] Dateigrößen, SHA-256, Manifest-HMAC, Key-ID, atomare OneDrive-Ablage und
+- [x] Dateigrößen, SHA-256, Manifest-HMAC, Key-ID, atomare OneDrive-Ablage und
   Sichtbarkeit in OneDrive Web prüfen; erst danach Download quittieren.
-- [ ] Restore-Dry-Run in ein isoliertes Ziel durchführen; Struktur, Inhalt und
+- [x] Restore-Dry-Run in ein isoliertes Ziel durchführen; Struktur, Inhalt und
   Prüfsummen vergleichen.
 - [ ] Server-RPO 1 Stunde, Offsite-RPO bis 24 Stunden, RTO 4 Stunden,
   Serverrotation 7 Tage sowie OneDrive-Rotation 48/30/12 bestätigen.
@@ -153,35 +161,35 @@ bestandener Restore.
 
 ## 9. Private API und Worker
 
-- [ ] Private Programme nach `/home/www/carmaja-private-shop/program`, Worker
+- [x] Private Programme nach `/home/www/carmaja-private-shop/program`, Worker
   nach `/home/www/carmaja-private-shop/worker.php` und öffentlichen Einstieg
   in den bestehenden Webroot `/home/www/carmaja-production-api` staged
   bereitstellen. Die Shop-API bleibt unter `/shop/v1`; ein zweiter
   öffentlicher API-Webroot ist ausgeschlossen.
-- [ ] Release-SHA und alle Artefakthashes vor atomarer Aktivierung prüfen.
-- [ ] Öffentlicher Einstieg darf nur den privaten Produktions-Bootstrap laden;
+- [x] Release-SHA und alle Artefakthashes vor atomarer Aktivierung prüfen.
+- [x] Öffentlicher Einstieg darf nur den privaten Produktions-Bootstrap laden;
   keine Testpfade oder Runtime-Konfiguration im Webroot.
-- [ ] PHP 8.4, Module, CORS, Cookies, CSRF, `no-store`, Rate Limits und
+- [x] PHP 8.4, Module, CORS, Cookies, CSRF, `no-store`, Rate Limits und
   fail-closed Produktantworten prüfen.
-- [ ] Worker direkt mit
+- [x] Worker direkt mit
   `/usr/bin/php8.4 /home/www/carmaja-private-shop/worker.php
   /home/www/carmaja-private-shop/config/runtime-config.php` testen.
-- [ ] Laufzeit unter 40 Sekunden, Batch 10–20, Lock, zehnminütige Lease,
+- [x] Laufzeit unter 40 Sekunden, Batch 10–20, Lock, zehnminütige Lease,
   Runlog und Fehleralarm nachweisen.
 
 **Stop:** Pfad-, Hash-, Laufzeit-, Lock-, Lease- oder Sicherheitsabweichung.
 
 ## 10. UnixCron und Monitoring
 
-- [ ] IONOS-UnixCron mit `*/5 * * * *` und exakt dem privaten Workerbefehl
+- [x] IONOS-UnixCron mit `*/5 * * * *` und exakt dem privaten Workerbefehl
   anlegen; keine Secrets im Befehl.
-- [ ] Mindestens zwei echte Läufe im Fünf-Minuten-Abstand nachweisen.
+- [x] Mindestens zwei echte Läufe im Fünf-Minuten-Abstand nachweisen.
 - [ ] Lock, Lease-Übernahme, Runlog, Laufzeit und Fortsetzung eines
   Teilbatches prüfen.
 - [ ] Alarm für ausbleibenden erfolgreichen Lauf, dauerhafte Outboxfehler,
   Reviewcases, Webhookrückstand und knappen Speicher aktivieren.
-- [ ] Manuellen privaten Notlauf und Stripe-Abgleich dokumentieren.
-- [ ] Den separaten Backup-Cron `17 * * * *` und `backup status` ohne Secrets
+- [x] Manuellen privaten Notlauf und Stripe-Abgleich dokumentieren.
+- [x] Den separaten Backup-Cron `17 * * * *` und `backup status` ohne Secrets
   prüfen; Worker- und Backup-Cron dürfen sich nicht gegenseitig ersetzen.
 
 **Stop:** kein echter Schedulernachweis oder fehlendes Monitoring.

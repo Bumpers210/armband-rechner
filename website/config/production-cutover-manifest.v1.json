@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "environment": "production",
   "status": "prepared_awaiting_cutover_approval",
-  "baseCommit": "0fa5c8e437d29e062150d308c301f6b77202c1b2",
+  "baseCommit": "b1d7ea4dd18506f866ba01991707344b983934a9",
   "productModelVersion": 2,
   "inventorySource": "commerce_inventory.on_hand",
   "schemaMigrations": [
