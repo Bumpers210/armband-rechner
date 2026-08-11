@@ -33,9 +33,15 @@ ausgeführt. Das reale V2-Startprodukt
 `salesEnabled=false` in einem weiterhin unfreigegebenen Cutovermanifest
 vorbereitet; der frühere Wert `stock=1` wurde ausschließlich lesend aus der
 unveränderten Migrationssicherung `20260810-193548-5cebba9e` bestätigt. Brevo
-Live ist bereit; bei Stripe Live blockieren noch PayPal, SEPA-Lastschrift, die
-Terms-URL und der abschließende Live-Webhook-Nachweis. AP7 und jede weitere
-Produktionsmutation bleiben nicht freigegeben.
+Live ist bereit. Die Produktionswebsite wurde aus `main`
+`2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c` SHA-gepinnt bereitgestellt,
+serverseitig als verifiziert markiert und ausschließlich mit Website-, Legal-,
+Footer- und Fail-closed-Smoke-Tests geprüft. Die produktive Terms-of-Service-
+URL ist im Stripe-Live-Konto gespeichert. PayPal, Google Pay und
+SEPA-Lastschrift bleiben auf Betreiberwunsch bis unmittelbar vor der
+Shopfreigabe deaktiviert; der abschließende Live-Webhook- und Checkoutnachweis
+bleibt offen. AP7-Cutover und jede weitere fachliche Produktionsmutation
+bleiben nicht freigegeben.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
@@ -54,20 +60,21 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Bereich | Stand | Freigabewirkung |
 | --- | --- | --- |
 | AP1 bis AP6 | vollständig abgenommen | abgeschlossen |
-| Integrationsstand `main` | `b1d7ea4dd18506f866ba01991707344b983934a9` | produktive Deployments bleiben einzeln gegatet |
+| Integrationsstand `main` | `2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c` | produktive Deployments bleiben einzeln gegatet |
 | Produktions-V2-/Shop-API | kombinierter Einstieg fail-closed bereitgestellt und per Smoke-Test geprüft | kein Checkout, kein Publisher, kein Shopstart |
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
 | Reales Startprodukt | V2, 2800 Cent, EUR, `salesEnabled=false` | nicht kaufbar |
 | Historischer Bestand | `stock=1` aus Sicherung `20260810-193548-5cebba9e` schreibfrei bestätigt | Grundlage für späteres `targetOnHand=1` |
-| Cutovermanifest | an `main` `b1d7ea4d` und den unveränderten Produktstand gebunden | Status `prepared_awaiting_cutover_approval`, nicht ausführbar |
+| Cutovermanifest | in `main` vorhanden; interner Basisstand weiterhin `b1d7ea4d`, Produktstand unverändert | Status `prepared_awaiting_cutover_approval`, vor Cutover neu zu binden und nicht ausführbar |
 | Verschlüsseltes Backup | Produktionsbackup, OneDrive-Abruf, Websichtbarkeit und Restore-Dry-Run nachgewiesen | Backupgrundlage bestanden |
 | Backup-Cron und Offsite-Pull | `17 * * * *` sowie Windows-Pull im 30-Minuten-Takt aktiv; Status nicht überfällig | Alarm-/Langzeitbeobachtung bleibt laufender Betrieb |
 | Externe Verkaufsangebote | nach Betreiberbestätigung vollständig entfernt; Live-Website ohne Marktplatzverweise | Verkaufskanalgrenze bestanden |
-| Stripe Live | Konto/SDK/API lesend bestätigt; Karte und Klarna aktiv | PayPal, SEPA, Terms-URL und Live-Webhook-Nachweis offen |
+| Stripe Live | Konto/SDK/API lesend bestätigt; Terms-URL gespeichert; Karte, Apple Pay und Klarna aktiv | PayPal, Google Pay und SEPA bewusst aufgeschoben; Live-Webhook-/Checkoutnachweis offen |
 | Brevo Live | API und aktiv konfigurierter Absender lesend bestätigt | bereit; echter Versand erst mit kontrollierter Erstbestellung |
 | Commerce-Schema und Legal Bundle | drei Migrationen und Bundle v3 hashgleich; Geschäfts- und Bestandsobjekte leer | bereit für späteren Import/Cutover |
 | Shop-Worker und `*/5`-Cron | privates Artefakt, Direktlauf, Lock/Lease/Runlog und zwei echte Cronläufe bestanden | technisch bereit, ohne fällige Fachaktion |
-| Website, Publisher und Verkauf | deaktiviert beziehungsweise fail-closed | `salesEnabled=true`, Deployment und Cutover gesperrt |
+| Produktionswebsite | SHA-gepinnt aus `2cd1c5a2…` bereitgestellt, Smoke-Test und `mark_verified` bestanden | statische Website und Legal-Seiten live; kein Produkt, kein Checkout |
+| Publisher und Verkauf | deaktiviert beziehungsweise fail-closed | `salesEnabled=true`, Produktprojektion und Cutover gesperrt |
 
 ```mermaid
 flowchart LR
@@ -82,14 +89,13 @@ flowchart LR
 
 ### Nächste strikt sequenzielle Schritte
 
-1. PayPal und SEPA-Lastschrift im Stripe-Live-Zahlungsartenprofil aktivieren;
-   die produktive Terms-of-Service-URL hinterlegen. Danach Allowlist,
-   Live-Webhook, Consent, Link-Unterdrückung, Recovery- und Promotion-Code-
-   Sperre erneut ausschließlich lesend beziehungsweise mit einem unschädlichen
-   signierten Webhook-Test nachweisen.
-2. Den aktuellen Readiness-/Manifeststand per Pull Request prüfen und erst
+1. Den aktualisierten Readiness-/Manifeststand per Pull Request prüfen und erst
    nach gesonderter Mergefreigabe nach `main` übernehmen. Der Manifeststatus
    bleibt unverändert unfreigegeben.
+2. Vor jeder Checkout- oder Verkaufsaktivierung PayPal, Google Pay und
+   SEPA-Lastschrift im Stripe-Live-Zahlungsartenprofil aktivieren. Danach die
+   exakte Checkout-Allowlist, Terms-Consent, Live-Webhook,
+   Link-Unterdrückung sowie Recovery- und Promotion-Code-Sperre nachweisen.
 3. Unmittelbar vor dem Cutover ein neues verschlüsseltes Backup erzeugen,
    Offsite abrufen und den Restore-Dry-Run bestehen.
 4. In einem kontrollierten Wartungsfenster `salesEnabled=true` für genau das
@@ -99,15 +105,17 @@ flowchart LR
    Prüfung durchführen und den Status erst nach gesonderter Freigabe auf
    `approved_for_cutover` setzen. Danach den Cutover zunächst nochmals im
    Planmodus ausführen.
-6. Bestands-Cutover mit `targetOnHand=1` kontrolliert anwenden, Shop-API,
-   Website und Publisher in der festgelegten Reihenfolge aktivieren und eine
-   echte Erstbestellung unter Beobachtung durchführen.
+6. Bestands-Cutover mit `targetOnHand=1` kontrolliert anwenden, Produktprojektion
+   und Publisher in der festgelegten Reihenfolge aktivieren, die bereits
+   bereitgestellte Website prüfen und eine echte Erstbestellung unter
+   Beobachtung durchführen.
 7. Nach dem ersten erfolgreichen Commerce-Checkout ist die Rückkehr zu
     `stock` als Bestandsquelle unzulässig. Weitere Produkte bleiben bis zu
     ihrer jeweiligen Freigabe deaktiviert.
 
-**Aktuelles Stopkriterium:** Vor Schritt 1 bleiben Checkout und Shopstart wegen
-des unvollständigen Stripe-Live-Vertrags gesperrt. Vor Schritt 4 bleibt das
+**Aktuelles Stopkriterium:** Die Zahlungsartenaktivierung ist bewusst
+aufgeschoben. Bis Schritt 2 vollständig bestanden ist, bleiben Checkout,
+Produktaktivierung und Bestands-Cutover gesperrt. Vor Schritt 4 bleibt das
 Produkt nicht kaufbar. Der erste fachlich irreversible Punkt ist der erste
 erfolgreiche Commerce-Checkout nach dem Bestands-Cutover.
 
@@ -816,13 +824,15 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP7.3e | AP7-Integrationsstand technisch bereit; reales Startprodukt unfreigegeben im Manifest vorbereitet, übrige Produktionsgates ausstehend |
 | AP7.3g | Testumgebung vollständig AP7-fähig und bereinigt; keine Produktionsfreigabe |
 | AP7.5 | produktionsfähiges V2-Produkt-API-Artefakt lokal bereit; PR-/CI-Nachweis und Produktionsfreigabe getrennt |
-| AP7.7a | verschlüsseltes Produktionsbackup, OneDrive-Abruf und Restore-Dry-Run bestanden; fortlaufender Cron-/Alarmnachweis ausstehend |
+| AP7.7a | verschlüsseltes Produktionsbackup, OneDrive-Abruf und Restore-Dry-Run bestanden; stündlicher Servercron und 30-minütiger Pull laufen ohne Überfälligkeit |
+| Produktionswebsite | SHA-gepinnt aus `main` `2cd1c5a2…` bereitgestellt und verifiziert; Produkt, Checkout und Publisher weiterhin fail-closed |
 | AP7 und später | nicht freigegeben |
-| Produktion/Cutover/Deployment | nicht freigegeben |
+| Produktaktivierung/Cutover | nicht freigegeben |
 
 Die Praxisnachweise von AP2 bis AP6 einschließlich AP3b sind bestanden. Die
 freigegebenen Rechts-, Datenschutz- und Versandfassungen sind dem
 Produktions-Legal-Bundle `cmj-production-legal-2026-08-07-v3` zugeordnet.
 AP7.0 hat ausschließlich lokale Produktionsartefakte und Gates vorbereitet.
-AP7, Deployment und Produktions-Cutover bleiben unangetastet und benötigen
-einen gesonderten ausdrücklichen Auftrag.
+Der statische Produktionswebsite-Deploy ist einzeln freigegeben und bestanden.
+Produktaktivierung, Publisher, Checkout und Produktions-Cutover benötigen
+weiterhin jeweils einen gesonderten ausdrücklichen Auftrag.

@@ -20,6 +20,9 @@ AP7.3e-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
 AP7.3g-Testbetriebsnachweis: IONOS-Testumgebung, abgeschlossen und bereinigt am
 2026-08-08
 
+Aktueller `main`- und Produktionswebsite-Stand:
+`2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c`
+
 ## Urteil
 
 Der Android-Versions- und Draft-Synchronisierungsblocker ist in AP7.2b
@@ -37,9 +40,13 @@ Deployments bleiben gesperrt. Der AP7-Integrationsstand und die Testumgebung
 sind technisch bereit. Genau ein reales V2-Startprodukt ist inzwischen lokal
 im weiterhin unfreigegebenen Cutovermanifest vorbereitet. Sein früherer
 `stock`-Wert wurde ausschließlich lesend aus der unveränderten
-Migrationssicherung bestätigt. Produktion, Cutover und Produktionsdeployment
-bleiben bis zur erneuten Versions-/Hashprüfung nach einer separat freizugebenden
-Aktivierung und bis zur Erfüllung aller übrigen Produktionsgates gesperrt.
+Migrationssicherung bestätigt. Produktaktivierung, Cutover und weitere
+Produktionsdeployments bleiben bis zur erneuten Versions-/Hashprüfung nach
+einer separat freizugebenden Aktivierung und bis zur Erfüllung aller übrigen
+Produktionsgates gesperrt. Die statische Produktionswebsite und die
+freigegebenen Legal-Seiten sind mittlerweile SHA-gepinnt bereitgestellt und
+verifiziert; Produktprojektion, Publisher, Checkout und Bestand bleiben
+fail-closed.
 
 ## Geschlossene lokale Blocker
 
@@ -192,9 +199,9 @@ Aktivierung und bis zur Erfüllung aller übrigen Produktionsgates gesperrt.
 ## Produktionsnachweis vom 2026-08-11
 
 - Der vollständige Integrationsstand ist über PR #38 nach `main` übernommen;
-  die private Bootstrapkorrektur folgte kontrolliert über PR #43. Der aktuelle
-  Produktionsbasisstand ist
-  `b1d7ea4dd18506f866ba01991707344b983934a9`.
+  die private Bootstrapkorrektur folgte kontrolliert über PR #43 und der
+  Readinessstand über PR #44. Der aktuelle Produktionsbasisstand ist
+  `2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c`.
 - Private Runtime (`0600`), Produktionspfade, MySQL-8-/InnoDB-Verbindung und
   aktive TLS-Sitzung sind nachgewiesen. Die fehlende CA-/Hostidentitätsprüfung
   bleibt das ausdrücklich akzeptierte V1-Restrisiko.
@@ -212,7 +219,9 @@ Aktivierung und bis zur Erfüllung aller übrigen Produktionsgates gesperrt.
 - Der stündliche verschlüsselte Backupdienst und der 30-minütige Windows-Pull
   sind aktiv. `backup status` meldet weder Server- noch Offsite-Überfälligkeit;
   der erste produktive Restore-Dry-Run und die OneDrive-Websichtbarkeit sind
-  bereits bestanden.
+  bereits bestanden. Das automatisch um `2026-08-11T17:18:00Z` erzeugte
+  Backup wurde im regulären Windows-Tasklauf mit Ergebnis `0` vollständig in
+  OneDrive abgelegt und um `2026-08-11T17:38:07Z` serverseitig quittiert.
 - Das reale Startprodukt stimmt weiterhin exakt mit der vorbereiteten Auswahl
   überein: Modell 2, Version 1, Hash
   `09cd71d56561b08b8373c3bc804d3298b47096c470751da3407a5e0eff1e4444`,
@@ -220,24 +229,30 @@ Aktivierung und bis zur Erfüllung aller übrigen Produktionsgates gesperrt.
   und `vintedUrl` fehlen. Das Produkt ist noch nicht in Commerce importiert;
   alle Bestands- und Geschäftsobjekte sind leer.
 - Alle externen Verkaufsangebote sind nach Betreiberbestätigung entfernt. Die
-  aktuelle Produktionswebsite enthält keine Vinted-/Marktplatzverweise, aber
-  auch noch keine Shopaktivierung.
+  Produktionswebsite wurde über den geschützten manuellen Workflow exakt aus
+  `2cd1c5a2…` bereitgestellt. Build, Aktivierung, Smoke-Test und
+  `mark_verified` sind bestanden; der Deployschalter wurde anschließend wieder
+  auf `false` gesetzt. Website, Legal-Seiten und Footer antworten erfolgreich,
+  enthalten keine Vinted-/Marktplatz- oder Testressourcen und zeigen weiterhin
+  kein kaufbares Produkt.
 - Brevo Live ist lesend erreichbar; der konfigurierte Produktionsabsender ist
-  vorhanden und aktiv. Stripe Live ist lesend erreichbar. Karte und Klarna
-  sind aktiv; PayPal und SEPA-Lastschrift sind im Live-Zahlungsartenprofil noch
-  nicht verfügbar und blockieren die weitere Shopfreigabe.
+  vorhanden und aktiv. Stripe Live ist lesend erreichbar. Die produktive
+  Terms-of-Service-URL ist gespeichert; Karte, Apple Pay und Klarna sind aktiv.
+  PayPal, Google Pay und SEPA-Lastschrift bleiben auf Betreiberwunsch bis
+  unmittelbar vor der Shopfreigabe deaktiviert und blockieren weiterhin
+  Checkout, Produktaktivierung und Cutover.
 
 ## Verbleibende Produktionsgates
 
-1. PayPal und SEPA-Lastschrift im Stripe-Live-Zahlungsartenprofil aktivieren
-   und anschließend die exakte Allowlist `card`, `paypal`, `klarna`,
-   `sepa_debit` erneut ausschließlich lesend nachweisen.
-2. Webhook-Allowlist, Terms-URL, deaktiviertes Link/Recovery/Promotion Codes
-   und alle übrigen Stripe-Live-Checkoutparameter ohne Zahlungserzeugung final
-   abgleichen.
-3. Den aktuellen Readiness-/Manifeststand prüfen und nach gesonderter
+1. Den aktualisierten Readiness-/Manifeststand prüfen und nach gesonderter
    Freigabe nach `main` übernehmen. Der Manifeststatus bleibt
    `prepared_awaiting_cutover_approval`.
+2. Unmittelbar vor jeder Checkout- oder Verkaufsaktivierung PayPal, Google Pay
+   und SEPA-Lastschrift im Stripe-Live-Zahlungsartenprofil aktivieren und die
+   exakte Allowlist `card`, `paypal`, `klarna`, `sepa_debit` nachweisen.
+3. Webhook-Allowlist, Terms-Consent, deaktiviertes Link/Recovery/Promotion
+   Codes und alle übrigen Stripe-Live-Checkoutparameter ohne
+   Zahlungserzeugung final abgleichen.
 4. Unmittelbar vor dem Cutover ein neues verschlüsseltes Produkt- und
    Commerce-Backup erzeugen, den Offsite-Abruf bestätigen und den
    Restore-Dry-Run erneut bestehen.
@@ -248,9 +263,10 @@ Aktivierung und bis zur Erfüllung aller übrigen Produktionsgates gesperrt.
 6. Das Manifest nach Vier-Augen-Prüfung separat freigeben, den Cutover zuerst
    im Planmodus prüfen und erst nach ausdrücklicher Apply-Freigabe
    `commerce_products` sowie `commerce_inventory.onHand=1` initialisieren.
-7. Publisher und Produktionswebsite in der festgelegten Reihenfolge separat
-   freigeben, genau eine echte Gastbestellung durchführen und das
-   Beobachtungsfenster ohne weitere Produktfreigabe abschließen.
+7. Publisher und Produktprojektion in der festgelegten Reihenfolge separat
+   freigeben, die bereits bereitgestellte Produktionswebsite prüfen, genau eine
+   echte Gastbestellung durchführen und das Beobachtungsfenster ohne weitere
+   Produktfreigabe abschließen.
 
 Jede Abweichung bei Produktidentität, Hash, Preis, Bestand, Migration,
 Zahlungszuordnung, Backup, Worker oder Monitoring stoppt neue Checkouts. Ein
