@@ -120,6 +120,20 @@ test("freigegebene AP6-Produktionsfassung ist dem aktuellen Shopvertrag zugeordn
   assert.match(source, /zahlungspflichtig bestellen/);
 });
 
+test("Produktionskandidat v4 entfernt PayPal und bleibt bis zur Freigabe inaktiv", async () => {
+  const source = await readFile(new URL("../../content/legal-bundles.ts", import.meta.url), "utf8");
+  const candidateStart = source.indexOf("const productionAwaitingTextsV4");
+  const candidateEnd = source.indexOf("export const testLegalBundle");
+  const candidate = source.slice(candidateStart, candidateEnd);
+
+  assert.ok(candidateStart >= 0 && candidateEnd > candidateStart);
+  assert.doesNotMatch(candidate, /PayPal|paypal\.com/);
+  assert.match(candidate, /Kredit- und Debitkarte, Apple Pay und Google Pay auf Kartenbasis, Klarna und SEPA-Lastschrift/);
+  assert.match(source, /id: "cmj-production-legal-2026-08-11-v4"/);
+  assert.match(source, /status: "awaiting_external_approval"/);
+  assert.match(source, /production: \[productionLegalBundle\]/);
+});
+
 test("freigegebenes Produktions-Bundle ist für Checkout-Snapshots zulässig", () => {
   const bundle = makeBundle({
     id: "cmj-production-legal-2026-08-07-v3",
