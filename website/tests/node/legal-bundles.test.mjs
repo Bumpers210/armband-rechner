@@ -90,6 +90,18 @@ test("Legal-Bundle-Archiv wird für das aktive Buildziel statisch erzeugt", asyn
   assert.match(archivePage, /dynamicParams = false/);
 });
 
+test("Technische Bundle-Daten erscheinen nur im unveränderlichen Archiv", async () => {
+  const component = await readFile(
+    new URL("../../components/legal-bundle-page.tsx", import.meta.url),
+    "utf8",
+  );
+  const [publicPage, archivePage] = component.split("const archiveSections");
+
+  assert.doesNotMatch(publicPage, /Legal-Bundle-ID|Inhalts-Hash|bundle\.archiveUrl/);
+  assert.match(archivePage, /Legal-Bundle-ID/);
+  assert.match(archivePage, /Inhalts-Hash/);
+});
+
 test("AP2-Schema kann Legal-Bundle-Snapshots an Checkout und Bestellung binden", async () => {
   const schema = await readFile(new URL("../../database/commerce-schema.sql", import.meta.url), "utf8");
   assert.match(schema, /checkout_sagas[\s\S]*legal_bundle_id/);
