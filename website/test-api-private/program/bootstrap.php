@@ -284,7 +284,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         || !is_bool($commerceRestoreRequireTls)
         || ($stripePaymentMethodTypes !== null
             && (!is_array($stripePaymentMethodTypes)
-                || $stripePaymentMethodTypes !== ['card', 'paypal', 'klarna', 'sepa_debit']))
+                || $stripePaymentMethodTypes !== ['card', 'klarna', 'sepa_debit']))
         || ($shippingAmountMinor !== null && !is_int($shippingAmountMinor))
         || ($shippingMinBusinessDays !== null && !is_int($shippingMinBusinessDays))
         || ($shippingMaxBusinessDays !== null && !is_int($shippingMaxBusinessDays))) {

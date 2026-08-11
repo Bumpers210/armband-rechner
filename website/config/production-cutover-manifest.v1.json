@@ -38,7 +38,7 @@
     "minBusinessDays": 2,
     "maxBusinessDays": 4
   },
-  "paymentMethodTypes": ["card", "paypal", "klarna", "sepa_debit"],
+  "paymentMethodTypes": ["card", "klarna", "sepa_debit"],
   "selectedProducts": [
     {
       "productId": "3a37a0a2-9bd6-4410-aa9c-a465fdc411a1",

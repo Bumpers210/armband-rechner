@@ -39,12 +39,12 @@ serverseitig als verifiziert markiert und ausschließlich mit Website-, Legal-,
 Footer- und Fail-closed-Smoke-Tests geprüft. Die produktive Terms-of-Service-
 URL ist im Stripe-Live-Konto gespeichert. Das erste produktive Adminkonto
 wurde über die private CLI angelegt, als aktiv mit Argon2id-Hash geprüft und
-der Browser-Login durch die Betreiberin erfolgreich bestätigt. PayPal, Google
-Pay und
-SEPA-Lastschrift bleiben auf Betreiberwunsch bis unmittelbar vor der
-Shopfreigabe deaktiviert; der abschließende Live-Webhook- und Checkoutnachweis
-bleibt offen. AP7-Cutover und jede weitere fachliche Produktionsmutation
-bleiben nicht freigegeben.
+der Browser-Login durch die Betreiberin erfolgreich bestätigt. Google Pay und
+SEPA-Lastschrift sind im Stripe-Liveprofil aktiv. PayPal bleibt auf
+Betreiberwunsch deaktiviert und wird als spätere Erweiterung nicht mehr von der
+V1-Checkout-Allowlist angefordert. Der abschließende Live-Webhook- und
+Checkoutnachweis bleibt offen. AP7-Cutover und jede weitere fachliche
+Produktionsmutation bleiben nicht freigegeben.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
@@ -63,7 +63,7 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Bereich | Stand | Freigabewirkung |
 | --- | --- | --- |
 | AP1 bis AP6 | vollständig abgenommen | abgeschlossen |
-| Integrationsstand `main` | `6f510f89397f671b4156fed86e2ba37a96c323e8` | produktive Deployments bleiben einzeln gegatet |
+| Integrationsstand `main` | `0fbe085d4c6ddc0f801b88354167ec22adef0049` | produktive Deployments bleiben einzeln gegatet |
 | Produktions-V2-/Shop-API | kombinierter Einstieg fail-closed bereitgestellt und per Smoke-Test geprüft | kein Checkout, kein Publisher, kein Shopstart |
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
 | Reales Startprodukt | V2, 2800 Cent, EUR, `salesEnabled=false` | nicht kaufbar |
@@ -72,7 +72,7 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Verschlüsseltes Backup | Produktionsbackup, OneDrive-Abruf, Websichtbarkeit und Restore-Dry-Run nachgewiesen | Backupgrundlage bestanden |
 | Backup-Cron und Offsite-Pull | `17 * * * *` sowie Windows-Pull im 30-Minuten-Takt aktiv; Status nicht überfällig | Alarm-/Langzeitbeobachtung bleibt laufender Betrieb |
 | Externe Verkaufsangebote | nach Betreiberbestätigung vollständig entfernt; Live-Website ohne Marktplatzverweise | Verkaufskanalgrenze bestanden |
-| Stripe Live | Konto/SDK/API lesend bestätigt; Terms-URL gespeichert; Karte, Apple Pay und Klarna aktiv | PayPal, Google Pay und SEPA bewusst aufgeschoben; Live-Webhook-/Checkoutnachweis offen |
+| Stripe Live | Konto/SDK/API lesend bestätigt; Terms-URL gespeichert; Karte, Apple Pay, Google Pay, Klarna und SEPA aktiv | PayPal bewusst auf eine spätere Erweiterung verschoben; Live-Webhook-/Checkoutnachweis offen |
 | Brevo Live | API und aktiv konfigurierter Absender lesend bestätigt | bereit; echter Versand erst mit kontrollierter Erstbestellung |
 | Commerce-Schema und Legal Bundle | drei Migrationen und Bundle v3 hashgleich; Geschäfts- und Bestandsobjekte leer | bereit für späteren Import/Cutover |
 | Shop-Worker und `*/5`-Cron | privates Artefakt, Direktlauf, Lock/Lease/Runlog und zwei echte Cronläufe bestanden | technisch bereit, ohne fällige Fachaktion |
@@ -96,9 +96,9 @@ flowchart LR
 1. Den aktualisierten Readiness-/Manifeststand per Pull Request prüfen und erst
    nach gesonderter Mergefreigabe nach `main` übernehmen. Der Manifeststatus
    bleibt unverändert unfreigegeben.
-2. Vor jeder Checkout- oder Verkaufsaktivierung PayPal, Google Pay und
-   SEPA-Lastschrift im Stripe-Live-Zahlungsartenprofil aktivieren. Danach die
-   exakte Checkout-Allowlist, Terms-Consent, Live-Webhook,
+2. Vor jeder Checkout- oder Verkaufsaktivierung die exakte V1-Allowlist
+   `card`, `klarna`, `sepa_debit` sowie Google Pay auf Kartenbasis nachweisen.
+   PayPal darf nicht angefordert werden. Danach Terms-Consent, Live-Webhook,
    Link-Unterdrückung sowie Recovery- und Promotion-Code-Sperre nachweisen.
 3. Unmittelbar vor dem Cutover ein neues verschlüsseltes Backup erzeugen,
    Offsite abrufen und den Restore-Dry-Run bestehen.
@@ -117,8 +117,9 @@ flowchart LR
     `stock` als Bestandsquelle unzulässig. Weitere Produkte bleiben bis zu
     ihrer jeweiligen Freigabe deaktiviert.
 
-**Aktuelles Stopkriterium:** Die Zahlungsartenaktivierung ist bewusst
-aufgeschoben. Bis Schritt 2 vollständig bestanden ist, bleiben Checkout,
+**Aktuelles Stopkriterium:** Der reduzierte Zahlungsartenvertrag muss erst
+lokal abgenommen, nach `main` übernommen und privat bereitgestellt werden. Bis
+Schritt 2 vollständig bestanden ist, bleiben Checkout,
 Produktaktivierung und Bestands-Cutover gesperrt. Vor Schritt 4 bleibt das
 Produkt nicht kaufbar. Der erste fachlich irreversible Punkt ist der erste
 erfolgreiche Commerce-Checkout nach dem Bestands-Cutover.
@@ -190,8 +191,9 @@ Bestandsreduzierung; es gibt keinen externen Verkaufskanal mehr.
 * Zahlungs-, Prüf-, Erstattungs- und Streitfallstatus werden getrennt
   gespeichert.
 * Die explizite V1-Zahlungsarten-Allowlist lautet ausschließlich `card`,
-  `paypal`, `klarna`, `sepa_debit`. Stripe Link, dynamische Zahlungsarten und
-  alle weiteren Verfahren bleiben deaktiviert.
+  `klarna`, `sepa_debit`. Apple Pay und Google Pay werden auf Kartenbasis über
+  `card` angeboten. PayPal, Stripe Link, dynamische Zahlungsarten und alle
+  weiteren Verfahren bleiben deaktiviert.
 * `payments.status=processing` bezeichnet eine von Stripe angenommene, aber
   noch nicht endgültig erfolgreiche Zahlung. Währenddessen bleiben Checkout
   und Unikatreservierung blockierend; Bestellung, Bestellnummer, Mail-Outbox
@@ -366,6 +368,12 @@ Stripe-Sandbox geprüft. Ablauf, vollständige Erstattung ohne Wiedereinlagerung
 Streitfall, Reviewcase und ungeordnete Ereignisse sind ebenfalls bestanden.
 Der technische Abnahmebericht steht in `website/docs/ap3b-acceptance.md`.
 AP7 bleibt gesperrt.
+
+Für den produktiven V1-Start wird aus dem technisch getesteten AP3b-Umfang die
+reduzierte Allowlist `card`, `klarna`, `sepa_debit` verwendet. Apple Pay und
+Google Pay bleiben Wallets auf Kartenbasis. Die getestete PayPal-Verarbeitung
+bleibt im Daten- und Zustandsmodell kompatibel, wird aber nicht an Stripe
+angefordert und erst als spätere, separat freizugebende Erweiterung aktiviert.
 
 ### AP4 – Öffentliche Shop-API, Checkout-UI und Widerruf
 

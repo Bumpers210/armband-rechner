@@ -29,13 +29,13 @@ test("Produktionsdeployment ist manuell, gepinnt und fail-closed", async () => {
   assert.match(apache, /\/home\/www\/carmaja-private-shop\/program\/bootstrap\.php/);
 });
 
-test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und vier Zahlungsarten identisch", async () => {
+test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsarten identisch", async () => {
   const deployment = JSON.parse(await text("website/config/production-shop-deployment.json"));
   const cutover = JSON.parse(await text("website/config/production-cutover-manifest.v1.json"));
   const runtime = await text("website/config/runtime-config.production.example.php");
   const bootstrap = await text("website/test-api-private/program/bootstrap.php");
 
-  const methods = ["card", "paypal", "klarna", "sepa_debit"];
+  const methods = ["card", "klarna", "sepa_debit"];
   assert.deepEqual(deployment.shop.paymentMethodTypes, methods);
   assert.deepEqual(cutover.paymentMethodTypes, methods);
   for (const method of methods) {

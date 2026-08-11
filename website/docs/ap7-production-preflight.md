@@ -102,7 +102,8 @@ wiederherstellbarer Schlüssel.
   Produktionsvertrag verifizieren.
 - [ ] Live-Webhook nur für die festgelegte Allowlist registrieren und
   Signaturprüfung mit unverändertem Rohpayload testen.
-- [ ] `card`, `paypal`, `klarna`, `sepa_debit` als exakte Allowlist prüfen.
+- [ ] `card`, `klarna`, `sepa_debit` als exakte Allowlist prüfen; Apple Pay und
+  Google Pay laufen auf Kartenbasis, PayPal bleibt deaktiviert.
 - [x] Link pro Session deaktivieren; Promotion Codes, Recovery und dynamische
   weitere Zahlungsarten deaktiviert lassen.
 - [ ] 30-minütige Checkout-Laufzeit, Terms-URL, verpflichtende Zustimmung,
@@ -116,11 +117,12 @@ Zahlungsart, fehlende Zustimmung oder nicht persistierbarer Webhook.
 
 **Aktueller Live-Nachweis:** Das Livekonto, das gepinnte SDK und genau ein
 aktivierter Webhook mit der vollständigen Neun-Ereignis-Allowlist sind lesend
-bestätigt. Karte und Klarna sind aktiv. PayPal und SEPA-Lastschrift sind noch
-nicht verfügbar. Außerdem fehlt im Stripe-Livekonto noch die produktive
-Terms-of-Service-URL. Link ist im Dashboard grundsätzlich verfügbar, wird vom
-verbindlichen Sessionvertrag aber mit `wallet_options.link.display=never`
-unterdrückt. Bis zur Korrektur bleiben Checkout und Shopstart gesperrt.
+bestätigt. Karte, Klarna, SEPA-Lastschrift und Google Pay sind aktiv; PayPal ist
+deaktiviert. Die produktive Terms-of-Service-URL ist gespeichert. Link ist im
+Dashboard grundsätzlich verfügbar, wird vom verbindlichen Sessionvertrag aber
+mit `wallet_options.link.display=never` unterdrückt. Bis der reduzierte Vertrag
+nach `main` übernommen und privat bereitgestellt ist, bleiben Checkout und
+Shopstart gesperrt.
 
 ## 7. Brevo Live
 

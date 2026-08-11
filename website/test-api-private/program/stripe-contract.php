@@ -24,7 +24,6 @@ const CARMAJA_STRIPE_WEBHOOK_ALLOWLIST = [
 ];
 const CARMAJA_STRIPE_PAYMENT_METHOD_TYPES = [
     'card',
-    'paypal',
     'klarna',
     'sepa_debit',
 ];
