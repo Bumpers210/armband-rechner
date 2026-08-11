@@ -75,27 +75,6 @@ export function LegalBundlePage({ sectionKey, title, children }: LegalBundlePage
 
           {children}
 
-          <dl className="legal-bundle-metadata">
-            <div>
-              <dt>Legal-Bundle-ID</dt>
-              <dd>{bundle.id}</dd>
-            </div>
-            <div>
-              <dt>Version</dt>
-              <dd>{bundle.version}</dd>
-            </div>
-            <div>
-              <dt>Inhalts-Hash</dt>
-              <dd>sha256:{bundle.contentHash}</dd>
-            </div>
-            <div>
-              <dt>Archiv</dt>
-              <dd>
-                <a href={bundle.archiveUrl}>{bundle.archiveUrl}</a>
-              </dd>
-            </div>
-          </dl>
-
           <p className="legal-back-link">
             <Link href="/">Zurück zur Startseite</Link>
           </p>
