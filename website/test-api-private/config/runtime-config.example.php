@@ -40,7 +40,7 @@ return [
     'stripeSdkVersion' => '20.3.0',
     'stripeApiVersion' => '2026-06-24.dahlia',
     'stripeWebhookApiVersion' => '2026-07-29.dahlia',
-    'stripePaymentMethodTypes' => ['card', 'paypal', 'klarna', 'sepa_debit'],
+    'stripePaymentMethodTypes' => ['card', 'klarna', 'sepa_debit'],
     'stripeSuccessUrl' => null,
     'stripeCancelUrl' => null,
     'activeLegalBundleId' => null,

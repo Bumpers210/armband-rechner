@@ -20,7 +20,7 @@ AP7.3e-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
 AP7.3g-Testbetriebsnachweis: IONOS-Testumgebung, abgeschlossen und bereinigt am
 2026-08-08
 
-Aktueller `main`-Stand: `6f510f89397f671b4156fed86e2ba37a96c323e8`
+Aktueller `main`-Stand: `0fbe085d4c6ddc0f801b88354167ec22adef0049`
 
 Aktuell bereitgestellter Produktionswebsite-Stand:
 `2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c`
@@ -244,19 +244,20 @@ fail-closed.
   kein kaufbares Produkt.
 - Brevo Live ist lesend erreichbar; der konfigurierte Produktionsabsender ist
   vorhanden und aktiv. Stripe Live ist lesend erreichbar. Die produktive
-  Terms-of-Service-URL ist gespeichert; Karte, Apple Pay und Klarna sind aktiv.
-  PayPal, Google Pay und SEPA-Lastschrift bleiben auf Betreiberwunsch bis
-  unmittelbar vor der Shopfreigabe deaktiviert und blockieren weiterhin
-  Checkout, Produktaktivierung und Cutover.
+  Terms-of-Service-URL ist gespeichert; Karte, Apple Pay, Google Pay, Klarna
+  und SEPA-Lastschrift sind aktiv. PayPal bleibt auf Betreiberwunsch
+  deaktiviert und wird von der reduzierten V1-Allowlist nicht angefordert.
+  Checkout, Produktaktivierung und Cutover bleiben bis zur Übernahme und
+  Bereitstellung dieses Vertrags weiterhin gesperrt.
 
 ## Verbleibende Produktionsgates
 
 1. Den aktualisierten Readiness-/Manifeststand prüfen und nach gesonderter
    Freigabe nach `main` übernehmen. Der Manifeststatus bleibt
    `prepared_awaiting_cutover_approval`.
-2. Unmittelbar vor jeder Checkout- oder Verkaufsaktivierung PayPal, Google Pay
-   und SEPA-Lastschrift im Stripe-Live-Zahlungsartenprofil aktivieren und die
-   exakte Allowlist `card`, `paypal`, `klarna`, `sepa_debit` nachweisen.
+2. Unmittelbar vor jeder Checkout- oder Verkaufsaktivierung die exakte
+   Allowlist `card`, `klarna`, `sepa_debit` sowie Google Pay auf Kartenbasis
+   nachweisen. PayPal bleibt deaktiviert und darf nicht angefordert werden.
 3. Webhook-Allowlist, Terms-Consent, deaktiviertes Link/Recovery/Promotion
    Codes und alle übrigen Stripe-Live-Checkoutparameter ohne
    Zahlungserzeugung final abgleichen.

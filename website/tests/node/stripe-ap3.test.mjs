@@ -44,7 +44,7 @@ test("Stripe Checkout verwendet ausschließlich serverseitige Preis-/Versanddate
   ]) {
     assert.match(contract, new RegExp(required));
   }
-  assert.match(contract, /CARMAJA_STRIPE_PAYMENT_METHOD_TYPES = \[\s*'card',\s*'paypal',\s*'klarna',\s*'sepa_debit'/s);
+  assert.match(contract, /CARMAJA_STRIPE_PAYMENT_METHOD_TYPES = \[\s*'card',\s*'klarna',\s*'sepa_debit'/s);
   assert.match(contract, /payment_method_types' => CARMAJA_STRIPE_PAYMENT_METHOD_TYPES/);
   assert.match(contract, /allow_promotion_codes' => false/);
   assert.match(contract, /'display' => 'never'/);

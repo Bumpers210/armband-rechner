@@ -32,7 +32,7 @@
     "backupExecutionLimitSeconds": 40
   },
   "shop": {
-    "paymentMethodTypes": ["card", "paypal", "klarna", "sepa_debit"],
+    "paymentMethodTypes": ["card", "klarna", "sepa_debit"],
     "shippingMethodId": "deutsche-post-maxibrief",
     "shippingPublicName": "Deutsche Post Maxibrief",
     "shippingAmountMinor": 270,

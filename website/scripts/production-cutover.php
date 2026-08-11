@@ -36,7 +36,7 @@ function carmaja_cutover_validate_contract(array $manifest, string $repositoryRo
         throw new CarmajaProductionCutoverException('cutover_contract_invalid');
     }
     if (($manifest['paymentMethodTypes'] ?? null)
-        !== ['card', 'paypal', 'klarna', 'sepa_debit']) {
+        !== ['card', 'klarna', 'sepa_debit']) {
         throw new CarmajaProductionCutoverException('payment_method_contract_invalid');
     }
     $shipping = $manifest['shipping'] ?? null;

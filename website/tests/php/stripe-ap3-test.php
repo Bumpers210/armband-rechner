@@ -104,7 +104,7 @@ $tests = [
         stripe_ap3_assert($parameters['line_items'][0]['price_data']['unit_amount'] === 4200, 'Preis fehlt.');
         stripe_ap3_assert($parameters['shipping_options'][0]['shipping_rate_data']['fixed_amount']['amount'] === 490, 'Versand fehlt.');
         stripe_ap3_assert(
-            $parameters['payment_method_types'] === ['card', 'paypal', 'klarna', 'sepa_debit'],
+            $parameters['payment_method_types'] === ['card', 'klarna', 'sepa_debit'],
             'Zahlungsarten sind nicht exakt begrenzt.'
         );
         stripe_ap3_assert(count(CARMAJA_STRIPE_WEBHOOK_ALLOWLIST) === 9, 'AP3b-Allowlist muss neun Ereignisse enthalten.');
