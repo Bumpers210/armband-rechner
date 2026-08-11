@@ -222,13 +222,16 @@ function carmaja_api_private_dir(): string
 {
     $target = carmaja_api_publish_target();
     $configuredPath = carmaja_api_required_path_setting('CARMAJA_PRIVATE_DIR');
-    $testPath = carmaja_api_required_path_setting('CARMAJA_TEST_PRIVATE_DIR');
+    $testPath = $target === 'test'
+        ? carmaja_api_required_path_setting('CARMAJA_TEST_PRIVATE_DIR')
+        : carmaja_api_optional_path_setting('CARMAJA_TEST_PRIVATE_DIR');
     $productionPath = $target === 'production'
         ? carmaja_api_required_path_setting('CARMAJA_PRODUCTION_PRIVATE_DIR')
         : carmaja_api_optional_path_setting('CARMAJA_PRODUCTION_PRIVATE_DIR');
     $publicWebroot = carmaja_api_required_path_setting('CARMAJA_PUBLIC_WEBROOT');
 
-    if ($productionPath !== null
+    if ($testPath !== null
+        && $productionPath !== null
         && carmaja_api_normalize_path($testPath)
             === carmaja_api_normalize_path($productionPath)) {
         throw new CarmajaApiException(
