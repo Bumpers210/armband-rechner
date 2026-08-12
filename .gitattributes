@@ -1,2 +1,5 @@
+.gitattributes text eol=lf
+*.sh text eol=lf
+
 website/docs/legal-review/ap6-2026-08-07-v1/*.md text eol=lf
 website/docs/legal-review/ap6-2026-08-07-v1/manifest.json text eol=lf
