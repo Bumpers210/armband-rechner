@@ -107,7 +107,7 @@ wiederherstellbarer Schlüssel.
 - [x] Link pro Session deaktivieren; Promotion Codes, Recovery und dynamische
   weitere Zahlungsarten deaktiviert lassen.
 - [ ] 30-minütige Checkout-Laufzeit, Terms-URL, verpflichtende Zustimmung,
-  Versand 270 Cent und Legal Bundle v3 in einer nicht zahlungswirksamen
+  Versand 270 Cent und Legal Bundle v4 in einer nicht zahlungswirksamen
   Konfigurationsprüfung vergleichen.
 - [ ] Inbox-Persistierung vor `2xx`, Retry, ungeordnete Events und
   Stripe-Abgleich betriebsbereit bestätigen.
@@ -118,11 +118,13 @@ Zahlungsart, fehlende Zustimmung oder nicht persistierbarer Webhook.
 **Aktueller Live-Nachweis:** Das Livekonto, das gepinnte SDK und genau ein
 aktivierter Webhook mit der vollständigen Neun-Ereignis-Allowlist sind lesend
 bestätigt. Karte, Klarna, SEPA-Lastschrift und Google Pay sind aktiv; PayPal ist
-deaktiviert. Die produktive Terms-of-Service-URL ist gespeichert. Link ist im
+deaktiviert. Die produktive Terms-of-Service-URL ist gespeichert. Das
+freigegebene Legal Bundle v4 ist lokal vorbereitet, aber noch nicht in
+Produktionsdatenbank und Runtime aktiviert. Link ist im
 Dashboard grundsätzlich verfügbar, wird vom verbindlichen Sessionvertrag aber
-mit `wallet_options.link.display=never` unterdrückt. Bis der reduzierte Vertrag
-nach `main` übernommen und privat bereitgestellt ist, bleiben Checkout und
-Shopstart gesperrt.
+mit `wallet_options.link.display=never` unterdrückt. Bis Legal Bundle v4 nach
+`main` übernommen, in der Produktionsdatenbank gespeichert und in der Runtime
+aktiviert ist, bleiben Checkout und Shopstart gesperrt.
 
 ## 7. Brevo Live
 

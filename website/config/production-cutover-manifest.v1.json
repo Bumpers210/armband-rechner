@@ -26,9 +26,9 @@
     }
   ],
   "legalBundle": {
-    "legalBundleId": "cmj-production-legal-2026-08-07-v3",
+    "legalBundleId": "cmj-production-legal-2026-08-11-v4",
     "status": "approved",
-    "reviewManifest": "website/docs/legal-review/ap6-2026-08-07-v1/manifest.json"
+    "reviewManifest": "website/docs/legal-review/ap7-2026-08-11-v1/manifest.json"
   },
   "shipping": {
     "methodId": "deutsche-post-maxibrief",

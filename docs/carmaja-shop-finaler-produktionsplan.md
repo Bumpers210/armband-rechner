@@ -4,8 +4,8 @@ Stand: 2026-08-11
 Änderungsvermerk: AP1, AP2, AP2a, AP3, AP4 und AP5 sind abgeschlossen und
 abgenommen. AP3b ist für `card`, `paypal`, `klarna` und `sepa_debit` technisch
 vollständig abgenommen; die AP6-Gesamtregression wurde danach erfolgreich
-wiederholt. Rechts-, Datenschutz- und Versandfassung vom 2026-08-07 sind dem
-freigegebenen Produktions-Legal-Bundle `cmj-production-legal-2026-08-07-v3`
+wiederholt. Rechts-, Datenschutz- und Versandfassung vom 2026-08-11 sind dem
+freigegebenen Produktions-Legal-Bundle `cmj-production-legal-2026-08-11-v4`
 zugeordnet. AP6 ist vollständig abgenommen. AP7.0 hat das lokale
 Produktionspaket auf Basis des AP6-Commits vorbereitet und technisch geprüft.
 AP7.2b hat App `1.1.2`/Code `4` integriert; AP7.3b hat die vollständige
@@ -63,7 +63,7 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Bereich | Stand | Freigabewirkung |
 | --- | --- | --- |
 | AP1 bis AP6 | vollständig abgenommen | abgeschlossen |
-| Integrationsstand `main` | `0fbe085d4c6ddc0f801b88354167ec22adef0049` | produktive Deployments bleiben einzeln gegatet |
+| Integrationsstand `main` | `0ff38c8849e70dbf098af658f78507930ab95cab` | produktive Deployments bleiben einzeln gegatet |
 | Produktions-V2-/Shop-API | kombinierter Einstieg fail-closed bereitgestellt und per Smoke-Test geprüft | kein Checkout, kein Publisher, kein Shopstart |
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
 | Reales Startprodukt | V2, 2800 Cent, EUR, `salesEnabled=false` | nicht kaufbar |
@@ -74,7 +74,7 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Externe Verkaufsangebote | nach Betreiberbestätigung vollständig entfernt; Live-Website ohne Marktplatzverweise | Verkaufskanalgrenze bestanden |
 | Stripe Live | Konto/SDK/API lesend bestätigt; Terms-URL gespeichert; Karte, Apple Pay, Google Pay, Klarna und SEPA aktiv | PayPal bewusst auf eine spätere Erweiterung verschoben; Live-Webhook-/Checkoutnachweis offen |
 | Brevo Live | API und aktiv konfigurierter Absender lesend bestätigt | bereit; echter Versand erst mit kontrollierter Erstbestellung |
-| Commerce-Schema und Legal Bundle | drei Migrationen und Bundle v3 hashgleich; Geschäfts- und Bestandsobjekte leer | bereit für späteren Import/Cutover |
+| Commerce-Schema und Legal Bundle | drei Migrationen vorhanden; Bundle v4 lokal freigegeben, aber noch nicht in Produktionsdatenbank und Runtime aktiviert; Geschäfts- und Bestandsobjekte leer | Checkout bleibt bis zur getrennten v4-Aktivierung gesperrt |
 | Shop-Worker und `*/5`-Cron | privates Artefakt, Direktlauf, Lock/Lease/Runlog und zwei echte Cronläufe bestanden | technisch bereit, ohne fällige Fachaktion |
 | Shop-Admin | genau ein aktives Konto, Argon2id, erfolgreicher produktiver Browser-Login; unauthentifizierte API antwortet `401` und `no-store` | Betreiberzugang bereit |
 | Produktionswebsite | SHA-gepinnt aus `2cd1c5a2…` bereitgestellt, Smoke-Test und `mark_verified` bestanden | statische Website und Legal-Seiten live; kein Produkt, kein Checkout |
@@ -135,8 +135,8 @@ aktive TLS-Sitzung ist Pflicht.
 
 AP2 ist vollständig abgenommen. AP2a ist technisch abgenommen. AP3, AP4 und
 AP5 sind abgenommen. AP3b und die anschließende AP6-Gesamtregression sind
-vollständig bestanden. Die Rechts-, Datenschutz- und Versandfreigaben liegen
-für die versionierten Fassungen vom 2026-08-07 vor. AP6 ist vollständig
+vollständig bestanden. Die aktuelle Rechts-, Datenschutz- und Versandfreigabe
+liegt für die versionierten Fassungen vom 2026-08-11 vor. AP6 ist vollständig
 abgenommen. AP7.2b, AP7.3b, AP7.3d, AP7.3e und AP7.3g sind technisch
 geschlossen.
 AP7 bleibt nicht freigegeben. Das verifizierte AP7.3d-Testdeployment war auf
@@ -843,7 +843,7 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 
 Die Praxisnachweise von AP2 bis AP6 einschließlich AP3b sind bestanden. Die
 freigegebenen Rechts-, Datenschutz- und Versandfassungen sind dem
-Produktions-Legal-Bundle `cmj-production-legal-2026-08-07-v3` zugeordnet.
+Produktions-Legal-Bundle `cmj-production-legal-2026-08-11-v4` zugeordnet.
 AP7.0 hat ausschließlich lokale Produktionsartefakte und Gates vorbereitet.
 Der statische Produktionswebsite-Deploy ist einzeln freigegeben und bestanden.
 Produktaktivierung, Publisher, Checkout und Produktions-Cutover benötigen

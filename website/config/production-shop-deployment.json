@@ -38,7 +38,7 @@
     "shippingAmountMinor": 270,
     "shippingMinBusinessDays": 2,
     "shippingMaxBusinessDays": 4,
-    "legalBundleId": "cmj-production-legal-2026-08-07-v3"
+    "legalBundleId": "cmj-production-legal-2026-08-11-v4"
   },
   "guards": {
     "copyRuntimeConfig": false,

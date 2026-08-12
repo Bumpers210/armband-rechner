@@ -214,6 +214,57 @@ const productionApprovedTexts: LegalBundleTexts = {
   ],
 };
 
+const productionApprovedTextsV4: LegalBundleTexts = {
+  terms: productionApprovedTexts.terms.map((section) =>
+    section.heading === "5. Preise und Zahlung"
+      ? {
+          ...section,
+          paragraphs: [
+            "Es gelten die vor Abgabe des Kaufangebots angezeigten Gesamtpreise zuzüglich der ausgewiesenen Versandkosten.",
+            "Die Zahlung erfolgt über Stripe. Verfügbar sind Kredit- und Debitkarte, Apple Pay und Google Pay auf Kartenbasis, Klarna und SEPA-Lastschrift. Welche Zahlungsarten im Einzelfall angezeigt werden, kann von deren Verfügbarkeit und den Voraussetzungen des jeweiligen Anbieters abhängen.",
+            "Bei SEPA-Lastschrift bleibt der Vorgang bis zur endgültigen Stripe-Bestätigung in Bearbeitung. Bis dahin entstehen keine angenommene Bestellung, Bestellnummer oder Versandfreigabe.",
+          ],
+        }
+      : section,
+  ),
+  privacy: productionApprovedTexts.privacy.map((section) => {
+    if (section.heading === "3. Zahlung, E-Mail und Versand") {
+      return {
+        ...section,
+        paragraphs: [
+          "Die Zahlung wird über Stripe abgewickelt. Verfügbar sind Kredit- und Debitkarte, Apple Pay und Google Pay auf Kartenbasis, Klarna und SEPA-Lastschrift. Stripe und die jeweils einbezogenen Anbieter verarbeiten die für Zahlung, Authentifizierung und Betrugsprävention erforderlichen Daten. Rechtsgrundlagen sind Art. 6 Abs. 1 Buchstaben b und f DSGVO.",
+          "Transaktionsmails versenden wir über Brevo SAS. Für den Versand geben wir Name, Lieferanschrift und gegebenenfalls eine Versandkennung an die Deutsche Post AG weiter. Dies erfolgt zur Vertragserfüllung nach Art. 6 Abs. 1 Buchstabe b DSGVO.",
+          "Datenschutzhinweise: https://stripe.com/de/privacy, https://www.klarna.com/de/datenschutz/ und https://www.brevo.com/de/legal/privacypolicy/.",
+        ],
+      };
+    }
+    if (section.heading === "5. Empfänger und Drittlandverarbeitung") {
+      return {
+        ...section,
+        paragraphs: [
+          "Empfänger können IONOS, Stripe, Klarna, Brevo, Deutsche Post AG sowie gesetzlich berechtigte Behörden und Berater sein. Mit Auftragsverarbeitern werden erforderliche Verträge geschlossen.",
+          "Stripe, Klarna und deren Unterauftragnehmer können Daten außerhalb der EU oder des EWR verarbeiten. Maßgeblich sind die jeweils anwendbaren Datenschutzinformationen und Übermittlungsgrundlagen der Anbieter.",
+          "Ein einfacher Link zu Instagram überträgt beim bloßen Seitenaufruf keine Daten. Erst beim Anklicken gelten die Datenschutzbestimmungen der Plattform.",
+        ],
+      };
+    }
+    return section;
+  }),
+  withdrawal: productionApprovedTexts.withdrawal,
+  shipping: productionApprovedTexts.shipping.map((section) =>
+    section.heading === "Zahlung"
+      ? {
+          ...section,
+          paragraphs: [
+            "Die Zahlung erfolgt über Stripe. Verfügbar sind Kredit- und Debitkarte, Apple Pay und Google Pay auf Kartenbasis, Klarna und SEPA-Lastschrift.",
+            "Mit „zahlungspflichtig bestellen“ geben Sie ein verbindliches Kaufangebot ab und autorisieren die Zahlung. Das Angebot wird erst nach endgültiger Zahlungsbestätigung durch Stripe angenommen. Anschließend erhalten Sie unverzüglich die Bestellbestätigung.",
+            "SEPA-Lastschrift kann zunächst als „in Bearbeitung“ angezeigt werden. Bis zur endgültigen Bestätigung bleibt das Unikat reserviert; es entstehen noch keine angenommene Bestellung, Bestellnummer oder Versandfreigabe. Bei endgültigem Fehlschlag kommt kein Vertrag zustande.",
+          ],
+        }
+      : section,
+  ),
+};
+
 export const testLegalBundle: LegalBundle = createLegalBundle({
   id: "cmj-test-legal-2026-08-06-v2",
   environment: "test",
@@ -234,9 +285,26 @@ export const productionLegalBundle: LegalBundle = createLegalBundle({
   texts: productionApprovedTexts,
 });
 
+export const PRODUCTION_LEGAL_BUNDLE_V4_CONTENT_SHA256 =
+  "0bc420ad6dd574ae0005d63f9e6c494d6db18a71b4a9f294314209f0b4dea9f1";
+
+export const productionLegalBundleV4: LegalBundle = createLegalBundle({
+  id: "cmj-production-legal-2026-08-11-v4",
+  environment: "production",
+  version: "v4",
+  status: "approved",
+  archiveUrl: "/legal-archive/production/cmj-production-legal-2026-08-11-v4/",
+  createdAt: "2026-08-11T00:00:00.000Z",
+  texts: productionApprovedTextsV4,
+});
+
+if (productionLegalBundleV4.contentHash !== PRODUCTION_LEGAL_BUNDLE_V4_CONTENT_SHA256) {
+  throw new Error("Freigegebenes Produktions-Legal-Bundle v4 stimmt nicht mit dem Inhalts-Hash überein.");
+}
+
 export const legalBundlesByTarget = {
   test: [testLegalBundle],
-  production: [productionLegalBundle],
+  production: [productionLegalBundleV4, productionLegalBundle],
 } as const;
 
 export function getActiveLegalBundle(): LegalBundle {

@@ -45,9 +45,9 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsa
   assert.equal(deployment.shop.shippingAmountMinor, 270);
   assert.equal(cutover.shipping.amountMinor, 270);
   assert.match(runtime, /'shippingAmountMinor'\s*=>\s*270/);
-  assert.equal(deployment.shop.legalBundleId, "cmj-production-legal-2026-08-07-v3");
+  assert.equal(deployment.shop.legalBundleId, "cmj-production-legal-2026-08-11-v4");
   assert.equal(cutover.legalBundle.legalBundleId, deployment.shop.legalBundleId);
-  assert.match(runtime, /cmj-production-legal-2026-08-07-v3/);
+  assert.match(runtime, /cmj-production-legal-2026-08-11-v4/);
   assert.equal(deployment.paths.worker, "/home/www/carmaja-private-shop/worker.php");
   assert.equal(deployment.paths.backupCli, "/home/www/carmaja-private-shop/backup.php");
   assert.equal(deployment.paths.backupDirectory, "/home/www/carmaja-private-shop/backups");
