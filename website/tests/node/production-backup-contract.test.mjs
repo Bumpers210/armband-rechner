@@ -29,7 +29,9 @@ test("Produktionsbackup ist privat, verschlüsselt und fail-closed", async () =>
   assert.match(service, /sodium_crypto_secretstream_xchacha20poly1305/);
   assert.match(service, /--single-transaction/);
   assert.match(service, /--events/);
+  assert.match(service, /--tz-utc/);
   assert.match(service, /--no-tablespaces/);
+  assert.match(service, /--init-command=SET @@SESSION\.FOREIGN_KEY_CHECKS=0, @@SESSION\.time_zone='\+00:00'/);
   assert.match(service, /assertClientTls/);
   assert.doesNotMatch(service, /--set-gtid-purged=OFF/);
   assert.match(service, /backup_product_changed/);

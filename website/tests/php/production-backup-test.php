@@ -224,6 +224,19 @@ $tests['manifest hmac and path traversal'] = static function () use ($root, $key
     backup_test_throws(static fn () => $backup->listReady(), 'backup_manifest_authentication_failed');
 };
 
+$tests['initial auto increment fingerprint normalization'] = static function () use ($root, $key): void {
+    $backup = new CarmajaProductionBackup(backup_test_config($root, $key), PHP_BINARY, PHP_BINARY, PHP_BINARY);
+    $method = new ReflectionMethod($backup, 'normalizeTableMetadata');
+    $autoIncrementColumn = [['EXTRA' => 'auto_increment']];
+    $ordinaryColumn = [['EXTRA' => '']];
+    $fresh = $method->invoke($backup, [['AUTO_INCREMENT' => null]], $autoIncrementColumn);
+    $advanced = $method->invoke($backup, [['AUTO_INCREMENT' => '7']], $autoIncrementColumn);
+    $ordinary = $method->invoke($backup, [['AUTO_INCREMENT' => null]], $ordinaryColumn);
+    backup_test_assert($fresh === [['AUTO_INCREMENT' => '1']], 'Initialwert wurde nicht auf 1 normalisiert.');
+    backup_test_assert($advanced === [['AUTO_INCREMENT' => '7']], 'Fortgeschrittener Zähler wurde verändert.');
+    backup_test_assert($ordinary === [['AUTO_INCREMENT' => null]], 'Tabelle ohne AUTO_INCREMENT wurde verändert.');
+};
+
 $passed = 0;
 try {
     foreach ($tests as $name => $test) {

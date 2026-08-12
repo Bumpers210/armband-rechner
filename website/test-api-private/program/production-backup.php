@@ -750,22 +750,29 @@ final class CarmajaProductionBackup
                 }
                 $schema = [];
                 if ($type === 'BASE TABLE') {
-                    $schema['table'] = $schemaRows(
+                    $tableStatement = $pdo->prepare(
                         'SELECT ENGINE, VERSION, ROW_FORMAT, AUTO_INCREMENT, TABLE_COLLATION,
                                 CREATE_OPTIONS, TABLE_COMMENT
                          FROM information_schema.TABLES
-                         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
-                        $name
+                         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?'
                     );
-                    $schema['columns'] = $schemaRows(
+                    $tableStatement->execute([$name]);
+                    $columnStatement = $pdo->prepare(
                         'SELECT COLUMN_NAME, ORDINAL_POSITION, COLUMN_DEFAULT, IS_NULLABLE, DATA_TYPE,
                                 CHARACTER_MAXIMUM_LENGTH, CHARACTER_OCTET_LENGTH, NUMERIC_PRECISION,
                                 NUMERIC_SCALE, DATETIME_PRECISION, CHARACTER_SET_NAME, COLLATION_NAME,
                                 COLUMN_TYPE, COLUMN_KEY, EXTRA, COLUMN_COMMENT, GENERATION_EXPRESSION, SRS_ID
                          FROM information_schema.COLUMNS
-                         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION',
-                        $name
+                         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? ORDER BY ORDINAL_POSITION'
                     );
+                    $columnStatement->execute([$name]);
+                    $columnRows = $columnStatement->fetchAll(PDO::FETCH_ASSOC);
+                    $tableRows = $this->normalizeTableMetadata(
+                        $tableStatement->fetchAll(PDO::FETCH_ASSOC),
+                        $columnRows
+                    );
+                    $schema['table'] = $encodeRows($tableRows);
+                    $schema['columns'] = $encodeRows($columnRows);
                     $schema['indexes'] = $schemaRows(
                         'SELECT INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME, COLLATION, SUB_PART,
                                 PACKED, NULLABLE, INDEX_TYPE, COMMENT, INDEX_COMMENT, IS_VISIBLE, EXPRESSION
@@ -875,6 +882,28 @@ final class CarmajaProductionBackup
             }
             throw $error;
         }
+    }
+
+    private function normalizeTableMetadata(array $tableRows, array $columnRows): array
+    {
+        $hasAutoIncrement = array_any(
+            $columnRows,
+            static fn (mixed $column): bool => is_array($column)
+                && str_contains((string) ($column['EXTRA'] ?? ''), 'auto_increment')
+        );
+        if (!$hasAutoIncrement) {
+            return $tableRows;
+        }
+        foreach ($tableRows as &$tableRow) {
+            if (is_array($tableRow) && array_key_exists('AUTO_INCREMENT', $tableRow)
+                && $tableRow['AUTO_INCREMENT'] === null) {
+                // MySQL reports NULL for a freshly restored, still unused AUTO_INCREMENT table.
+                // It is semantically identical to the source value 1 and must not break restore verification.
+                $tableRow['AUTO_INCREMENT'] = '1';
+            }
+        }
+        unset($tableRow);
+        return $tableRows;
     }
 
     private function fileDescriptor(string $path): array
@@ -1033,6 +1062,7 @@ final class CarmajaProductionBackup
             '--routines',
             '--triggers',
             '--events',
+            '--tz-utc',
             '--hex-blob',
             '--order-by-primary',
             '--no-tablespaces',
@@ -1075,7 +1105,12 @@ final class CarmajaProductionBackup
         try {
             $this->assertClientTls($options, true);
             $process = proc_open(
-                [$this->mysqlBinary, '--defaults-extra-file=' . $options, $this->databaseName($this->config['commerceRestoreDsn'])],
+                [
+                    $this->mysqlBinary,
+                    '--defaults-extra-file=' . $options,
+                    "--init-command=SET @@SESSION.FOREIGN_KEY_CHECKS=0, @@SESSION.time_zone='+00:00'",
+                    $this->databaseName($this->config['commerceRestoreDsn']),
+                ],
                 [0 => $input, 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                 $pipes
             );
