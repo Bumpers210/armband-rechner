@@ -1,6 +1,6 @@
 # AP7.0 – lokale Produktionsbereitschaft
 
-Stand: 2026-08-11
+Stand: 2026-08-13
 
 Basis: AP6-Commit `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`
 
@@ -20,10 +20,10 @@ AP7.3e-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
 AP7.3g-Testbetriebsnachweis: IONOS-Testumgebung, abgeschlossen und bereinigt am
 2026-08-08
 
-Aktueller `main`-Stand: `0fbe085d4c6ddc0f801b88354167ec22adef0049`
+Aktueller `main`-Stand: `01e86d61c4eb6b620e013ccb64522dc6b90adf1c`
 
 Aktuell bereitgestellter Produktionswebsite-Stand:
-`2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c`
+`01e86d61c4eb6b620e013ccb64522dc6b90adf1c`
 
 ## Urteil
 
@@ -43,8 +43,8 @@ sind technisch bereit. Genau ein reales V2-Startprodukt ist inzwischen lokal
 im weiterhin unfreigegebenen Cutovermanifest vorbereitet. Sein früherer
 `stock`-Wert wurde ausschließlich lesend aus der unveränderten
 Migrationssicherung bestätigt. Produktaktivierung, Cutover und weitere
-Produktionsdeployments bleiben bis zur erneuten Versions-/Hashprüfung nach
-einer separat freizugebenden Aktivierung und bis zur Erfüllung aller übrigen
+Produktionsschritte bleiben bis zur erneuten Versions-/Hashprüfung nach einer
+separat freizugebenden Aktivierung und bis zur Erfüllung aller übrigen
 Produktionsgates gesperrt. Die statische Produktionswebsite und die
 freigegebenen Legal-Seiten sind mittlerweile SHA-gepinnt bereitgestellt und
 verifiziert; Produktprojektion, Publisher, Checkout und Bestand bleiben
@@ -53,7 +53,8 @@ fail-closed.
 ## Geschlossene lokale Blocker
 
 - Bootstrap und Laufzeitvertrag verlangen die exakte Zahlungsarten-Allowlist
-  `card`, `paypal`, `klarna`, `sepa_debit`.
+  `card`, `klarna`, `sepa_debit`; PayPal ist nicht Bestandteil des
+  Produktionsvertrags.
 - Der öffentliche Produktions-API-Einstieg lädt ausschließlich einen explizit
   gesetzten privaten Bootstrap außerhalb seines Webroots und besitzt keinen
   Testpfad-Fallback.
@@ -86,16 +87,17 @@ fail-closed.
 
 ## Lokale Nachweise
 
-- PHP 8.4: alle relevanten Dateien ohne Syntaxfehler; 118/118 PHP-Tests.
-- Node vollständig: 121/130 Tests; ausschließlich die neun unveränderten,
-  bereits für AP7.3b gegen den sauberen Basisstand reproduzierten
-  Windows-CRLF-/Bash-Basisfehler bleiben bestehen. Die 29 gezielt
-  CRLF-unabhängigen V2-/AP7-Vertragstests bestehen vollständig.
+- PHP 8.4: alle relevanten Dateien ohne Syntaxfehler. Die abschließenden
+  fokussierten Produktionsläufe bestanden vollständig: AP7 9/9, Stripe 5/5,
+  Shop AP4 4/4, Shop AP5 10/10 und Backup 6/6.
+- Node vollständig: 137/137 Tests. Die früheren neun Windows-CRLF-/Bash-
+  Basisfehler sind durch die in PR #51 übernommene LF-Regel geschlossen.
 - `npm run lint:test`: bestanden.
 - `npm run build:test`: bestanden und Testexport verifiziert.
 - `npm run build` mit ausschließlich künstlicher v2-Fixture: bestanden und
   Produktionsexport verifiziert.
-- `npm audit --omit=dev`: 0 bekannte Schwachstellen.
+- `npm audit --json`: 0 bekannte Schwachstellen in Produktions- und
+  Entwicklungsabhängigkeiten.
 - Android AP7.2b: Der autoritative App-Stand `app-v1.1.2` aus Commit
   `4cbd0489628d0c5e7e347d376df67bd12342fe5e` ist kontrolliert integriert.
   Der Produktionsbuild verwendet `versionCode 4` und `versionName 1.1.2`.
@@ -125,6 +127,29 @@ fail-closed.
 - AP7.3b Android: `testDebugUnitTest`, `lintDebug` und das mit dem vorhandenen
   stabilen Beta-Zertifikat gebaute `assembleBeta` sind bestanden. Lokal war
   kein Emulator für Instrumentierungstests angeschlossen.
+- Der aktuelle signierte Beta-Prüfstand wurde in Workflowlauf `31530948278`
+  aus Commit `cddab3dac478e1148f7c91ad1cd185ab6f93a2d8` erzeugt. Das Artefakt
+  `Carmaja-Perlen-Produktverwaltung-Test-1.1.3-beta.1-code5` ist hashgleich,
+  mit genau einem gepinnten Beta-Zertifikat signiert und verwendet Version
+  Code 5. Die technische APK-Prüfung zeigte jedoch die Paket-ID
+  `de.carmajaperlen.armbandrechner` statt der festgelegten Test-Paket-ID
+  `de.steinhart.armbandrechner.test`. Dadurch kollidiert die Beta-App mit dem
+  Produktionspaket und kann nicht sicher parallel installiert werden. Die
+  fehlerhafte APK wurde nicht installiert.
+- Commit `0b19a8775ef0263a2eb8285ed620ef24d3a9e1d6` trennt daraufhin den
+  Beta-Variant und härtet den Workflowvertrag auf die festgelegte Test-Paket-ID.
+  Workflowlauf `31710343644` bestand Unit-Tests, Android-Lint, signierten
+  Beta-Build, Paket-/Signaturprüfung, Artefakterzeugung und Schlüsselcleanup.
+  Das neue Artefakt besitzt Paket `de.steinhart.armbandrechner.test`, Version
+  Code 5, Version `1.1.3-beta.1`, ausschließlich die Test-API, genau ein
+  gepinntes Beta-Zertifikat und den verifizierten APK-SHA-256
+  `0d69efaf140ca042c091e953ebccb82cf89062d83ba0c5028286fa2819e796cf`.
+  Die Betreiberin bestätigte anschließend die Installation der isolierten
+  Test-App und die erfolgreiche Anmeldung an der getrennten Testumgebung.
+  Der danach aus der App veröffentlichte Datensatz `CP-2026-0006` erreichte
+  über Test-API und Testbranch die geschützte Testwebsite. Der vollständige
+  App-→Test-API-→Website-Roundtrip ist damit auf einem realen Testgerät
+  abgenommen; Produktions-App und Produktions-API blieben unverändert.
 - AP7.3b PHP: 118/118 Tests und die Lints der geänderten V2-Dateien mit PHP
   8.4.23 bestanden. Die künstliche Kette prüft zusätzlich Idempotenz,
   serverseitigen Hash und die öffentliche Legacy-Feldsperre.
@@ -149,6 +174,13 @@ fail-closed.
   sichtbar, bei `salesEnabled=false` als „Nicht verfügbar“ gekennzeichnet und
   nicht kaufbar. Detailseite, Bilder, Legal-Seiten und Footer sind erreichbar;
   Vinted-/Marktplatzdaten fehlen. Der serverseitige Release ist `verified`.
+- Der reale Testroundtrip mit `CP-2026-0006` ist bis zum verifizierten
+  Testwebsite-Release
+  `a8908a3502bd43f15cc709005e1b28df6e597b0c-31726947719-2` fortgeführt. Das
+  Produkt ist in Übersicht und Detailseite sichtbar, nicht kaufbar und
+  verwendet die abgenommene Produktbezeichnung und Markenführung. Pflege wird
+  nur über die zentrale Hinweisseite verlinkt. Die Betreiberin hat diesen
+  Website-Stand abschließend abgenommen.
 - AP7.3e Integration: `codex/ap7-integration` enthält den vollständigen
   V2-Kettenstand bis Commit `3ae346c095d8564c07ce6539a70d38a936a20ff6`.
   Bestehende AP7.2b-/`main`-Änderungen wurden erhalten. Produktions-App
@@ -199,69 +231,64 @@ fail-closed.
   vollständig bereinigt. OneDrive-Pull und Produktions-Restore bleiben eigene
   Gates.
 
-## Produktionsnachweis vom 2026-08-11
+## Produktionsnachweis bis 2026-08-12
 
-- Der vollständige Integrationsstand ist über PR #38 nach `main` übernommen;
-  die private Bootstrapkorrektur folgte kontrolliert über PR #43 und der
-  Readinessstand über PR #44. Der aktuelle Produktionsbasisstand ist
-  `2cd1c5a2daeb8451a2ccc59e2795d2a79765f56c`.
+- PR #49 hat Legal Bundle v4, PR #50 die deterministische Backup-
+  Wiederherstellung und PR #51 die bereinigte Entwicklungswerkzeugkette nach
+  `main` übernommen. Aktueller Integrations- und Website-Stand ist
+  `01e86d61c4eb6b620e013ccb64522dc6b90adf1c`.
 - Private Runtime (`0600`), Produktionspfade, MySQL-8-/InnoDB-Verbindung und
   aktive TLS-Sitzung sind nachgewiesen. Die fehlende CA-/Hostidentitätsprüfung
-  bleibt das ausdrücklich akzeptierte V1-Restrisiko.
-- Die drei freigegebenen Migrationen sind angewendet. Ihre normalisierten
-  Datei- und Journalhashes stimmen mit dem weiterhin unfreigegebenen
-  Cutovermanifest überein. Das freigegebene Legal Bundle ist vorhanden,
-  `approved` und hashgleich.
+  bleibt das ausdrücklich akzeptierte V1-Restrisiko. Publisher und beide
+  Produktionsschalter stehen weiterhin auf `false`.
+- Legal Bundle `cmj-production-legal-2026-08-11-v4` ist in der
+  Produktionsdatenbank idempotent als `approved` gespeichert, hashgeprüft und
+  in der privaten Runtime aktiv. Versand (`deutsche-post-maxibrief`, 270 Cent,
+  EUR) und die exakte Stripe-Allowlist `card`, `klarna`, `sepa_debit` stimmen
+  mit dem freigegebenen Vertrag überein.
+- Das nach der Legal-Aktivierung erstellte Produktionsbackup
+  `20260812T161001Z-3e6dd5bdd009` wurde verschlüsselt und hashgeprüft atomar
+  im festgelegten OneDrive-Ziel abgelegt, serverseitig quittiert und in einem
+  isolierten Restore-Dry-Run inhaltlich erfolgreich geprüft. Der spätere
+  Status meldete weder Server- noch Offsite-Überfälligkeit.
 - Privates Shop-/Workerpaket und kombinierter öffentlicher API-Einstieg sind
   hashgeprüft bereitgestellt. CORS, `no-store`, fail-closed Produktantworten
-  und Produkt-API-v2-Kompatibilität sind bestanden. Es entstand dabei keine
-  Reservierung, Zahlung, Bestellung, Mail oder Bestandsänderung.
-- Der Produktionsworker läuft mit `*/5 * * * *`. Direktlauf, paralleler Lock,
-  Lease, Runlog und zwei echte Cronläufe sind bestanden; beide Workerachsen
-  sind fehlerfrei und besitzen keine aktive Lease.
+  und Produkt-API-v2-Kompatibilität sind bestanden. Der Produktionsworker und
+  der Backupdienst sind ohne aktive Lease oder Rückstand gesund.
 - Genau ein produktives Adminkonto wurde über die private CLI angelegt. Das
   Konto ist aktiv, verwendet Argon2id und der Browser-Login wurde durch die
-  Betreiberin erfolgreich bestätigt. Der öffentliche Admin-Einstieg ist
-  erreichbar; ohne Sitzung antwortet die API korrekt mit `401`, CORS-Bindung
-  an die Produktionswebsite und `no-store`.
-- Der stündliche verschlüsselte Backupdienst und der 30-minütige Windows-Pull
-  sind aktiv. `backup status` meldet weder Server- noch Offsite-Überfälligkeit;
-  der erste produktive Restore-Dry-Run und die OneDrive-Websichtbarkeit sind
-  bereits bestanden. Das automatisch um `2026-08-11T17:18:00Z` erzeugte
-  Backup wurde im regulären Windows-Tasklauf mit Ergebnis `0` vollständig in
-  OneDrive abgelegt und um `2026-08-11T17:38:07Z` serverseitig quittiert.
-- Das reale Startprodukt stimmt weiterhin exakt mit der vorbereiteten Auswahl
-  überein: Modell 2, Version 1, Hash
-  `09cd71d56561b08b8373c3bc804d3298b47096c470751da3407a5e0eff1e4444`,
-  2800 Cent, EUR, 18 cm, 8 mm, zwei Bilder und `salesEnabled=false`. `stock`
-  und `vintedUrl` fehlen. Das Produkt ist noch nicht in Commerce importiert;
-  alle Bestands- und Geschäftsobjekte sind leer.
-- Alle externen Verkaufsangebote sind nach Betreiberbestätigung entfernt. Die
-  Produktionswebsite wurde über den geschützten manuellen Workflow exakt aus
-  `2cd1c5a2…` bereitgestellt. Build, Aktivierung, Smoke-Test und
-  `mark_verified` sind bestanden; der Deployschalter wurde anschließend wieder
-  auf `false` gesetzt. Website, Legal-Seiten und Footer antworten erfolgreich,
-  enthalten keine Vinted-/Marktplatz- oder Testressourcen und zeigen weiterhin
-  kein kaufbares Produkt.
-- Brevo Live ist lesend erreichbar; der konfigurierte Produktionsabsender ist
-  vorhanden und aktiv. Stripe Live ist lesend erreichbar. Die produktive
-  Terms-of-Service-URL ist gespeichert; Karte, Apple Pay, Google Pay, Klarna
-  und SEPA-Lastschrift sind aktiv. PayPal bleibt auf Betreiberwunsch
-  deaktiviert und wird von der reduzierten V1-Allowlist nicht angefordert.
-  Checkout, Produktaktivierung und Cutover bleiben bis zur Übernahme und
-  Bereitstellung dieses Vertrags weiterhin gesperrt.
+  Betreiberin erfolgreich bestätigt. Ohne Sitzung antwortet die Admin-API
+  korrekt mit `401`, Produktions-CORS und `no-store`.
+- Stripe Live ist lesend erreichbar. Genau ein aktiver Webhook besitzt die
+  vollständige Neun-Ereignis-Allowlist; Karte, Klarna, SEPA-Lastschrift und
+  Google Pay auf Kartenbasis sind aktiv, PayPal ist deaktiviert. Brevo Live
+  und der konfigurierte Produktionsabsender sind aktiv. Die kontrollierte
+  Live-Checkout-/Webhook-/Mail-Abnahme bleibt ausstehend.
+- Das reale Startprodukt ist weiterhin Modell 2, Version 1, Preis 2800 Cent,
+  EUR, 18 cm, 8 mm, zwei Bilder und `salesEnabled=false`. Es ist noch nicht in
+  Commerce importiert. Bestände, Checkouts, Reservierungen, Zahlungen,
+  Bestellungen und Shop-Mails bleiben leer. Ein lesender Cutover-Planlauf war
+  technisch erfolgreich, aber erwartungsgemäß nicht zur Anwendung freigegeben.
+- Die Produktionswebsite wurde im geschützten Workflowlauf `31626276683`
+  SHA-gepinnt aus `01e86d61…` gebaut, aktiviert, vollständig live geprüft und
+  mit `mark_verified` bestätigt. Die öffentlichen Legal-Seiten antworten mit
+  `200`, enthalten weder interne Bundle-Metadaten noch PayPal- oder Testmarker
+  und verlinken konsistent im Footer. Das technische Legal-Archiv behält seine
+  internen Bundle- und Hashangaben bestimmungsgemäß. Der temporäre
+  Deployschalter wurde anschließend wieder auf `false` gesetzt.
+- Keine dieser Maßnahmen aktivierte ein Produkt, änderte Commerce-Bestand,
+  öffnete Checkout oder Publisher oder startete den Shop.
 
 ## Verbleibende Produktionsgates
 
-1. Den aktualisierten Readiness-/Manifeststand prüfen und nach gesonderter
-   Freigabe nach `main` übernehmen. Der Manifeststatus bleibt
-   `prepared_awaiting_cutover_approval`.
-2. Unmittelbar vor jeder Checkout- oder Verkaufsaktivierung die exakte
-   Allowlist `card`, `klarna`, `sepa_debit` sowie Google Pay auf Kartenbasis
-   nachweisen. PayPal bleibt deaktiviert und darf nicht angefordert werden.
-3. Webhook-Allowlist, Terms-Consent, deaktiviertes Link/Recovery/Promotion
-   Codes und alle übrigen Stripe-Live-Checkoutparameter ohne
-   Zahlungserzeugung final abgleichen.
+1. Monitoringalarme für Worker, Webhookrückstand, Mail-Outbox, Reviewfälle,
+   Backup-RPO und Speicher aktivieren und den Alarm-/Eskalationsweg prüfen.
+2. Stripe-Live-Checkoutparameter, Webhooksignatur, Legal Consent und
+   Brevo-Vorlagen in einer kontrollierten, zunächst nicht zahlungswirksamen
+   Abnahme vollständig gegen den freigegebenen Vertrag prüfen.
+3. Das Startprodukt unmittelbar vor dem Wartungsfenster erneut lesend prüfen.
+   Produktidentität, Preis, Bilder, Version, Hash und unveränderten
+   Manifeststatus dokumentieren; jede Abweichung stoppt den Ablauf.
 4. Unmittelbar vor dem Cutover ein neues verschlüsseltes Produkt- und
    Commerce-Backup erzeugen, den Offsite-Abruf bestätigen und den
    Restore-Dry-Run erneut bestehen.

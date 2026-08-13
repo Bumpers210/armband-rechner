@@ -97,10 +97,10 @@ jobs:
           package_name="$(printf '%s\n' "${badging}" | sed -n "1s/^package: name='\([^']*\)'.*/\1/p")"
           version_code="$(printf '%s\n' "${badging}" | sed -n "1s/.*versionCode='\([^']*\)'.*/\1/p")"
 
-          if [[ "${package_name}" != "de.carmajaperlen.armbandrechner" ||
+          if [[ "${package_name}" != "de.steinhart.armbandrechner.test" ||
                 ! "${version_code}" =~ ^[0-9]+$ ||
                 "${version_code}" -le 4 ]]; then
-            echo "::error::The beta APK does not satisfy the installed-app upgrade contract."
+            echo "::error::The beta APK does not satisfy the isolated test-app contract."
             exit 1
           fi
 
@@ -141,13 +141,14 @@ jobs:
           Carmaja-Perlen Produktverwaltung Test
 
           App-Name: Carmaja-Perlen Produktverwaltung Test
-          Paketname: de.carmajaperlen.armbandrechner
+          Paketname: de.steinhart.armbandrechner.test
           Version: ${version_name}
           VersionCode: ${version_code}
           API: https://test-api.carmaja-perlen.de/
 
           Diese APK ist mit dem fest gepinnten Carmaja-Beta-Zertifikat signiert
-          und aktualisiert nur eine mit demselben Beta-Zertifikat signierte Installation.
+          und aktualisiert nur eine mit derselben Test-Paket-ID und demselben
+          Beta-Zertifikat signierte Installation.
           Sie nutzt die getrennte Test-API und loest kein produktives IONOS-Deployment aus.
 
           Installation:
