@@ -1,6 +1,6 @@
 # AP7.0 – lokale Produktionsbereitschaft
 
-Stand: 2026-08-12
+Stand: 2026-08-13
 
 Basis: AP6-Commit `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`
 
@@ -135,8 +135,16 @@ fail-closed.
   `de.carmajaperlen.armbandrechner` statt der festgelegten Test-Paket-ID
   `de.steinhart.armbandrechner.test`. Dadurch kollidiert die Beta-App mit dem
   Produktionspaket und kann nicht sicher parallel installiert werden. Die
-  Geräteinstallation und technische Abnahme bleiben bis zur Korrektur und
-  einem neu signierten Artefakt gesperrt.
+  fehlerhafte APK wurde nicht installiert.
+- Commit `0b19a8775ef0263a2eb8285ed620ef24d3a9e1d6` trennt daraufhin den
+  Beta-Variant und härtet den Workflowvertrag auf die festgelegte Test-Paket-ID.
+  Workflowlauf `31710343644` bestand Unit-Tests, Android-Lint, signierten
+  Beta-Build, Paket-/Signaturprüfung, Artefakterzeugung und Schlüsselcleanup.
+  Das neue Artefakt besitzt Paket `de.steinhart.armbandrechner.test`, Version
+  Code 5, Version `1.1.3-beta.1`, ausschließlich die Test-API, genau ein
+  gepinntes Beta-Zertifikat und den verifizierten APK-SHA-256
+  `0d69efaf140ca042c091e953ebccb82cf89062d83ba0c5028286fa2819e796cf`.
+  Die technische Abnahme auf einem realen Testgerät bleibt ein separates Gate.
 - AP7.3b PHP: 118/118 Tests und die Lints der geänderten V2-Dateien mit PHP
   8.4.23 bestanden. Die künstliche Kette prüft zusätzlich Idempotenz,
   serverseitigen Hash und die öffentliche Legacy-Feldsperre.
@@ -261,11 +269,10 @@ fail-closed.
 
 ## Verbleibende Produktionsgates
 
-1. Die Paket-ID der Beta-App auf `de.steinhart.armbandrechner.test` korrigieren,
-   den Workflowvertrag entsprechend härten und ein neues signiertes Artefakt
-   erzeugen. Erst danach die App auf einem realen Testgerät technisch abnehmen
-   und den vollständigen App-→Test-API-→Website-Roundtrip protokollieren. Die
-   Produktions-App bleibt dabei unverändert.
+1. Das korrigierte signierte Beta-Artefakt aus Workflowlauf `31710343644` auf
+   einem realen Testgerät technisch abnehmen und den vollständigen
+   App-→Test-API-→Website-Roundtrip protokollieren. Die Produktions-App bleibt
+   dabei unverändert.
 2. Monitoringalarme für Worker, Webhookrückstand, Mail-Outbox, Reviewfälle,
    Backup-RPO und Speicher aktivieren und den Alarm-/Eskalationsweg prüfen.
 3. Stripe-Live-Checkoutparameter, Webhooksignatur, Legal Consent und

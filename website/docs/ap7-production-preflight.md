@@ -1,6 +1,6 @@
 # AP7 – endgültige Produktions-Preflight-Checkliste
 
-Stand: 2026-08-12
+Stand: 2026-08-13
 
 Status: **nicht zur Ausführung freigegeben**
 
@@ -13,9 +13,11 @@ einen Testwert ersetzt werden.
 - [x] Finalen Integrationsstand per Pull Request und CI prüfen.
 - [x] Bestätigen, dass ausschließlich der freigegebene Commit nach `main`
   übernommen wurde.
-- [ ] Für die Beta-App die getrennte Paket-ID
+- [x] Für die Beta-App die getrennte Paket-ID
   `de.steinhart.armbandrechner.test` im APK und im Workflowvertrag nachweisen;
   ein APK mit Produktions-Paket-ID nicht auf einem Testgerät installieren.
+- [ ] Das korrigierte, signierte Beta-Artefakt aus Workflowlauf `31710343644`
+  auf einem realen Testgerät installieren und den Test-API-Roundtrip abnehmen.
 - [x] Den freigegebenen Produktionswebsite-Stand
   `01e86d61c4eb6b620e013ccb64522dc6b90adf1c` SHA-gepinnt bereitstellen,
   vollständig live prüfen und `CARMAJA_PRODUCTION_DEPLOY_ENABLED` danach
