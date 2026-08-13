@@ -144,7 +144,12 @@ fail-closed.
   Code 5, Version `1.1.3-beta.1`, ausschließlich die Test-API, genau ein
   gepinntes Beta-Zertifikat und den verifizierten APK-SHA-256
   `0d69efaf140ca042c091e953ebccb82cf89062d83ba0c5028286fa2819e796cf`.
-  Die technische Abnahme auf einem realen Testgerät bleibt ein separates Gate.
+  Die Betreiberin bestätigte anschließend die Installation der isolierten
+  Test-App und die erfolgreiche Anmeldung an der getrennten Testumgebung.
+  Der danach aus der App veröffentlichte Datensatz `CP-2026-0006` erreichte
+  über Test-API und Testbranch die geschützte Testwebsite. Der vollständige
+  App-→Test-API-→Website-Roundtrip ist damit auf einem realen Testgerät
+  abgenommen; Produktions-App und Produktions-API blieben unverändert.
 - AP7.3b PHP: 118/118 Tests und die Lints der geänderten V2-Dateien mit PHP
   8.4.23 bestanden. Die künstliche Kette prüft zusätzlich Idempotenz,
   serverseitigen Hash und die öffentliche Legacy-Feldsperre.
@@ -169,6 +174,13 @@ fail-closed.
   sichtbar, bei `salesEnabled=false` als „Nicht verfügbar“ gekennzeichnet und
   nicht kaufbar. Detailseite, Bilder, Legal-Seiten und Footer sind erreichbar;
   Vinted-/Marktplatzdaten fehlen. Der serverseitige Release ist `verified`.
+- Der reale Testroundtrip mit `CP-2026-0006` ist bis zum verifizierten
+  Testwebsite-Release
+  `a8908a3502bd43f15cc709005e1b28df6e597b0c-31726947719-2` fortgeführt. Das
+  Produkt ist in Übersicht und Detailseite sichtbar, nicht kaufbar und
+  verwendet die abgenommene Produktbezeichnung und Markenführung. Pflege wird
+  nur über die zentrale Hinweisseite verlinkt. Die Betreiberin hat diesen
+  Website-Stand abschließend abgenommen.
 - AP7.3e Integration: `codex/ap7-integration` enthält den vollständigen
   V2-Kettenstand bis Commit `3ae346c095d8564c07ce6539a70d38a936a20ff6`.
   Bestehende AP7.2b-/`main`-Änderungen wurden erhalten. Produktions-App
@@ -269,29 +281,25 @@ fail-closed.
 
 ## Verbleibende Produktionsgates
 
-1. Das korrigierte signierte Beta-Artefakt aus Workflowlauf `31710343644` auf
-   einem realen Testgerät technisch abnehmen und den vollständigen
-   App-→Test-API-→Website-Roundtrip protokollieren. Die Produktions-App bleibt
-   dabei unverändert.
-2. Monitoringalarme für Worker, Webhookrückstand, Mail-Outbox, Reviewfälle,
+1. Monitoringalarme für Worker, Webhookrückstand, Mail-Outbox, Reviewfälle,
    Backup-RPO und Speicher aktivieren und den Alarm-/Eskalationsweg prüfen.
-3. Stripe-Live-Checkoutparameter, Webhooksignatur, Legal Consent und
+2. Stripe-Live-Checkoutparameter, Webhooksignatur, Legal Consent und
    Brevo-Vorlagen in einer kontrollierten, zunächst nicht zahlungswirksamen
    Abnahme vollständig gegen den freigegebenen Vertrag prüfen.
-4. Das Startprodukt unmittelbar vor dem Wartungsfenster erneut lesend prüfen.
+3. Das Startprodukt unmittelbar vor dem Wartungsfenster erneut lesend prüfen.
    Produktidentität, Preis, Bilder, Version, Hash und unveränderten
    Manifeststatus dokumentieren; jede Abweichung stoppt den Ablauf.
-5. Unmittelbar vor dem Cutover ein neues verschlüsseltes Produkt- und
+4. Unmittelbar vor dem Cutover ein neues verschlüsseltes Produkt- und
    Commerce-Backup erzeugen, den Offsite-Abruf bestätigen und den
    Restore-Dry-Run erneut bestehen.
-6. In einem kontrollierten Wartungsfenster `salesEnabled=true` ausschließlich
+5. In einem kontrollierten Wartungsfenster `salesEnabled=true` ausschließlich
    für das Startprodukt setzen. Die dadurch neu entstehenden Werte für
    `productVersion` und `sourceHash` erneut lesen, prüfen und in das Manifest
    binden.
-7. Das Manifest nach Vier-Augen-Prüfung separat freigeben, den Cutover zuerst
+6. Das Manifest nach Vier-Augen-Prüfung separat freigeben, den Cutover zuerst
    im Planmodus prüfen und erst nach ausdrücklicher Apply-Freigabe
    `commerce_products` sowie `commerce_inventory.onHand=1` initialisieren.
-8. Publisher und Produktprojektion in der festgelegten Reihenfolge separat
+7. Publisher und Produktprojektion in der festgelegten Reihenfolge separat
    freigeben, die bereits bereitgestellte Produktionswebsite prüfen, genau eine
    echte Gastbestellung durchführen und das Beobachtungsfenster ohne weitere
    Produktfreigabe abschließen.

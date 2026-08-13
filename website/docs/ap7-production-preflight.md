@@ -16,7 +16,7 @@ einen Testwert ersetzt werden.
 - [x] Für die Beta-App die getrennte Paket-ID
   `de.steinhart.armbandrechner.test` im APK und im Workflowvertrag nachweisen;
   ein APK mit Produktions-Paket-ID nicht auf einem Testgerät installieren.
-- [ ] Das korrigierte, signierte Beta-Artefakt aus Workflowlauf `31710343644`
+- [x] Das korrigierte, signierte Beta-Artefakt aus Workflowlauf `31710343644`
   auf einem realen Testgerät installieren und den Test-API-Roundtrip abnehmen.
 - [x] Den freigegebenen Produktionswebsite-Stand
   `01e86d61c4eb6b620e013ccb64522dc6b90adf1c` SHA-gepinnt bereitstellen,
@@ -24,6 +24,14 @@ einen Testwert ersetzt werden.
   wieder auf `false` setzen.
 - [ ] Produktionsfreigabe mit Zeitfenster, Betreiberin und Stop-Verantwortung
   schriftlich dokumentieren.
+
+**Aktueller Testnachweis:** Die Betreiberin bestätigte die Installation der
+isolierten Test-App und die Anmeldung an der getrennten Testumgebung. Der
+anschließende App-Publish von `CP-2026-0006` erreichte über Test-API und
+Testbranch die geschützte Testwebsite. Produktübersicht und Detailseite wurden
+im verifizierten Testrelease
+`a8908a3502bd43f15cc709005e1b28df6e597b0c-31726947719-2` abschließend
+abgenommen. Die Produktions-App und die Produktions-API blieben unverändert.
 
 **Stop:** abweichender Commit, unaufgelöster Review oder ungeprüfter Build.
 
