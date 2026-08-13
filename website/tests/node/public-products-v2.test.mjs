@@ -78,6 +78,7 @@ test("öffentlicher v2-Vertrag akzeptiert Preis, Währung und Verkaufsfreigabe",
     assert.equal(loaded.products[0].salesEnabled, true);
     assert.equal(loaded.products[0].braceletSizeCm, 17);
     assert.equal(loaded.products[0].pearlSizeMm, 6);
+    assert.equal(loaded.products[0].publicTitle, "Testarmband");
     assert.equal("stock" in loaded.products[0], false);
     assert.equal("vintedUrl" in loaded.products[0], false);
   } finally {

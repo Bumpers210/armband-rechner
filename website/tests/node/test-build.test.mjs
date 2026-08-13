@@ -43,7 +43,7 @@ function product(sequence, salesEnabled) {
     sourceHash: String(sequence).repeat(64),
     sku,
     slug: `testarmband-${sequence}`,
-    title: `INTERNER-ARTIKELNAME-${sequence}`,
+    title: `Öffentlicher Produktname ${sequence}`,
     description: `Öffentliche Produktbeschreibung ${sequence}.`,
     materials: ["Rosenquarz"],
     metalElements: ["Spacer Blume Edelstahl"],
@@ -158,7 +158,14 @@ test(
         "utf8",
       );
 
-      assert.ok(overviewHtml.includes("Carmaja-Perlen Armband"));
+      assert.match(
+        overviewHtml,
+        /<h2><a href="\/armbaender\/testarmband-1\/">Öffentlicher Produktname 1<\/a><\/h2>/,
+      );
+      assert.doesNotMatch(
+        overviewHtml,
+        /<h2><a[^>]*>Carmaja-Perlen Armband<\/a><\/h2>/,
+      );
       assert.ok(overviewHtml.includes("<dt>Materialien</dt>"));
       assert.ok(overviewHtml.includes("<dt>Metallelemente</dt>"));
       assert.ok(overviewHtml.includes("17,5 cm"));

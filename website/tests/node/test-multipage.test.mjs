@@ -78,6 +78,9 @@ test("das offizielle Logo ist in Header und Footer eingebunden", async () => {
   assert.ok(logo.size > 0);
   assert.ok(header.includes(logoPath));
   assert.ok(footer.includes(logoPath));
+  assert.match(header, /brandPrimary\.slice\(1\)/);
+  assert.match(footer, />armaja<\/span>/);
+  assert.doesNotMatch(footer, />Carmaja<\/span>/);
 });
 
 test("Testziel bleibt ohne Produktionstracking und fest an die Test-API gebunden", async () => {

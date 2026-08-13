@@ -20,10 +20,10 @@ export function SiteFooter() {
               alt=""
               width={128}
               height={128}
-              sizes="56px"
+              sizes="44px"
             />
             <span className="v2-brand-wordmark" aria-hidden="true">
-              <span className="v2-brand-primary">Carmaja</span>
+              <span className="v2-brand-primary">armaja</span>
               <span className="v2-brand-secondary">PERLEN</span>
             </span>
           </Link>

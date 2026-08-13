@@ -65,7 +65,7 @@
 .v2-page .v2-brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.08rem;
   color: var(--v2-ink);
   line-height: 1;
   text-decoration: none;
@@ -73,9 +73,9 @@
 }
 
 .v2-page .v2-brand-logo {
-  width: 3.25rem;
-  height: 3.25rem;
-  flex: 0 0 3.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 2.75rem;
   object-fit: contain;
 }
 

@@ -12,6 +12,7 @@ export function SiteHeader() {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
   const [brandPrimary, brandSecondary] = siteContent.brandName.split("-");
+  const brandRemainder = brandPrimary.slice(1);
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -44,11 +45,11 @@ export function SiteHeader() {
             alt=""
             width={128}
             height={128}
-            sizes="52px"
+            sizes="44px"
             priority
           />
           <span className="v2-brand-wordmark" aria-hidden="true">
-            <span className="v2-brand-primary">{brandPrimary}</span>
+            <span className="v2-brand-primary">{brandRemainder}</span>
             {brandSecondary ? (
               <span className="v2-brand-secondary">
                 {brandSecondary.toUpperCase()}
