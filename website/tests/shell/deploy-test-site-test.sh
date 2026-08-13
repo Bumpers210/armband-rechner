@@ -11,6 +11,7 @@ AUTH_FILE="$AUTH_DIRECTORY/test-website.htpasswd"
 PATCHED_SCRIPT="$ROOT/deploy-test-site.sh"
 FAILED_SCRIPT="$ROOT/deploy-test-site-failure.sh"
 LATE_FAILED_SCRIPT="$ROOT/deploy-test-site-late-failure.sh"
+TAB=$(printf '\t')
 
 cleanup()
 {
@@ -185,6 +186,18 @@ grep -Fx 'old-product-image' "$WEBROOT/images/bracelets/alt/gallery/01.jpg" > /d
 grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
 grep -Fx 'status=verified' "$WORKSPACE/state/status.env" > /dev/null
 
+LEGACY_PREVIOUS_BRANCH='codex/ap7-v2-chain'
+LEGACY_PREVIOUS_COMMIT='6dcc2c51d7448ce3c71a02aae83b49fdd7ba33d2'
+LEGACY_PREVIOUS_RELEASE='6dcc2c51d7448ce3c71a02aae83b49fdd7ba33d2-2026080801-1'
+LEGACY_MANIFEST_TEMP="$WORKSPACE/state/.legacy-manifest"
+sed \
+    -e "s#^meta${TAB}branch${TAB}.*\$#meta${TAB}branch${TAB}$LEGACY_PREVIOUS_BRANCH#" \
+    -e "s#^meta${TAB}commit${TAB}.*\$#meta${TAB}commit${TAB}$LEGACY_PREVIOUS_COMMIT#" \
+    -e "s#^meta${TAB}release${TAB}.*\$#meta${TAB}release${TAB}$LEGACY_PREVIOUS_RELEASE#" \
+    "$WORKSPACE/state/current-manifest.tsv" > "$LEGACY_MANIFEST_TEMP"
+chmod 0640 "$LEGACY_MANIFEST_TEMP"
+mv -f "$LEGACY_MANIFEST_TEMP" "$WORKSPACE/state/current-manifest.tsv"
+
 COMMIT_TWO='2222222222222222222222222222222222222222'
 RELEASE_TWO="$COMMIT_TWO-2"
 SOURCE_TWO="$ROOT/source-two"
@@ -272,7 +285,7 @@ grep -Fx 'old-product' "$WEBROOT/armbaender/alt/index.html" > /dev/null
 grep -Fx 'next-metadata' "$WEBROOT/_next/chunk\$hash~id.js" > /dev/null
 [ ! -e "$WEBROOT/armbaender/spaet/index.html" ]
 grep -Fx 'status=failed_rolled_back' "$WORKSPACE/state/status.env" > /dev/null
-grep -Fx "meta	commit	$COMMIT_ONE" "$WORKSPACE/state/current-manifest.tsv" > /dev/null
+grep -Fx "meta	commit	$LEGACY_PREVIOUS_COMMIT" "$WORKSPACE/state/current-manifest.tsv" > /dev/null
 [ ! -e "$WORKSPACE/state/rollback-$RELEASE_FOUR.txt" ]
 assert_auth_file_unchanged
 assert_deployment_permissions
@@ -300,6 +313,32 @@ grep -Fx 'outside-sentinel' "$OUTSIDE_DIRECTORY/sentinel.txt" > /dev/null
 grep -Fx 'version-one' "$WEBROOT/index.html" > /dev/null
 grep -Fx 'old-product' "$WEBROOT/armbaender/alt/index.html" > /dev/null
 rm -f "$WEBROOT/linked"
+assert_auth_file_unchanged
+assert_deployment_permissions
+
+COMMIT_SIX='6666666666666666666666666666666666666666'
+RELEASE_SIX="$COMMIT_SIX-6"
+SOURCE_SIX="$ROOT/source-six"
+mkdir -p "$SOURCE_SIX/armbaender/ungueltig"
+printf '%s\n' 'version-six' > "$SOURCE_SIX/index.html"
+printf '%s\n' 'AuthType Basic' > "$SOURCE_SIX/.htaccess"
+printf '%s\n' 'invalid-legacy-transition' > "$SOURCE_SIX/armbaender/ungueltig/index.html"
+create_package "$COMMIT_SIX" "$RELEASE_SIX" "$SOURCE_SIX"
+HASH_SIX=$(sha256sum "$WORKSPACE/incoming/$RELEASE_SIX.tar.gz" | awk '{ print $1 }')
+INVALID_LEGACY_MANIFEST="$WORKSPACE/state/.invalid-legacy-manifest"
+sed \
+    "s#^meta${TAB}commit${TAB}.*\$#meta${TAB}commit${TAB}7777777777777777777777777777777777777777#" \
+    "$WORKSPACE/state/current-manifest.tsv" > "$INVALID_LEGACY_MANIFEST"
+chmod 0640 "$INVALID_LEGACY_MANIFEST"
+mv -f "$INVALID_LEGACY_MANIFEST" "$WORKSPACE/state/current-manifest.tsv"
+
+if run_action "$PATCHED_SCRIPT" deploy "$COMMIT_SIX" "$RELEASE_SIX" "$HASH_SIX"; then
+    printf '%s\n' 'Nicht exakt gebundenes Legacy-Manifest wurde akzeptiert.' >&2
+    exit 1
+fi
+
+grep -Fx 'version-one' "$WEBROOT/index.html" > /dev/null
+[ ! -e "$WEBROOT/armbaender/ungueltig/index.html" ]
 assert_auth_file_unchanged
 assert_deployment_permissions
 

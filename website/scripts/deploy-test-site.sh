@@ -7,6 +7,9 @@ EXPECTED_REPOSITORY='Bumpers210/armband-rechner'
 EXPECTED_BRANCH='test/product-management-beta'
 EXPECTED_TARGET='test'
 EXPECTED_DOMAIN='test.carmaja-perlen.de'
+LEGACY_PREVIOUS_BRANCH='codex/ap7-v2-chain'
+LEGACY_PREVIOUS_COMMIT='6dcc2c51d7448ce3c71a02aae83b49fdd7ba33d2'
+LEGACY_PREVIOUS_RELEASE='6dcc2c51d7448ce3c71a02aae83b49fdd7ba33d2-2026080801-1'
 WEBROOT='/home/www/carmaja-test-site'
 WORKSPACE='/home/www/carmaja-test-deploy'
 INCOMING="$WORKSPACE/incoming"
@@ -118,13 +121,14 @@ validate_manifest()
     expected_commit=$2
     expected_release=$3
     allow_empty=$4
+    expected_branch=${5:-$EXPECTED_BRANCH}
 
     [ -f "$manifest_path" ] || fail 'Deploymentmanifest fehlt.'
     [ "$(head -n 1 "$manifest_path")" = "manifest${TAB}1" ] \
         || fail 'Deploymentmanifest hat eine unbekannte Version.'
     assert_equal "$(manifest_meta "$manifest_path" repository)" "$EXPECTED_REPOSITORY" \
         'Manifest-Repository stimmt nicht.'
-    assert_equal "$(manifest_meta "$manifest_path" branch)" "$EXPECTED_BRANCH" \
+    assert_equal "$(manifest_meta "$manifest_path" branch)" "$expected_branch" \
         'Manifest-Branch stimmt nicht.'
     assert_equal "$(manifest_meta "$manifest_path" target)" "$EXPECTED_TARGET" \
         'Manifest-Ziel stimmt nicht.'
@@ -173,6 +177,24 @@ validate_manifest()
         validate_relative_path "$relative_path"
     done < "$path_list"
     rm -f "$path_list"
+}
+
+validate_previous_manifest()
+{
+    previous_manifest_path=$1
+    previous_branch=$(manifest_meta "$previous_manifest_path" branch)
+
+    if [ "$previous_branch" = "$EXPECTED_BRANCH" ]; then
+        validate_manifest "$previous_manifest_path" '' '' 'true' "$EXPECTED_BRANCH"
+        return
+    fi
+
+    validate_manifest \
+        "$previous_manifest_path" \
+        "$LEGACY_PREVIOUS_COMMIT" \
+        "$LEGACY_PREVIOUS_RELEASE" \
+        'true' \
+        "$LEGACY_PREVIOUS_BRANCH"
 }
 
 write_status()
@@ -505,7 +527,7 @@ if [ "$CARMAJA_DEPLOY_ACTION" = 'rollback' ]; then
 
     backup_directory="$BACKUPS/$backup_id"
     previous_manifest="$backup_directory/manifest.tsv"
-    validate_manifest "$previous_manifest" '' '' 'true'
+    validate_previous_manifest "$previous_manifest"
     rollback_files \
         "$current_manifest" \
         "$previous_manifest" \
@@ -593,7 +615,7 @@ done < "$manifest"
 
 if [ -f "$current_manifest" ]; then
     old_manifest="$current_manifest"
-    validate_manifest "$old_manifest" '' '' 'true'
+    validate_previous_manifest "$old_manifest"
 else
     if [ -n "$(find "$WEBROOT" -mindepth 1 -print -quit)" ]; then
         fail 'Erstdeployment verweigert einen nicht leeren, unverwalteten Webroot.'
