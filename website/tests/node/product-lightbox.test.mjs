@@ -37,11 +37,13 @@ test("Lightbox unterstützt Maus, Touch, Tastatur und Fokusführung", async () =
 
 test("Übersicht und Detailseite behalten ihre Produktnavigation", async () => {
   const overview = await source("app/armbaender/page.tsx");
+  const productList = await source("components/product-list.tsx");
   const detail = await source("app/armbaender/[slug]/page.tsx");
 
-  assert.ok(overview.includes("<ProductImageGallery"));
-  assert.ok(overview.includes('variant="card"'));
-  assert.ok(overview.includes("href={`/armbaender/${product.slug}/`}"));
+  assert.ok(overview.includes("<ProductList"));
+  assert.ok(productList.includes("<ProductImageGallery"));
+  assert.ok(productList.includes('variant="card"'));
+  assert.ok(productList.includes("href={`/armbaender/${product.slug}/`}"));
   assert.ok(detail.includes("<ProductImageGallery"));
   assert.ok(detail.includes('variant="detail"'));
   assert.ok(detail.includes('href="/armbaender/"'));

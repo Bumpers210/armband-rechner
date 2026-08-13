@@ -6,6 +6,15 @@ const expectedSiteUrl =
     ? "https://test.carmaja-perlen.de"
     : "https://www.carmaja-perlen.de";
 const configuredSiteUrl = process.env.CARMAJA_SITE_URL ?? expectedSiteUrl;
+const configuredShopApiOrigin =
+  process.env.CARMAJA_SHOP_API_ORIGIN ??
+  (siteTarget === "test"
+    ? "https://test-api.carmaja-perlen.de"
+    : "https://api.carmaja-perlen.de");
+const expectedShopApiOrigin =
+  siteTarget === "test"
+    ? "https://test-api.carmaja-perlen.de"
+    : "https://api.carmaja-perlen.de";
 
 if (siteTarget !== "production" && siteTarget !== "test") {
   throw new Error("CARMAJA_SITE_TARGET muss production oder test sein.");
@@ -14,6 +23,12 @@ if (siteTarget !== "production" && siteTarget !== "test") {
 if (configuredSiteUrl !== expectedSiteUrl) {
   throw new Error(
     `CARMAJA_SITE_URL muss für ${siteTarget} exakt ${expectedSiteUrl} sein.`,
+  );
+}
+
+if (configuredShopApiOrigin !== expectedShopApiOrigin) {
+  throw new Error(
+    `CARMAJA_SHOP_API_ORIGIN muss für ${siteTarget} exakt ${expectedShopApiOrigin} sein.`,
   );
 }
 
@@ -38,6 +53,7 @@ const nextConfig: NextConfig = {
   env: {
     CARMAJA_SITE_TARGET: siteTarget,
     CARMAJA_SITE_URL: configuredSiteUrl,
+    CARMAJA_SHOP_API_ORIGIN: configuredShopApiOrigin,
   },
 };
 

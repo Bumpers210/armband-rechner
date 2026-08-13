@@ -1,7 +1,7 @@
 import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
 
-export type TrackedLinkPosition = "hero" | "gallery" | "contact" | "footer";
+type TrackedLinkPosition = "footer";
 
 type InstagramLinkProps = {
   position: TrackedLinkPosition;
@@ -14,12 +14,14 @@ export function InstagramLink({ position }: InstagramLinkProps) {
 
   return (
     <a
+      className="v2-instagram-link"
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={`${siteContent.instagram.label} – öffnet in einem neuen Tab`}
+      aria-label="Instagram – öffnet in einem neuen Tab"
+      title="Instagram"
     >
-      {siteContent.instagram.label}
+      <span className="v2-instagram-icon" aria-hidden="true" />
     </a>
   );
 }

@@ -9,6 +9,7 @@ if (target !== "production" && target !== "test") {
 
 if (
   configuredUrl === undefined ||
+  (target === "production" && configuredUrl !== "https://www.carmaja-perlen.de") ||
   (target === "test" && configuredUrl !== "https://test.carmaja-perlen.de")
 ) {
   throw new Error(`CARMAJA_SITE_URL ist für ${target} ungültig.`);

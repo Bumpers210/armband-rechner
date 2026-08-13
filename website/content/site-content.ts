@@ -109,6 +109,8 @@ export type SiteContent = {
       contactHeading: string;
       emailLabel: string;
       email: string;
+      phoneLabel: string;
+      phone: string;
       disputeHeading: string;
       disputeText: string;
     };
@@ -131,11 +133,10 @@ export const siteContent: SiteContent = {
       "Handgefertigte Edelsteinarmbänder aus Rosenquarz, Amazonit, Achat und weiteren echten Edelsteinen – in kleinen Stückzahlen gefertigt von Carmaja-Perlen.",
   },
   navigation: [
-    { label: "Verfügbare Armbänder", href: "/armbaender/" },
-    { label: "Armbänder", href: "/#armbaender" },
-    { label: "Über mich", href: "/#ueber-mich" },
-    { label: "Material & Pflege", href: "/#material-pflege" },
-    { label: "Kontakt", href: "/#kontakt" },
+    { label: "Armbänder", href: "/armbaender/" },
+    { label: "Über mich", href: "/ueber-mich/" },
+    { label: "Material & Pflege", href: "/material-pflege/" },
+    { label: "Kontakt", href: "/kontakt/" },
   ],
   hero: {
     eyebrow: "Handgefertigt · Naturstein · kleine Stückzahlen",
@@ -286,7 +287,7 @@ export const siteContent: SiteContent = {
     title: "Persönliche Anfragen",
     customText: "Individuelle Anfertigungen sind auf Anfrage möglich.",
     contactText:
-      "Fragen zu Größen, Materialien oder individuellen Anfertigungen beantworten wir gerne per E-Mail.",
+      "Fragen zu Größen, Materialien oder individuellen Anfertigungen beantworten wir gerne per E-Mail. Der Kauf erfolgt sicher direkt über den Carmaja-Shop.",
     email: "kontakt@carmaja-perlen.de",
   },
   legal: {
@@ -301,6 +302,8 @@ export const siteContent: SiteContent = {
       contactHeading: "Kontakt",
       emailLabel: "E-Mail",
       email: "kontakt@carmaja-perlen.de",
+      phoneLabel: "Telefon",
+      phone: "01523 3671027",
       disputeHeading: "Verbraucherstreitbeilegung",
       disputeText:
         "Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",
@@ -396,11 +399,11 @@ export const siteContent: SiteContent = {
           ],
         },
         {
-          heading: "4. Messung ausgehender Linkklicks",
+          heading: "4. Aggregierte Website-Statistik",
           blocks: [
             {
               type: "paragraph",
-              text: "Wir zählen in zusammengefasster Form, wie häufig Links zu unserem Instagram-Profil angeklickt werden.",
+              text: "Wir zählen in zusammengefasster Form Seitenaufrufe und Klicks auf externe Links, um zu erkennen, welche Inhalte und Angebote für Besucher relevant sind.",
             },
             {
               type: "paragraph",
@@ -409,15 +412,15 @@ export const siteContent: SiteContent = {
             {
               type: "list",
               items: [
-                "das Ziel des Links: Instagram",
-                "die Position des Links auf der Website",
-                "den Kalendertag des Klicks",
-                "die zusammengefasste Anzahl der Klicks",
+                "die aufgerufene öffentliche Seite und ihre zusammengefasste Anzahl von Aufrufen",
+                "beim Einstieg eine grobe Herkunftskategorie, etwa Google, Instagram, andere Suche, weitere soziale Netzwerke, Direkt/Unbekannt oder sonstige Website",
+                "bei externen Links das Ziel und die zusammengefasste Anzahl der Klicks",
+                "den Kalendertag der Messung",
               ],
             },
             {
               type: "paragraph",
-              text: "Wir speichern für diese Auswertung keine vollständigen IP-Adressen, Cookies, individuellen Besucherkennungen, Referrer-Adressen, Browserkennungen oder Nutzerprofile. Die Auswertung ermöglicht keine Identifizierung einzelner Besucher.",
+              text: "Wir speichern für diese Auswertung keine vollständigen IP-Adressen, Cookies, individuellen Besucherkennungen, Referrer-Adressen, Browserkennungen oder Nutzerprofile. Herkunft wird nur im Browser einer festen Kategorie zugeordnet; vollständige Herkunfts-URLs oder Domains werden nicht übertragen oder gespeichert. Die Auswertung ermöglicht keine Identifizierung einzelner Besucher.",
             },
             {
               type: "paragraph",
@@ -459,7 +462,7 @@ export const siteContent: SiteContent = {
           blocks: [
             {
               type: "paragraph",
-              text: "Unsere Website enthält Links zu externen Plattformen, insbesondere Instagram.",
+              text: "Unsere Website enthält Links zu Instagram.",
             },
             {
               type: "paragraph",

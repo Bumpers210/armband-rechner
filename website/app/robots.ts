@@ -19,7 +19,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/statistik/", "/click.php", "/api/", "/_internal/"],
+      disallow: ["/statistik/", "/click.php", "/pageview.php", "/api/", "/_internal/"],
     },
     sitemap: `${siteContent.metadata.siteUrl}sitemap.xml`,
     host: new URL(siteContent.metadata.siteUrl).host,

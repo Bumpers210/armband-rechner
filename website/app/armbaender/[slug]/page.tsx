@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ProductImageGallery } from "@/components/product-image-gallery";
+import { ShopBuyNow } from "@/components/shop-buy-now";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteTarget } from "@/config/site-target";
@@ -118,9 +119,7 @@ export default async function ProductDetailPage({
             </Link>
             <h1>{product.publicTitle}</h1>
             {!product.salesEnabled ? (
-              <p className="product-status product-status--sold">
-                Nicht verfügbar
-              </p>
+              <p className="product-status product-status--sold">Nicht verfügbar</p>
             ) : null}
             <p className="product-lede">{product.description}</p>
 
@@ -155,6 +154,10 @@ export default async function ProductDetailPage({
                 ))}
               </ul>
             </section>
+
+            {product.salesEnabled ? (
+              <ShopBuyNow productId={product.productId} />
+            ) : null}
 
           </div>
         </article>

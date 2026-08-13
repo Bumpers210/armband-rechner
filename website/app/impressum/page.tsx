@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: {
     absolute: "Impressum | Carmaja-Perlen",
   },
+  alternates: {
+    canonical: "/impressum/",
+  },
   robots: {
     index: false,
     follow: !siteTarget.isTest,
@@ -50,6 +53,9 @@ export default function ImprintPage() {
             <p>
               {imprint.emailLabel}:{" "}
               <a href={`mailto:${imprint.email}`}>{imprint.email}</a>
+            </p>
+            <p>
+              {imprint.phoneLabel}: {imprint.phone}
             </p>
           </section>
 

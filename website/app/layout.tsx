@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
@@ -57,6 +58,9 @@ export default function RootLayout({
         <a className="skip-link" href="#main-content">
           Zum Inhalt springen
         </a>
+        <Link className="persistent-bracelet-flag" href="/armbaender/">
+          Armbänder ansehen
+        </Link>
         {children}
       </body>
     </html>
