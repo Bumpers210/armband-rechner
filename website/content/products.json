@@ -1,4 +1,37 @@
 {
-  "version": 2,
-  "products": []
+    "version": 2,
+    "products": [
+        {
+            "productModelVersion": 2,
+            "productId": "43a8e99b-810f-46d5-a18e-e2d7046a41cf",
+            "productVersion": 2,
+            "sourceHash": "b30d4e45f314ed8a7ff177280ef2e4dae6c5d14fac6a6045c5ec7180471794a5",
+            "sku": "CP-2026-0006",
+            "slug": "cp-2026-0006-testprodukt",
+            "title": "Testprodukt",
+            "description": "Das Testprodukt",
+            "materials": [
+                "Blaue Tigeraugen",
+                "Lavaperlen"
+            ],
+            "metalElements": [],
+            "braceletSizeCm": 18,
+            "pearlSizeMm": 8,
+            "priceMinor": 2000,
+            "currency": "eur",
+            "salesEnabled": false,
+            "images": [
+                {
+                    "imageId": "ce823a92-016c-4603-b787-858268499bd2",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0006/01.jpg",
+                    "alt": "Testprodukt",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": true
+                }
+            ],
+            "updatedAt": "2026-08-13T15:18:54+00:00"
+        }
+    ]
 }
