@@ -1,6 +1,6 @@
 # AP7 – endgültige Produktions-Preflight-Checkliste
 
-Stand: 2026-08-11
+Stand: 2026-08-12
 
 Status: **nicht zur Ausführung freigegeben**
 
@@ -13,8 +13,13 @@ einen Testwert ersetzt werden.
 - [x] Finalen Integrationsstand per Pull Request und CI prüfen.
 - [x] Bestätigen, dass ausschließlich der freigegebene Commit nach `main`
   übernommen wurde.
-- [x] `CARMAJA_PRODUCTION_DEPLOY_ENABLED` bleibt bis zum ausdrücklich
-  freigegebenen Website-Deploy `false`.
+- [ ] Für die Beta-App die getrennte Paket-ID
+  `de.steinhart.armbandrechner.test` im APK und im Workflowvertrag nachweisen;
+  ein APK mit Produktions-Paket-ID nicht auf einem Testgerät installieren.
+- [x] Den freigegebenen Produktionswebsite-Stand
+  `01e86d61c4eb6b620e013ccb64522dc6b90adf1c` SHA-gepinnt bereitstellen,
+  vollständig live prüfen und `CARMAJA_PRODUCTION_DEPLOY_ENABLED` danach
+  wieder auf `false` setzen.
 - [ ] Produktionsfreigabe mit Zeitfenster, Betreiberin und Stop-Verantwortung
   schriftlich dokumentieren.
 
@@ -100,17 +105,22 @@ wiederherstellbarer Schlüssel.
 
 - [x] `stripe/stripe-php` exakt `20.3.0`, API- und Webhook-Version gemäß
   Produktionsvertrag verifizieren.
-- [ ] Live-Webhook nur für die festgelegte Allowlist registrieren und
-  Signaturprüfung mit unverändertem Rohpayload testen.
-- [ ] `card`, `klarna`, `sepa_debit` als exakte Allowlist prüfen; Apple Pay und
+- [x] Genau einen Live-Webhook mit der festgelegten Neun-Ereignis-Allowlist
+  und der gepinnten Webhook-API-Version registrieren.
+- [ ] Signaturprüfung mit unverändertem Rohpayload in der kontrollierten
+  Live-Checkout-/Webhook-Abnahme testen.
+- [x] `card`, `klarna`, `sepa_debit` als exakte Allowlist prüfen; Apple Pay und
   Google Pay laufen auf Kartenbasis, PayPal bleibt deaktiviert.
 - [x] Link pro Session deaktivieren; Promotion Codes, Recovery und dynamische
   weitere Zahlungsarten deaktiviert lassen.
-- [ ] 30-minütige Checkout-Laufzeit, Terms-URL, verpflichtende Zustimmung,
+- [x] 30-minütige Checkout-Laufzeit, Terms-URL, verpflichtende Zustimmung,
   Versand 270 Cent und Legal Bundle v4 in einer nicht zahlungswirksamen
   Konfigurationsprüfung vergleichen.
-- [ ] Inbox-Persistierung vor `2xx`, Retry, ungeordnete Events und
-  Stripe-Abgleich betriebsbereit bestätigen.
+- [x] Inbox-Persistierung vor `2xx`, Retry, ungeordnete Events und
+  Stripe-Abgleich im Produktionsvertrag und in den fokussierten Tests
+  bestätigen.
+- [ ] Inbox, Retry und Stripe-Abgleich mit einem kontrollierten echten
+  Live-Webhookereignis betrieblich nachweisen.
 
 **Stop:** Live-/Testverwechslung, abweichende Version, zusätzliche
 Zahlungsart, fehlende Zustimmung oder nicht persistierbarer Webhook.
@@ -118,13 +128,12 @@ Zahlungsart, fehlende Zustimmung oder nicht persistierbarer Webhook.
 **Aktueller Live-Nachweis:** Das Livekonto, das gepinnte SDK und genau ein
 aktivierter Webhook mit der vollständigen Neun-Ereignis-Allowlist sind lesend
 bestätigt. Karte, Klarna, SEPA-Lastschrift und Google Pay sind aktiv; PayPal ist
-deaktiviert. Die produktive Terms-of-Service-URL ist gespeichert. Das
-freigegebene Legal Bundle v4 ist lokal vorbereitet, aber noch nicht in
-Produktionsdatenbank und Runtime aktiviert. Link ist im
+deaktiviert. Die produktive Terms-of-Service-URL ist gespeichert. Legal Bundle
+v4 ist in Produktionsdatenbank und Runtime aktiv und die öffentlichen
+Legal-Seiten sind aus dem aktuellen `main`-SHA live verifiziert. Link ist im
 Dashboard grundsätzlich verfügbar, wird vom verbindlichen Sessionvertrag aber
-mit `wallet_options.link.display=never` unterdrückt. Bis Legal Bundle v4 nach
-`main` übernommen, in der Produktionsdatenbank gespeichert und in der Runtime
-aktiviert ist, bleiben Checkout und Shopstart gesperrt.
+mit `wallet_options.link.display=never` unterdrückt. Produktaktivierung,
+Cutover, Checkout und Shopstart bleiben bis zu den übrigen Gates gesperrt.
 
 ## 7. Brevo Live
 
@@ -159,6 +168,13 @@ Fehlersichtbarkeit.
   Serverrotation 7 Tage sowie OneDrive-Rotation 48/30/12 bestätigen.
 - [ ] Alarm nach 90 Minuten ohne Serverbackup und nach 24 Stunden ohne
   bestätigten Download sowie Zugriff der dokumentierten Notfallperson prüfen.
+
+**Aktueller Nachweis:** Das nach der Legal-v4-Aktivierung erzeugte Backup
+`20260812T161001Z-3e6dd5bdd009` ist verschlüsselt und hashgeprüft im
+festgelegten OneDrive-Ziel abgelegt, serverseitig quittiert und in einem
+isolierten Restore-Dry-Run erfolgreich geprüft. Der aktuelle Status meldete
+weder Server- noch Offsite-Überfälligkeit. Dieses Backup ersetzt nicht das
+unmittelbar vor dem späteren Cutover vorgeschriebene Abschlussbackup.
 
 **Stop:** fehlendes Backup, fehlende Entschlüsselbarkeit oder nicht
 bestandener Restore.
@@ -200,10 +216,11 @@ bestandener Restore.
 
 ## 11. Cutover
 
-- [ ] Neue Checkouts deaktiviert halten und Produktverwaltung für das kurze
-  Cutoverfenster sperren.
-- [ ] Alte `stock`-Schreibwege und Clients unter Mindestversion nachweislich
-  sperren.
+- [x] Neue Checkouts bis zum ausdrücklich freigegebenen Cutover deaktiviert
+  halten.
+- [ ] Produktverwaltung für das kurze Cutoverfenster sperren.
+- [x] Alte `stock`-Schreibwege durch den V2-Vertrag vom Commerce-Bestand
+  trennen und Clients unter Mindestversion serverseitig sperren.
 - [ ] Finales Backup erneut bestätigen.
 - [ ] Cutoveradapter zuerst mit `--mode=plan` ausführen und Ausgabe gegen das
   freigegebene Manifest prüfen.
@@ -218,9 +235,11 @@ nicht zurückschreiben.
 
 ## 12. Website und echte Erstbestellung
 
-- [ ] Produktionswebsite ausschließlich über den manuellen, SHA-gepinnten
-  Workflow und das geschützte Environment bereitstellen.
-- [ ] Danach `CARMAJA_PRODUCTION_DEPLOY_ENABLED` wieder auf `false` setzen.
+- [x] Produktionswebsite ausschließlich über den manuellen, SHA-gepinnten
+  Workflow und das geschützte Environment aus `01e86d61…` bereitstellen.
+- [x] Danach `CARMAJA_PRODUCTION_DEPLOY_ENABLED` wieder auf `false` setzen.
+- [x] Öffentliche Legal-Seiten, Footer, fehlende interne Bundle-Metadaten,
+  fehlende PayPal-/Testmarker und erfolgreiche Antworten live prüfen.
 - [ ] Genau das ausgewählte Produkt aktivieren; alle weiteren Produkte bleiben
   deaktiviert.
 - [ ] Live-Preis, EUR, Verfügbarkeit, Versand, Legal Consent, Datenschutz- und

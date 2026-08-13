@@ -10,6 +10,7 @@ val productionVersionCode = 4
 val productionVersionName = "1.1.2"
 val betaVersionCode = 5
 val betaVersionName = "1.1.3-beta.1"
+val betaApplicationId = "de.steinhart.armbandrechner.test"
 val productionProductApiBaseUrl = "https://api.carmaja-perlen.de/"
 val testProductApiBaseUrl = "https://test-api.carmaja-perlen.de/"
 val productionSigningPropertiesFile = rootProject.file(".signing/production-keystore.properties")
@@ -186,6 +187,7 @@ android {
 
 androidComponents {
     onVariants(selector().withBuildType("beta")) { variant ->
+        variant.applicationId.set(betaApplicationId)
         variant.outputs.forEach { output ->
             output.versionCode.set(betaVersionCode)
             output.versionName.set(betaVersionName)
