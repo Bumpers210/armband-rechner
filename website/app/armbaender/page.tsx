@@ -64,6 +64,11 @@ export default function ProductsPage() {
                           {product.publicTitle}
                         </Link>
                       </h2>
+                      {!product.salesEnabled ? (
+                        <p className="product-status product-status--sold">
+                          Nicht verfügbar
+                        </p>
+                      ) : null}
                       <p>{product.description}</p>
                       <dl className="product-facts">
                         <div>
@@ -80,7 +85,7 @@ export default function ProductsPage() {
                         </div>
                         <div>
                           <dt>Größe</dt>
-                          <dd>{product.displayBraceletSize}</dd>
+                          <dd>{product.displaySize}</dd>
                         </div>
                         <div>
                           <dt>Perlengröße</dt>

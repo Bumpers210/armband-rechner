@@ -32,31 +32,35 @@ const sourceImage = path.join(
   "hero-dunkelrot-braun-holz.jpg",
 );
 
-function product(sequence, status) {
+function product(sequence, salesEnabled) {
   const sku = `CP-2026-${String(sequence).padStart(4, "0")}`;
   const imageCount = sequence === 1 ? 3 : 1;
 
   return {
+    productModelVersion: 2,
+    productId: `00000000-0000-4000-8000-${String(sequence).padStart(12, "0")}`,
+    productVersion: 1,
+    sourceHash: String(sequence).repeat(64),
     sku,
-    slug: `interne-artikelbezeichnung-${sequence}`,
+    slug: `testarmband-${sequence}`,
     title: `INTERNER-ARTIKELNAME-${sequence}`,
     description: `Öffentliche Produktbeschreibung ${sequence}.`,
     materials: ["Rosenquarz"],
     metalElements: ["Spacer Blume Edelstahl"],
-    braceletSizeCm: sequence === 1 ? 17.5 : 17.5,
-    pearlSizeMm: 6,
-    status,
+    braceletSizeCm: 17.5,
+    pearlSizeMm: sequence === 1 ? 6 : 8,
+    priceMinor: 2000 + sequence * 100,
+    currency: "eur",
+    salesEnabled,
     images: Array.from({ length: imageCount }, (_, index) => ({
-        src: `/images/products/${sku}/01.jpg`,
+        imageId: `10000000-0000-4000-8000-${String(sequence * 10 + index).padStart(12, "0")}`,
+        fileName: `${String(index + 1).padStart(2, "0")}.jpg`,
+        src: `/images/products/${sku}/${String(index + 1).padStart(2, "0")}.jpg`,
         alt: `INTERNER-BILDTEXT-${sequence}-${index + 1}`,
         width: 2048,
         height: 1536,
         isMain: index === 0,
-      })).map((image, index) => ({
-        ...image,
-        src: `/images/products/${sku}/${String(index + 1).padStart(2, "0")}.jpg`,
       })),
-    careInstructions: [`INTERNER-PFLEGEHINWEIS-${sequence}`],
     updatedAt: `2026-07-2${sequence}T10:00:00.000Z`,
   };
 }
@@ -71,12 +75,9 @@ test(
     const imageRoot = path.join(fixtureRoot, "images", "products");
     const productsFile = path.join(fixtureRoot, "products.json");
     const products = [
-      product(1, "published"),
-      product(2, "published"),
-      product(3, "sold"),
-      product(4, "disabled"),
-      product(5, "draft"),
-      product(6, "ready"),
+      product(1, true),
+      product(2, true),
+      product(3, false),
     ];
     const stalePage = path.join(
       projectRoot,
@@ -101,7 +102,7 @@ test(
 
       await writeFile(
         productsFile,
-        `${JSON.stringify({ version: 1, products }, null, 2)}\n`,
+        `${JSON.stringify({ version: 2, products }, null, 2)}\n`,
         "utf8",
       );
       await mkdir(path.dirname(stalePage), { recursive: true });
@@ -151,7 +152,7 @@ test(
           projectRoot,
           "out-test",
           "armbaender",
-          "cp-2026-0001",
+          "testarmband-1",
           "index.html",
         ),
         "utf8",
@@ -161,6 +162,8 @@ test(
       assert.ok(overviewHtml.includes("<dt>Materialien</dt>"));
       assert.ok(overviewHtml.includes("<dt>Metallelemente</dt>"));
       assert.ok(overviewHtml.includes("17,5 cm"));
+      assert.ok(overviewHtml.includes("Öffentliche Produktbeschreibung 3."));
+      assert.ok(overviewHtml.includes("Nicht verfügbar"));
       assert.ok(detailHtml.includes("17,5 cm"));
       assert.ok(!detailHtml.includes("cm cm"));
       assert.ok(detailHtml.includes("Vor dem Duschen und Baden ablegen"));
@@ -176,7 +179,6 @@ test(
           `INTERNER-ARTIKELNAME-${sequence}`,
           `interne-artikelbezeichnung-${sequence}`,
           `INTERNER-BILDTEXT-${sequence}`,
-          `INTERNER-PFLEGEHINWEIS-${sequence}`,
         ]) {
           assert.ok(!overviewHtml.includes(internalValue));
           assert.ok(!detailHtml.includes(internalValue));

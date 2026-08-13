@@ -1,7 +1,8 @@
 import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
-import { loadPublicProducts, readJpegDimensions } from "../lib/public-products.mjs";
+import { readJpegDimensions } from "../lib/public-products.mjs";
+import { loadPublicProductsV2 } from "../lib/public-products-v2.mjs";
 
 const projectRoot = process.cwd();
 const outputDirectory = path.join(projectRoot, "out-test");
@@ -115,14 +116,9 @@ for (const requiredFile of [
   assert(await exists(requiredFile), `Testexport fehlt: ${requiredFile}`);
 }
 
-const source = loadPublicProducts(productsFile, productImagesDirectory);
-const published = source.products.filter(
-  (product) => product.status === "published",
-);
-const sold = source.products.filter((product) => product.status === "sold");
-const hidden = source.products.filter((product) =>
-  ["draft", "ready", "disabled"].includes(product.status),
-);
+const source = loadPublicProductsV2(productsFile, productImagesDirectory);
+const enabled = source.products.filter((product) => product.salesEnabled);
+const unavailable = source.products.filter((product) => !product.salesEnabled);
 const overviewHtml = await readOutput("armbaender/index.html");
 const robotsText = await readOutput("robots.txt");
 const sitemapXml = await readOutput("sitemap.xml");
@@ -162,16 +158,18 @@ const sitemapLocations = [
 const expectedSitemap = [
   siteUrl,
   `${siteUrl}armbaender/`,
-  ...published.map((product) => `${siteUrl}armbaender/${product.slug}/`),
+  ...source.products.map(
+    (product) => `${siteUrl}armbaender/${product.slug}/`,
+  ),
 ];
 
 assert(
   sitemapLocations.length === expectedSitemap.length &&
     expectedSitemap.every((location) => sitemapLocations.includes(location)),
-  "Testsitemap enthält nicht exakt Startseite, Übersicht und published-Produkte.",
+  "Testsitemap enthält nicht exakt Startseite, Übersicht und sichtbare v2-Testprodukte.",
 );
 
-for (const product of published) {
+for (const product of enabled) {
   const detailPath = `armbaender/${product.slug}/index.html`;
   const detailHtml = await readOutput(detailPath);
 
@@ -180,7 +178,7 @@ for (const product of published) {
       overviewHtml.includes(product.description) &&
       detailHtml.includes(product.publicTitle) &&
       detailHtml.includes(product.description),
-    `Published-Produkt fehlt: ${product.sku}`,
+    `Kaufbares v2-Produkt fehlt: ${product.sku}`,
   );
   assert(
     overviewHtml.includes("<dt>Materialien</dt>") &&
@@ -190,8 +188,9 @@ for (const product of published) {
     `Materialdarstellung fehlt: ${product.sku}`,
   );
   assert(
-    overviewHtml.includes(product.displayBraceletSize) &&
-      detailHtml.includes(product.displayBraceletSize) &&
+    overviewHtml.includes(product.displaySize) &&
+      detailHtml.includes(product.displaySize) &&
+      !detailHtml.includes(`${product.displaySize} cm`) &&
       overviewHtml.includes(product.displayPearlSize) &&
       detailHtml.includes(product.displayPearlSize),
     `Zentimeterdarstellung ist ungültig: ${product.sku}`,
@@ -210,30 +209,32 @@ for (const product of published) {
   assert(
     !detailHtml.toLowerCase().includes("verkaufspreis") &&
       !detailHtml.toLowerCase().includes("materialkosten"),
-    `Published-Produkt enthält interne Preisfelder: ${product.sku}`,
+    `Kaufbares v2-Produkt enthält interne Preisfelder: ${product.sku}`,
   );
 
+  assert(
+    !detailHtml.toLowerCase().includes("vinted") &&
+      !detailHtml.toLowerCase().includes("marktplatz"),
+    `Externer Marktplatzlink ist im Testexport nicht erlaubt: ${product.sku}`,
+  );
 }
 
-for (const product of sold) {
+for (const product of unavailable) {
   const detailPath = `armbaender/${product.slug}/index.html`;
   const detailHtml = await readOutput(detailPath);
 
-  assert(await exists(detailPath), `Sold-Detailseite fehlt: ${product.sku}`);
   assert(
-    !overviewHtml.includes(product.description) &&
-      detailHtml.includes("Verkauft") &&
-      !detailHtml.includes("click.php?target="),
-    `Sold-Status ist nicht korrekt gerendert: ${product.sku}`,
+    await exists(detailPath),
+    `Nicht verfügbare Detailseite fehlt: ${product.sku}`,
   );
-}
-
-for (const product of hidden) {
   assert(
-    !overviewHtml.includes(product.description) &&
-      !(await exists(`armbaender/${product.slug}/index.html`)) &&
-      !sitemapLocations.includes(`${siteUrl}armbaender/${product.slug}/`),
-    `Nicht öffentliches Produkt wurde exportiert: ${product.sku}`,
+    overviewHtml.includes(product.publicTitle) &&
+      overviewHtml.includes(product.description) &&
+      overviewHtml.includes("Nicht verfügbar") &&
+      detailHtml.includes("Nicht verfügbar") &&
+      !detailHtml.toLowerCase().includes("vinted") &&
+      !detailHtml.toLowerCase().includes("marktplatz"),
+    `Nicht verfügbares v2-Produkt ist nicht korrekt gerendert: ${product.sku}`,
   );
 }
 
@@ -335,7 +336,7 @@ assert(
   "JSON-LD oder OpenGraph verwendet nicht die Testdomain.",
 );
 
-for (const product of [...published, ...sold]) {
+for (const product of [...enabled, ...unavailable]) {
   for (const image of product.images) {
     const outputImage = path.join(outputDirectory, image.src.slice(1));
     const dimensions = readJpegDimensions(outputImage);

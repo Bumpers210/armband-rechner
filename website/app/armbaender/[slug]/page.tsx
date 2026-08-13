@@ -56,7 +56,7 @@ export async function generateMetadata({
           follow: false,
           noimageindex: true,
         }
-      : product.status === "sold"
+      : !product.salesEnabled
         ? {
             index: false,
             follow: true,
@@ -94,14 +94,16 @@ export default async function ProductDetailPage({
     notFound();
   }
 
-  const isSold = product.status === "sold";
-
   return (
     <div className="v2-page">
       <SiteHeader />
 
       <main id="main-content" className="product-detail-main">
-        <article className="content-shell product-detail">
+        <article
+          className="content-shell product-detail"
+          data-product-id={product.productId}
+          data-product-version={product.productVersion}
+        >
           <div className="product-detail-media">
             <ProductImageGallery
               images={product.images}
@@ -115,8 +117,10 @@ export default async function ProductDetailPage({
               Zur Übersicht
             </Link>
             <h1>{product.publicTitle}</h1>
-            {isSold ? (
-              <p className="product-status product-status--sold">Verkauft</p>
+            {!product.salesEnabled ? (
+              <p className="product-status product-status--sold">
+                Nicht verfügbar
+              </p>
             ) : null}
             <p className="product-lede">{product.description}</p>
 
@@ -135,7 +139,7 @@ export default async function ProductDetailPage({
               </div>
               <div>
                 <dt>Größe</dt>
-                <dd>{product.displayBraceletSize}</dd>
+                <dd>{product.displaySize}</dd>
               </div>
               <div>
                 <dt>Perlengröße</dt>
