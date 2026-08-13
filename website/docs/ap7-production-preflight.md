@@ -224,6 +224,12 @@ bestandener Restore.
 
 **Stop:** kein echter Schedulernachweis oder fehlendes Monitoring.
 
+**Vorbereiteter Stand:** Der private, nur lesende Monitor samt gebündelter
+Warnung, sechsstündiger Erinnerung, Entwarnung und kontrollierter Testwarnung
+ist im Repository vorbereitet. Die Checkbox bleibt offen, bis der Code
+SHA-gepinnt auf Produktion aktiviert, die Alarmadresse gesetzt und der Eingang
+der Testwarnung bestätigt wurde.
+
 ## 11. Cutover
 
 - [x] Neue Checkouts bis zum ausdrücklich freigegebenen Cutover deaktiviert
