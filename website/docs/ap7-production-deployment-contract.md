@@ -1,6 +1,6 @@
 # AP7-Produktions- und Deploymentvertrag
 
-Stand: 2026-08-08
+Stand: 2026-08-13
 Status: lokal vorbereitet; Produktionsfreigabe ausstehend
 
 ## 1. Unveränderliche Zielpfade
@@ -8,7 +8,8 @@ Status: lokal vorbereitet; Produktionsfreigabe ausstehend
 Der maschinenlesbare Vertrag liegt in
 `website/config/production-shop-deployment.json`. Private Shop-Programme
 werden nach `/home/www/carmaja-private-shop/program`, der CLI-Worker nach
-`/home/www/carmaja-private-shop/worker.php` und die ausschließlich private
+`/home/www/carmaja-private-shop/worker.php`, die private Monitor-CLI nach
+`/home/www/carmaja-private-shop/monitor.php` und die ausschließlich private
 Laufzeitkonfiguration nach
 `/home/www/carmaja-private-shop/config/runtime-config.php` bereitgestellt.
 Produktdaten verbleiben getrennt unter `/home/www/carmaja-private-production`.
@@ -88,3 +89,18 @@ eine Version erlaubt, die das aktuelle Commerce-Schema lesen kann.
 Bestands-Cutover-Rollback ist ausschließlich vor dem ersten Commerce-Checkout
 zulässig. Danach werden neue Checkouts deaktiviert, während Webhooks,
 Bestellungen, Worker und Stripe-Abgleich weiterlaufen.
+
+## 5. Produktionsüberwachung
+
+Die Überwachung wird ohne zweiten Scheduler an den vorhandenen
+Fünf-Minuten-Worker gekoppelt. Sie liest Worker-, Warteschlangen-, Prüffall-,
+Backup- und Speicherzustände und versendet gebündelte Warnungen über den
+bereits getrennt konfigurierten Brevo-Zugang. Netzwerkaufrufe finden außerhalb
+von Datenbank- und Commerce-Locks statt. Die Funktion startet mit
+`monitorEnabled=false` und wird erst nach einer kontrollierten Freigabe samt
+bestätigter Testwarnung aktiviert.
+
+Schwellwerte, Alarmverhalten, Aktivierung und Rückfallweg sind in
+`website/docs/production-monitoring.md` verbindlich beschrieben. Weder die
+Überwachung noch ihre Testwarnung verändert Produkte, Bestand, Checkout,
+Zahlungen oder Bestellungen.

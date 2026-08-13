@@ -165,6 +165,11 @@ carmaja_bootstrap_test(
             $config['githubAdapterEnabled'],
             'GitHub-Adapter muss ohne ausdrückliche Konfiguration deaktiviert sein.'
         );
+        carmaja_bootstrap_test_same(
+            false,
+            $config['monitorEnabled'],
+            'Produktionsmonitoring muss ohne ausdrückliche Konfiguration deaktiviert sein.'
+        );
         carmaja_bootstrap_test_assert(
             !isset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']),
             'Deaktivierter GitHub-Adapter darf nicht als Publish-Adapter gesetzt sein.'
@@ -178,6 +183,24 @@ carmaja_bootstrap_test(
             realpath($fixture['private']),
             carmaja_api_private_dir(),
             'Aktiver privater Pfad stimmt nicht.'
+        );
+    }
+);
+
+carmaja_bootstrap_test(
+    'Produktionsmonitoring kann in der Testumgebung nicht aktiviert werden',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $config = $fixture['config'];
+        $config['monitorEnabled'] = true;
+        $config['monitorAlertEmail'] = 'operator@example.invalid';
+        $config['brevoApiKey'] = 'synthetic';
+        $config['brevoSenderEmail'] = 'sender@example.invalid';
+        carmaja_bootstrap_test_write_config($fixture['configFile'], $config);
+
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config($fixture['configFile']),
+            'config_secret_invalid'
         );
     }
 );
@@ -252,10 +275,20 @@ carmaja_bootstrap_test(
             . DIRECTORY_SEPARATOR
             . 'backup-key.php';
         $config['githubBranch'] = 'main';
+        $config['brevoApiKey'] = 'synthetic';
+        $config['brevoSenderEmail'] = 'sender@example.invalid';
+        $config['monitorEnabled'] = true;
+        $config['monitorAlertEmail'] = 'operator@example.invalid';
         carmaja_bootstrap_test_write_config($productionConfig, $config);
         $loaded = carmaja_bootstrap_prepare($productionConfig);
         carmaja_bootstrap_test_same('main', $loaded['githubBranch'], 'Main-Referenz fehlt.');
         carmaja_bootstrap_test_same(false, $loaded['githubAdapterEnabled'], 'GitHub-Adapter muss deaktiviert bleiben.');
+        carmaja_bootstrap_test_same(true, $loaded['monitorEnabled'], 'Produktionsmonitoring wurde nicht aktiviert.');
+        carmaja_bootstrap_test_same(
+            'operator@example.invalid',
+            $loaded['monitorAlertEmail'],
+            'Alarmadresse wurde nicht geladen.'
+        );
         carmaja_bootstrap_test_same(
             $productionProductPrivate,
             $loaded['productPrivateDir'],

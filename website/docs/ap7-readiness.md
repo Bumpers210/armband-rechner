@@ -282,7 +282,9 @@ fail-closed.
 ## Verbleibende Produktionsgates
 
 1. Monitoringalarme für Worker, Webhookrückstand, Mail-Outbox, Reviewfälle,
-   Backup-RPO und Speicher aktivieren und den Alarm-/Eskalationsweg prüfen.
+   Backup-RPO und Speicher sind im Repository vorbereitet. Den privaten Code
+   noch kontrolliert aktivieren und den Alarm-/Eskalationsweg mit der
+   Testwarnung prüfen.
 2. Stripe-Live-Checkoutparameter, Webhooksignatur, Legal Consent und
    Brevo-Vorlagen in einer kontrollierten, zunächst nicht zahlungswirksamen
    Abnahme vollständig gegen den freigegebenen Vertrag prüfen.

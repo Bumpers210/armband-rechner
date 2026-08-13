@@ -54,4 +54,7 @@ return [
     'brevoApiKey' => null,
     'brevoSenderEmail' => null,
     'brevoSenderName' => 'Carmaja-Perlen Shop',
+    // Erst nach geprüftem Alarmtest kontrolliert auf true setzen.
+    'monitorEnabled' => false,
+    'monitorAlertEmail' => null,
 ];

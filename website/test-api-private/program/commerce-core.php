@@ -1998,6 +1998,48 @@ final class CarmajaCommercePdo
         $statement->execute([$success ? 1 : 0, $error, $workerName, $leaseToken]);
     }
 
+    /** Read-only production health snapshot. No row or global lock is acquired. */
+    public function productionMonitorSnapshot(): array
+    {
+        $workers = $this->pdo->query(
+            "SELECT worker_name, last_success_at, last_error,
+                    CASE WHEN last_success_at IS NULL THEN NULL
+                         ELSE TIMESTAMPDIFF(SECOND, last_success_at, UTC_TIMESTAMP(6)) END
+                         AS success_age_seconds
+             FROM worker_leases
+             WHERE worker_name IN ('commerce-v1', 'commerce-v1-brevo')"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        $count = function (string $sql): int {
+            return (int) $this->pdo->query($sql)->fetchColumn();
+        };
+        $overdue = "(
+            (status = 'queued' AND next_attempt_at <= DATE_SUB(UTC_TIMESTAMP(6), INTERVAL 15 MINUTE))
+            OR (status = 'processing' AND (lease_until IS NULL
+                OR lease_until <= DATE_SUB(UTC_TIMESTAMP(6), INTERVAL 15 MINUTE)))
+        )";
+
+        return [
+            'observedAt' => (string) $this->pdo->query('SELECT UTC_TIMESTAMP(6)')->fetchColumn(),
+            'workers' => is_array($workers) ? $workers : [],
+            'webhookDue' => $count("SELECT COUNT(*) FROM webhook_inbox WHERE {$overdue}"),
+            'webhookTerminal' => $count(
+                "SELECT COUNT(*) FROM webhook_inbox WHERE status IN ('manual_review', 'failed')"
+            ),
+            'mailDue' => $count("SELECT COUNT(*) FROM mail_outbox WHERE {$overdue}"),
+            'mailTerminal' => $count(
+                "SELECT COUNT(*) FROM mail_outbox
+                 WHERE status IN ('delivery_unknown', 'manual_review', 'failed')"
+            ),
+            'metadataDue' => $count("SELECT COUNT(*) FROM stripe_metadata_outbox WHERE {$overdue}"),
+            'metadataTerminal' => $count(
+                "SELECT COUNT(*) FROM stripe_metadata_outbox WHERE status IN ('manual_review', 'failed')"
+            ),
+            'reviewOpen' => $count(
+                "SELECT COUNT(*) FROM review_cases WHERE status IN ('open', 'investigating')"
+            ),
+        ];
+    }
+
     /* AP5 shop-admin repository methods. They never perform network I/O. */
     public function loadAdminUser(string $username): ?array
     {

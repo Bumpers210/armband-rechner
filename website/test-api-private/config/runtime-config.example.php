@@ -55,4 +55,7 @@ return [
     'brevoApiKey' => null,
     'brevoSenderEmail' => null,
     'brevoSenderName' => 'Carmaja-Perlen Shop',
+    // Produktionsmonitoring bleibt in der Testumgebung immer deaktiviert.
+    'monitorEnabled' => false,
+    'monitorAlertEmail' => null,
 ];

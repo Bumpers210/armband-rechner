@@ -191,6 +191,8 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'brevoApiKey',
         'brevoSenderEmail',
         'brevoSenderName',
+        'monitorEnabled',
+        'monitorAlertEmail',
     ];
     $unknownKeys = array_diff(array_keys($config), $allowedKeys);
 
@@ -278,10 +280,20 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $brevoApiKey = carmaja_bootstrap_optional_string($config, 'brevoApiKey');
     $brevoSenderEmail = carmaja_bootstrap_optional_string($config, 'brevoSenderEmail');
     $brevoSenderName = carmaja_bootstrap_optional_string($config, 'brevoSenderName');
+    $monitorEnabled = $config['monitorEnabled'] ?? false;
+    $monitorAlertEmail = carmaja_bootstrap_optional_string($config, 'monitorAlertEmail');
 
     if (strlen($tokenPepper) < 32 || !is_bool($githubAdapterEnabled)
         || !is_bool($commerceRequireTls)
         || !is_bool($commerceRestoreRequireTls)
+        || !is_bool($monitorEnabled)
+        || ($monitorAlertEmail !== null
+            && filter_var($monitorAlertEmail, FILTER_VALIDATE_EMAIL) === false)
+        || ($monitorEnabled
+            && ($publishTarget !== 'production'
+                || $monitorAlertEmail === null
+                || $brevoApiKey === null
+                || $brevoSenderEmail === null))
         || ($stripePaymentMethodTypes !== null
             && (!is_array($stripePaymentMethodTypes)
                 || $stripePaymentMethodTypes !== ['card', 'klarna', 'sepa_debit']))
@@ -503,6 +515,8 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'brevoApiKey' => $brevoApiKey,
         'brevoSenderEmail' => $brevoSenderEmail,
         'brevoSenderName' => $brevoSenderName,
+        'monitorEnabled' => $monitorEnabled,
+        'monitorAlertEmail' => $monitorAlertEmail,
         'configFile' => $configFile,
     ];
 }

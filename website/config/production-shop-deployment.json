@@ -11,13 +11,16 @@
     "programRoot": "/home/www/carmaja-private-shop/program",
     "runtimeConfig": "/home/www/carmaja-private-shop/config/runtime-config.php",
     "worker": "/home/www/carmaja-private-shop/worker.php",
+    "monitorCli": "/home/www/carmaja-private-shop/monitor.php",
     "backupCli": "/home/www/carmaja-private-shop/backup.php",
     "backupDirectory": "/home/www/carmaja-private-shop/backups",
-    "backupKeyFile": "/home/www/carmaja-private-shop/config/backup-key.php"
+    "backupKeyFile": "/home/www/carmaja-private-shop/config/backup-key.php",
+    "monitorState": "/home/www/carmaja-private-shop/monitor/state.json"
   },
   "sources": {
     "privateProgram": "website/test-api-private/program",
     "privateWorker": "website/test-api-private/worker.php",
+    "privateMonitorCli": "website/test-api-private/monitor.php",
     "privateBackupCli": "website/test-api-private/backup.php",
     "publicApi": "website/production-shop-api-public"
   },
@@ -30,6 +33,16 @@
     "backupOffsiteTarget": "onedrive-pull://carmaja-production/Carmaja-Perlen/Backups",
     "backupServerRetentionDays": 7,
     "backupExecutionLimitSeconds": 40
+  },
+  "monitoring": {
+    "runsWithWorker": true,
+    "workerSuccessMaxAgeMinutes": 15,
+    "queueBacklogMaxAgeMinutes": 15,
+    "backupServerMaxAgeMinutes": 90,
+    "backupOffsiteMaxAgeHours": 24,
+    "storageWarningPercent": 90,
+    "reminderHours": 6,
+    "stateChangesOnly": true
   },
   "shop": {
     "paymentMethodTypes": ["card", "klarna", "sepa_debit"],
