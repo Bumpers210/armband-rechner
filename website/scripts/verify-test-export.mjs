@@ -120,6 +120,7 @@ for (const requiredFile of [
   "robots.txt",
   "sitemap.xml",
   "icon.svg",
+  "images/brand/carmaja-logo-offiziell.png",
   ".htaccess",
 ]) {
   assert(await exists(requiredFile), `Testexport fehlt: ${requiredFile}`);
@@ -208,10 +209,12 @@ for (const product of enabled) {
     `Zentimeterdarstellung ist ungültig: ${product.sku}`,
   );
   assert(
-    detailHtml.includes("Vor dem Duschen und Baden ablegen") &&
-      detailHtml.includes("Kontakt mit Parfüm und Cremes vermeiden") &&
-      detailHtml.includes("Nicht stark auseinanderziehen"),
-    `Zentraler Pflegehinweis fehlt: ${product.sku}`,
+    detailHtml.includes('href="/material-pflege/"') &&
+      detailHtml.includes("Hinweise zu Material &amp; Pflege") &&
+      !detailHtml.includes("Vor dem Duschen und Baden ablegen") &&
+      !detailHtml.includes("Kontakt mit Parfüm und Cremes vermeiden") &&
+      !detailHtml.includes("Nicht stark auseinanderziehen"),
+    `Pflegeseiten-Link ist ungültig: ${product.sku}`,
   );
   assert(
     [...detailHtml.matchAll(/data-lightbox-open="/g)].length ===
@@ -244,6 +247,8 @@ for (const product of unavailable) {
       overviewHtml.includes(product.description) &&
       overviewHtml.includes("Nicht verfügbar") &&
       detailHtml.includes("Nicht verfügbar") &&
+      detailHtml.includes('href="/material-pflege/"') &&
+      detailHtml.includes("Hinweise zu Material &amp; Pflege") &&
       !detailHtml.toLowerCase().includes("vinted") &&
       !detailHtml.toLowerCase().includes("marktplatz"),
     `Nicht verfügbares v2-Produkt ist nicht korrekt gerendert: ${product.sku}`,

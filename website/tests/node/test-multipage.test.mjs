@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -51,7 +51,33 @@ test("Navigation, Sitemap und Produktseiten verwenden das Mehrseitenlayout", asy
   assert.match(sitemap, /material-pflege/);
   assert.match(sitemap, /kontakt/);
   assert.match(productList, /ProductImageGallery/);
+  assert.match(
+    productList,
+    /<Heading>[\s\S]*<Link href=\{`\/armbaender\/\$\{product\.slug\}\/`\}>[\s\S]*\{product\.publicTitle\}/,
+  );
+  assert.doesNotMatch(productList, /Details ansehen/);
   assert.match(detail, /ProductImageGallery/);
+  assert.match(detail, /href="\/material-pflege\/"/);
+  assert.doesNotMatch(detail, /siteContent\.care|product-care|care-heading/);
+});
+
+test("das offizielle Logo ist in Header und Footer eingebunden", async () => {
+  const header = await source("components/site-header.tsx");
+  const footer = await source("components/site-footer.tsx");
+  const logoPath = "/images/brand/carmaja-logo-offiziell.png";
+  const logo = await stat(
+    path.join(
+      websiteDirectory,
+      "public",
+      "images",
+      "brand",
+      "carmaja-logo-offiziell.png",
+    ),
+  );
+
+  assert.ok(logo.size > 0);
+  assert.ok(header.includes(logoPath));
+  assert.ok(footer.includes(logoPath));
 });
 
 test("Testziel bleibt ohne Produktionstracking und fest an die Test-API gebunden", async () => {

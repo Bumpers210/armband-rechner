@@ -64,12 +64,25 @@
 
 .v2-page .v2-brand {
   display: inline-flex;
-  align-items: baseline;
-  gap: 0.38rem;
+  align-items: center;
+  gap: 0.65rem;
   color: var(--v2-ink);
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
+}
+
+.v2-page .v2-brand-logo {
+  width: 3.25rem;
+  height: 3.25rem;
+  flex: 0 0 3.25rem;
+  object-fit: contain;
+}
+
+.v2-page .v2-brand-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.38rem;
 }
 
 .v2-page .v2-brand-primary {
@@ -635,8 +648,7 @@
   margin: 3rem 0 0;
 }
 
-.v2-page .v2-text-link,
-.v2-page .product-detail-link {
+.v2-page .v2-text-link {
   width: fit-content;
   color: var(--v2-moss);
   font-weight: 700;
@@ -928,24 +940,6 @@
 
 .v2-page .product-status--sold {
   color: var(--v2-clay);
-}
-
-.v2-page .product-care {
-  margin-top: 0.5rem;
-}
-
-.v2-page .product-care h2 {
-  margin-bottom: 0.75rem;
-  color: var(--v2-moss);
-  font-size: 1.45rem;
-}
-
-.v2-page .product-care ul {
-  display: grid;
-  gap: 0.45rem;
-  margin: 0;
-  padding-left: 1.2rem;
-  color: var(--v2-muted);
 }
 
 .sr-only {

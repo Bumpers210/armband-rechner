@@ -166,9 +166,11 @@ test(
       assert.ok(overviewHtml.includes("Nicht verfügbar"));
       assert.ok(detailHtml.includes("17,5 cm"));
       assert.ok(!detailHtml.includes("cm cm"));
-      assert.ok(detailHtml.includes("Vor dem Duschen und Baden ablegen"));
-      assert.ok(detailHtml.includes("Kontakt mit Parfüm und Cremes vermeiden"));
-      assert.ok(detailHtml.includes("Nicht stark auseinanderziehen"));
+      assert.ok(detailHtml.includes('href="/material-pflege/"'));
+      assert.ok(detailHtml.includes("Hinweise zu Material &amp; Pflege"));
+      assert.ok(!detailHtml.includes("Vor dem Duschen und Baden ablegen"));
+      assert.ok(!detailHtml.includes("Kontakt mit Parfüm und Cremes vermeiden"));
+      assert.ok(!detailHtml.includes("Nicht stark auseinanderziehen"));
       assert.equal(
         [...detailHtml.matchAll(/data-lightbox-open="/g)].length,
         products[0].images.length,
