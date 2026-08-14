@@ -76,29 +76,128 @@ $tests['Brevo-Erfolg mit Nachrichten-ID'] = static function () use ($assert): vo
 $tests['Brevo rendert fachliche Outboxdaten erst beim Versand'] = static function () use ($assert): void {
     $requests = [];
     $client = new CarmajaBrevoClient([
-        'brevoApiKey' => 'synthetic', 'brevoSenderEmail' => 'test@example.invalid',
+        'environment' => 'test',
+        'shopWebsiteOrigin' => 'https://test.carmaja-perlen.de',
+        'brevoApiKey' => 'synthetic',
+        'brevoSenderEmail' => 'test@example.invalid',
     ], static function (array $request) use (&$requests): array {
         $requests[] = $request;
         return ['status' => 201, 'body' => '{"messageId":"<synthetic-rendered>"}'];
     });
+    $orderPayload = [
+        'orderNumber' => 'TEST-2026-000001',
+        'customerName' => 'Kundin & Test',
+        'product' => [
+            'productId' => 'CP-2026-0006',
+            'name' => 'Carmaja Testarmband',
+            'quantity' => 1,
+            'priceMinor' => 4200,
+            'currency' => 'eur',
+        ],
+        'shipping' => [
+            'shippingMethodId' => 'de-standard',
+            'publicName' => 'Standardversand Deutschland',
+            'amountMinor' => 490,
+            'currency' => 'eur',
+            'minBusinessDays' => 2,
+            'maxBusinessDays' => 4,
+        ],
+        'totalMinor' => 4690,
+        'currency' => 'eur',
+        'paymentMethodType' => 'card',
+        'legal' => [
+            'legalBundleId' => 'cmj-test-legal-2026-08-06-v2',
+            'bundleHash' => str_repeat('a', 64),
+            'termsVersion' => 'terms-v4',
+            'privacyVersion' => 'privacy-v4',
+            'withdrawalVersion' => 'withdrawal-v4',
+            'shippingVersion' => 'shipping-v4',
+            'merchantVersion' => 'merchant-v4',
+        ],
+    ];
     $result = $client->send([
         'dedupe_key' => 'order-confirmation:rendered',
         'message_type' => 'order_confirmation',
         'recipient' => 'buyer@example.invalid',
-        'payload' => '{"orderNumber":"TEST-2026-000001"}',
+        'payload' => json_encode($orderPayload, JSON_THROW_ON_ERROR),
     ]);
     $assert($result['outcome'] === 'sent', 'Fachliche Bestellmail wurde nicht versendet.');
     $assert(str_contains((string) ($requests[0]['subject'] ?? ''), 'TEST-2026-000001'), 'Bestellnummer fehlt im Betreff.');
     $assert(str_contains((string) ($requests[0]['htmlContent'] ?? ''), 'TEST-2026-000001'), 'Bestellnummer fehlt im Inhalt.');
+    $assert(str_contains((string) $requests[0]['htmlContent'], 'Carmaja Testarmband'), 'Produkt fehlt in der Bestellmail.');
+    $assert(str_contains((string) $requests[0]['htmlContent'], '42,00 €'), 'Produktpreis fehlt in der Bestellmail.');
+    $assert(str_contains((string) $requests[0]['htmlContent'], '4,90 €'), 'Versandpreis fehlt in der Bestellmail.');
+    $assert(str_contains((string) $requests[0]['htmlContent'], '46,90 €'), 'Gesamtbetrag fehlt in der Bestellmail.');
+    $assert(str_contains(
+        (string) $requests[0]['htmlContent'],
+        'https://test.carmaja-perlen.de/legal-archive/test/cmj-test-legal-2026-08-06-v2/'
+    ), 'Unveränderlicher Rechtstext-Link fehlt in der Bestellmail.');
+    $assert(str_contains((string) $requests[0]['htmlContent'], 'Kundin &amp; Test'), 'Kundenname wurde nicht sicher maskiert.');
+
+    $operatorPayload = carmaja_commerce_operator_order_mail_payload($orderPayload);
+    $operator = $client->send([
+        'dedupe_key' => 'operator-order-notification:rendered',
+        'message_type' => 'operator_order_notification',
+        'recipient' => 'operator@example.invalid',
+        'payload' => json_encode($operatorPayload, JSON_THROW_ON_ERROR),
+    ]);
+    $assert($operator['outcome'] === 'sent', 'Betreiberhinweis wurde nicht versendet.');
+    $operatorHtml = (string) ($requests[1]['htmlContent'] ?? '');
+    foreach (['TEST-2026-000001', 'Carmaja Testarmband', 'CP-2026-0006', '46,90 €'] as $required) {
+        $assert(str_contains($operatorHtml, $required), 'Freigegebene Betreiberangabe fehlt: ' . $required);
+    }
+    foreach (['Kundin & Test', 'buyer@example.invalid', 'Standardversand', 'card'] as $forbidden) {
+        $assert(!str_contains($operatorHtml, $forbidden), 'Betreiberhinweis enthält nicht freigegebene Daten.');
+    }
+
+    $shipping = $client->send([
+        'dedupe_key' => 'shipping-confirmation:rendered',
+        'message_type' => 'shipping_confirmation',
+        'recipient' => 'buyer@example.invalid',
+        'payload' => json_encode([
+            'orderNumber' => 'TEST-2026-000001',
+            'trackingNumber' => 'TRACK-TEST-1',
+            'productName' => 'Carmaja Testarmband',
+            'shippingName' => 'Standardversand Deutschland',
+        ], JSON_THROW_ON_ERROR),
+    ]);
+    $assert($shipping['outcome'] === 'sent', 'Versandmail wurde nicht versendet.');
+    foreach (['TEST-2026-000001', 'TRACK-TEST-1', 'Carmaja Testarmband', 'Standardversand Deutschland'] as $required) {
+        $assert(str_contains((string) $requests[2]['htmlContent'], $required), 'Versandangabe fehlt: ' . $required);
+    }
 
     $withdrawal = $client->send([
         'dedupe_key' => 'withdrawal-receipt:rendered',
         'message_type' => 'withdrawal_receipt',
         'recipient' => 'buyer@example.invalid',
-        'payload' => '{"withdrawalId":"withdrawal-test","receivedAt":"2026-08-08T18:00:00Z"}',
+        'payload' => json_encode([
+            'withdrawalId' => 'withdrawal-test',
+            'receivedAt' => '2026-08-08T18:00:00Z',
+            'content' => [
+                'orderNumber' => 'TEST-2026-000001',
+                'name' => 'Kundin Test',
+                'email' => 'buyer@example.invalid',
+            ],
+        ], JSON_THROW_ON_ERROR),
     ]);
     $assert($withdrawal['outcome'] === 'sent', 'Fachliche Widerrufsmail wurde nicht versendet.');
-    $assert(str_contains((string) ($requests[1]['htmlContent'] ?? ''), '2026-08-08T18:00:00Z'), 'Eingangszeit fehlt.');
+    $withdrawalHtml = (string) ($requests[3]['htmlContent'] ?? '');
+    foreach (['2026-08-08T18:00:00Z', 'TEST-2026-000001', 'Kundin Test', 'buyer@example.invalid'] as $required) {
+        $assert(str_contains($withdrawalHtml, $required), 'Widerrufsinhalt fehlt: ' . $required);
+    }
+
+    $missingLegal = $orderPayload;
+    $missingLegal['legal'] = [];
+    $invalid = $client->send([
+        'dedupe_key' => 'order-confirmation:missing-legal',
+        'message_type' => 'order_confirmation',
+        'recipient' => 'buyer@example.invalid',
+        'payload' => json_encode($missingLegal, JSON_THROW_ON_ERROR),
+    ]);
+    $assert(
+        $invalid['outcome'] === 'failed' && $invalid['error'] === 'mail_content_missing',
+        'Bestellmail ohne unveränderlichen Rechtstext-Link wurde nicht geschlossen abgelehnt.'
+    );
 };
 $tests['Brevo-unklarer Ausgang wird nicht blind erneut gesendet'] = static function () use ($assert): void {
     $client = new CarmajaBrevoClient([

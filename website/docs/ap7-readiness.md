@@ -20,7 +20,7 @@ AP7.3e-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
 AP7.3g-Testbetriebsnachweis: IONOS-Testumgebung, abgeschlossen und bereinigt am
 2026-08-08
 
-Aktueller `main`-Stand: `01e86d61c4eb6b620e013ccb64522dc6b90adf1c`
+Aktueller `main`-Stand: `b55d457fb0dfa1886a6ba00612882024023c4488`
 
 Aktuell bereitgestellter Produktionswebsite-Stand:
 `01e86d61c4eb6b620e013ccb64522dc6b90adf1c`
@@ -231,7 +231,7 @@ fail-closed.
   vollständig bereinigt. OneDrive-Pull und Produktions-Restore bleiben eigene
   Gates.
 
-## Produktionsnachweis bis 2026-08-12
+## Produktionsnachweis bis 2026-08-13
 
 - PR #49 hat Legal Bundle v4, PR #50 die deterministische Backup-
   Wiederherstellung und PR #51 die bereinigte Entwicklungswerkzeugkette nach
@@ -262,8 +262,14 @@ fail-closed.
 - Stripe Live ist lesend erreichbar. Genau ein aktiver Webhook besitzt die
   vollständige Neun-Ereignis-Allowlist; Karte, Klarna, SEPA-Lastschrift und
   Google Pay auf Kartenbasis sind aktiv, PayPal ist deaktiviert. Brevo Live
-  und der konfigurierte Produktionsabsender sind aktiv. Die kontrollierte
-  Live-Checkout-/Webhook-/Mail-Abnahme bleibt ausstehend.
+  und der konfigurierte Produktionsabsender sind aktiv. Checkoutparameter und
+  Webhooksignatur wurden ohne Kauf oder Datenbankschreibvorgang geprüft. Vor
+  einer echten Bestellung müssen die Bestell- und Widerrufsmails inhaltlich
+  vervollständigt und Mailfehler in der Verwaltungsoberfläche sichtbar werden.
+- Das Produktionsmonitoring ist aktiv. Die Betreiberin bestätigte den Empfang
+  der kontrollierten Testwarnung; der folgende automatische Fünf-Minuten-Lauf
+  war ohne Befund. Die Aktivierung änderte weder Produkte noch Bestand,
+  Checkout, Zahlungen oder Bestellungen.
 - Das reale Startprodukt ist weiterhin Modell 2, Version 1, Preis 2800 Cent,
   EUR, 18 cm, 8 mm, zwei Bilder und `salesEnabled=false`. Es ist noch nicht in
   Commerce importiert. Bestände, Checkouts, Reservierungen, Zahlungen,
@@ -281,13 +287,14 @@ fail-closed.
 
 ## Verbleibende Produktionsgates
 
-1. Monitoringalarme für Worker, Webhookrückstand, Mail-Outbox, Reviewfälle,
-   Backup-RPO und Speicher sind im Repository vorbereitet. Den privaten Code
-   noch kontrolliert aktivieren und den Alarm-/Eskalationsweg mit der
-   Testwarnung prüfen.
-2. Stripe-Live-Checkoutparameter, Webhooksignatur, Legal Consent und
-   Brevo-Vorlagen in einer kontrollierten, zunächst nicht zahlungswirksamen
-   Abnahme vollständig gegen den freigegebenen Vertrag prüfen.
+1. Das lokal vervollständigte Bestell-, Betreiber-, Versand- und
+   Widerrufsmail-Paket samt Mailzuständen, Reviewanzeige und auditiertem
+   Neuversand zuerst ohne Zahlung auf der getrennten Testumgebung bereitstellen
+   und abnehmen. Die Betreiber-Mail bleibt auf Bestellnummer,
+   Produktname/-ID und Gesamtbetrag begrenzt.
+2. Die vollständige Webhook-Inbox-, Wiederholungs- und Abgleichkette später
+   mit einem kontrollierten echten Stripe-Ereignis nachweisen. Erst danach ist
+   eine echte Bestellung zulässig.
 3. Das Startprodukt unmittelbar vor dem Wartungsfenster erneut lesend prüfen.
    Produktidentität, Preis, Bilder, Version, Hash und unveränderten
    Manifeststatus dokumentieren; jede Abweichung stoppt den Ablauf.

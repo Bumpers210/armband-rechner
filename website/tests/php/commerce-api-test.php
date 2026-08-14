@@ -28,12 +28,13 @@ function commerce_exception(callable $callback, string $code): void
     throw new CarmajaCommerceTestFailure('Erwartete Commerce-Ausnahme fehlt: ' . $code);
 }
 
-function commerce_fixture(): CarmajaCommerceMemory
+function commerce_fixture(?string $operatorEmail = null): CarmajaCommerceMemory
 {
-    $commerce = new CarmajaCommerceMemory();
+    $commerce = new CarmajaCommerceMemory($operatorEmail);
     $commerce->addLegalBundle('legal-v1');
     $commerce->seedProduct([
         'productId' => 'CP-2026-0001',
+        'name' => 'Carmaja Testarmband',
         'productVersion' => 4,
         'sourceHash' => str_repeat('a', 64),
         'priceMinor' => 4200,
@@ -153,6 +154,47 @@ $tests = [
         commerce_assert($commerce->reservations['ap2-checkout-0006-reservation']['state'] === 'converted', 'Reservierung nicht converted.');
         commerce_assert($commerce->shipments[$order['orderId']]['status'] === 'ready', 'Versandstatus fehlt.');
         commerce_assert($commerce->orders[$order['orderId']]['status'] === 'confirmed', 'Orderstatus ist nicht confirmed.');
+    },
+    'Betreiberhinweis ist getrennt dedupliziert und datensparsam' => static function (): void {
+        $commerce = commerce_fixture('operator@example.invalid');
+        $commerce->createCheckout(checkout_input('ap2-checkout-mail'));
+        $order = $commerce->finalizePayment('ap2-checkout-mail', [
+            'paymentStatus' => 'succeeded',
+            'paymentIntentStatus' => 'succeeded',
+            'paymentMethodType' => 'card',
+            'stripePaymentIntentId' => 'pi_ap2_mail',
+            'amountMinor' => 4690,
+            'currency' => 'eur',
+            'productId' => 'CP-2026-0001',
+            'legalBundleId' => 'legal-v1',
+            'termsAccepted' => true,
+            'customerName' => 'Kundin Geheim',
+            'customerEmail' => 'kundin@example.invalid',
+        ]);
+
+        $customerKey = 'order-confirmation:' . $order['orderId'];
+        $operatorKey = 'operator-order-notification:' . $order['orderId'];
+        commerce_assert(count($commerce->mailOutbox) === 2, 'Bestell- und Betreiber-Mail müssen getrennt vorliegen.');
+        commerce_assert(isset($commerce->mailOutbox[$customerKey]), 'Bestellmail fehlt.');
+        commerce_assert(isset($commerce->mailOutbox[$operatorKey]), 'Betreiberhinweis fehlt.');
+        $operator = $commerce->mailOutbox[$operatorKey];
+        commerce_assert($operator['recipient'] === 'operator@example.invalid', 'Betreiberadresse stimmt nicht.');
+        commerce_assert($operator['messageType'] === 'operator_order_notification', 'Betreiber-Mailtyp stimmt nicht.');
+        $payload = $operator['payload'];
+        commerce_assert(
+            array_keys($payload) === ['orderNumber', 'product', 'totalMinor', 'currency'],
+            'Betreiberpayload enthält unerlaubte Hauptfelder.'
+        );
+        commerce_assert(
+            array_keys($payload['product']) === ['productId', 'name', 'quantity'],
+            'Betreiberpayload enthält unerlaubte Produktfelder.'
+        );
+        $encoded = json_encode($payload, JSON_THROW_ON_ERROR);
+        foreach (['Kundin Geheim', 'kundin@example.invalid', 'customerName', 'customerEmail', 'paymentMethodType'] as $forbidden) {
+            commerce_assert(!str_contains($encoded, $forbidden), 'Betreiberpayload enthält Kundendaten oder Zahlungsdetails.');
+        }
+        commerce_assert($payload['product']['name'] === 'Carmaja Testarmband', 'Produktname fehlt im Betreiberhinweis.');
+        commerce_assert($payload['totalMinor'] === 4690, 'Gesamtbetrag fehlt im Betreiberhinweis.');
     },
     'Fehlende Rechtstextzustimmung erzeugt Review und keine Order' => static function (): void {
         $commerce = commerce_fixture();

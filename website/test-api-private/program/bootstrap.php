@@ -191,6 +191,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'brevoApiKey',
         'brevoSenderEmail',
         'brevoSenderName',
+        'brevoOperatorEmail',
         'monitorEnabled',
         'monitorAlertEmail',
     ];
@@ -280,6 +281,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $brevoApiKey = carmaja_bootstrap_optional_string($config, 'brevoApiKey');
     $brevoSenderEmail = carmaja_bootstrap_optional_string($config, 'brevoSenderEmail');
     $brevoSenderName = carmaja_bootstrap_optional_string($config, 'brevoSenderName');
+    $brevoOperatorEmail = carmaja_bootstrap_optional_string($config, 'brevoOperatorEmail');
     $monitorEnabled = $config['monitorEnabled'] ?? false;
     $monitorAlertEmail = carmaja_bootstrap_optional_string($config, 'monitorAlertEmail');
 
@@ -289,6 +291,12 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         || !is_bool($monitorEnabled)
         || ($monitorAlertEmail !== null
             && filter_var($monitorAlertEmail, FILTER_VALIDATE_EMAIL) === false)
+        || ($brevoSenderEmail !== null
+            && filter_var($brevoSenderEmail, FILTER_VALIDATE_EMAIL) === false)
+        || ($brevoOperatorEmail !== null
+            && filter_var($brevoOperatorEmail, FILTER_VALIDATE_EMAIL) === false)
+        || (($brevoApiKey !== null || $brevoSenderEmail !== null || $brevoOperatorEmail !== null)
+            && ($brevoApiKey === null || $brevoSenderEmail === null || $brevoOperatorEmail === null))
         || ($monitorEnabled
             && ($publishTarget !== 'production'
                 || $monitorAlertEmail === null
@@ -515,6 +523,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'brevoApiKey' => $brevoApiKey,
         'brevoSenderEmail' => $brevoSenderEmail,
         'brevoSenderName' => $brevoSenderName,
+        'brevoOperatorEmail' => $brevoOperatorEmail,
         'monitorEnabled' => $monitorEnabled,
         'monitorAlertEmail' => $monitorAlertEmail,
         'configFile' => $configFile,

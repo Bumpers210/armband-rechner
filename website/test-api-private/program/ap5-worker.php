@@ -125,38 +125,158 @@ final class CarmajaBrevoClient
             return ['subject' => $subject, 'htmlContent' => $htmlContent];
         }
 
-        $messageType = (string) ($row['message_type'] ?? '');
-        $orderNumber = htmlspecialchars(trim((string) ($payload['orderNumber'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-        if ($messageType === 'order_confirmation' && $orderNumber !== '') {
-            return [
-                'subject' => 'Bestellbestätigung ' . $orderNumber,
-                'htmlContent' => '<p>Vielen Dank für Ihre Bestellung.</p><p>Bestellnummer: <strong>'
-                    . $orderNumber . '</strong></p>',
-            ];
+        return match ((string) ($row['message_type'] ?? '')) {
+            'order_confirmation' => $this->renderOrderConfirmation($payload),
+            'operator_order_notification' => $this->renderOperatorOrderNotification($payload),
+            'shipping_confirmation' => $this->renderShippingConfirmation($payload),
+            'withdrawal_receipt' => $this->renderWithdrawalReceipt($payload),
+            default => null,
+        };
+    }
+
+    /** @return null|array{subject:string,htmlContent:string} */
+    private function renderOrderConfirmation(array $payload): ?array
+    {
+        $orderNumber = $this->escape($payload['orderNumber'] ?? null);
+        $customerName = $this->escape($payload['customerName'] ?? null);
+        $product = is_array($payload['product'] ?? null) ? $payload['product'] : [];
+        $shipping = is_array($payload['shipping'] ?? null) ? $payload['shipping'] : [];
+        $legal = is_array($payload['legal'] ?? null) ? $payload['legal'] : [];
+        $productName = $this->escape($product['name'] ?? null);
+        $productId = $this->escape($product['productId'] ?? null);
+        $shippingName = $this->escape($shipping['publicName'] ?? null);
+        $price = $this->money($product['priceMinor'] ?? null, $product['currency'] ?? null);
+        $shippingPrice = $this->money($shipping['amountMinor'] ?? null, $shipping['currency'] ?? null);
+        $total = $this->money($payload['totalMinor'] ?? null, $payload['currency'] ?? null);
+        $legalUrl = $this->legalArchiveUrl($legal);
+        if ($orderNumber === '' || $productName === '' || $productId === ''
+            || $shippingName === '' || $price === null || $shippingPrice === null
+            || $total === null || $legalUrl === null) {
+            return null;
         }
-        if ($messageType === 'shipping_confirmation' && $orderNumber !== '') {
-            $trackingNumber = htmlspecialchars(trim((string) ($payload['trackingNumber'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $tracking = $trackingNumber !== ''
-                ? '<p>Sendungsreferenz: <strong>' . $trackingNumber . '</strong></p>'
-                : '';
-            return [
-                'subject' => 'Versandbestätigung ' . $orderNumber,
-                'htmlContent' => '<p>Ihre Bestellung ' . $orderNumber . ' wurde versendet.</p>' . $tracking,
-            ];
+
+        $greeting = $customerName !== '' ? '<p>Hallo ' . $customerName . ',</p>' : '';
+        return [
+            'subject' => 'Bestellbestätigung ' . $orderNumber,
+            'htmlContent' => $greeting
+                . '<p>vielen Dank für Ihre Bestellung. Ihre Zahlung wurde bestätigt und wir haben Ihre Bestellung angenommen.</p>'
+                . '<h2>Bestellübersicht</h2>'
+                . '<p>Bestellnummer: <strong>' . $orderNumber . '</strong></p>'
+                . '<ul><li>Produkt: <strong>' . $productName . '</strong> (' . $productId . ')</li>'
+                . '<li>Menge: 1</li><li>Produktpreis: ' . $price . '</li>'
+                . '<li>Versand: ' . $shippingName . ' – ' . $shippingPrice . '</li>'
+                . '<li>Gesamtbetrag: <strong>' . $total . '</strong></li></ul>'
+                . '<h2>Vertragsunterlagen</h2>'
+                . '<p>Die für diese Bestellung geltenden Shopbedingungen, Datenschutz-, Widerrufs- sowie Versand- und Zahlungsinformationen finden Sie in der dauerhaft zugeordneten, unveränderlichen Fassung:</p>'
+                . '<p><a href="' . $this->escape($legalUrl) . '">Vertragsunterlagen dieser Bestellung öffnen</a></p>'
+                . '<p>Bitte bewahren Sie diese E-Mail für Ihre Unterlagen auf.</p>',
+        ];
+    }
+
+    /** @return null|array{subject:string,htmlContent:string} */
+    private function renderOperatorOrderNotification(array $payload): ?array
+    {
+        $orderNumber = $this->escape($payload['orderNumber'] ?? null);
+        $product = is_array($payload['product'] ?? null) ? $payload['product'] : [];
+        $productName = $this->escape($product['name'] ?? null);
+        $productId = $this->escape($product['productId'] ?? null);
+        $total = $this->money($payload['totalMinor'] ?? null, $payload['currency'] ?? null);
+        if ($orderNumber === '' || $productName === '' || $productId === '' || $total === null) {
+            return null;
         }
-        if ($messageType === 'withdrawal_receipt') {
-            $withdrawalId = htmlspecialchars(trim((string) ($payload['withdrawalId'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            $receivedAt = htmlspecialchars(trim((string) ($payload['receivedAt'] ?? '')), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-            if ($withdrawalId === '' || $receivedAt === '') {
-                return null;
-            }
-            return [
-                'subject' => 'Eingangsbestätigung Ihres Widerrufs',
-                'htmlContent' => '<p>Ihr Widerruf ist bei uns eingegangen.</p><p>Vorgang: <strong>'
-                    . $withdrawalId . '</strong><br>Eingangszeit: ' . $receivedAt . '</p>',
-            ];
+
+        return [
+            'subject' => 'Neue Bestellung ' . $orderNumber,
+            'htmlContent' => '<p>Eine neue Bestellung wurde bestätigt.</p>'
+                . '<ul><li>Bestellnummer: <strong>' . $orderNumber . '</strong></li>'
+                . '<li>Produkt: ' . $productName . ' (' . $productId . ')</li>'
+                . '<li>Gesamtbetrag: <strong>' . $total . '</strong></li></ul>'
+                . '<p>Kundendaten und Zahlungsdetails sind aus Datenschutzgründen nicht Bestandteil dieser Nachricht. Bitte verwenden Sie für die Bearbeitung die geschützte Shop-Administration.</p>',
+        ];
+    }
+
+    /** @return null|array{subject:string,htmlContent:string} */
+    private function renderShippingConfirmation(array $payload): ?array
+    {
+        $orderNumber = $this->escape($payload['orderNumber'] ?? null);
+        $trackingNumber = $this->escape($payload['trackingNumber'] ?? null);
+        $productName = $this->escape($payload['productName'] ?? null);
+        $shippingName = $this->escape($payload['shippingName'] ?? null);
+        if ($orderNumber === '') {
+            return null;
         }
-        return null;
+        $product = $productName !== '' ? '<p>Produkt: <strong>' . $productName . '</strong></p>' : '';
+        $shipping = $shippingName !== '' ? '<p>Versandart: ' . $shippingName . '</p>' : '';
+        $tracking = $trackingNumber !== ''
+            ? '<p>Sendungsreferenz: <strong>' . $trackingNumber . '</strong></p>'
+            : '<p>Für diese Sendung wurde keine Sendungsreferenz hinterlegt.</p>';
+
+        return [
+            'subject' => 'Versandbestätigung ' . $orderNumber,
+            'htmlContent' => '<p>Ihre Bestellung <strong>' . $orderNumber . '</strong> wurde versendet.</p>'
+                . $product . $shipping . $tracking
+                . '<p>Die voraussichtliche Lieferzeit richtet sich nach der in Ihrer Bestellbestätigung zugeordneten Versandinformation.</p>',
+        ];
+    }
+
+    /** @return null|array{subject:string,htmlContent:string} */
+    private function renderWithdrawalReceipt(array $payload): ?array
+    {
+        $withdrawalId = $this->escape($payload['withdrawalId'] ?? null);
+        $receivedAt = $this->escape($payload['receivedAt'] ?? null);
+        $content = is_array($payload['content'] ?? null) ? $payload['content'] : [];
+        $orderNumber = $this->escape($content['orderNumber'] ?? null);
+        $name = $this->escape($content['name'] ?? null);
+        $email = $this->escape($content['email'] ?? null);
+        if ($withdrawalId === '' || $receivedAt === '' || $orderNumber === ''
+            || $name === '' || $email === '') {
+            return null;
+        }
+
+        return [
+            'subject' => 'Eingangsbestätigung Ihres Widerrufs',
+            'htmlContent' => '<p>Ihr Widerruf ist bei uns eingegangen.</p>'
+                . '<h2>Inhalt Ihrer Erklärung</h2>'
+                . '<p>Sie haben den Vertrag zur Bestellung <strong>' . $orderNumber . '</strong> widerrufen.</p>'
+                . '<ul><li>Name: ' . $name . '</li><li>E-Mail: ' . $email . '</li></ul>'
+                . '<p>Vorgang: <strong>' . $withdrawalId . '</strong><br>Datum und Uhrzeit des Eingangs: ' . $receivedAt . '</p>'
+                . '<p>Diese Bestätigung löst nicht automatisch eine Erstattung, Wiedereinlagerung oder Versandänderung aus.</p>',
+        ];
+    }
+
+    private function legalArchiveUrl(array $legal): ?string
+    {
+        $environment = $this->config['environment'] ?? null;
+        $origin = $this->config['shopWebsiteOrigin'] ?? null;
+        $bundleId = $legal['legalBundleId'] ?? null;
+        $expectedOrigin = $environment === 'test'
+            ? 'https://test.carmaja-perlen.de'
+            : ($environment === 'production' ? 'https://www.carmaja-perlen.de' : null);
+        if (!is_string($bundleId) || !is_string($origin) || $origin !== $expectedOrigin
+            || preg_match('/^cmj-' . preg_quote((string) $environment, '/')
+                . '-legal-[0-9]{4}-[0-9]{2}-[0-9]{2}-v[0-9]+$/', $bundleId) !== 1) {
+            return null;
+        }
+
+        return $origin . '/legal-archive/' . $environment . '/' . rawurlencode($bundleId) . '/';
+    }
+
+    private function money(mixed $minor, mixed $currency): ?string
+    {
+        if (!is_int($minor) || $minor < 0 || $currency !== 'eur') {
+            return null;
+        }
+
+        return number_format($minor / 100, 2, ',', '.') . ' €';
+    }
+
+    private function escape(mixed $value): string
+    {
+        return htmlspecialchars(
+            trim(is_string($value) ? $value : ''),
+            ENT_QUOTES | ENT_SUBSTITUTE,
+            'UTF-8'
+        );
     }
 }
 
