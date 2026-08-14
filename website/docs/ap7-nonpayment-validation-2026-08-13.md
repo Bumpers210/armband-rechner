@@ -77,3 +77,32 @@ Das nächste Paket soll ausschließlich E-Mails und ihre Verwaltung betreffen:
 Nicht Bestandteil dieses Pakets sind Produktaktivierung, Bestands-Cutover,
 Publisher, echter Checkout, Zahlung, Shopstart oder eine Änderung der
 Produktionswebsite.
+
+## Umsetzung und Testbereitstellung vom 14. August 2026
+
+Das freigegebene Paket ist im Arbeitsbranch mit Commit `da37149` umgesetzt.
+Die Betreiber-Mail verwendet eine eigene Deduplizierung und enthält
+ausschließlich Bestellnummer, Produktname/-ID und Gesamtbetrag. Kundennamen,
+Kunden-E-Mail, Anschrift und Zahlungsdetails sind weder Bestandteil ihres
+Outbox-Payloads noch ihrer Vorlage.
+
+Die sichtbare Verwaltungsansicht wurde mit Commit `987fc77` in den bestehenden
+Testbranch übernommen. Das vorhandene Produkt `CP-2026-0006`, seine Bilder und
+die abgenommene Markenführung blieben erhalten. Der Testbranch verwendet dabei
+den bereits auf `main` geprüften Next.js-16.3.0-Sperrstand; `npm audit` meldete
+danach keine bekannte Schwachstelle.
+
+Workflow `31807670264` bestand zuerst mit deaktiviertem Deploymentschalter als
+reiner Buildlauf und anschließend in Versuch 2 als vollständiger Testdeploy
+einschließlich Live-Smoke-Test und `mark_verified`. Der Schalter
+`CARMAJA_TEST_DEPLOY_ENABLED` steht danach wieder auf `false`.
+
+Die vier privaten Test-Programme `ap5-worker.php`, `bootstrap.php`,
+`commerce-bootstrap.php` und `commerce-core.php` wurden nach Hashprüfung und
+privater Rückfallsicherung aus Commit `da37149` aktiviert. PHP 8.4 bestätigte
+auf dem Server 10/10 AP5-Mail-/Adminfälle und 17/17 Commerce-Kernfälle mit
+ausschließlich künstlichen Daten. Die Test-Runtime enthält weiterhin keine
+aktiven Commerce-, Stripe- oder Brevo-Zugänge. Es wurde kein Checkout
+angelegt, keine Datenbank geändert und keine E-Mail versendet. Produktdatei,
+Runtime und öffentlicher API-Einstieg blieben hashgleich; der API-Schutz
+antwortet weiterhin mit `401`.

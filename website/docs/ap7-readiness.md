@@ -211,6 +211,18 @@ fail-closed.
   Geheimwertprüfung und `git diff --check` bestanden. Der vollständige
   Node-Lauf bestand 122/131 Fälle und reproduzierte ausschließlich die neun
   bereits dokumentierten CRLF-/Bash-Basisfehler.
+- AP7-Mail-/Adminpaket: Commit `da37149` vervollständigt Bestell-, Betreiber-,
+  Versand- und Widerrufsmail. Der Betreiberpayload ist auf Bestellnummer,
+  Produktname/-ID und Gesamtbetrag begrenzt. 10/10 AP5-, 17/17 Commerce- und
+  12/12 Bootstrap-Tests, Node-Verträge, Lint und Testbuild bestanden lokal.
+  Die sichtbare Verwaltungsansicht wurde mit Testbranch-Commit `987fc77`
+  produktschonend bereitgestellt. Workflow `31807670264`, Versuch 2, bestand
+  Build, Deployment, Live-Smoke-Test und `mark_verified`; der Testschalter
+  steht wieder auf `false`. Die vier privaten Testprogramme bestanden danach
+  auch serverseitig mit PHP 8.4 gegen ausschließlich künstliche Daten. Runtime,
+  Produktprojektion und öffentlicher API-Einstieg blieben hashgleich. Ohne
+  Commerce-, Stripe- oder Brevo-Konfiguration entstand kein Checkout, keine
+  Datenbankänderung und kein Mailversand.
 - AP7.5 Produktionsartefakt: 11 produktive PHP-Dateien wurden mit PHP 8.4.23
   gelintet. Product-API 47/47, Bootstrap 10/10, AP7-Vertrag 7/7 sowie
   Produktions-Bootstrap, Produktions-Admin und der neue produktive
@@ -287,11 +299,11 @@ fail-closed.
 
 ## Verbleibende Produktionsgates
 
-1. Das lokal vervollständigte Bestell-, Betreiber-, Versand- und
-   Widerrufsmail-Paket samt Mailzuständen, Reviewanzeige und auditiertem
-   Neuversand zuerst ohne Zahlung auf der getrennten Testumgebung bereitstellen
-   und abnehmen. Die Betreiber-Mail bleibt auf Bestellnummer,
-   Produktname/-ID und Gesamtbetrag begrenzt.
+1. Das ohne Zahlung technisch auf der getrennten Testumgebung bereitgestellte
+   Bestell-, Betreiber-, Versand- und Widerrufsmail-Paket inhaltlich durch die
+   Betreiberin abnehmen. Die Betreiber-Mail bleibt auf Bestellnummer,
+   Produktname/-ID und Gesamtbetrag begrenzt. Eine spätere Aktivierung echter
+   Brevo-Zugänge ist ein eigenes Produktionsgate.
 2. Die vollständige Webhook-Inbox-, Wiederholungs- und Abgleichkette später
    mit einem kontrollierten echten Stripe-Ereignis nachweisen. Erst danach ist
    eine echte Bestellung zulässig.
