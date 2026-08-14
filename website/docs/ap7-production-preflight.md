@@ -148,12 +148,35 @@ Cutover, Checkout und Shopstart bleiben bis zu den übrigen Gates gesperrt.
 ## 7. Brevo Live
 
 - [x] Verifizierten produktiven Absender und API-Zugang bestätigen.
-- [ ] Bestell-, Betreiber-, Versand- und Widerrufsvorlage gegen die
+- [x] Bestell-, Betreiber-, Versand- und Widerrufsvorlage gegen die
   freigegebenen Texte prüfen.
 - [ ] Idempotency-Key, Deduplizierung, `delivery_unknown`, Retry und
   manuellen auditierten Neuversand prüfen.
 - [ ] Dauerhafte Zustellfehler und letzte erfolgreiche Verarbeitung im Admin
   sichtbar machen.
+
+**Aktueller Arbeitsstand:** Brevo-Konto und Absenderliste sind erreichbar. Der
+eingestellte Produktionsabsender ist aktiv; die empfangene
+Monitoring-Testwarnung bestätigt den tatsächlichen Versandweg. Im Konto
+bestehen zwei aktive Einträge für dieselbe Absenderadresse. Die am 13. August
+festgestellten Inhalts- und Oberflächenlücken sind im Arbeitszweig geschlossen:
+Bestell-, Betreiber-, Versand- und Widerrufsmail verwenden vollständige
+fachliche Vorlagen; die Betreiber-Mail ist auf Bestellnummer, Produktname/-ID
+und Gesamtbetrag begrenzt. Mailzustände, letzte erfolgreiche Verarbeitung,
+Reviewfälle und der bestätigungspflichtige auditierte Neuversand sind in der
+Verwaltungsoberfläche sichtbar. Die fokussierten PHP-, Node-, Lint- und
+Testbuild-Prüfungen sind bestanden. Der sichtbare Teststand `987fc77` wurde in
+Workflow `31807670264`, Versuch 2, aktiviert, live geprüft und als verifiziert
+markiert. Die privaten Programme aus Commit `da37149` bestanden auf dem
+Testserver mit PHP 8.4 alle 10 AP5- und 17 Commerce-Fälle ausschließlich mit
+künstlichen Daten. Die Test-Runtime blieb ohne Commerce-, Stripe- und
+Brevo-Zugänge; es entstand weder Checkout noch Mailversand. Die Betreiberin
+hat die vier Texte am 14. August 2026 anhand der geschützten Testvorschau
+inhaltlich freigegeben; damit ist die erste Checkbox geschlossen. Die beiden
+verbleibenden Checkboxen bleiben bis zum getrennt freigegebenen
+Produktionsnachweis offen. Der
+Ausgangsbefund steht in
+`website/docs/ap7-nonpayment-validation-2026-08-13.md`.
 
 **Stop:** unverifizierter Absender, Testkonto, unklare Vorlage oder fehlende
 Fehlersichtbarkeit.
@@ -216,7 +239,7 @@ bestandener Restore.
 - [x] Mindestens zwei echte Läufe im Fünf-Minuten-Abstand nachweisen.
 - [ ] Lock, Lease-Übernahme, Runlog, Laufzeit und Fortsetzung eines
   Teilbatches prüfen.
-- [ ] Alarm für ausbleibenden erfolgreichen Lauf, dauerhafte Outboxfehler,
+- [x] Alarm für ausbleibenden erfolgreichen Lauf, dauerhafte Outboxfehler,
   Reviewcases, Webhookrückstand und knappen Speicher aktivieren.
 - [x] Manuellen privaten Notlauf und Stripe-Abgleich dokumentieren.
 - [x] Den separaten Backup-Cron `17 * * * *` und `backup status` ohne Secrets
@@ -224,11 +247,12 @@ bestandener Restore.
 
 **Stop:** kein echter Schedulernachweis oder fehlendes Monitoring.
 
-**Vorbereiteter Stand:** Der private, nur lesende Monitor samt gebündelter
+**Aktiver Nachweis:** Der private, nur lesende Monitor samt gebündelter
 Warnung, sechsstündiger Erinnerung, Entwarnung und kontrollierter Testwarnung
-ist im Repository vorbereitet. Die Checkbox bleibt offen, bis der Code
-SHA-gepinnt auf Produktion aktiviert, die Alarmadresse gesetzt und der Eingang
-der Testwarnung bestätigt wurde.
+ist aus dem nach `main` übernommenen Stand aktiviert. Die Alarmadresse ist
+gesetzt, die Betreiberin hat den Eingang der Testwarnung bestätigt und ein
+anschließender automatischer Fünf-Minuten-Lauf war ohne Befund. Produkte,
+Bestand, Checkout, Zahlungen und Bestellungen blieben unverändert.
 
 ## 11. Cutover
 

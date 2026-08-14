@@ -54,6 +54,8 @@ return [
     'brevoApiKey' => null,
     'brevoSenderEmail' => null,
     'brevoSenderName' => 'Carmaja-Perlen Shop',
+    // Betreiberadresse für datensparsame Bestellhinweise; nie im Repository setzen.
+    'brevoOperatorEmail' => null,
     // Erst nach geprüftem Alarmtest kontrolliert auf true setzen.
     'monitorEnabled' => false,
     'monitorAlertEmail' => null,

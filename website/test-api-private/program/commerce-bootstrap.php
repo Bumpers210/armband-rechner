@@ -50,7 +50,7 @@ function carmaja_bootstrap_commerce(array $config): CarmajaCommercePdo
         || trim((string) ($status['Ssl_version'] ?? '')) === '') {
         throw new CarmajaBootstrapException('commerce_tls_not_active', 'Commerce-Datenbankverbindung ist nicht nachweislich verschlüsselt.');
     }
-    return new CarmajaCommercePdo($pdo);
+    return new CarmajaCommercePdo($pdo, $config['brevoOperatorEmail'] ?? null);
 }
 
 function carmaja_bootstrap_stripe(array $config): CarmajaStripeGateway

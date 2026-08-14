@@ -277,6 +277,7 @@ carmaja_bootstrap_test(
         $config['githubBranch'] = 'main';
         $config['brevoApiKey'] = 'synthetic';
         $config['brevoSenderEmail'] = 'sender@example.invalid';
+        $config['brevoOperatorEmail'] = 'operator@example.invalid';
         $config['monitorEnabled'] = true;
         $config['monitorAlertEmail'] = 'operator@example.invalid';
         carmaja_bootstrap_test_write_config($productionConfig, $config);

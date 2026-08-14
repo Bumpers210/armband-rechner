@@ -55,6 +55,8 @@ return [
     'brevoApiKey' => null,
     'brevoSenderEmail' => null,
     'brevoSenderName' => 'Carmaja-Perlen Shop',
+    // Betreiberadresse für datensparsame Bestellhinweise; nie im Repository setzen.
+    'brevoOperatorEmail' => null,
     // Produktionsmonitoring bleibt in der Testumgebung immer deaktiviert.
     'monitorEnabled' => false,
     'monitorAlertEmail' => null,

@@ -21,6 +21,9 @@ test('Adminbereich führt keine Stripe-Erstattung aus', () => {
   assert.match(bootstrap, /\['refunds'\]/);
   assert.match(bootstrap, /\['payments'\]/);
   assert.doesNotMatch(bootstrap, /stripe.*refund|createRefund/i);
+  assert.match(bootstrap, /\['mails'\]/);
+  assert.match(bootstrap, /\['reviews'\]/);
+  assert.match(bootstrap, /queueAdminMailResend/);
 });
 
 test('Admin-Sitzung verwendet getrennte sichere Cookie- und CSRF-Verträge', () => {
@@ -52,5 +55,23 @@ test('Admin-UI zeigt Refunds nur an', () => {
   assert.match(page, /Erstattungen werden hier nur angezeigt/);
   assert.match(page, /payment_method_type/);
   assert.match(page, /noch keine Bestellung/);
+  assert.match(page, /Letzter erfolgreicher Versand/);
+  assert.match(page, /Letzter Fehler/);
+  assert.match(page, /Prüffälle/);
+  assert.match(page, /Neuversand vormerken/);
+  assert.match(page, /kann eine doppelte E-Mail erzeugen/);
+  assert.match(page, /delivery_unknown/);
+  assert.match(page, /operator_order_notification/);
+  assert.doesNotMatch(page, /mail\.recipient/);
   assert.doesNotMatch(page, /refund.*POST|createRefund/i);
+});
+
+test('Betreiberhinweis ist konfiguriert und auf freigegebene Felder begrenzt', () => {
+  const commerce = read('test-api-private/program/commerce-core.php');
+  const bootstrap = read('test-api-private/program/bootstrap.php');
+  assert.match(bootstrap, /brevoOperatorEmail/);
+  assert.match(commerce, /operator_order_notification/);
+  assert.match(commerce, /operator-order-notification:/);
+  assert.match(commerce, /carmaja_commerce_operator_order_mail_payload/);
+  assert.match(commerce, /mail_resend_not_allowed/);
 });

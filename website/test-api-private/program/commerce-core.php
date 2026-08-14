@@ -92,6 +92,66 @@ function carmaja_commerce_request_hash(array $value): string
     return hash('sha256', carmaja_commerce_json($value));
 }
 
+function carmaja_commerce_order_mail_payload(
+    string $orderNumber,
+    string $customerName,
+    array $product,
+    array $shipping,
+    array $legal,
+    int $totalMinor,
+    string $paymentMethodType
+): array {
+    return [
+        'orderNumber' => $orderNumber,
+        'customerName' => $customerName,
+        'product' => [
+            'productId' => (string) ($product['productId'] ?? ''),
+            'name' => (string) ($product['name'] ?? ''),
+            'quantity' => 1,
+            'priceMinor' => (int) ($product['priceMinor'] ?? 0),
+            'currency' => (string) ($product['currency'] ?? CARMAJA_COMMERCE_CURRENCY),
+        ],
+        'shipping' => [
+            'shippingMethodId' => (string) ($shipping['shippingMethodId'] ?? ''),
+            'publicName' => (string) ($shipping['publicName'] ?? ''),
+            'amountMinor' => (int) ($shipping['amountMinor'] ?? 0),
+            'currency' => (string) ($shipping['currency'] ?? CARMAJA_COMMERCE_CURRENCY),
+            'minBusinessDays' => (int) ($shipping['minBusinessDays'] ?? 0),
+            'maxBusinessDays' => (int) ($shipping['maxBusinessDays'] ?? 0),
+        ],
+        'totalMinor' => $totalMinor,
+        'currency' => CARMAJA_COMMERCE_CURRENCY,
+        'paymentMethodType' => $paymentMethodType,
+        'legal' => [
+            'legalBundleId' => (string) ($legal['legalBundleId'] ?? ''),
+            'bundleHash' => (string) ($legal['bundleHash'] ?? ''),
+            'termsVersion' => (string) ($legal['termsVersion'] ?? ''),
+            'privacyVersion' => (string) ($legal['privacyVersion'] ?? ''),
+            'withdrawalVersion' => (string) ($legal['withdrawalVersion'] ?? ''),
+            'shippingVersion' => (string) ($legal['shippingVersion'] ?? ''),
+            'merchantVersion' => (string) ($legal['merchantVersion'] ?? ''),
+        ],
+    ];
+}
+
+function carmaja_commerce_operator_order_mail_payload(array $orderPayload): array
+{
+    $product = is_array($orderPayload['product'] ?? null)
+        ? $orderPayload['product']
+        : [];
+
+    return [
+        'orderNumber' => (string) ($orderPayload['orderNumber'] ?? ''),
+        'product' => [
+            'productId' => (string) ($product['productId'] ?? ''),
+            'name' => (string) ($product['name'] ?? ''),
+            'quantity' => 1,
+        ],
+        'totalMinor' => (int) ($orderPayload['totalMinor'] ?? 0),
+        'currency' => (string) ($orderPayload['currency'] ?? CARMAJA_COMMERCE_CURRENCY),
+    ];
+}
+
 function carmaja_commerce_assert_id(string $value, string $field): void
 {
     if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._:-]{7,99}$/', $value) !== 1) {
@@ -180,6 +240,18 @@ final class CarmajaCommerceMemory
     public array $disputes = [];
     public int $orderSequence = 1;
 
+    public function __construct(public readonly ?string $operatorEmail = null)
+    {
+        if ($operatorEmail !== null
+            && filter_var($operatorEmail, FILTER_VALIDATE_EMAIL) === false) {
+            throw new CarmajaCommerceException(
+                'operator_email_invalid',
+                'Betreiber-E-Mail ist ungültig.',
+                500
+            );
+        }
+    }
+
     public function seedProduct(array $product, int $onHand = 1): void
     {
         if ($onHand < 0 || $onHand > 1) {
@@ -196,9 +268,18 @@ final class CarmajaCommerceMemory
         ];
     }
 
-    public function addLegalBundle(string $id): void
+    public function addLegalBundle(string $id, array $metadata = []): void
     {
-        $this->legalBundles[$id] = ['legalBundleId' => $id, 'status' => 'approved'];
+        $this->legalBundles[$id] = array_merge([
+            'legalBundleId' => $id,
+            'bundleHash' => str_repeat('0', 64),
+            'termsVersion' => 'terms-v1',
+            'privacyVersion' => 'privacy-v1',
+            'withdrawalVersion' => 'withdrawal-v1',
+            'shippingVersion' => 'shipping-v1',
+            'merchantVersion' => 'merchant-v1',
+            'status' => 'approved',
+        ], $metadata);
     }
 
     public function createCheckout(array $raw): array
@@ -382,7 +463,37 @@ final class CarmajaCommerceMemory
         $payment['paymentMethodType'] = $paymentMethodType;
         $payment['verificationStatus'] = 'verified';
         $checkout['state'] = 'completed';
-        $this->mailOutbox['order-confirmation:' . $orderId] = ['status' => 'queued', 'orderId' => $orderId];
+        $product = $this->products[$checkout['productId']];
+        $mailPayload = carmaja_commerce_order_mail_payload(
+            $orderNumber,
+            (string) ($event['customerName'] ?? ''),
+            [
+                'productId' => $checkout['productId'],
+                'name' => (string) ($product['name'] ?? ''),
+                'priceMinor' => (int) $checkout['priceMinor'],
+                'currency' => (string) $checkout['currency'],
+            ],
+            $checkout['shippingSnapshot'],
+            $this->legalBundles[$checkout['legalBundleId']],
+            (int) $payment['amountMinor'],
+            $paymentMethodType
+        );
+        $this->mailOutbox['order-confirmation:' . $orderId] = [
+            'status' => 'queued',
+            'messageType' => 'order_confirmation',
+            'orderId' => $orderId,
+            'recipient' => (string) ($event['customerEmail'] ?? ''),
+            'payload' => $mailPayload,
+        ];
+        if ($this->operatorEmail !== null) {
+            $this->mailOutbox['operator-order-notification:' . $orderId] = [
+                'status' => 'queued',
+                'messageType' => 'operator_order_notification',
+                'orderId' => $orderId,
+                'recipient' => $this->operatorEmail,
+                'payload' => carmaja_commerce_operator_order_mail_payload($mailPayload),
+            ];
+        }
         $this->metadataOutbox[$paymentId] = ['status' => 'queued', 'paymentId' => $paymentId];
 
         return $this->orders[$orderId];
@@ -596,8 +707,19 @@ final class CarmajaCommerceMemory
 /** MySQL 8/InnoDB repository used by AP2 server-side code and later workers. */
 final class CarmajaCommercePdo
 {
-    public function __construct(private readonly PDO $pdo)
+    public function __construct(
+        private readonly PDO $pdo,
+        private readonly ?string $operatorEmail = null
+    )
     {
+        if ($operatorEmail !== null
+            && filter_var($operatorEmail, FILTER_VALIDATE_EMAIL) === false) {
+            throw new CarmajaCommerceException(
+                'operator_email_invalid',
+                'Betreiber-E-Mail ist ungültig.',
+                500
+            );
+        }
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
     }
@@ -1481,14 +1603,56 @@ final class CarmajaCommercePdo
             $pdo->prepare("UPDATE order_sequences SET next_value = next_value + 1 WHERE sequence_name = 'carmaja-v1'")->execute();
 
             $orderId = carmaja_commerce_new_id();
-            $productSnapshot = json_encode([
+            $productNameStatement = $pdo->prepare(
+                'SELECT name FROM commerce_products WHERE product_id = ?'
+            );
+            $productNameStatement->execute([$checkout['product_id']]);
+            $productName = $productNameStatement->fetchColumn();
+            if (!is_string($productName) || trim($productName) === '') {
+                $productName = (string) $checkout['product_id'];
+            }
+            $productSnapshotData = [
                 'productId' => $checkout['product_id'],
                 'productVersion' => (int) $checkout['product_version'],
                 'sourceHash' => $checkout['source_hash'],
+                'name' => $productName,
                 'priceMinor' => (int) $checkout['price_minor'],
                 'currency' => $checkout['currency'],
-            ], JSON_THROW_ON_ERROR);
+            ];
+            $productSnapshot = json_encode($productSnapshotData, JSON_THROW_ON_ERROR);
             $shippingSnapshot = $checkout['shipping_snapshot'];
+            $shippingSnapshotData = json_decode(
+                (string) $shippingSnapshot,
+                true,
+                32,
+                JSON_THROW_ON_ERROR
+            );
+            $legalStatement = $pdo->prepare(
+                'SELECT legal_bundle_id, bundle_hash, terms_version,
+                        privacy_version, withdrawal_version, shipping_version,
+                        merchant_version
+                 FROM legal_bundles WHERE legal_bundle_id = ?'
+            );
+            $legalStatement->execute([$checkout['legal_bundle_id']]);
+            $legalRow = $legalStatement->fetch(PDO::FETCH_ASSOC);
+            $legalSnapshot = [
+                'legalBundleId' => (string) ($legalRow['legal_bundle_id'] ?? $checkout['legal_bundle_id']),
+                'bundleHash' => (string) ($legalRow['bundle_hash'] ?? ''),
+                'termsVersion' => (string) ($legalRow['terms_version'] ?? ''),
+                'privacyVersion' => (string) ($legalRow['privacy_version'] ?? ''),
+                'withdrawalVersion' => (string) ($legalRow['withdrawal_version'] ?? ''),
+                'shippingVersion' => (string) ($legalRow['shipping_version'] ?? ''),
+                'merchantVersion' => (string) ($legalRow['merchant_version'] ?? ''),
+            ];
+            $mailPayload = carmaja_commerce_order_mail_payload(
+                $orderNumber,
+                (string) ($event['customerName'] ?? ''),
+                $productSnapshotData,
+                is_array($shippingSnapshotData) ? $shippingSnapshotData : [],
+                $legalSnapshot,
+                (int) $payment['amount_minor'],
+                $paymentMethodType
+            );
             $pdo->prepare(
                 'INSERT INTO orders
                     (order_id, order_number, checkout_id, payment_id, status,
@@ -1547,8 +1711,23 @@ final class CarmajaCommercePdo
                  VALUES (?, \'order_confirmation\', ?, ?, ?, \'queued\', UTC_TIMESTAMP(6))'
             )->execute([
                 'order-confirmation:' . $orderId, $orderId,
-                $event['customerEmail'] ?? '', json_encode(['orderNumber' => $orderNumber], JSON_THROW_ON_ERROR),
+                $event['customerEmail'] ?? '', json_encode($mailPayload, JSON_THROW_ON_ERROR),
             ]);
+            if ($this->operatorEmail !== null) {
+                $pdo->prepare(
+                    'INSERT INTO mail_outbox
+                        (dedupe_key, message_type, order_id, recipient, payload, status, next_attempt_at)
+                     VALUES (?, \'operator_order_notification\', ?, ?, ?, \'queued\', UTC_TIMESTAMP(6))'
+                )->execute([
+                    'operator-order-notification:' . $orderId,
+                    $orderId,
+                    $this->operatorEmail,
+                    json_encode(
+                        carmaja_commerce_operator_order_mail_payload($mailPayload),
+                        JSON_THROW_ON_ERROR
+                    ),
+                ]);
+            }
             $pdo->prepare(
                 'INSERT INTO stripe_metadata_outbox
                     (dedupe_key, payment_id, stripe_payment_intent_id, metadata_payload, status, next_attempt_at)
@@ -2257,7 +2436,8 @@ final class CarmajaCommercePdo
     ): array {
         return $this->transaction(function (PDO $pdo) use ($orderId, $trackingNumber, $adminId, $correlationId): array {
             $shipment = $pdo->prepare(
-                'SELECT s.shipment_id, s.status, o.customer_email, o.order_number
+                'SELECT s.shipment_id, s.status, o.customer_email, o.order_number,
+                        o.product_snapshot, o.shipping_snapshot
                  FROM shipments s JOIN orders o ON o.order_id = s.order_id
                  WHERE s.order_id = ? FOR UPDATE'
             );
@@ -2282,7 +2462,18 @@ final class CarmajaCommercePdo
                 'shipping-confirmation:' . $orderId,
                 $orderId,
                 $row['customer_email'],
-                json_encode(['orderNumber' => $row['order_number'], 'trackingNumber' => $trackingNumber], JSON_THROW_ON_ERROR),
+                json_encode([
+                    'orderNumber' => $row['order_number'],
+                    'trackingNumber' => $trackingNumber,
+                    'productName' => (string) (
+                        json_decode((string) $row['product_snapshot'], true, 32, JSON_THROW_ON_ERROR)['name']
+                        ?? ''
+                    ),
+                    'shippingName' => (string) (
+                        json_decode((string) $row['shipping_snapshot'], true, 32, JSON_THROW_ON_ERROR)['publicName']
+                        ?? ''
+                    ),
+                ], JSON_THROW_ON_ERROR),
             ]);
             $this->addAdminAudit($adminId, 'shipment_marked_shipped', 'order', $orderId, $correlationId, [
                 'trackingPresent' => $trackingNumber !== '',
@@ -2302,6 +2493,13 @@ final class CarmajaCommercePdo
             $row = $select->fetch(PDO::FETCH_ASSOC);
             if (!is_array($row)) {
                 throw new CarmajaCommerceException('mail_not_found', 'Mail-Outboxeintrag fehlt.', 404);
+            }
+            if (!in_array((string) $row['status'], ['delivery_unknown', 'manual_review', 'failed'], true)) {
+                throw new CarmajaCommerceException(
+                    'mail_resend_not_allowed',
+                    'Nur unklare oder endgültig fehlgeschlagene Mails dürfen manuell neu versendet werden.',
+                    409
+                );
             }
             $dedupeKey = 'manual-resend:' . $mailId . ':' . carmaja_commerce_new_id();
             $pdo->prepare(
