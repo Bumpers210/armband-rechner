@@ -148,7 +148,7 @@ Cutover, Checkout und Shopstart bleiben bis zu den übrigen Gates gesperrt.
 ## 7. Brevo Live
 
 - [x] Verifizierten produktiven Absender und API-Zugang bestätigen.
-- [ ] Bestell-, Betreiber-, Versand- und Widerrufsvorlage gegen die
+- [x] Bestell-, Betreiber-, Versand- und Widerrufsvorlage gegen die
   freigegebenen Texte prüfen.
 - [ ] Idempotency-Key, Deduplizierung, `delivery_unknown`, Retry und
   manuellen auditierten Neuversand prüfen.
@@ -170,9 +170,12 @@ Workflow `31807670264`, Versuch 2, aktiviert, live geprüft und als verifiziert
 markiert. Die privaten Programme aus Commit `da37149` bestanden auf dem
 Testserver mit PHP 8.4 alle 10 AP5- und 17 Commerce-Fälle ausschließlich mit
 künstlichen Daten. Die Test-Runtime blieb ohne Commerce-, Stripe- und
-Brevo-Zugänge; es entstand weder Checkout noch Mailversand. Die Checkboxen
-bleiben bis zur abschließenden inhaltlichen Betreiberabnahme und einer späteren
-getrennten Produktionsfreigabe offen. Der Ausgangsbefund steht in
+Brevo-Zugänge; es entstand weder Checkout noch Mailversand. Die Betreiberin
+hat die vier Texte am 14. August 2026 anhand der geschützten Testvorschau
+inhaltlich freigegeben; damit ist die erste Checkbox geschlossen. Die beiden
+verbleibenden Checkboxen bleiben bis zum getrennt freigegebenen
+Produktionsnachweis offen. Der
+Ausgangsbefund steht in
 `website/docs/ap7-nonpayment-validation-2026-08-13.md`.
 
 **Stop:** unverifizierter Absender, Testkonto, unklare Vorlage oder fehlende

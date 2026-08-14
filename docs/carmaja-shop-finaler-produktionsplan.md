@@ -841,6 +841,12 @@ Rechtsprüfungswarteanteil. Der erste schreibende AP2-Schritt ist auf
 | AP7 und später | nicht freigegeben |
 | Produktaktivierung/Cutover | nicht freigegeben |
 
+Die vier fachlichen Shop-E-Mail-Texte wurden am 14. August 2026 in der
+geschützten Testvorschau durch die Betreiberin inhaltlich freigegeben. Diese
+Abnahme erlaubt weder reale Empfänger noch Brevo-Aktivierung, Checkout,
+Produktaktivierung, Bestands-Cutover, Publisher, Produktionsdeploy oder
+Shopstart.
+
 Die Praxisnachweise von AP2 bis AP6 einschließlich AP3b sind bestanden. Die
 freigegebenen Rechts-, Datenschutz- und Versandfassungen sind dem
 Produktions-Legal-Bundle `cmj-production-legal-2026-08-11-v4` zugeordnet.

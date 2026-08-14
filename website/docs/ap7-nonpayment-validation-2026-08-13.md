@@ -106,3 +106,17 @@ aktiven Commerce-, Stripe- oder Brevo-Zugänge. Es wurde kein Checkout
 angelegt, keine Datenbank geändert und keine E-Mail versendet. Produktdatei,
 Runtime und öffentlicher API-Einstieg blieben hashgleich; der API-Schutz
 antwortet weiterhin mit `401`.
+
+## Inhaltliche Betreiberabnahme vom 14. August 2026
+
+Die Betreiberin hat die vier sichtbaren Texte für Bestellbestätigung,
+Betreiberhinweis, Versandbestätigung und Widerrufsbestätigung in der
+geschützten Testvorschau ausdrücklich freigegeben. Grundlage war der mit
+Commit `4081780` bereitgestellte und in Workflow `31816858026`, Versuch 2,
+live verifizierte Stand unter `/admin/mail-vorschau/`.
+
+Damit ist ausschließlich die inhaltliche Abnahme der vier Vorlagen
+abgeschlossen. Reale Empfänger, Brevo-Aktivierung, Produktaktivierung,
+Bestands-Cutover, Publisher, Checkout, Zahlung, Produktionsdeploy und
+Shopstart bleiben unverändert gesperrt und benötigen ihre jeweils eigene
+ausdrückliche Freigabe.
