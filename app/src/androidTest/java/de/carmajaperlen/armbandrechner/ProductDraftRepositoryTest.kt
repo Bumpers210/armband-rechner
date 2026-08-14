@@ -151,6 +151,7 @@ class ProductDraftRepositoryTest {
         return ProductDraft(
             draftId = draftId,
             name = "Testentwurf",
+            priceMinor = 5000,
             internalCalculation = CalculationSnapshot(
                 quantities = emptyMap(),
                 workMinutes = "0",
