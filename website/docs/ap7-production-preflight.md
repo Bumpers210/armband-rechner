@@ -178,6 +178,12 @@ Produktionsnachweis offen. Der
 Ausgangsbefund steht in
 `website/docs/ap7-nonpayment-validation-2026-08-13.md`.
 
+Die erneute lesende Prüfung vom 14. August 2026 bestätigte den gesunden
+Worker- und Warteschlangenzustand sowie genau einen doppelten aktiven
+Brevo-Absendereintrag. Es wurde weder versendet noch bereinigt. Der vollständige
+Nachweis und die weiterhin offenen Produktionsgates stehen in
+`website/docs/ap7-operational-checks-2026-08-14.md`.
+
 **Stop:** unverifizierter Absender, Testkonto, unklare Vorlage oder fehlende
 Fehlersichtbarkeit.
 
@@ -208,6 +214,12 @@ festgelegten OneDrive-Ziel abgelegt, serverseitig quittiert und in einem
 isolierten Restore-Dry-Run erfolgreich geprüft. Der aktuelle Status meldete
 weder Server- noch Offsite-Überfälligkeit. Dieses Backup ersetzt nicht das
 unmittelbar vor dem späteren Cutover vorgeschriebene Abschlussbackup.
+
+Eine erneute lesende Prüfung vom 14. August 2026 bestätigte aktuelle, nicht
+überfällige Server- und Offsite-Stände, einen erfolgreichen Windows-Task und
+einen vollständigen jüngsten OneDrive-Stand. Es wurde kein manuelles Backup
+oder Restore ausgelöst. Details stehen in
+`website/docs/ap7-operational-checks-2026-08-14.md`.
 
 **Stop:** fehlendes Backup, fehlende Entschlüsselbarkeit oder nicht
 bestandener Restore.
@@ -253,6 +265,12 @@ ist aus dem nach `main` übernommenen Stand aktiviert. Die Alarmadresse ist
 gesetzt, die Betreiberin hat den Eingang der Testwarnung bestätigt und ein
 anschließender automatischer Fünf-Minuten-Lauf war ohne Befund. Produkte,
 Bestand, Checkout, Zahlungen und Bestellungen blieben unverändert.
+
+Die erneute aggregierte Prüfung vom 14. August 2026 zeigte zwei aktuelle,
+fehlerfreie Workerläufe, freie Leases und keine fälligen, endgültig
+fehlgeschlagenen oder hängen gebliebenen Warteschlangeneinträge. Der
+Produktionszustand wurde dabei nicht verändert. Details stehen in
+`website/docs/ap7-operational-checks-2026-08-14.md`.
 
 ## 11. Cutover
 
