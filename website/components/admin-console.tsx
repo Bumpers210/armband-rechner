@@ -174,6 +174,9 @@ export function AdminConsole() {
     <main className="content admin-console">
       <h1>Shop-Administration</h1>
       <p className="muted">Geschützter Betreiberbereich. Erstattungen werden hier nur angezeigt und synchronisiert.</p>
+      <p>
+        <a href="/admin/mail-vorschau/">Vier Shop-E-Mails mit Testdaten ansehen</a>
+      </p>
       <form onSubmit={login} className="admin-login" autoComplete="off">
         <label htmlFor="admin-username">Benutzername</label>
         <input id="admin-username" value={username} onChange={(event) => setUsername(event.target.value)} required />

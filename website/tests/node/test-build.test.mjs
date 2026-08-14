@@ -157,6 +157,16 @@ test(
         ),
         "utf8",
       );
+      const mailPreviewHtml = await readFile(
+        path.join(
+          projectRoot,
+          "out-test",
+          "admin",
+          "mail-vorschau",
+          "index.html",
+        ),
+        "utf8",
+      );
 
       assert.match(
         overviewHtml,
@@ -178,6 +188,12 @@ test(
       assert.ok(!detailHtml.includes("Vor dem Duschen und Baden ablegen"));
       assert.ok(!detailHtml.includes("Kontakt mit Parfüm und Cremes vermeiden"));
       assert.ok(!detailHtml.includes("Nicht stark auseinanderziehen"));
+      assert.ok(mailPreviewHtml.includes("Nur Vorschau – kein Versand"));
+      assert.ok(mailPreviewHtml.includes("Bestellbestätigung"));
+      assert.ok(mailPreviewHtml.includes("Betreiberhinweis"));
+      assert.ok(mailPreviewHtml.includes("Versandbestätigung"));
+      assert.ok(mailPreviewHtml.includes("Widerrufsbestätigung"));
+      assert.ok(!mailPreviewHtml.includes("jbuchner89@googlemail.com"));
       assert.equal(
         [...detailHtml.matchAll(/data-lightbox-open="/g)].length,
         products[0].images.length,
