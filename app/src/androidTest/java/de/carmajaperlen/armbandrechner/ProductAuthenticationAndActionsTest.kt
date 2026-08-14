@@ -155,7 +155,7 @@ class ProductAuthenticationAndActionsTest {
     }
 
     @Test
-    fun publishedProductShowsExactlyItsThreeActions() {
+    fun publishedProductShowsOnlyItsShopIndependentEditAction() {
         composeRule.setContent {
             MaterialTheme {
                 PublishedProductView(
@@ -166,9 +166,9 @@ class ProductAuthenticationAndActionsTest {
             }
         }
 
-        composeRule.onNodeWithText("Verkauft").assertIsDisplayed()
-        composeRule.onNodeWithText("Deaktivieren").assertIsDisplayed()
-        composeRule.onNodeWithText("Bearbeiten").assertIsDisplayed()
+        composeRule.onNodeWithText("Verkauft").assertDoesNotExist()
+        composeRule.onNodeWithText("Deaktivieren").assertDoesNotExist()
+        composeRule.onNodeWithTag("published-edit").assertExists()
         composeRule.onNodeWithText("Auf Testwebsite veröffentlichen").assertDoesNotExist()
         composeRule.onNodeWithText("Speichern").assertDoesNotExist()
         composeRule.onNodeWithText("Speichern und synchronisieren").assertDoesNotExist()

@@ -1,0 +1,196 @@
+name: Build signed production Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_commit_sha:
+        description: "Vollständiger, geprüfter main-Commit"
+        required: true
+        type: string
+      release_confirmation:
+        description: "Exakt BUILD-SIGNED-CARMAJA-APP eingeben"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-production-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard repository, branch, commit and confirmation
+        shell: bash
+        env:
+          EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+          RELEASE_CONFIRMATION: ${{ inputs.release_confirmation }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = "Bumpers210/armband-rechner"
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test "${GITHUB_REF_NAME}" = "main"
+          test "${GITHUB_SHA}" = "${EXPECTED_COMMIT_SHA}"
+          test "${RELEASE_CONFIRMATION}" = "BUILD-SIGNED-CARMAJA-APP"
+
+  build-production-apk:
+    needs: validate-request
+    if: ${{ github.ref == 'refs/heads/main' && github.sha == inputs.expected_commit_sha && inputs.release_confirmation == 'BUILD-SIGNED-CARMAJA-APP' }}
+    runs-on: ubuntu-latest
+    environment: carma-production-app
+
+    steps:
+      - name: Check out exact main commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Recheck exact source after checkout
+        shell: bash
+        env:
+          EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REPOSITORY}" = "Bumpers210/armband-rechner"
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test "$(git rev-parse HEAD)" = "${EXPECTED_COMMIT_SHA}"
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest
+
+      - name: Run Android lint
+        run: ./gradlew lintDebug lintRelease
+
+      - name: Enable KVM for the isolated emulator
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          sudo chmod 666 /dev/kvm
+
+      - name: Run Compose instrumentation tests in isolated emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect
+          script: |
+            set -eu
+            adb shell svc wifi disable
+            adb shell svc data disable
+            ./gradlew connectedDebugAndroidTest
+
+      - name: Prepare protected production signing material
+        shell: bash
+        env:
+          CARMAJA_ANDROID_KEYSTORE_BASE64: ${{ secrets.CARMAJA_ANDROID_KEYSTORE_BASE64 }}
+          CARMAJA_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.CARMAJA_ANDROID_KEYSTORE_PASSWORD }}
+          CARMAJA_ANDROID_KEY_ALIAS: ${{ secrets.CARMAJA_ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          test -n "${CARMAJA_ANDROID_KEYSTORE_BASE64}"
+          test -n "${CARMAJA_ANDROID_KEYSTORE_PASSWORD}"
+          test "${CARMAJA_ANDROID_KEY_ALIAS}" = "carmaja-product-management-production"
+
+          keystore="${RUNNER_TEMP}/carmaja-product-management-production.p12"
+          printf 'CARMAJA_PRODUCTION_KEYSTORE_PATH=%s\n' "${keystore}" >> "${GITHUB_ENV}"
+          umask 077
+          printf '%s' "${CARMAJA_ANDROID_KEYSTORE_BASE64}" | base64 --decode > "${keystore}"
+          test -s "${keystore}"
+          chmod 600 "${keystore}"
+          keytool -list \
+            -keystore "${keystore}" \
+            -storepass:env CARMAJA_ANDROID_KEYSTORE_PASSWORD \
+            -alias "${CARMAJA_ANDROID_KEY_ALIAS}" >/dev/null
+
+      - name: Build signed production release APK
+        env:
+          CARMAJA_PRODUCTION_STORE_PASSWORD: ${{ secrets.CARMAJA_ANDROID_KEYSTORE_PASSWORD }}
+          CARMAJA_PRODUCTION_KEY_PASSWORD: ${{ secrets.CARMAJA_ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      - name: Verify signed production APK
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apk="app/build/outputs/apk/release/app-release.apk"
+          apksigner="${ANDROID_HOME}/build-tools/36.0.0/apksigner"
+          aapt="${ANDROID_HOME}/build-tools/36.0.0/aapt"
+          expected_certificate_sha256="17FBAD15D1682B173314A860530B3895790AAA7C83EEA40DD792F268AE298944"
+          test -f "${apk}"
+          test -x "${apksigner}"
+          test -x "${aapt}"
+
+          "${apksigner}" verify --verbose "${apk}" >/dev/null
+          certificate_sha256="$("${apksigner}" verify --print-certs "${apk}" |
+            awk -F ': ' '/Signer #1 certificate SHA-256 digest:/ { print toupper($2) }')"
+          test "${certificate_sha256}" = "${expected_certificate_sha256}"
+
+          badging="$("${aapt}" dump badging "${apk}")"
+          grep -Fq "package: name='de.carmajaperlen.armbandrechner'" <<<"${badging}"
+          grep -Fq "versionCode='4'" <<<"${badging}"
+          grep -Fq "versionName='1.1.2'" <<<"${badging}"
+          grep -Fq "application-label:'Carmaja-Perlen Produktverwaltung'" <<<"${badging}"
+
+          apk_strings="$(mktemp)"
+          trap 'rm -f "${apk_strings}"' EXIT
+          unzip -p "${apk}" 'classes*.dex' resources.arsc | strings > "${apk_strings}"
+          grep -Fqx 'https://api.carmaja-perlen.de/' "${apk_strings}"
+          ! grep -Fq 'https://test-api.carmaja-perlen.de/' "${apk_strings}"
+          ! grep -Fq 'de.carmajaperlen.armbandrechner.test' "${apk_strings}"
+          ! grep -Fq 'Carmaja-Perlen Produktverwaltung Test' "${apk_strings}"
+          ! grep -Fq -- '-beta' "${apk_strings}"
+          ! grep -Fq 'de.steinhart.armbandrechner' "${apk_strings}"
+
+          echo "PRODUCTION_SIGNED_APK_VALIDATION_OK"
+
+      - name: Prepare short-lived verification artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          apk="app/build/outputs/apk/release/app-release.apk"
+          artifact_apk="artifact/Carmaja-Perlen-Produktverwaltung-1.1.2-signed.apk"
+          cp "${apk}" "${artifact_apk}"
+          sha256sum "${artifact_apk}" > "${artifact_apk}.sha256"
+          cat > artifact/RELEASE.txt <<'EOF'
+          App-Name: Carmaja-Perlen Produktverwaltung
+          Paketname: de.carmajaperlen.armbandrechner
+          Version: 1.1.2
+          VersionCode: 4
+          Produkt-API: https://api.carmaja-perlen.de/
+          Signatur: production certificate verified
+          Verwendung: verification only; installation requires separate approval
+          EOF
+
+      - name: Upload signed APK verification artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Carmaja-Perlen-Produktverwaltung-1.1.2-signed-${{ github.sha }}
+          path: artifact/*
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove production signing material
+        if: always()
+        shell: bash
+        run: rm -f "${CARMAJA_PRODUCTION_KEYSTORE_PATH:-}"
