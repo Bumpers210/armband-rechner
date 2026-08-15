@@ -69,3 +69,10 @@ Die Vorlage setzt `productionPublishEnabled` und `githubAdapterEnabled` auf
 `false`. Erst eine private Runtime-Konfiguration mit beiden explizit auf `true`
 und einem Token im privaten Datenbereich kann den Adapter aktivieren. Das Ziel
 ist fest auf Repository `Bumpers210/armband-rechner` und Branch `main` begrenzt.
+
+Der v2-Publisher akzeptiert ausschließlich den vollständigen öffentlichen
+Produktvertrag der Modellversion 2. Er darf nur `website/content/products.json`
+und die nummerierten JPEGs im eigenen SKU-Verzeichnis ändern. Eine abweichende
+Dokumentversion, fremde SKU/Slug-Belegung, zusätzliche Felder oder Bildpfade
+außerhalb des privaten Produktuploads blockieren die Veröffentlichung vor dem
+GitHub-Schreibvorgang.

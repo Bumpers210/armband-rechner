@@ -306,7 +306,12 @@ function carmaja_bootstrap_prepare(?string $configPath = null): array
     } else {
         unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']);
     }
-    unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2']);
+    if ($config['githubAdapterEnabled'] && $config['productionPublishEnabled']) {
+        $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2'] =
+            'carmaja_api_github_publish_adapter_v2';
+    } else {
+        unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2']);
+    }
 
     return $config;
 }

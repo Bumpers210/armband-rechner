@@ -167,6 +167,23 @@ try {
         !isset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2']),
         'v2-Publisher muss im sicheren Standard deaktiviert bleiben.'
     );
+    $enabledConfig = $fixture['config'];
+    $enabledConfig['productionPublishEnabled'] = true;
+    $enabledConfig['githubAdapterEnabled'] = true;
+    $enabledConfig['githubTokenFile'] = $githubTokenFile;
+    file_put_contents(
+        $fixture['configFile'],
+        "<?php return " . var_export($enabledConfig, true) . ";\n"
+    );
+    $enabled = carmaja_bootstrap_prepare($fixture['configFile']);
+    production_bootstrap_assert(
+        $enabled['productionPublishEnabled'] === true
+            && $enabled['githubAdapterEnabled'] === true
+            && ($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2'] ?? null)
+                === 'carmaja_api_github_publish_adapter_v2'
+            && is_callable($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2']),
+        'v2-Publisher wird bei vollständig freigegebener Konfiguration nicht kontrolliert aktiviert.'
+    );
     echo "production-bootstrap: OK\n";
 } finally {
     production_bootstrap_remove_tree($fixture['root']);
