@@ -20,6 +20,11 @@ async function fixture() {
     path.join(websiteDirectory, "content", "products.json"),
     sourceProductsPath,
   );
+  await cp(
+    path.join(websiteDirectory, "public", "images", "products"),
+    imageRoot,
+    { recursive: true },
+  );
   return { root, outputDirectory, sourceProductsPath, imageRoot };
 }
 

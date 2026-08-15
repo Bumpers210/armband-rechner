@@ -5,11 +5,12 @@ import test from "node:test";
 
 const websiteDirectory = process.cwd();
 
-test("der entfernte Produktdatensatz und seine Bilder sind nicht mehr vorhanden", async () => {
+test("der entfernte Alt-Produktdatensatz und seine Bilder sind nicht mehr vorhanden", async () => {
   const productsPath = path.join(websiteDirectory, "content", "products.json");
   const products = JSON.parse(await readFile(productsPath, "utf8"));
 
-  assert.deepEqual(products, { version: 2, products: [] });
+  assert.equal(products.version, 2);
+  assert.equal(Array.isArray(products.products), true);
   assert.equal(JSON.stringify(products).includes("CP-2026-0001"), false);
 
   for (const fileName of ["01.jpg", "02.jpg"]) {
