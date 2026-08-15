@@ -65,12 +65,11 @@ data class ProductUiActions(
     val onBraceletSizeCmChange: (TextFieldValue) -> Unit = {},
     val onPearlSizeMmChange: (TextFieldValue) -> Unit = {},
     val onShortDescriptionChange: (TextFieldValue) -> Unit = {},
+    val onPriceChange: (TextFieldValue) -> Unit = {},
     val onImagesPicked: (List<Uri>) -> Unit = {},
     val onSave: () -> Unit = {},
     val onSync: () -> Unit = {},
     val onPublish: () -> Unit = {},
-    val onMarkSold: () -> Unit = {},
-    val onDisable: () -> Unit = {},
     val onDiscardSelected: () -> Unit = {},
     val onMessageShown: () -> Unit = {},
 ) {
@@ -336,26 +335,11 @@ internal fun PublishedProductView(
             Text("Perlengröße: ${displayMeasurement(draft.pearlSizeMm, "mm")}")
             Text(draft.shortDescription)
             Text("Bilder: ${draft.images.size}/5")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = actions.onMarkSold,
-                    enabled = !busy,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("published-mark-sold"),
-                ) {
-                    Text("Verkauft")
-                }
-                OutlinedButton(
-                    onClick = actions.onDisable,
-                    enabled = !busy,
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("published-disable"),
-                ) {
-                    Text("Deaktivieren")
-                }
-            }
+            Text(
+                text = "Verkauf und Nichtverfügbarkeit werden vom Shop verwaltet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             OutlinedButton(
                 onClick = actions.onEdit,
                 enabled = !busy,
@@ -544,6 +528,21 @@ internal fun ProductDraftForm(
                 error = fieldErrors["shortDescription"],
                 busy = busy,
                 singleLine = false,
+            )
+
+            ProductTextField(
+                value = editor.price,
+                onValueChange = actions.onPriceChange,
+                label = "Verkaufspreis (€)",
+                testTag = "product-price",
+                error = fieldErrors["priceMinor"],
+                busy = busy,
+                keyboardType = KeyboardType.Decimal,
+            )
+            Text(
+                text = "Währung: EUR · Verkaufsfreigabe: deaktiviert",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Text(

@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - test/product-management-beta
-    tags:
-      - "app-v0.*"
     paths:
       - ".github/workflows/android-test-apk.yml"
       - "app/**"
@@ -85,15 +83,27 @@ jobs:
       - name: Run Android lint
         run: ./gradlew lintDebug
 
-      - name: Build parallel-installable test APK
+      - name: Build signed beta APK
         run: ./gradlew assembleBeta
 
-      - name: Verify stable beta signature
+      - name: Verify beta package and stable signature
         shell: bash
         run: |
           set -euo pipefail
           apk="app/build/outputs/apk/beta/app-beta.apk"
+          aapt="${ANDROID_HOME}/build-tools/36.0.0/aapt"
           expected="235ee4d746fdf5490df3c292f882a76429795e99feaeb58dea37443e944d5d2a"
+          badging="$("${aapt}" dump badging "${apk}")"
+          package_name="$(printf '%s\n' "${badging}" | sed -n "1s/^package: name='\([^']*\)'.*/\1/p")"
+          version_code="$(printf '%s\n' "${badging}" | sed -n "1s/.*versionCode='\([^']*\)'.*/\1/p")"
+
+          if [[ "${package_name}" != "de.steinhart.armbandrechner.test" ||
+                ! "${version_code}" =~ ^[0-9]+$ ||
+                "${version_code}" -le 4 ]]; then
+            echo "::error::The beta APK does not satisfy the isolated test-app contract."
+            exit 1
+          fi
+
           actual="$(
             "${ANDROID_HOME}/build-tools/36.0.0/apksigner" \
               verify --print-certs "${apk}" |
@@ -106,41 +116,53 @@ jobs:
           echo "BETA_APK_SIGNATURE_OK"
 
       - name: Prepare test artifact
+        id: beta_artifact
         shell: bash
         run: |
-          set -eu
+          set -euo pipefail
+          apk="app/build/outputs/apk/beta/app-beta.apk"
+          aapt="${ANDROID_HOME}/build-tools/36.0.0/aapt"
+          test -f "${apk}"
+          test -x "${aapt}"
+
+          badging="$("${aapt}" dump badging "${apk}")"
+          version_code="$(printf '%s\n' "${badging}" | sed -n "1s/.*versionCode='\([^']*\)'.*/\1/p")"
+          version_name="$(printf '%s\n' "${badging}" | sed -n "1s/.*versionName='\([^']*\)'.*/\1/p")"
+          [[ "${version_code}" =~ ^[0-9]+$ ]]
+          [[ "${version_name}" =~ ^[0-9A-Za-z._-]+$ ]]
+
+          artifact_name="Carmaja-Perlen-Produktverwaltung-Test-${version_name}-code${version_code}"
           mkdir -p artifact
-          cp app/build/outputs/apk/beta/app-beta.apk artifact/carmaja-perlen-test.apk
-          sha256sum artifact/carmaja-perlen-test.apk > artifact/carmaja-perlen-test.apk.sha256
+          cp "${apk}" "artifact/${artifact_name}.apk"
+          sha256sum "artifact/${artifact_name}.apk" > "artifact/${artifact_name}.apk.sha256"
           printf '%s\n' '235ee4d746fdf5490df3c292f882a76429795e99feaeb58dea37443e944d5d2a' > artifact/BETA-CERTIFICATE-SHA256.txt
-          cat > artifact/INSTALLATION.txt <<'EOF'
+          printf 'artifact_name=%s\n' "${artifact_name}" >> "${GITHUB_OUTPUT}"
+          cat > artifact/INSTALLATION.txt <<EOF
           Carmaja-Perlen Produktverwaltung Test
 
           App-Name: Carmaja-Perlen Produktverwaltung Test
-          Paketname: de.carmajaperlen.armbandrechner.test
-          Version: 1.1.0-beta.4
+          Paketname: de.steinhart.armbandrechner.test
+          Version: ${version_name}
+          VersionCode: ${version_code}
           API: https://test-api.carmaja-perlen.de/
 
           Diese APK ist mit dem fest gepinnten Carmaja-Beta-Zertifikat signiert
-          und parallel zur Produktions-App installierbar.
+          und aktualisiert nur eine mit derselben Test-Paket-ID und demselben
+          Beta-Zertifikat signierte Installation.
           Sie nutzt die getrennte Test-API und loest kein produktives IONOS-Deployment aus.
 
           Installation:
-          1. Eine bisher debug-signierte Test-App einmalig deinstallieren.
-             Dabei gehen deren lokale Entwuerfe und das Geraete-Token verloren.
-          2. APK aus diesem GitHub-Actions-Artefakt herunterladen.
-          3. SHA-256-Datei und Beta-Zertifikat pruefen.
-          4. APK auf dem Test-Smartphone installieren.
-          5. Spaetere stabil beta-signierte APKs koennen als Update installiert werden.
+          1. APK aus diesem GitHub-Actions-Artefakt herunterladen.
+          2. SHA-256-Datei und Beta-Zertifikat pruefen.
+          3. APK auf dem Beta-Test-Smartphone installieren.
+          4. Spaetere stabil beta-signierte APKs mit hoeherem VersionCode koennen als Update installiert werden.
           EOF
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: carmaja-perlen-test-apk
-          path: |
-            artifact/carmaja-perlen-test.apk
-            artifact/carmaja-perlen-test.apk.sha256
+          name: ${{ steps.beta_artifact.outputs.artifact_name }}
+          path: artifact/*
           if-no-files-found: error
           retention-days: 30
 
@@ -148,40 +170,3 @@ jobs:
         if: always()
         shell: bash
         run: rm -f "${CARMAJA_BETA_KEYSTORE_PATH:-}"
-
-  publish-release:
-    if: startsWith(github.ref, 'refs/tags/app-v0.')
-    needs: build-test-apk
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download APK artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: carmaja-perlen-test-apk
-          path: artifact
-
-      - name: Create or update GitHub release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          set -Eeuo pipefail
-          apk="artifact/carmaja-perlen-test.apk"
-          checksum="artifact/carmaja-perlen-test.apk.sha256"
-          test -f "$apk"
-          test -f "$checksum"
-
-          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "$apk" "$checksum" --clobber \
-              --repo "$GITHUB_REPOSITORY"
-          else
-            gh release create "$RELEASE_TAG" "$apk" "$checksum" \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "Carmaja-Perlen Test APK $RELEASE_TAG" \
-              --latest \
-              --generate-notes
-          fi

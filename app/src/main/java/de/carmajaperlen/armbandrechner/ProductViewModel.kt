@@ -176,7 +176,10 @@ class ProductViewModel(
         if (uris.isEmpty()) return
         runBusy {
             val updated = repository.storeTemporaryImages(
-                draft.copy(name = editorName.ifBlank { draft.name }),
+                draft.copy(
+                    name = editorName.ifBlank { draft.name },
+                    pendingV2SaveOperationId = null,
+                ),
                 uris.take(5),
             )
             draftSession.markChanged(draft.draftId)
@@ -500,7 +503,12 @@ class ProductViewModel(
             return null
         }
 
-        return editor.applyTo(draft)
+        val updated = editor.applyTo(draft)
+        return if (state.selectedHasUnsavedChanges) {
+            updated.copy(pendingV2SaveOperationId = null)
+        } else {
+            updated
+        }
     }
 
     private fun requireBaseUrl(): String {

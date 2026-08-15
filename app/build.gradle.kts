@@ -8,8 +8,9 @@ plugins {
 
 val productionVersionCode = 4
 val productionVersionName = "1.1.2"
-val betaVersionCode = 5
-val betaVersionName = "1.1.0-beta.4"
+val betaVersionCode = 6
+val betaVersionName = "1.1.3-beta.2"
+val betaApplicationId = "de.steinhart.armbandrechner.test"
 val productionProductApiBaseUrl = "https://api.carmaja-perlen.de/"
 val testProductApiBaseUrl = "https://test-api.carmaja-perlen.de/"
 val productionSigningPropertiesFile = rootProject.file(".signing/production-keystore.properties")
@@ -62,6 +63,9 @@ val betaBuildRequested = gradle.startParameter.taskNames.any { taskName ->
 val productionReleaseBuildRequested = gradle.startParameter.taskNames.any { taskName ->
     taskName.substringAfterLast(':').equals("assembleRelease", ignoreCase = true)
 }
+val unsignedProductionValidationRequested = providers.gradleProperty(
+    "carmaja.allowUnsignedProductionValidation",
+).orNull == "true"
 
 if (betaBuildRequested && !betaSigningReady) {
     throw GradleException(
@@ -69,7 +73,11 @@ if (betaBuildRequested && !betaSigningReady) {
     )
 }
 
-if (productionReleaseBuildRequested && !productionSigningReady) {
+if (
+    productionReleaseBuildRequested &&
+    !productionSigningReady &&
+    !unsignedProductionValidationRequested
+) {
     throw GradleException(
         "Die Produktionssignierung fehlt. Unsigned oder debug-signierte Release-APKs sind nicht erlaubt.",
     )
@@ -128,7 +136,6 @@ android {
 
         create("beta") {
             initWith(getByName("debug"))
-            applicationIdSuffix = ".test"
             isDebuggable = true
             signingConfig = if (betaSigningReady) {
                 signingConfigs.getByName("beta")
@@ -180,6 +187,7 @@ android {
 
 androidComponents {
     onVariants(selector().withBuildType("beta")) { variant ->
+        variant.applicationId.set(betaApplicationId)
         variant.outputs.forEach { output ->
             output.versionCode.set(betaVersionCode)
             output.versionName.set(betaVersionName)

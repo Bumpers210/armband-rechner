@@ -96,6 +96,7 @@ class ProductEditorStateTest {
             draftId = "019fa2e6-cf3c-7073-9275-7d3b566f54ee",
             braceletSizeCm = "17",
             pearlSizeMm = "6",
+            priceMinor = 2490,
             internalCalculation = CalculationSnapshot(
                 quantities = emptyMap(),
                 workMinutes = "0",

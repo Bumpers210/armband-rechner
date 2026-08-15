@@ -1,5 +1,6 @@
 package de.carmajaperlen.armbandrechner
 
+import androidx.compose.ui.text.input.TextFieldValue
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -7,6 +8,31 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ProductSynchronizerTest {
+    @Test
+    fun existingDraftMeasurementsSurviveEditSaveSynchronizationAndReload() = runTest {
+        val existing = productDraft(imageCount = 0).copy(
+            braceletSizeCm = "17.5",
+            pearlSizeMm = "6",
+        )
+        val edited = ProductDraftEditorState.fromDraft(existing)
+            .update(ProductEditorField.BraceletSizeCm, TextFieldValue("18,0"))
+            .update(ProductEditorField.PearlSizeMm, TextFieldValue("8,0"))
+            .applyTo(existing)
+        val payload = edited.toSaveJson()
+        val api = FakeSynchronizationApi(edited)
+        val persisted = mutableListOf<ProductDraft>()
+
+        val synchronized = synchronizer(api, persisted).synchronize(edited)
+        val reloaded = applyServerUpdate(synchronized, api.getDraft(synchronized.draftId))
+
+        assertEquals(18.0, payload.getDouble("braceletSizeCm"), 0.0)
+        assertEquals(8.0, payload.getDouble("pearlSizeMm"), 0.0)
+        assertEquals("18", reloaded.braceletSizeCm)
+        assertEquals("8", reloaded.pearlSizeMm)
+        assertEquals("18", persisted.last().braceletSizeCm)
+        assertEquals("8", persisted.last().pearlSizeMm)
+    }
+
     @Test
     fun saveVersionZeroIsPersistedBeforeFirstImageUpload() = runTest {
         val draft = productDraft(imageCount = 1)
@@ -18,11 +44,13 @@ class ProductSynchronizerTest {
         assertEquals(listOf(0), api.saveExpectedVersions)
         assertEquals(listOf(1), api.uploadExpectedVersions)
         assertEquals(2, result.version)
-        assertEquals(1, persisted.first().version)
-        assertEquals("CP-TEST", persisted.first().sku)
-        assertEquals("test-produkt", persisted.first().slug)
-        assertEquals(ProductStatus.Ready, persisted.first().status)
-        assertEquals("2026-07-27T20:00:01Z", persisted.first().serverUpdatedAt)
+        assertTrue(persisted.first().pendingV2SaveOperationId != null)
+        assertEquals(1, persisted[1].version)
+        assertEquals("CP-TEST", persisted[1].sku)
+        assertEquals("test-produkt", persisted[1].slug)
+        assertEquals(ProductStatus.Ready, persisted[1].status)
+        assertEquals("2026-07-27T20:00:01Z", persisted[1].serverUpdatedAt)
+        assertEquals(null, persisted[1].pendingV2SaveOperationId)
     }
 
     @Test
@@ -123,6 +151,24 @@ class ProductSynchronizerTest {
         assertTrue(result.images.all(ProductImage::isUploaded))
     }
 
+    @Test
+    fun unknownSaveOutcomeReusesPersistedV2IdempotencyKey() = runTest {
+        val draft = productDraft(imageCount = 0)
+        val api = FakeSynchronizationApi(draft).apply { failFirstSave = true }
+        val persisted = mutableListOf<ProductDraft>()
+        val synchronizer = synchronizer(api, persisted)
+
+        expectThrows<ProductApiException> { synchronizer.synchronize(draft) }
+        val pending = persisted.last()
+        val operationId = requireNotNull(pending.pendingV2SaveOperationId)
+
+        val result = synchronizer.synchronize(pending)
+
+        assertEquals(listOf(operationId, operationId), api.saveOperationIds)
+        assertEquals(null, result.pendingV2SaveOperationId)
+        assertEquals(1, result.productVersion)
+    }
+
     private fun synchronizer(
         api: FakeSynchronizationApi,
         persisted: MutableList<ProductDraft> = mutableListOf(),
@@ -160,16 +206,25 @@ private class FakeSynchronizationApi(
     var selfConflictOnImageId: String? = null
     var conflictAgainOnRetry = false
     var failOnceOnImageId: String? = null
+    var failFirstSave = false
+    val saveOperationIds = mutableListOf<String>()
 
     private var selfConflictTriggered = false
     private var failureTriggered = false
+    private var saveFailureTriggered = false
     private var server = initialDraft.toServerUpdate(version = 0)
 
     override suspend fun saveDraft(draft: ProductDraft): ProductServerUpdate {
         saveExpectedVersions += draft.version
+        saveOperationIds += requireNotNull(draft.pendingV2SaveOperationId)
+        if (failFirstSave && !saveFailureTriggered) {
+            saveFailureTriggered = true
+            throw ProductApiException(503, "save_outcome_unknown", message = "Testfehler")
+        }
         requireVersion(draft.version)
         server = draft.toServerUpdate(
             version = server.version + 1,
+            productVersion = server.productVersion + 1,
             images = server.images,
         )
         return server
@@ -261,6 +316,7 @@ private fun productDraft(imageCount: Int): ProductDraft {
         braceletSizeCm = "17",
         pearlSizeMm = "6",
         shortDescription = "Testbeschreibung",
+        priceMinor = 418,
         internalCalculation = CalculationSnapshot(
             quantities = mapOf("Rosenquarz" to 1),
             workMinutes = "10",
@@ -290,11 +346,14 @@ private fun productDraft(imageCount: Int): ProductDraft {
 
 private fun ProductDraft.toServerUpdate(
     version: Int,
+    productVersion: Int = this.productVersion,
     images: List<ProductServerImage> = emptyList(),
 ): ProductServerUpdate {
     return ProductServerUpdate(
         draftId = draftId,
         version = version,
+        productVersion = productVersion,
+        sourceHash = "a".repeat(64),
         sku = "CP-TEST",
         slug = "test-produkt",
         status = ProductStatus.Ready,
@@ -306,6 +365,9 @@ private fun ProductDraft.toServerUpdate(
         pearlSizeMm = pearlSizeMm,
         shortDescription = shortDescription,
         careInstructions = careInstructions,
+        priceMinor = priceMinor,
+        currency = currency,
+        salesEnabled = salesEnabled,
         images = images,
     )
 }

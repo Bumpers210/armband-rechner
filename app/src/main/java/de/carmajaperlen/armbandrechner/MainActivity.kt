@@ -128,12 +128,13 @@ class MainActivity : ComponentActivity() {
                             value,
                         )
                     },
+                    onPriceChange = { value ->
+                        productViewModel.updateSelectedEditor(ProductEditorField.Price, value)
+                    },
                     onImagesPicked = productViewModel::addImages,
                     onSave = productViewModel::saveSelected,
                     onSync = productViewModel::syncSelected,
                     onPublish = productViewModel::publishSelected,
-                    onMarkSold = productViewModel::markSelectedSold,
-                    onDisable = productViewModel::disableSelected,
                     onDiscardSelected = productViewModel::discardSelected,
                     onMessageShown = productViewModel::consumeMessage,
                 )

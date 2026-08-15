@@ -153,6 +153,8 @@ class ProductDraftRepository(
             .put("sku", draft.sku)
             .put("slug", draft.slug)
             .put("version", draft.version)
+            .put("productVersion", draft.productVersion)
+            .put("sourceHash", draft.sourceHash)
             .put("modelVersion", draft.modelVersion)
             .put("status", draft.status.wireName)
             .put("name", draft.name)
@@ -162,22 +164,29 @@ class ProductDraftRepository(
             .put("pearlSizeMm", draft.pearlSizeMm)
             .put("shortDescription", draft.shortDescription)
             .put("careInstructions", JSONArray(draft.careInstructions))
+            .put("priceMinor", draft.priceMinor)
+            .put("currency", draft.currency)
+            .put("salesEnabled", draft.salesEnabled)
             .put("internalCalculation", encodeCalculation(draft.internalCalculation))
             .put("images", JSONArray(draft.images.map(::encodeImage)))
             .put("createdAtMillis", draft.createdAtMillis)
             .put("updatedAtMillis", draft.updatedAtMillis)
             .put("serverUpdatedAt", draft.serverUpdatedAt)
+            .put("pendingV2SaveOperationId", draft.pendingV2SaveOperationId)
             .put("pendingPublishOperationId", draft.pendingPublishOperationId)
             .put("pendingSoldOperationId", draft.pendingSoldOperationId)
             .put("pendingDisableOperationId", draft.pendingDisableOperationId)
     }
 
     private fun decodeDraft(json: JSONObject): ProductDraft {
+        val calculation = decodeCalculation(json.getJSONObject("internalCalculation"))
         return ProductDraft(
             draftId = json.getString("draftId"),
             sku = json.optStringOrNull("sku"),
             slug = json.optStringOrNull("slug"),
             version = json.optInt("version", 0),
+            productVersion = json.optInt("productVersion", 0),
+            sourceHash = json.optStringOrNull("sourceHash"),
             status = ProductStatus.fromWireName(json.optString("status", "draft")),
             name = json.optString("name"),
             materials = json.optStringList("materials"),
@@ -187,7 +196,14 @@ class ProductDraftRepository(
             pearlSizeMm = json.opt("pearlSizeMm")?.toString().orEmpty(),
             shortDescription = json.optString("shortDescription"),
             careInstructions = json.optStringList("careInstructions"),
-            internalCalculation = decodeCalculation(json.getJSONObject("internalCalculation")),
+            priceMinor = if (json.has("priceMinor")) {
+                json.optInt("priceMinor", 0)
+            } else {
+                parsePriceMinor(calculation.recommendedSalePrice) ?: 0
+            },
+            currency = json.optString("currency", "eur").lowercase(),
+            salesEnabled = json.optBoolean("salesEnabled", false),
+            internalCalculation = calculation,
             images = json.optJSONArray("images")?.let { array ->
                 buildList {
                     for (index in 0 until array.length()) {
@@ -198,6 +214,7 @@ class ProductDraftRepository(
             createdAtMillis = json.optLong("createdAtMillis"),
             updatedAtMillis = json.optLong("updatedAtMillis"),
             serverUpdatedAt = json.optStringOrNull("serverUpdatedAt"),
+            pendingV2SaveOperationId = json.optStringOrNull("pendingV2SaveOperationId"),
             pendingPublishOperationId = json.optStringOrNull("pendingPublishOperationId"),
             pendingSoldOperationId = json.optStringOrNull("pendingSoldOperationId"),
             pendingDisableOperationId = json.optStringOrNull("pendingDisableOperationId"),

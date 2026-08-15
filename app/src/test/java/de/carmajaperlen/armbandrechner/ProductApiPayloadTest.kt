@@ -6,7 +6,7 @@ import org.junit.Test
 
 class ProductApiPayloadTest {
     @Test
-    fun savePayloadContainsPearlsAndSpacersButNoCareInstructions() {
+    fun savePayloadContainsCompleteV2ContractWithoutLegacyOrServerFields() {
         val payload = productDraft().toSaveJson()
 
         assertEquals("Rosenquarz", payload.getJSONArray("materials").getString(0))
@@ -16,7 +16,13 @@ class ProductApiPayloadTest {
         )
         assertEquals(17.5, payload.getDouble("braceletSizeCm"), 0.0)
         assertEquals(6.0, payload.getDouble("pearlSizeMm"), 0.0)
-        assertFalse(payload.has("careInstructions"))
+        assertEquals("Legacy-Pflegehinweis", payload.getJSONArray("careInstructions").getString(0))
+        assertEquals(2490, payload.getInt("priceMinor"))
+        assertEquals("eur", payload.getString("currency"))
+        assertFalse(payload.getBoolean("salesEnabled"))
+        for (field in listOf("stock", "vintedUrl", "productVersion", "sourceHash")) {
+            assertFalse(payload.has(field))
+        }
     }
 
     private fun productDraft(): ProductDraft {
@@ -27,6 +33,7 @@ class ProductApiPayloadTest {
             braceletSizeCm = "17.5",
             pearlSizeMm = "6",
             careInstructions = listOf("Legacy-Pflegehinweis"),
+            priceMinor = 2490,
             internalCalculation = CalculationSnapshot(
                 quantities = emptyMap(),
                 workMinutes = "0",
