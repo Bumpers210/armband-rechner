@@ -1,6 +1,13 @@
 name: Deploy guarded production website
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-website.yml"
+      - "website/content/products.json"
+      - "website/public/images/products/**"
   pull_request:
     branches:
       - main
@@ -84,6 +91,10 @@ jobs:
           set -Eeuo pipefail
           test "$GITHUB_REPOSITORY" = "$CARMAJA_REPOSITORY"
           case "$GITHUB_EVENT_NAME" in
+            push)
+              test "$GITHUB_REF" = "refs/heads/main"
+              test "$GITHUB_REF_NAME" = "$CARMAJA_PRODUCTION_BRANCH"
+              ;;
             pull_request)
               test "$GITHUB_BASE_REF" = "$CARMAJA_PRODUCTION_BRANCH"
               test "$CARMAJA_PULL_REQUEST_BASE_REPOSITORY" = "$CARMAJA_REPOSITORY"

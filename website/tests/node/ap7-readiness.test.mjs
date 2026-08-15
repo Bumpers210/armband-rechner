@@ -11,13 +11,16 @@ async function text(relativePath) {
   return readFile(path.join(repositoryRoot, relativePath), "utf8");
 }
 
-test("Produktionsdeployment ist manuell, gepinnt und fail-closed", async () => {
+test("Produktionsdeployment bleibt trotz automatischer Produktprüfung manuell und fail-closed", async () => {
   const workflow = await text(".github/workflows/deploy-website.yml");
   const entry = await text("website/production-shop-api-public/index.php");
   const apache = await text("website/production-shop-api-public/.htaccess");
 
-  assert.doesNotMatch(workflow, /^\s*push\s*:/m);
+  assert.match(workflow, /push:\s*\n\s+branches:\s*\n\s+- main\s*\n\s+paths:/);
+  assert.match(workflow, /website\/content\/products\.json/);
+  assert.match(workflow, /website\/public\/images\/products\/\*\*/);
   assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /deploy-production-site:[\s\S]*if: \$\{\{ github\.event_name == 'workflow_dispatch'/);
   assert.match(workflow, /CARMAJA_PRODUCTION_DEPLOY_ENABLED/);
   assert.match(workflow, /DEPLOY-CARMAJA-PRODUCTION/);
   assert.match(workflow, /environment:\s*\n\s+name: carmaja-production/);
