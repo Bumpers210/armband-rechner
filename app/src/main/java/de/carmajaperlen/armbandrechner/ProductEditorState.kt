@@ -10,6 +10,7 @@ enum class ProductEditorField {
     BraceletSizeCm,
     PearlSizeMm,
     ShortDescription,
+    Price,
 }
 
 val ProductEditorField.errorKey: String
@@ -20,6 +21,7 @@ val ProductEditorField.errorKey: String
         ProductEditorField.BraceletSizeCm -> "braceletSizeCm"
         ProductEditorField.PearlSizeMm -> "pearlSizeMm"
         ProductEditorField.ShortDescription -> "shortDescription"
+        ProductEditorField.Price -> "priceMinor"
     }
 
 data class ProductDraftEditorState(
@@ -30,6 +32,7 @@ data class ProductDraftEditorState(
     val braceletSizeCm: TextFieldValue,
     val pearlSizeMm: TextFieldValue,
     val shortDescription: TextFieldValue,
+    val price: TextFieldValue,
 ) {
     fun update(field: ProductEditorField, value: TextFieldValue): ProductDraftEditorState {
         return when (field) {
@@ -39,6 +42,7 @@ data class ProductDraftEditorState(
             ProductEditorField.BraceletSizeCm -> copy(braceletSizeCm = value)
             ProductEditorField.PearlSizeMm -> copy(pearlSizeMm = value)
             ProductEditorField.ShortDescription -> copy(shortDescription = value)
+            ProductEditorField.Price -> copy(price = value)
         }
     }
 
@@ -46,6 +50,7 @@ data class ProductDraftEditorState(
         return buildMap {
             if (normalizeMeasurement(braceletSizeCm.text) == null) put("braceletSizeCm", "Armbandgröße muss größer als null sein.")
             if (normalizeMeasurement(pearlSizeMm.text) == null) put("pearlSizeMm", "Perlengröße muss größer als null sein.")
+            if (parsePriceMinor(price.text) == null) put("priceMinor", "Preis mit höchstens zwei Nachkommastellen, mindestens 0,50 €.")
         }
     }
 
@@ -53,6 +58,7 @@ data class ProductDraftEditorState(
         require(draft.draftId == draftId) { "Editor und Entwurf stimmen nicht ueberein." }
         val braceletSizeCm = requireNotNull(normalizeMeasurement(braceletSizeCm.text)) { "Armbandgröße muss größer als null sein." }
         val pearlSizeMm = requireNotNull(normalizeMeasurement(pearlSizeMm.text)) { "Perlengröße muss größer als null sein." }
+        val priceMinor = requireNotNull(parsePriceMinor(price.text)) { "Verkaufspreis ist ungültig." }
 
         return draft.copy(
             name = name.text.trim(),
@@ -63,6 +69,7 @@ data class ProductDraftEditorState(
             braceletSizeCm = braceletSizeCm,
             pearlSizeMm = pearlSizeMm,
             shortDescription = shortDescription.text.trim(),
+            priceMinor = priceMinor,
         )
     }
 
@@ -76,6 +83,7 @@ data class ProductDraftEditorState(
                 braceletSizeCm = editorValue(draft.braceletSizeCm.replace('.', ',')),
                 pearlSizeMm = editorValue(draft.pearlSizeMm.replace('.', ',')),
                 shortDescription = editorValue(draft.shortDescription),
+                price = editorValue(displayPriceMinor(draft.priceMinor)),
             )
         }
     }

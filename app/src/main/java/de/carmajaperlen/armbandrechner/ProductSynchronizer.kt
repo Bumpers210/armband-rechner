@@ -34,8 +34,8 @@ class ProductSynchronizationConflictException(
     fun toState(): ProductSyncConflictState {
         return ProductSyncConflictState(
             draftId = localDraft.draftId,
-            localVersion = localDraft.version,
-            serverVersion = serverUpdate.version,
+            localVersion = localDraft.productVersion,
+            serverVersion = serverUpdate.productVersion,
             serverUpdatedAt = serverUpdate.updatedAt,
             errorCode = errorCode,
             message = message ?: "Versionskonflikt",
@@ -46,6 +46,7 @@ class ProductSynchronizationConflictException(
 internal class ProductSynchronizer(
     private val api: ProductSynchronizationApi,
     private val persist: suspend (ProductDraft) -> ProductDraft,
+    private val operationIdFactory: () -> String = { java.util.UUID.randomUUID().toString() },
 ) {
     suspend fun synchronize(draft: ProductDraft): ProductDraft {
         var current = saveMetadata(draft)
@@ -64,10 +65,15 @@ internal class ProductSynchronizer(
     }
 
     private suspend fun saveMetadata(draft: ProductDraft): ProductDraft {
+        val prepared = if (draft.pendingV2SaveOperationId == null) {
+            persist(draft.copy(pendingV2SaveOperationId = operationIdFactory()))
+        } else {
+            draft
+        }
         return try {
-            persist(applyServerUpdate(draft, api.saveDraft(draft)))
+            persist(applyServerUpdate(prepared, api.saveDraft(prepared)))
         } catch (conflict: ProductConflictException) {
-            throw conflictWithServer(draft, conflict)
+            throw conflictWithServer(prepared, conflict)
         }
     }
 
@@ -191,10 +197,16 @@ internal fun applyServerUpdate(
 
     return draft.copy(
         version = update.version,
+        productVersion = update.productVersion,
+        sourceHash = update.sourceHash,
         sku = update.sku ?: draft.sku,
         slug = update.slug ?: draft.slug,
         status = update.status,
         serverUpdatedAt = update.updatedAt ?: draft.serverUpdatedAt,
+        priceMinor = update.priceMinor,
+        currency = update.currency,
+        salesEnabled = update.salesEnabled,
+        pendingV2SaveOperationId = null,
         images = images,
     )
 }
@@ -207,4 +219,7 @@ private fun ProductServerUpdate.matchesMetadata(draft: ProductDraft): Boolean {
         pearlSizeMm == draft.pearlSizeMm &&
         shortDescription == draft.shortDescription &&
         careInstructions == draft.careInstructions
+        && priceMinor == draft.priceMinor
+        && currency == draft.currency
+        && salesEnabled == draft.salesEnabled
 }

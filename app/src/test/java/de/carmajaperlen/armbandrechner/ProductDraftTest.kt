@@ -93,6 +93,7 @@ class ProductDraftTest {
             braceletSizeCm = "17",
             pearlSizeMm = "6",
             shortDescription = "Zartes Armband aus Rosenquarz.",
+            priceMinor = 2490,
             images = listOf(ProductImage("image.jpg", 1600, 1200, "Foto", true)),
         )
 

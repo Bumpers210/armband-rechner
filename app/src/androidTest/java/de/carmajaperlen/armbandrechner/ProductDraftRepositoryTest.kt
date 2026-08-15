@@ -3,6 +3,7 @@ package de.carmajaperlen.armbandrechner
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.core.app.ApplicationProvider
 import java.io.File
 import java.util.UUID
@@ -43,6 +44,27 @@ class ProductDraftRepositoryTest {
         File(context.cacheDir, "product-draft-images/$draftId").deleteRecursively()
         File(context.filesDir, "product-drafts/$draftId.json").delete()
         File(context.filesDir, "product-images/$draftId").deleteRecursively()
+    }
+
+    @Test
+    fun v2MeasurementsSurviveLocalLoadEditSaveAndReload() = runBlocking {
+        repository.saveDraft(
+            testDraft().copy(
+                braceletSizeCm = "17.5",
+                pearlSizeMm = "6",
+            ),
+        )
+        val loaded = repository.loadDrafts().single()
+        val edited = ProductDraftEditorState.fromDraft(loaded)
+            .update(ProductEditorField.BraceletSizeCm, TextFieldValue("18,0"))
+            .update(ProductEditorField.PearlSizeMm, TextFieldValue("8,0"))
+            .applyTo(loaded)
+
+        repository.saveDraft(edited)
+        val reloaded = repository.loadDrafts().single()
+
+        assertEquals("18", reloaded.braceletSizeCm)
+        assertEquals("8", reloaded.pearlSizeMm)
     }
 
     @Test
@@ -129,6 +151,7 @@ class ProductDraftRepositoryTest {
         return ProductDraft(
             draftId = draftId,
             name = "Testentwurf",
+            priceMinor = 5000,
             internalCalculation = CalculationSnapshot(
                 quantities = emptyMap(),
                 workMinutes = "0",

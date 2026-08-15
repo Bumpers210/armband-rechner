@@ -1,6 +1,7 @@
 package de.carmajaperlen.armbandrechner
 
 import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.UUID
 
 enum class ProductStatus(val wireName: String) {
@@ -52,6 +53,8 @@ data class ProductDraft(
     val sku: String? = null,
     val slug: String? = null,
     val version: Int = 0,
+    val productVersion: Int = 0,
+    val sourceHash: String? = null,
     val status: ProductStatus = ProductStatus.Draft,
     val name: String = "",
     val materials: List<String> = emptyList(),
@@ -61,11 +64,15 @@ data class ProductDraft(
     val pearlSizeMm: String = "",
     val shortDescription: String = "",
     val careInstructions: List<String> = emptyList(),
+    val priceMinor: Int = 0,
+    val currency: String = "eur",
+    val salesEnabled: Boolean = false,
     val internalCalculation: CalculationSnapshot,
     val images: List<ProductImage> = emptyList(),
     val createdAtMillis: Long,
     val updatedAtMillis: Long,
     val serverUpdatedAt: String? = null,
+    val pendingV2SaveOperationId: String? = null,
     val pendingPublishOperationId: String? = null,
     val pendingSoldOperationId: String? = null,
     val pendingDisableOperationId: String? = null,
@@ -83,6 +90,8 @@ data class ProductDraft(
             if (braceletSizeCm.isBlank()) put("braceletSizeCm", "Armbandgröße ist erforderlich.")
             if (pearlSizeMm.isBlank()) put("pearlSizeMm", "Perlengröße ist erforderlich.")
             if (shortDescription.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
+            if (priceMinor < 50) put("priceMinor", "Verkaufspreis muss mindestens 0,50 € betragen.")
+            if (currency != "eur") put("currency", "Für V1 ist ausschließlich EUR zulässig.")
             if (images.isEmpty()) put("images", "Mindestens ein Hauptfoto ist erforderlich.")
         }
     }
@@ -121,6 +130,7 @@ data class ProductDraft(
                 draftId = UUID.randomUUID().toString(),
                 materials = selectedMaterials,
                 metalElements = selectedSpacers,
+                priceMinor = totals.recommendedSalePrice.toMinorUnits(),
                 internalCalculation = snapshot,
                 createdAtMillis = nowMillis,
                 updatedAtMillis = nowMillis,
@@ -161,6 +171,18 @@ internal fun displayMeasurement(value: String, unit: String): String {
     return "${value.replace('.', ',')} $unit"
 }
 
+internal fun parsePriceMinor(value: String): Int? {
+    val normalized = value.trim().replace(',', '.')
+    val amount = normalized.toBigDecimalOrNull()?.takeIf { it.signum() >= 0 } ?: return null
+    val cents = runCatching {
+        amount.setScale(2, RoundingMode.UNNECESSARY).movePointRight(2).intValueExact()
+    }.getOrNull() ?: return null
+    return cents.takeIf { it >= 50 }
+}
+
+internal fun displayPriceMinor(value: Int): String =
+    BigDecimal(value).movePointLeft(2).setScale(2).toPlainString().replace('.', ',')
+
 fun List<String>.toMultilineText(): String = joinToString("\n")
 
 fun multilineTextToList(value: String): List<String> {
@@ -168,3 +190,6 @@ fun multilineTextToList(value: String): List<String> {
 }
 
 private fun BigDecimal.toPlain(): String = setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()
+
+private fun BigDecimal.toMinorUnits(): Int =
+    setScale(2, RoundingMode.HALF_UP).movePointRight(2).intValueExact()

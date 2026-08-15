@@ -1,5 +1,6 @@
 package de.carmajaperlen.armbandrechner
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,15 +56,17 @@ private fun CollapsibleSections() {
     var spacersExpanded by rememberSaveable { mutableStateOf(true) }
 
     MaterialTheme {
-        CollapsibleSectionHeading(
-            text = "Perlen",
-            expanded = pearlsExpanded,
-            onToggle = { pearlsExpanded = !pearlsExpanded },
-        )
-        CollapsibleSectionHeading(
-            text = "Edelsteinspacer",
-            expanded = spacersExpanded,
-            onToggle = { spacersExpanded = !spacersExpanded },
-        )
+        Column {
+            CollapsibleSectionHeading(
+                text = "Perlen",
+                expanded = pearlsExpanded,
+                onToggle = { pearlsExpanded = !pearlsExpanded },
+            )
+            CollapsibleSectionHeading(
+                text = "Edelsteinspacer",
+                expanded = spacersExpanded,
+                onToggle = { spacersExpanded = !spacersExpanded },
+            )
+        }
     }
 }
