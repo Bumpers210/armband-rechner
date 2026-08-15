@@ -16,7 +16,7 @@ export function SiteFooter() {
           >
             <Image
               className="v2-brand-logo"
-              src="/images/brand/carmaja-logo-offiziell.png"
+              src="/images/brand/carmaja-logo-transparent.png"
               alt=""
               width={128}
               height={128}
