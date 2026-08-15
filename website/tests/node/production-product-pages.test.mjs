@@ -33,7 +33,6 @@ test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async 
   const detail = await source("app/armbaender/[slug]/page.tsx");
   const overview = await source("components/product-list.tsx");
   const gallery = await source("components/product-image-gallery.tsx");
-  const careContent = await source("content/site-content.ts");
 
   assert.match(publicProducts, /formatMeasurement/);
   assert.match(publicProducts, /productVersion/);
@@ -42,9 +41,10 @@ test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async 
   assert.match(publicProducts, /salesEnabled/);
   assert.match(publicProducts, /const ROOT_KEYS = \["products", "version"\]/);
   assert.match(publicProducts, /const PRODUCT_KEYS = \[/);
-  assert.match(publicProducts, /publicTitle: publicProductName/);
+  assert.match(publicProducts, /const publicTitle = requireString\(product\.title/);
   assert.match(publicProducts, /alt: `\$\{publicProductName\}, Bild/);
-  assert.match(detail, /siteContent\.care\.items/);
+  assert.match(detail, /href="\/material-pflege\/"/);
+  assert.doesNotMatch(detail, /siteContent\.care\.items/);
   assert.doesNotMatch(detail, /product\.careInstructions/);
   assert.doesNotMatch(detail, /product\.title/);
   assert.doesNotMatch(detail, /product\.stock/);
@@ -52,7 +52,8 @@ test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async 
   assert.match(detail, /displayPearlSize/);
   assert.match(overview, /displaySize/);
   assert.match(overview, /displayPearlSize/);
-  assert.match(careContent, /care:/);
+  assert.match(overview, /<Heading>[\s\S]*?<Link href=\{`\/armbaender\/\$\{product\.slug\}\/`\}>/);
+  assert.doesNotMatch(overview, /Details ansehen/);
   assert.match(gallery, /role="dialog"/);
   assert.match(gallery, /const handleKeyDown/);
   assert.match(gallery, /document\.addEventListener\("keydown", handleKeyDown\)/);

@@ -57,9 +57,6 @@ export function ProductList({
                 <dd>{product.displayPearlSize}</dd>
               </div>
             </dl>
-            <Link className="product-detail-link" href={`/armbaender/${product.slug}/`}>
-              Details ansehen
-            </Link>
           </div>
         </article>
       ))}

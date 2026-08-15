@@ -48,6 +48,8 @@ test("Navigation, Sitemap und Produktseiten bleiben erreichbar", async () => {
   assert.match(header, /data-active=/);
   assert.match(header, /pathname\.startsWith\("\/armbaender\/"\)/);
   assert.match(header, /event\.key === "Escape"/);
+  assert.match(header, /carmaja-logo-transparent\.png/);
+  assert.match(header, /className="v2-brand-primary">\{brandRemainder\}/);
   assert.match(sitemap, /ueber-mich/);
   assert.match(sitemap, /material-pflege/);
   assert.match(sitemap, /kontakt/);
@@ -68,6 +70,8 @@ test("gemeinsame Kontakt- und Armbänder-Weiterleitungen bleiben einheitlich", a
   assert.doesNotMatch(materials, /BraceletGallery|siteContent\.gallery/);
   assert.match(contact, /ContactEmailLink className="v2-contact-card"/);
   assert.match(footer, /className="v2-brand"/);
+  assert.match(footer, /carmaja-logo-transparent\.png/);
+  assert.match(footer, /className="v2-brand-primary">armaja</);
   assert.match(layout, /persistent-bracelet-flag/);
   assert.match(
     await source("app/globals.css"),

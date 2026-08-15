@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { InstagramLink } from "@/components/instagram-link";
@@ -13,8 +14,18 @@ export function SiteFooter() {
             href="/"
             aria-label={`${siteContent.brandName} – Startseite`}
           >
-            <span className="v2-brand-primary">Carmaja</span>
-            <span className="v2-brand-secondary">PERLEN</span>
+            <Image
+              className="v2-brand-logo"
+              src="/images/brand/carmaja-logo-transparent.png"
+              alt=""
+              width={128}
+              height={128}
+              sizes="44px"
+            />
+            <span className="v2-brand-wordmark" aria-hidden="true">
+              <span className="v2-brand-primary">armaja</span>
+              <span className="v2-brand-secondary">PERLEN</span>
+            </span>
           </Link>
           <p className="v2-footer-tagline">{siteContent.footer.tagline}</p>
         </div>
