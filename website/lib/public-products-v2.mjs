@@ -192,7 +192,7 @@ function validateProduct(value, index, imageRoot) {
     fail(`${location}.updatedAt`, "ISO-Zeitstempel erwartet.");
   }
 
-  requireString(product.title, `${location}.title`, 120);
+  const publicTitle = requireString(product.title, `${location}.title`, 120);
   const braceletSizeCm = requirePositiveNumber(product.braceletSizeCm, `${location}.braceletSizeCm`);
   const pearlSizeMm = requirePositiveNumber(product.pearlSizeMm, `${location}.pearlSizeMm`);
 
@@ -207,7 +207,7 @@ function validateProduct(value, index, imageRoot) {
     sourceHash: product.sourceHash,
     sku,
     slug,
-    publicTitle: publicProductName,
+    publicTitle,
     description: requireString(product.description, `${location}.description`, 500),
     materials: requireStringList(product.materials, `${location}.materials`, { allowEmpty: false }),
     metalElements: requireStringList(product.metalElements, `${location}.metalElements`),

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -11,6 +12,7 @@ export function SiteHeader() {
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const pathname = usePathname();
   const [brandPrimary, brandSecondary] = siteContent.brandName.split("-");
+  const brandRemainder = brandPrimary.slice(1);
 
   useEffect(() => {
     if (!isMenuOpen) {
@@ -37,12 +39,23 @@ export function SiteHeader() {
           aria-label={`${siteContent.brandName} – Startseite`}
           onClick={() => setIsMenuOpen(false)}
         >
-          <span className="v2-brand-primary">{brandPrimary}</span>
-          {brandSecondary ? (
-            <span className="v2-brand-secondary">
-              {brandSecondary.toUpperCase()}
-            </span>
-          ) : null}
+          <Image
+            className="v2-brand-logo"
+            src="/images/brand/carmaja-logo-transparent.png"
+            alt=""
+            width={128}
+            height={128}
+            sizes="44px"
+            priority
+          />
+          <span className="v2-brand-wordmark" aria-hidden="true">
+            <span className="v2-brand-primary">{brandRemainder}</span>
+            {brandSecondary ? (
+              <span className="v2-brand-secondary">
+                {brandSecondary.toUpperCase()}
+              </span>
+            ) : null}
+          </span>
         </Link>
 
         <button

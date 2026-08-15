@@ -7,7 +7,6 @@ import { ShopBuyNow } from "@/components/shop-buy-now";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteTarget } from "@/config/site-target";
-import { siteContent } from "@/content/site-content";
 import {
   detailProducts,
   findDetailProduct,
@@ -146,14 +145,9 @@ export default async function ProductDetailPage({
               </div>
             </dl>
 
-            <section className="product-care" aria-labelledby="care-heading">
-              <h2 id="care-heading">{siteContent.care.title}</h2>
-              <ul>
-                {siteContent.care.items.map((instruction) => (
-                  <li key={instruction}>{instruction}</li>
-                ))}
-              </ul>
-            </section>
+            <Link className="v2-text-link" href="/material-pflege/">
+              Hinweise zu Material &amp; Pflege
+            </Link>
 
             {product.salesEnabled ? (
               <ShopBuyNow productId={product.productId} />
