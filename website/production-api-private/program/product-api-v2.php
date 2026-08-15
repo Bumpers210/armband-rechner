@@ -827,6 +827,214 @@ function carmaja_api_v2_public_product_with_blobs(array $draft): array
     return $public;
 }
 
+function carmaja_api_github_v2_publisher_invalid(string $message): never
+{
+    throw new CarmajaApiException(
+        500,
+        $message,
+        [],
+        'github_v2_product_invalid'
+    );
+}
+
+function carmaja_api_github_v2_assert_string_list(
+    mixed $value,
+    bool $allowEmpty
+): void {
+    if (!is_array($value)
+        || !array_is_list($value)
+        || (!$allowEmpty && $value === [])) {
+        carmaja_api_github_v2_publisher_invalid(
+            'Öffentliche v2-Produktliste ist ungültig.'
+        );
+    }
+
+    $unique = [];
+
+    foreach ($value as $item) {
+        if (!is_string($item)
+            || trim($item) !== $item
+            || $item === ''
+            || mb_strlen($item) > 160
+            || isset($unique[$item])) {
+            carmaja_api_github_v2_publisher_invalid(
+                'Öffentliche v2-Produktliste ist ungültig.'
+            );
+        }
+
+        $unique[$item] = true;
+    }
+}
+
+function carmaja_api_github_v2_assert_public_product(array $publicProduct): void
+{
+    $productKeys = array_keys(array_diff_key($publicProduct, ['_imageBlobs' => true]));
+    $expectedProductKeys = [
+        'braceletSizeCm',
+        'currency',
+        'description',
+        'images',
+        'materials',
+        'metalElements',
+        'pearlSizeMm',
+        'priceMinor',
+        'productId',
+        'productModelVersion',
+        'productVersion',
+        'salesEnabled',
+        'sku',
+        'slug',
+        'sourceHash',
+        'title',
+        'updatedAt',
+    ];
+    sort($productKeys, SORT_STRING);
+    sort($expectedProductKeys, SORT_STRING);
+    $productId = $publicProduct['productId'] ?? null;
+    $sku = $publicProduct['sku'] ?? null;
+    $slug = $publicProduct['slug'] ?? null;
+    $title = $publicProduct['title'] ?? null;
+    $description = $publicProduct['description'] ?? null;
+    $updatedAt = $publicProduct['updatedAt'] ?? null;
+
+    if ($productKeys !== $expectedProductKeys
+        || ($publicProduct['productModelVersion'] ?? null) !== CARMAJA_PRODUCT_MODEL_V2
+        || !is_string($productId)
+        || preg_match(CARMAJA_DRAFT_PATTERN, $productId) !== 1
+        || !is_int($publicProduct['productVersion'] ?? null)
+        || ($publicProduct['productVersion'] ?? 0) < 1
+        || !is_string($publicProduct['sourceHash'] ?? null)
+        || preg_match('/^[0-9a-f]{64}$/', $publicProduct['sourceHash']) !== 1
+        || !is_string($sku)
+        || preg_match('/^CP-\d{4}-\d{4}$/', $sku) !== 1
+        || !is_string($slug)
+        || preg_match(CARMAJA_SLUG_PATTERN, $slug) !== 1
+        || !is_string($title)
+        || trim($title) !== $title
+        || $title === ''
+        || mb_strlen($title) > 120
+        || !is_string($description)
+        || trim($description) !== $description
+        || $description === ''
+        || mb_strlen($description) > 500
+        || !is_int($publicProduct['priceMinor'] ?? null)
+        || ($publicProduct['priceMinor'] ?? 0) < 50
+        || ($publicProduct['currency'] ?? null) !== 'eur'
+        || !is_bool($publicProduct['salesEnabled'] ?? null)
+        || !is_string($updatedAt)
+        || strlen($updatedAt) > 40
+        || strtotime($updatedAt) === false) {
+        carmaja_api_github_v2_publisher_invalid(
+            'Öffentliches v2-Produkt ist für GitHub ungültig.'
+        );
+    }
+
+    foreach (['braceletSizeCm', 'pearlSizeMm'] as $field) {
+        $measurement = $publicProduct[$field] ?? null;
+
+        if ((!is_int($measurement) && !is_float($measurement))
+            || !is_finite((float) $measurement)
+            || (float) $measurement <= 0
+            || (float) $measurement > 1000) {
+            carmaja_api_github_v2_publisher_invalid(
+                'Öffentliches v2-Produktmaß ist ungültig.'
+            );
+        }
+    }
+
+    carmaja_api_github_v2_assert_string_list($publicProduct['materials'] ?? null, false);
+    carmaja_api_github_v2_assert_string_list($publicProduct['metalElements'] ?? null, true);
+
+    $images = $publicProduct['images'] ?? null;
+    $imageBlobs = $publicProduct['_imageBlobs'] ?? null;
+
+    if (!is_array($images)
+        || !array_is_list($images)
+        || count($images) < 1
+        || count($images) > CARMAJA_MAX_IMAGES
+        || !is_array($imageBlobs)
+        || !array_is_list($imageBlobs)
+        || count($imageBlobs) !== count($images)) {
+        carmaja_api_github_v2_publisher_invalid(
+            'Öffentliche v2-Produktbilder sind unvollständig.'
+        );
+    }
+
+    $uploadDirectory = realpath(carmaja_api_path('uploads/' . $productId));
+
+    if (!is_string($uploadDirectory) || !is_dir($uploadDirectory)) {
+        carmaja_api_github_v2_publisher_invalid(
+            'Privater v2-Bildbereich ist nicht verfügbar.'
+        );
+    }
+
+    foreach ($images as $index => $image) {
+        $expectedFileName = sprintf('%02d.jpg', $index + 1);
+        $expectedRepoPath = 'website/public/images/products/'
+            . $sku . '/' . $expectedFileName;
+        $expectedSrc = '/images/products/' . $sku . '/' . $expectedFileName;
+        $imageKeys = is_array($image) ? array_keys($image) : [];
+        $expectedImageKeys = [
+            'alt', 'fileName', 'height', 'imageId', 'isMain', 'src', 'width',
+        ];
+        sort($imageKeys, SORT_STRING);
+        sort($expectedImageKeys, SORT_STRING);
+        $blob = $imageBlobs[$index] ?? null;
+        $blobKeys = is_array($blob) ? array_keys($blob) : [];
+        sort($blobKeys, SORT_STRING);
+        $sourcePath = is_array($blob) ? ($blob['_sourcePath'] ?? null) : null;
+        $sourceRealPath = is_string($sourcePath) ? realpath($sourcePath) : false;
+
+        if (!is_array($image)
+            || $imageKeys !== $expectedImageKeys
+            || !is_string($image['imageId'] ?? null)
+            || preg_match(CARMAJA_IMAGE_PATTERN, $image['imageId']) !== 1
+            || ($image['fileName'] ?? null) !== $expectedFileName
+            || ($image['src'] ?? null) !== $expectedSrc
+            || !is_string($image['alt'] ?? null)
+            || trim($image['alt']) !== $image['alt']
+            || $image['alt'] === ''
+            || mb_strlen($image['alt']) > 160
+            || !is_int($image['width'] ?? null)
+            || ($image['width'] ?? 0) <= 0
+            || !is_int($image['height'] ?? null)
+            || ($image['height'] ?? 0) <= 0
+            || ($image['isMain'] ?? null) !== ($index === 0)
+            || $blobKeys !== ['_repoPath', '_sourcePath']
+            || ($blob['_repoPath'] ?? null) !== $expectedRepoPath
+            || !is_string($sourceRealPath)
+            || !is_file($sourceRealPath)
+            || !carmaja_api_path_is_inside($sourceRealPath, $uploadDirectory)
+            || basename($sourceRealPath) !== $expectedFileName) {
+            carmaja_api_github_v2_publisher_invalid(
+                'Öffentliches v2-Produktbild ist für GitHub ungültig.'
+            );
+        }
+    }
+}
+
+function carmaja_api_github_publish_adapter_v2(
+    array $publicProduct,
+    array $operation
+): array {
+    carmaja_api_require_github_adapter_enabled();
+    carmaja_api_github_v2_assert_public_product($publicProduct);
+    $operationKeys = array_keys($operation);
+    sort($operationKeys, SORT_STRING);
+
+    if ($operationKeys !== ['operationId', 'requestHash']
+        || !is_string($operation['operationId'] ?? null)
+        || preg_match(CARMAJA_OPERATION_PATTERN, $operation['operationId']) !== 1
+        || !is_string($operation['requestHash'] ?? null)
+        || preg_match('/^[0-9a-f]{64}$/', $operation['requestHash']) !== 1) {
+        carmaja_api_github_v2_publisher_invalid(
+            'v2-Veröffentlichungsoperation ist ungültig.'
+        );
+    }
+
+    return carmaja_api_github_publish_adapter($publicProduct, $operation);
+}
+
 function carmaja_api_v2_publish_product(
     string $productId,
     array $body,

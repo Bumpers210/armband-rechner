@@ -2785,24 +2785,84 @@ function carmaja_api_commit_public_product(
         'GET',
         $repoPathPrefix . '/contents/website/content/products.json?ref=' . rawurlencode($branch)
     );
-    $currentProducts = [];
+    $isV2 = ($publicProduct['productModelVersion'] ?? null) === 2;
+    $targetDocumentVersion = $isV2 ? 2 : 1;
+    $currentProducts = ['version' => $targetDocumentVersion, 'products' => []];
 
-    if (is_string($content['content'] ?? null)) {
-        $decoded = json_decode(base64_decode((string) $content['content']), true);
-        $currentProducts = is_array($decoded) ? $decoded : ['version' => 1, 'products' => []];
+    if (!is_string($content['content'] ?? null)) {
+        throw new CarmajaApiException(
+            502,
+            'GitHub-Produktdatei ist nicht lesbar.',
+            [],
+            'github_products_unreadable'
+        );
     }
+
+    $decodedContent = base64_decode((string) $content['content'], true);
+
+    try {
+        $decoded = is_string($decodedContent)
+            ? json_decode($decodedContent, true, 512, JSON_THROW_ON_ERROR)
+            : null;
+    } catch (JsonException) {
+        $decoded = null;
+    }
+
+    if (!is_array($decoded) || array_is_list($decoded)) {
+        throw new CarmajaApiException(
+            409,
+            'Öffentliche Produktprojektion ist nicht sicher lesbar.',
+            [],
+            'public_product_projection_invalid'
+        );
+    }
+
+    $currentProducts = $decoded;
 
     $products = is_array($currentProducts['products'] ?? null)
         ? $currentProducts['products']
         : [];
+    $rootKeys = array_keys($currentProducts);
+    sort($rootKeys, SORT_STRING);
+
+    if ($rootKeys !== ['products', 'version']
+        || ($currentProducts['version'] ?? null) !== $targetDocumentVersion
+        || !array_is_list($products)) {
+        throw new CarmajaApiException(
+            409,
+            'Öffentliche Produktprojektion verwendet ein anderes Produktmodell.',
+            [],
+            'public_product_model_conflict'
+        );
+    }
     $publicProductForJson = array_diff_key($publicProduct, ['_imageBlobs' => true]);
     $replaced = false;
     $existingPublicProduct = null;
+    $isRemoval = !$isV2 && ($publicProductForJson['status'] ?? null) === 'disabled';
 
     foreach ($products as $index => $product) {
-        if (is_array($product) && ($product['sku'] ?? null) === $publicProduct['sku']) {
+        $sameProduct = is_array($product) && (
+            $isV2
+                ? ($product['productId'] ?? null) === ($publicProduct['productId'] ?? null)
+                : ($product['sku'] ?? null) === ($publicProduct['sku'] ?? null)
+        );
+
+        if ($isV2
+            && is_array($product)
+            && !$sameProduct
+            && (($product['sku'] ?? null) === ($publicProduct['sku'] ?? null)
+                || ($product['slug'] ?? null) === ($publicProduct['slug'] ?? null))) {
+            throw new CarmajaApiException(
+                409,
+                'SKU oder Produktadresse ist bereits öffentlich vergeben.',
+                [],
+                'public_product_identifier_conflict'
+            );
+        }
+
+        if ($sameProduct) {
             $existingPublicProduct = $product;
-            if (($publicProductForJson['status'] ?? null) === 'disabled') {
+            if ($isRemoval) {
                 unset($products[$index]);
             } else {
                 $products[$index] = $publicProductForJson;
@@ -2812,12 +2872,12 @@ function carmaja_api_commit_public_product(
         }
     }
 
-    if (!$replaced && ($publicProductForJson['status'] ?? null) !== 'disabled') {
+    if (!$replaced && !$isRemoval) {
         $products[] = $publicProductForJson;
     }
 
     $publicProductsFile = [
-        'version' => 1,
+        'version' => $targetDocumentVersion,
         'products' => array_values($products),
     ];
     $tree = [];
@@ -2870,7 +2930,7 @@ function carmaja_api_commit_public_product(
             );
         }
 
-        if (($publicProduct['status'] ?? null) === 'disabled'
+        if ($isRemoval
             || !in_array($repoPath, $newImagePaths, true)) {
             $tree[] = [
                 'path' => $repoPath,
@@ -2881,7 +2941,7 @@ function carmaja_api_commit_public_product(
         }
     }
 
-    if (($publicProduct['status'] ?? null) !== 'disabled') {
+    if (!$isRemoval) {
         foreach (($publicProduct['_imageBlobs'] ?? []) as $imageBlob) {
             if (!is_array($imageBlob)) {
                 continue;
