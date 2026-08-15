@@ -61,21 +61,21 @@ test("Navigation, Sitemap und Produktseiten verwenden das Mehrseitenlayout", asy
   assert.doesNotMatch(detail, /siteContent\.care|product-care|care-heading/);
 });
 
-test("das offizielle Logo ist in Header und Footer eingebunden", async () => {
+test("das transparente Logo ist in Header und Footer eingebunden", async () => {
   const header = await source("components/site-header.tsx");
   const footer = await source("components/site-footer.tsx");
-  const logoPath = "/images/brand/carmaja-logo-offiziell.png";
-  const logo = await stat(
-    path.join(
-      websiteDirectory,
-      "public",
-      "images",
-      "brand",
-      "carmaja-logo-offiziell.png",
-    ),
+  const logoPath = "/images/brand/carmaja-logo-transparent.png";
+  const logoFile = path.join(
+    websiteDirectory,
+    "public",
+    "images",
+    "brand",
+    "carmaja-logo-transparent.png",
   );
+  const [logo, logoData] = await Promise.all([stat(logoFile), readFile(logoFile)]);
 
   assert.ok(logo.size > 0);
+  assert.equal(logoData[25], 6, "Logo-PNG muss einen echten Alpha-Kanal besitzen");
   assert.ok(header.includes(logoPath));
   assert.ok(footer.includes(logoPath));
   assert.match(header, /brandPrimary\.slice\(1\)/);
