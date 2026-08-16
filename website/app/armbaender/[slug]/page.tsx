@@ -11,6 +11,7 @@ import {
   detailProducts,
   findDetailProduct,
   mainProductImage,
+  type PublicProduct,
 } from "@/content/products";
 
 type ProductDetailPageProps = {
@@ -18,6 +19,70 @@ type ProductDetailPageProps = {
     slug: string;
   }>;
 };
+
+function formatDescriptionParagraphs(
+  description: string,
+  productTitle: string,
+): string[] {
+  const paragraphs = description
+    .replace(/\r\n?/g, "\n")
+    .split(/\n\s*\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+
+  if (paragraphs.length > 1 && paragraphs[0] === productTitle.trim()) {
+    return paragraphs.slice(1);
+  }
+
+  return paragraphs;
+}
+
+function ProductDescription({ product }: { product: PublicProduct }) {
+  const document = product.descriptionDocument;
+
+  if (document) {
+    const blocks = document.blocks.length > 1 &&
+      document.blocks[0].spans.map((span) => span.text).join("").trim() ===
+        product.publicTitle.trim()
+      ? document.blocks.slice(1)
+      : document.blocks;
+
+    return (
+      <div className="product-lede product-description-rich">
+        {blocks.map((block, blockIndex) => (
+          <p key={`block-${blockIndex}`}>
+            {block.spans.map((span, spanIndex) => (
+              <span
+                className={[
+                  "product-description-span",
+                  span.bold ? "product-description-span--bold" : "",
+                  span.italic ? "product-description-span--italic" : "",
+                  `product-description-span--font-${span.font}`,
+                  `product-description-span--size-${span.size}`,
+                ].filter(Boolean).join(" ")}
+                key={`span-${blockIndex}-${spanIndex}`}
+              >
+                {span.text}
+              </span>
+            ))}
+          </p>
+        ))}
+      </div>
+    );
+  }
+
+  const paragraphs = formatDescriptionParagraphs(
+    product.description,
+    product.publicTitle,
+  );
+  return (
+    <div className="product-lede">
+      {paragraphs.map((paragraph, index) => (
+        <p key={`${index}-${paragraph}`}>{paragraph}</p>
+      ))}
+    </div>
+  );
+}
 
 export const dynamicParams = false;
 export const dynamic = "force-static";
@@ -120,7 +185,7 @@ export default async function ProductDetailPage({
             {!product.salesEnabled ? (
               <p className="product-status product-status--sold">Nicht verfügbar</p>
             ) : null}
-            <p className="product-lede">{product.description}</p>
+            <ProductDescription product={product} />
 
             <dl className="product-detail-facts">
               <div>

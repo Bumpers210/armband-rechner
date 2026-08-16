@@ -3,7 +3,7 @@ import path from "node:path";
 import { formatMeasurement, publicProductName, readJpegDimensions } from "./public-products.mjs";
 
 const ROOT_KEYS = ["products", "version"];
-const PRODUCT_KEYS = [
+const PRODUCT_KEYS_V2 = [
   "currency",
   "braceletSizeCm",
   "description",
@@ -22,6 +22,10 @@ const PRODUCT_KEYS = [
   "title",
   "updatedAt",
 ];
+const PRODUCT_KEYS_V3 = [...PRODUCT_KEYS_V2, "descriptionDocument"];
+const DESCRIPTION_DOCUMENT_KEYS = ["blocks", "version"];
+const DESCRIPTION_BLOCK_KEYS = ["spans", "type"];
+const DESCRIPTION_SPAN_KEYS = ["bold", "font", "italic", "size", "text"];
 const IMAGE_KEYS = ["alt", "fileName", "height", "imageId", "isMain", "src", "width"];
 const SKU_PATTERN = /^CP-\d{4}-\d{4}$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -90,6 +94,67 @@ function requirePositiveNumber(value, location) {
   return value;
 }
 
+function validateDescriptionDocument(value, expectedPlainText, location) {
+  const document = requireObject(value, location);
+  requireExactKeys(document, DESCRIPTION_DOCUMENT_KEYS, DESCRIPTION_DOCUMENT_KEYS, location);
+  if (document.version !== 1 || !Array.isArray(document.blocks)) {
+    fail(location, "Formatierte Beschreibung Version 1 erwartet.");
+  }
+  if (document.blocks.length < 1 || document.blocks.length > 25) {
+    fail(`${location}.blocks`, "Ein bis 25 Absätze erwartet.");
+  }
+
+  let spanCount = 0;
+  const blocks = document.blocks.map((blockValue, blockIndex) => {
+    const blockLocation = `${location}.blocks[${blockIndex}]`;
+    const block = requireObject(blockValue, blockLocation);
+    requireExactKeys(block, DESCRIPTION_BLOCK_KEYS, DESCRIPTION_BLOCK_KEYS, blockLocation);
+    if (block.type !== "paragraph" || !Array.isArray(block.spans) || block.spans.length < 1) {
+      fail(blockLocation, "Nichtleerer Absatz erwartet.");
+    }
+    spanCount += block.spans.length;
+    return {
+      type: "paragraph",
+      spans: block.spans.map((spanValue, spanIndex) => {
+        const spanLocation = `${blockLocation}.spans[${spanIndex}]`;
+        const span = requireObject(spanValue, spanLocation);
+        requireExactKeys(span, DESCRIPTION_SPAN_KEYS, DESCRIPTION_SPAN_KEYS, spanLocation);
+        if (
+          typeof span.text !== "string" ||
+          span.text.length < 1 ||
+          typeof span.bold !== "boolean" ||
+          typeof span.italic !== "boolean" ||
+          !["standard", "elegant"].includes(span.font) ||
+          !["small", "normal", "large"].includes(span.size)
+        ) {
+          fail(spanLocation, "Formatierter Textbereich ist ungültig.");
+        }
+        return {
+          text: span.text,
+          bold: span.bold,
+          italic: span.italic,
+          font: span.font,
+          size: span.size,
+        };
+      }),
+    };
+  });
+
+  if (spanCount > 100) {
+    fail(location, "Höchstens 100 Formatbereiche erlaubt.");
+  }
+  if (Buffer.byteLength(JSON.stringify(document), "utf8") > 16 * 1024) {
+    fail(location, "Formatierte Beschreibung ist zu groß.");
+  }
+  const plainText = blocks
+    .map((block) => block.spans.map((span) => span.text).join(""))
+    .join("\n\n");
+  if (plainText !== expectedPlainText) {
+    fail(location, "Reiner Text und formatierte Beschreibung stimmen nicht überein.");
+  }
+  return { version: 1, blocks };
+}
+
 function validateImage(value, product, index, imageCount, imageRoot) {
   const location = `products[${product.productId}].images[${index}]`;
   const image = requireObject(value, location);
@@ -149,7 +214,11 @@ function validateImage(value, product, index, imageCount, imageRoot) {
 function validateProduct(value, index, imageRoot) {
   const location = `products[${index}]`;
   const product = requireObject(value, location);
-  requireExactKeys(product, PRODUCT_KEYS, PRODUCT_KEYS, location);
+  if (![2, 3].includes(product.productModelVersion)) {
+    fail(location, "Produktmodell 2 oder 3 erwartet.");
+  }
+  const productKeys = product.productModelVersion === 3 ? PRODUCT_KEYS_V3 : PRODUCT_KEYS_V2;
+  requireExactKeys(product, productKeys, productKeys, location);
   const productId = requireString(product.productId, `${location}.productId`, 40);
   const sku = requireString(product.sku, `${location}.sku`, 20);
   const slug = requireString(product.slug, `${location}.slug`, 180);
@@ -166,8 +235,8 @@ function validateProduct(value, index, imageRoot) {
     fail(`${location}.slug`, "Ungültiger URL-Slug.");
   }
 
-  if (product.productModelVersion !== 2 || !Number.isInteger(product.productVersion) || product.productVersion < 1) {
-    fail(location, "Produktmodell 2 mit positiver Produktversion erwartet.");
+  if (!Number.isInteger(product.productVersion) || product.productVersion < 1) {
+    fail(location, "Positive Produktversion erwartet.");
   }
 
   if (!Number.isInteger(product.priceMinor) || product.priceMinor < 50) {
@@ -200,15 +269,25 @@ function validateProduct(value, index, imageRoot) {
     fail(`${location}.images`, "Ein bis fünf Bilder erwartet.");
   }
 
+  const description = requireString(product.description, `${location}.description`, 500);
+  const descriptionDocument = product.productModelVersion === 3
+    ? validateDescriptionDocument(
+        product.descriptionDocument,
+        description,
+        `${location}.descriptionDocument`,
+      )
+    : null;
+
   return {
-    productModelVersion: 2,
+    productModelVersion: product.productModelVersion,
     productId,
     productVersion: product.productVersion,
     sourceHash: product.sourceHash,
     sku,
     slug,
     publicTitle,
-    description: requireString(product.description, `${location}.description`, 500),
+    description,
+    descriptionDocument,
     materials: requireStringList(product.materials, `${location}.materials`, { allowEmpty: false }),
     metalElements: requireStringList(product.metalElements, `${location}.metalElements`),
     braceletSizeCm,
@@ -239,8 +318,11 @@ export function loadPublicProductsV2(productsFile, imageRoot) {
   const root = requireObject(decoded, "root");
   requireExactKeys(root, ROOT_KEYS, ROOT_KEYS, "root");
 
-  if (root.version !== 2 || !Array.isArray(root.products)) {
-    fail("root", "Version 2 mit Produktliste erwartet.");
+  if (![2, 3].includes(root.version) || !Array.isArray(root.products)) {
+    fail("root", "Version 2 oder 3 mit Produktliste erwartet.");
+  }
+  if (root.version === 2 && root.products.some((product) => product?.productModelVersion !== 2)) {
+    fail("root", "Version 2 darf nur Produkte des Modells 2 enthalten.");
   }
 
   const products = root.products.map((product, index) =>
@@ -262,5 +344,5 @@ export function loadPublicProductsV2(productsFile, imageRoot) {
     fail("products", "Doppelter Slug.");
   }
 
-  return { version: 2, products };
+  return { version: root.version, products };
 }

@@ -2729,8 +2729,9 @@ function carmaja_api_commit_public_product(
         'GET',
         $repoPathPrefix . '/contents/website/content/products.json?ref=' . rawurlencode($branch)
     );
-    $isV2 = ($publicProduct['productModelVersion'] ?? null) === 2;
-    $targetDocumentVersion = $isV2 ? 2 : 1;
+    $productModelVersion = $publicProduct['productModelVersion'] ?? null;
+    $isVersionedProduct = in_array($productModelVersion, [2, 3], true);
+    $targetDocumentVersion = $isVersionedProduct ? (int) $productModelVersion : 1;
     $currentProducts = ['version' => $targetDocumentVersion, 'products' => []];
 
     if (is_string($content['content'] ?? null)) {
@@ -2743,8 +2744,19 @@ function carmaja_api_commit_public_product(
     $products = is_array($currentProducts['products'] ?? null)
         ? $currentProducts['products']
         : [];
-    if (($currentProducts['version'] ?? null) !== $targetDocumentVersion
-        && $products !== []) {
+    $currentDocumentVersion = $currentProducts['version'] ?? null;
+    $isSafeV3Upgrade = $targetDocumentVersion === 3
+        && $currentDocumentVersion === 2
+        && array_reduce(
+            $products,
+            static fn (bool $safe, mixed $product): bool => $safe
+                && is_array($product)
+                && ($product['productModelVersion'] ?? null) === 2,
+            true
+        );
+    if ($currentDocumentVersion !== $targetDocumentVersion
+        && $products !== []
+        && !$isSafeV3Upgrade) {
         throw new CarmajaApiException(
             409,
             'Öffentliche Produktprojektion verwendet ein anderes Produktmodell.',
@@ -2755,11 +2767,12 @@ function carmaja_api_commit_public_product(
     $publicProductForJson = array_diff_key($publicProduct, ['_imageBlobs' => true]);
     $replaced = false;
     $existingPublicProduct = null;
-    $isRemoval = !$isV2 && ($publicProductForJson['status'] ?? null) === 'disabled';
+    $isRemoval = !$isVersionedProduct
+        && ($publicProductForJson['status'] ?? null) === 'disabled';
 
     foreach ($products as $index => $product) {
         $sameProduct = is_array($product) && (
-            $isV2
+            $isVersionedProduct
                 ? ($product['productId'] ?? null) === ($publicProduct['productId'] ?? null)
                 : ($product['sku'] ?? null) === ($publicProduct['sku'] ?? null)
         );

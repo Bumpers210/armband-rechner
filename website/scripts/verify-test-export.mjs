@@ -38,6 +38,37 @@ function assert(condition, message) {
   }
 }
 
+function escapeHtmlText(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#x27;");
+}
+
+function visibleDescriptionFragments(product) {
+  if (product.descriptionDocument) {
+    const blocks = [...product.descriptionDocument.blocks];
+    const leadingText = blocks[0]?.spans.map((span) => span.text).join("").trim();
+    if (blocks.length > 1 && leadingText === product.publicTitle.trim()) {
+      blocks.shift();
+    }
+    return blocks.flatMap((block) => block.spans.map((span) => span.text));
+  }
+
+  const paragraphs = product.description
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n")
+    .split(/\n\s*\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  if (paragraphs.length > 1 && paragraphs[0] === product.publicTitle.trim()) {
+    paragraphs.shift();
+  }
+  return paragraphs;
+}
+
 async function exists(relativePath) {
   try {
     await access(path.join(outputDirectory, relativePath));
@@ -170,7 +201,7 @@ const expectedSitemap = [
 assert(
   sitemapLocations.length === expectedSitemap.length &&
     expectedSitemap.every((location) => sitemapLocations.includes(location)),
-  "Testsitemap enthält nicht exakt Startseite, Übersicht und sichtbare v2-Testprodukte.",
+  "Testsitemap enthält nicht exakt Startseite, Übersicht und sichtbare Testprodukte.",
 );
 
 for (const product of enabled) {
@@ -179,10 +210,12 @@ for (const product of enabled) {
 
   assert(
     overviewHtml.includes(product.publicTitle) &&
-      overviewHtml.includes(product.description) &&
+      overviewHtml.includes(escapeHtmlText(product.description)) &&
       detailHtml.includes(product.publicTitle) &&
-      detailHtml.includes(product.description),
-    `Kaufbares v2-Produkt fehlt: ${product.sku}`,
+      visibleDescriptionFragments(product).every((fragment) =>
+        detailHtml.includes(escapeHtmlText(fragment)),
+      ),
+    `Kaufbares Produkt fehlt: ${product.sku}`,
   );
   assert(
     overviewHtml.includes("<dt>Materialien</dt>") &&
@@ -213,7 +246,7 @@ for (const product of enabled) {
   assert(
     !detailHtml.toLowerCase().includes("verkaufspreis") &&
       !detailHtml.toLowerCase().includes("materialkosten"),
-    `Kaufbares v2-Produkt enthält interne Kalkulationsfelder: ${product.sku}`,
+    `Kaufbares Produkt enthält interne Kalkulationsfelder: ${product.sku}`,
   );
 
   assert(
@@ -230,14 +263,14 @@ for (const product of unavailable) {
   assert(await exists(detailPath), `Nicht verfügbare Detailseite fehlt: ${product.sku}`);
   assert(
       overviewHtml.includes(product.publicTitle) &&
-      overviewHtml.includes(product.description) &&
+      overviewHtml.includes(escapeHtmlText(product.description)) &&
       overviewHtml.includes("Nicht verfügbar") &&
       detailHtml.includes("Nicht verfügbar") &&
       detailHtml.includes('href="/material-pflege/"') &&
       detailHtml.includes("Hinweise zu Material &amp; Pflege") &&
       !detailHtml.toLowerCase().includes("vinted") &&
       !detailHtml.toLowerCase().includes("marktplatz"),
-    `Nicht verfügbares v2-Produkt ist nicht korrekt gerendert: ${product.sku}`,
+    `Nicht verfügbares Produkt ist nicht korrekt gerendert: ${product.sku}`,
   );
 }
 

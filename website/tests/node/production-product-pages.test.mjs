@@ -11,7 +11,7 @@ async function source(relativePath) {
   return readFile(path.join(websiteDirectory, relativePath), "utf8");
 }
 
-test("oeffentliche Routen behandeln nur freigegebene v2-Produkte", async () => {
+test("oeffentliche Routen behandeln nur freigegebene Produkte der Modelle 2 und 3", async () => {
   const products = await source("content/products.ts");
   const overview = await source("app/armbaender/page.tsx");
   const detail = await source("app/armbaender/[slug]/page.tsx");
@@ -40,7 +40,9 @@ test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async 
   assert.match(publicProducts, /priceMinor/);
   assert.match(publicProducts, /salesEnabled/);
   assert.match(publicProducts, /const ROOT_KEYS = \["products", "version"\]/);
-  assert.match(publicProducts, /const PRODUCT_KEYS = \[/);
+  assert.match(publicProducts, /const PRODUCT_KEYS_V2 = \[/);
+  assert.match(publicProducts, /const PRODUCT_KEYS_V3 = \[\.\.\.PRODUCT_KEYS_V2/);
+  assert.match(publicProducts, /validateDescriptionDocument/);
   assert.match(publicProducts, /const publicTitle = requireString\(product\.title/);
   assert.match(publicProducts, /alt: `\$\{publicProductName\}, Bild/);
   assert.match(detail, /href="\/material-pflege\/"/);

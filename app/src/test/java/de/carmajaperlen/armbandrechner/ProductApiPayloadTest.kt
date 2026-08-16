@@ -6,7 +6,7 @@ import org.junit.Test
 
 class ProductApiPayloadTest {
     @Test
-    fun savePayloadContainsCompleteV2ContractWithoutLegacyOrServerFields() {
+    fun savePayloadContainsCompleteV3ContractWithoutLegacyOrServerFields() {
         val payload = productDraft().toSaveJson()
 
         assertEquals("Rosenquarz", payload.getJSONArray("materials").getString(0))
@@ -17,6 +17,8 @@ class ProductApiPayloadTest {
         assertEquals(17.5, payload.getDouble("braceletSizeCm"), 0.0)
         assertEquals(6.0, payload.getDouble("pearlSizeMm"), 0.0)
         assertEquals("Legacy-Pflegehinweis", payload.getJSONArray("careInstructions").getString(0))
+        assertEquals(1, payload.getJSONObject("descriptionDocument").getInt("version"))
+        assertFalse(payload.has("description"))
         assertEquals(2490, payload.getInt("priceMinor"))
         assertEquals("eur", payload.getString("currency"))
         assertFalse(payload.getBoolean("salesEnabled"))
@@ -32,6 +34,8 @@ class ProductApiPayloadTest {
             metalElements = listOf("Spacer Blume Edelstahl"),
             braceletSizeCm = "17.5",
             pearlSizeMm = "6",
+            shortDescription = "Handgefertigtes Armband.",
+            descriptionDocument = DescriptionDocument.fromPlainText("Handgefertigtes Armband."),
             careInstructions = listOf("Legacy-Pflegehinweis"),
             priceMinor = 2490,
             internalCalculation = CalculationSnapshot(

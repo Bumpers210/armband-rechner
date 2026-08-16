@@ -8,8 +8,23 @@ export type ProductImageV2 = {
   isMain: boolean;
 };
 
+export type DescriptionTextStyleV1 = {
+  bold: boolean;
+  italic: boolean;
+  font: "standard" | "elegant";
+  size: "small" | "normal" | "large";
+};
+
+export type DescriptionDocumentV1 = {
+  version: 1;
+  blocks: Array<{
+    type: "paragraph";
+    spans: Array<{ text: string } & DescriptionTextStyleV1>;
+  }>;
+};
+
 export type PublicProductV2 = {
-  productModelVersion: 2;
+  productModelVersion: 2 | 3;
   productId: string;
   productVersion: number;
   sourceHash: string;
@@ -17,6 +32,7 @@ export type PublicProductV2 = {
   slug: string;
   publicTitle: string;
   description: string;
+  descriptionDocument: DescriptionDocumentV1 | null;
   materials: string[];
   metalElements: string[];
   braceletSizeCm: number;
@@ -34,6 +50,6 @@ export function loadPublicProductsV2(
   productsFile: string,
   imageRoot: string,
 ): {
-  version: 2;
+  version: 2 | 3;
   products: PublicProductV2[];
 };
