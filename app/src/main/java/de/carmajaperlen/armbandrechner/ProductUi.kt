@@ -8,6 +8,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -765,21 +767,7 @@ internal fun ProductPublicationPreviewScreen(
             }
         }
 
-        draft.images.forEachIndexed { index, image ->
-            val bitmap = remember(image.localPath) {
-                BitmapFactory.decodeFile(image.localPath)?.asImageBitmap()
-            }
-            if (bitmap != null) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = "${draft.name}, Bild ${index + 1} von ${draft.images.size}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1.15f),
-                )
-            }
-        }
+        ProductPreviewImageGallery(draft)
 
         Text(
             text = draft.name,
@@ -832,6 +820,82 @@ internal fun ProductPublicationPreviewScreen(
                 .testTag("publication-preview-publish"),
         ) {
             Text(if (busy) "Veröffentlichung läuft …" else "Jetzt veröffentlichen")
+        }
+    }
+}
+
+@Composable
+private fun ProductPreviewImageGallery(draft: ProductDraft) {
+    val imagePaths = draft.images.map(ProductImage::localPath)
+    val images = remember(imagePaths) {
+        draft.images.mapNotNull { image ->
+            BitmapFactory.decodeFile(image.localPath)?.asImageBitmap()
+                ?.let { image to it }
+        }
+    }
+    if (images.isEmpty()) return
+
+    val initialImageId = images.firstOrNull { (image, _) -> image.isMain }
+        ?.first
+        ?.imageId
+        ?: images.first().first.imageId
+    var selectedImageId by rememberSaveable(draft.draftId, draft.updatedAtMillis) {
+        mutableStateOf(initialImageId)
+    }
+    val selectedIndex = images.indexOfFirst { (image, _) -> image.imageId == selectedImageId }
+        .takeIf { it >= 0 }
+        ?: 0
+    val (selectedImage, selectedBitmap) = images[selectedIndex]
+
+    Image(
+        bitmap = selectedBitmap,
+        contentDescription = selectedImage.alt.ifBlank {
+            "${draft.name}, Bild ${selectedIndex + 1} von ${images.size}"
+        },
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(1.15f)
+            .testTag("publication-preview-main-image"),
+    )
+
+    if (images.size > 1) {
+        Text(
+            text = "Bild ${selectedIndex + 1} von ${images.size}",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .testTag("publication-preview-image-selector"),
+        ) {
+            images.forEachIndexed { index, (image, bitmap) ->
+                Surface(
+                    onClick = { selectedImageId = image.imageId },
+                    shape = MaterialTheme.shapes.small,
+                    border = BorderStroke(
+                        width = if (index == selectedIndex) 3.dp else 1.dp,
+                        color = if (index == selectedIndex) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.outlineVariant
+                        },
+                    ),
+                    modifier = Modifier
+                        .size(76.dp)
+                        .testTag("publication-preview-image-$index"),
+                ) {
+                    Image(
+                        bitmap = bitmap,
+                        contentDescription = "Bild ${index + 1} auswählen",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
         }
     }
 }
