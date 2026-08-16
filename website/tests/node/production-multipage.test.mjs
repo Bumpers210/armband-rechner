@@ -57,6 +57,19 @@ test("Navigation, Sitemap und Produktseiten bleiben erreichbar", async () => {
   assert.match(detail, /ProductImageGallery/);
 });
 
+test("Produktkarten sind als eigenständige Bereiche klar abgegrenzt", async () => {
+  const styles = await source("app/site.css");
+
+  assert.match(
+    styles,
+    /\.v2-page \.product-card \{[\s\S]*?overflow: hidden;[\s\S]*?border: 1px solid var\(--v2-line\);[\s\S]*?background: var\(--v2-surface\);[\s\S]*?box-shadow:/,
+  );
+  assert.match(
+    styles,
+    /\.v2-page \.product-card-copy \{[\s\S]*?padding: 1\.35rem 1\.35rem 1\.5rem;/,
+  );
+});
+
 test("gemeinsame Kontakt- und Armbänder-Weiterleitungen bleiben einheitlich", async () => {
   const home = await source("app/page.tsx");
   const materials = await source("app/material-pflege/page.tsx");

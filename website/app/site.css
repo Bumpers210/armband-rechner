@@ -744,8 +744,14 @@
 
 .v2-page .product-card {
   display: grid;
-  gap: 1.25rem;
+  grid-template-rows: auto 1fr;
+  gap: 0;
   min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--v2-line);
+  border-radius: 12px;
+  background: var(--v2-surface);
+  box-shadow: 0 0.75rem 2rem rgb(40 43 39 / 7%);
 }
 
 .v2-page .product-card-media {
@@ -756,7 +762,7 @@
   overflow: hidden;
   aspect-ratio: 4 / 3;
   border: 0;
-  border-radius: 8px;
+  border-radius: 0;
   background: #e7e4dc;
   cursor: zoom-in;
   touch-action: manipulation;
@@ -793,6 +799,7 @@
   display: grid;
   align-content: start;
   gap: 0.75rem;
+  padding: 1.35rem 1.35rem 1.5rem;
 }
 
 .v2-page .product-card-copy h2,
