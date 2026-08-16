@@ -36,6 +36,7 @@ class ProductPublicationPreviewTest {
             }
         }
 
+        composeRule.onNodeWithTag("publication-preview-background").assertIsDisplayed()
         composeRule.onNodeWithTag("publication-preview-label").assertIsDisplayed()
         composeRule.onNodeWithText("TESTUMGEBUNG").assertIsDisplayed()
         composeRule.onNodeWithText("Rosenquarz Armband").assertIsDisplayed()

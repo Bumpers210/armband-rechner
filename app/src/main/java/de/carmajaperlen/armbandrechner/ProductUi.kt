@@ -45,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -744,85 +745,108 @@ internal fun ProductPublicationPreviewScreen(
     val description = draft.descriptionDocument
         ?: DescriptionDocument.fromPlainText(draft.shortDescription)
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+    Surface(
+        color = WebsitePreviewCanvas,
+        contentColor = WebsitePreviewInk,
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp, vertical = 24.dp),
+            .testTag("publication-preview-background"),
     ) {
-        Surface(
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            shape = MaterialTheme.shapes.small,
-            modifier = Modifier.fillMaxWidth(),
+        Column(
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 24.dp),
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                    text = "VORSCHAU · NOCH NICHT VERÖFFENTLICHT",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.testTag("publication-preview-label"),
-                )
-                Text(environmentLabel, style = MaterialTheme.typography.bodySmall)
+            Surface(
+                color = WebsitePreviewClay,
+                contentColor = WebsitePreviewSurface,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "VORSCHAU · NOCH NICHT VERÖFFENTLICHT",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.testTag("publication-preview-label"),
+                    )
+                    Text(environmentLabel, style = MaterialTheme.typography.bodySmall)
+                }
             }
-        }
 
-        ProductPreviewImageGallery(draft)
+            ProductPreviewImageGallery(draft)
 
-        Text(
-            text = draft.name,
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.testTag("publication-preview-title"),
-        )
-        if (!draft.salesEnabled) {
             Text(
-                text = "Nicht verfügbar",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.secondary,
+                text = draft.name,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.testTag("publication-preview-title"),
             )
-        }
-        RichDescriptionText(
-            document = description,
-            modifier = Modifier.testTag("publication-preview-description"),
-        )
+            if (!draft.salesEnabled) {
+                Text(
+                    text = "Nicht verfügbar",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = WebsitePreviewClay,
+                )
+            }
+            RichDescriptionText(
+                document = description,
+                modifier = Modifier.testTag("publication-preview-description"),
+            )
 
-        ProductPreviewFact("Materialien", draft.materials.joinToString(", "))
-        ProductPreviewFact(
-            "Metallelemente",
-            draft.metalElements.ifEmpty { listOf("Keine") }.joinToString(", "),
-        )
-        ProductPreviewFact("Größe", displayMeasurement(draft.braceletSizeCm, "cm"))
-        ProductPreviewFact("Perlengröße", displayMeasurement(draft.pearlSizeMm, "mm"))
-        Text(
-            text = "Hinweise zu Material & Pflege",
-            color = MaterialTheme.colorScheme.primary,
-            textDecoration = TextDecoration.Underline,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.testTag("publication-preview-care-link"),
-        )
+            ProductPreviewFact("Materialien", draft.materials.joinToString(", "))
+            ProductPreviewFact(
+                "Metallelemente",
+                draft.metalElements.ifEmpty { listOf("Keine") }.joinToString(", "),
+            )
+            ProductPreviewFact("Größe", displayMeasurement(draft.braceletSizeCm, "cm"))
+            ProductPreviewFact("Perlengröße", displayMeasurement(draft.pearlSizeMm, "mm"))
+            Text(
+                text = "Hinweise zu Material & Pflege",
+                color = WebsitePreviewMoss,
+                textDecoration = TextDecoration.Underline,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.testTag("publication-preview-care-link"),
+            )
 
-        OutlinedButton(
-            onClick = onBack,
-            enabled = !busy,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag("publication-preview-back"),
-        ) {
-            Text("Zurück zum Bearbeiten")
-        }
-        Button(
-            onClick = onPublish,
-            enabled = !busy,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-                .testTag("publication-preview-publish"),
-        ) {
-            Text(if (busy) "Veröffentlichung läuft …" else "Jetzt veröffentlichen")
+            OutlinedButton(
+                onClick = onBack,
+                enabled = !busy,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("publication-preview-back"),
+                border = BorderStroke(1.dp, WebsitePreviewLine),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = WebsitePreviewMoss),
+            ) {
+                Text("Zurück zum Bearbeiten")
+            }
+            Button(
+                onClick = onPublish,
+                enabled = !busy,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .testTag("publication-preview-publish"),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = WebsitePreviewMoss,
+                    contentColor = WebsitePreviewSurface,
+                ),
+            ) {
+                Text(if (busy) "Veröffentlichung läuft …" else "Jetzt veröffentlichen")
+            }
         }
     }
 }
+
+private val WebsitePreviewCanvas = Color(0xFFF3F0E9)
+private val WebsitePreviewSurface = Color(0xFFFBFAF6)
+private val WebsitePreviewInk = Color(0xFF282B27)
+private val WebsitePreviewMuted = Color(0xFF60675F)
+private val WebsitePreviewMoss = Color(0xFF405545)
+private val WebsitePreviewClay = Color(0xFF98604D)
+private val WebsitePreviewLine = Color(0xFFD5D5CC)
 
 @Composable
 private fun ProductPreviewImageGallery(draft: ProductDraft) {
@@ -863,7 +887,7 @@ private fun ProductPreviewImageGallery(draft: ProductDraft) {
         Text(
             text = "Bild ${selectedIndex + 1} von ${images.size}",
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = WebsitePreviewMuted,
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -879,9 +903,9 @@ private fun ProductPreviewImageGallery(draft: ProductDraft) {
                     border = BorderStroke(
                         width = if (index == selectedIndex) 3.dp else 1.dp,
                         color = if (index == selectedIndex) {
-                            MaterialTheme.colorScheme.primary
+                            WebsitePreviewClay
                         } else {
-                            MaterialTheme.colorScheme.outlineVariant
+                            WebsitePreviewLine
                         },
                     ),
                     modifier = Modifier
