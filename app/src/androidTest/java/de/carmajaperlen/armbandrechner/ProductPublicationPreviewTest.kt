@@ -1,12 +1,16 @@
 package de.carmajaperlen.armbandrechner
 
+import android.graphics.Bitmap
+import android.graphics.Color
 import androidx.compose.material3.MaterialTheme
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -74,6 +78,59 @@ class ProductPublicationPreviewTest {
 
         composeRule.onNodeWithText("Alter erster Absatz\n\nAlter zweiter Absatz")
             .assertExists()
+    }
+
+    @Test
+    fun previewUsesOneLargeImageAndSelectableThumbnails() {
+        val firstImage = createPreviewImage("preview-first.jpg", Color.RED, isMain = true)
+        val secondImage = createPreviewImage("preview-second.jpg", Color.BLUE)
+        composeRule.setContent {
+            MaterialTheme {
+                ProductPublicationPreviewScreen(
+                    draft = draftWithFormattedDescription().copy(
+                        images = listOf(firstImage, secondImage),
+                    ),
+                    environmentLabel = "TESTUMGEBUNG",
+                    busy = false,
+                    onBack = {},
+                    onPublish = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("publication-preview-main-image").assertIsDisplayed()
+        composeRule.onNodeWithTag("publication-preview-image-selector").assertIsDisplayed()
+        composeRule.onNodeWithTag("publication-preview-image-0").assertIsDisplayed()
+        composeRule.onNodeWithTag("publication-preview-image-1").assertIsDisplayed()
+        composeRule.onNodeWithText("Bild 1 von 2").assertIsDisplayed()
+
+        composeRule.onNodeWithTag("publication-preview-image-1").performClick()
+        composeRule.onNodeWithText("Bild 2 von 2").assertIsDisplayed()
+    }
+
+    private fun createPreviewImage(
+        name: String,
+        color: Int,
+        isMain: Boolean = false,
+    ): ProductImage {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val imageFile = File(context.cacheDir, name)
+        val bitmap = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
+        try {
+            bitmap.eraseColor(color)
+            imageFile.outputStream().use { output ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+            }
+        } finally {
+            bitmap.recycle()
+        }
+        return ProductImage(
+            localPath = imageFile.absolutePath,
+            width = 32,
+            height = 32,
+            alt = name,
+            isMain = isMain,
+        )
     }
 
     private fun draftWithFormattedDescription(): ProductDraft = ProductDraft(
