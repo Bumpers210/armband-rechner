@@ -13,6 +13,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -149,7 +150,7 @@ class ProductAuthenticationAndActionsTest {
             }
         }
 
-        composeRule.onNodeWithTag("product-discard-unsaved").performClick()
+        composeRule.onNodeWithTag("product-discard-unsaved").performScrollTo().performClick()
 
         assertTrue(discarded.get())
     }
@@ -204,7 +205,7 @@ class ProductAuthenticationAndActionsTest {
 
         composeRule.onNodeWithTag("published-edit").performClick()
 
-        composeRule.onNodeWithText("Änderungen erneut veröffentlichen").assertIsDisplayed()
+        composeRule.onNodeWithText("Vorschau der Änderungen").assertIsDisplayed()
         composeRule.onNodeWithTag("product-pearls").assertIsDisplayed()
         composeRule.onNodeWithTag("product-spacers").assertIsDisplayed()
         composeRule.onNodeWithText("Pflegehinweise").assertDoesNotExist()
