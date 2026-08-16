@@ -61,6 +61,19 @@ test("Navigation, Sitemap und Produktseiten verwenden das Mehrseitenlayout", asy
   assert.doesNotMatch(detail, /siteContent\.care|product-care|care-heading/);
 });
 
+test("Produktkarten sind als eigenständige Bereiche klar abgegrenzt", async () => {
+  const styles = await source("app/site.css");
+
+  assert.match(
+    styles,
+    /\.v2-page \.product-card \{[\s\S]*?overflow: hidden;[\s\S]*?border: 1px solid var\(--v2-line\);[\s\S]*?background: var\(--v2-surface\);[\s\S]*?box-shadow:/,
+  );
+  assert.match(
+    styles,
+    /\.v2-page \.product-card-copy \{[\s\S]*?padding: 1\.35rem 1\.35rem 1\.5rem;/,
+  );
+});
+
 test("das transparente Logo ist in Header und Footer eingebunden", async () => {
   const header = await source("components/site-header.tsx");
   const footer = await source("components/site-footer.tsx");
