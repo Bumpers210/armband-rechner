@@ -1,14 +1,17 @@
 package de.carmajaperlen.armbandrechner
 
 import android.net.Uri
+import android.graphics.BitmapFactory
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,10 +22,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -38,6 +43,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -46,6 +53,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -65,10 +73,16 @@ data class ProductUiActions(
     val onBraceletSizeCmChange: (TextFieldValue) -> Unit = {},
     val onPearlSizeMmChange: (TextFieldValue) -> Unit = {},
     val onShortDescriptionChange: (TextFieldValue) -> Unit = {},
+    val onToggleDescriptionBold: () -> Unit = {},
+    val onToggleDescriptionItalic: () -> Unit = {},
+    val onDescriptionFontChange: (DescriptionFont) -> Unit = {},
+    val onDescriptionSizeChange: (DescriptionSize) -> Unit = {},
     val onPriceChange: (TextFieldValue) -> Unit = {},
     val onImagesPicked: (List<Uri>) -> Unit = {},
     val onSave: () -> Unit = {},
     val onSync: () -> Unit = {},
+    val onRequestPublicationPreview: () -> Unit = {},
+    val onCancelPublicationPreview: () -> Unit = {},
     val onPublish: () -> Unit = {},
     val onDiscardSelected: () -> Unit = {},
     val onMessageShown: () -> Unit = {},
@@ -333,7 +347,10 @@ internal fun PublishedProductView(
             Text("Spacer: ${draft.metalElements.joinToString(", ")}")
             Text("Armbandgröße: ${displayMeasurement(draft.braceletSizeCm, "cm")}")
             Text("Perlengröße: ${displayMeasurement(draft.pearlSizeMm, "mm")}")
-            Text(draft.shortDescription)
+            RichDescriptionText(
+                document = draft.descriptionDocument
+                    ?: DescriptionDocument.fromPlainText(draft.shortDescription),
+            )
             Text("Bilder: ${draft.images.size}/5")
             Text(
                 text = "Verkauf und Nichtverfügbarkeit werden vom Shop verwaltet.",
@@ -411,49 +428,6 @@ internal fun ProductDraftForm(
     isPublishedEdit: Boolean = false,
     hasUnsavedChanges: Boolean = false,
 ) {
-    var showPublishConfirmation by remember(draft.draftId) { mutableStateOf(false) }
-
-    if (showPublishConfirmation) {
-        AlertDialog(
-            onDismissRequest = { showPublishConfirmation = false },
-            title = {
-                Text(
-                    if (isPublishedEdit) {
-                        "Änderungen erneut veröffentlichen?"
-                    } else {
-                        "Auf Testwebsite veröffentlichen?"
-                    },
-                )
-            },
-            text = {
-                Text(
-                    "Das Produkt wird für die geschützte Testwebsite bereitgestellt.",
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showPublishConfirmation = false
-                        actions.onPublish()
-                    },
-                ) {
-                    Text(
-                        if (isPublishedEdit) {
-                            "Änderungen erneut veröffentlichen"
-                        } else {
-                            "Auf Testwebsite veröffentlichen"
-                        },
-                    )
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showPublishConfirmation = false }) {
-                    Text("Abbrechen")
-                }
-            },
-        )
-    }
-
     Surface(
         shape = MaterialTheme.shapes.small,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -520,14 +494,15 @@ internal fun ProductDraftForm(
                     modifier = Modifier.weight(1f),
                 )
             }
-            ProductTextField(
-                value = editor.shortDescription,
+            RichDescriptionField(
+                editor = editor.shortDescription,
                 onValueChange = actions.onShortDescriptionChange,
-                label = "Kurzbeschreibung",
-                testTag = "product-short-description",
+                onToggleBold = actions.onToggleDescriptionBold,
+                onToggleItalic = actions.onToggleDescriptionItalic,
+                onFontChange = actions.onDescriptionFontChange,
+                onSizeChange = actions.onDescriptionSizeChange,
                 error = fieldErrors["shortDescription"],
                 busy = busy,
-                singleLine = false,
             )
 
             ProductTextField(
@@ -600,23 +575,285 @@ internal fun ProductDraftForm(
                 draft.status == ProductStatus.Ready
             ) {
                 Button(
-                    onClick = { showPublishConfirmation = true },
+                    onClick = actions.onRequestPublicationPreview,
                     enabled = !busy,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("product-publish"),
                 ) {
                     Text(
-                        if (isPublishedEdit) {
-                            "Änderungen erneut veröffentlichen"
-                        } else {
-                            "Auf Testwebsite veröffentlichen"
-                        },
+                        if (isPublishedEdit) "Vorschau der Änderungen" else "Vorschau und veröffentlichen",
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun RichDescriptionField(
+    editor: RichDescriptionEditorState,
+    onValueChange: (TextFieldValue) -> Unit,
+    onToggleBold: () -> Unit,
+    onToggleItalic: () -> Unit,
+    onFontChange: (DescriptionFont) -> Unit,
+    onSizeChange: (DescriptionSize) -> Unit,
+    error: String?,
+    busy: Boolean,
+) {
+    val active = editor.currentStyle()
+    var fontMenuExpanded by remember { mutableStateOf(false) }
+    var sizeMenuExpanded by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Beschreibung formatieren",
+            style = MaterialTheme.typography.labelLarge,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onToggleBold,
+                enabled = !busy,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (active.bold) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                ),
+                modifier = Modifier.testTag("description-bold"),
+            ) {
+                Text("Fett", fontWeight = FontWeight.Bold)
+            }
+            OutlinedButton(
+                onClick = onToggleItalic,
+                enabled = !busy,
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = if (active.italic) {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+                ),
+                modifier = Modifier.testTag("description-italic"),
+            ) {
+                Text("Kursiv", fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+            }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box {
+                OutlinedButton(
+                    onClick = { fontMenuExpanded = true },
+                    enabled = !busy,
+                    modifier = Modifier.testTag("description-font"),
+                ) {
+                    Text(if (active.font == DescriptionFont.Elegant) "Elegant" else "Standard")
+                }
+                DropdownMenu(
+                    expanded = fontMenuExpanded,
+                    onDismissRequest = { fontMenuExpanded = false },
+                ) {
+                    DescriptionFont.entries.forEach { font ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(if (font == DescriptionFont.Elegant) "Elegant" else "Standard")
+                            },
+                            onClick = {
+                                onFontChange(font)
+                                fontMenuExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+            Box {
+                OutlinedButton(
+                    onClick = { sizeMenuExpanded = true },
+                    enabled = !busy,
+                    modifier = Modifier.testTag("description-size"),
+                ) {
+                    Text(
+                        when (active.size) {
+                            DescriptionSize.Small -> "Klein"
+                            DescriptionSize.Normal -> "Normal"
+                            DescriptionSize.Large -> "Groß"
+                        },
+                    )
+                }
+                DropdownMenu(
+                    expanded = sizeMenuExpanded,
+                    onDismissRequest = { sizeMenuExpanded = false },
+                ) {
+                    DescriptionSize.entries.forEach { size ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    when (size) {
+                                        DescriptionSize.Small -> "Klein"
+                                        DescriptionSize.Normal -> "Normal"
+                                        DescriptionSize.Large -> "Groß"
+                                    },
+                                )
+                            },
+                            onClick = {
+                                onSizeChange(size)
+                                sizeMenuExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+        Text(
+            text = "Markierter Text wird direkt geändert. Ohne Markierung gilt die Auswahl für neuen Text.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+            value = editor.value,
+            onValueChange = onValueChange,
+            label = { Text("Kurzbeschreibung") },
+            supportingText = {
+                Text(
+                    error ?: "${editor.characterCount}/$DESCRIPTION_MAX_CHARACTERS Zeichen",
+                )
+            },
+            isError = error != null,
+            enabled = !busy,
+            minLines = 5,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("product-short-description"),
+        )
+    }
+}
+
+@Composable
+internal fun ProductPublicationPreviewScreen(
+    draft: ProductDraft,
+    environmentLabel: String,
+    busy: Boolean,
+    onBack: () -> Unit,
+    onPublish: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BackHandler(enabled = !busy, onBack = onBack)
+    val description = draft.descriptionDocument
+        ?: DescriptionDocument.fromPlainText(draft.shortDescription)
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 24.dp),
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            shape = MaterialTheme.shapes.small,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(modifier = Modifier.padding(14.dp)) {
+                Text(
+                    text = "VORSCHAU · NOCH NICHT VERÖFFENTLICHT",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.testTag("publication-preview-label"),
+                )
+                Text(environmentLabel, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+
+        draft.images.forEachIndexed { index, image ->
+            val bitmap = remember(image.localPath) {
+                BitmapFactory.decodeFile(image.localPath)?.asImageBitmap()
+            }
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = "${draft.name}, Bild ${index + 1} von ${draft.images.size}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1.15f),
+                )
+            }
+        }
+
+        Text(
+            text = draft.name,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.testTag("publication-preview-title"),
+        )
+        if (!draft.salesEnabled) {
+            Text(
+                text = "Nicht verfügbar",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.secondary,
+            )
+        }
+        RichDescriptionText(
+            document = description,
+            modifier = Modifier.testTag("publication-preview-description"),
+        )
+
+        ProductPreviewFact("Materialien", draft.materials.joinToString(", "))
+        ProductPreviewFact(
+            "Metallelemente",
+            draft.metalElements.ifEmpty { listOf("Keine") }.joinToString(", "),
+        )
+        ProductPreviewFact("Größe", displayMeasurement(draft.braceletSizeCm, "cm"))
+        ProductPreviewFact("Perlengröße", displayMeasurement(draft.pearlSizeMm, "mm"))
+        Text(
+            text = "Hinweise zu Material & Pflege",
+            color = MaterialTheme.colorScheme.primary,
+            textDecoration = TextDecoration.Underline,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.testTag("publication-preview-care-link"),
+        )
+
+        OutlinedButton(
+            onClick = onBack,
+            enabled = !busy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("publication-preview-back"),
+        ) {
+            Text("Zurück zum Bearbeiten")
+        }
+        Button(
+            onClick = onPublish,
+            enabled = !busy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .testTag("publication-preview-publish"),
+        ) {
+            Text(if (busy) "Veröffentlichung läuft …" else "Jetzt veröffentlichen")
+        }
+    }
+}
+
+@Composable
+private fun ProductPreviewFact(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label.uppercase(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        Text(value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+internal fun RichDescriptionText(
+    document: DescriptionDocument,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = document.toAnnotatedString(),
+        style = MaterialTheme.typography.bodyLarge,
+        modifier = modifier,
+    )
 }
 
 internal val securePasswordKeyboardOptions = KeyboardOptions(

@@ -48,7 +48,7 @@ function product(overrides = {}) {
   };
 }
 
-async function fixture(value) {
+async function fixture(value, version = 2) {
   const root = await mkdtemp(path.join(os.tmpdir(), "carmaja-products-v2-test-"));
   const imageRoot = path.join(root, "images", "products");
   const imagePath = path.join(imageRoot, "CP-2026-0001", "01.jpg");
@@ -57,7 +57,7 @@ async function fixture(value) {
   await cp(sourceImage, imagePath);
   await writeFile(
     productsFile,
-    `${JSON.stringify({ version: 2, products: [value] }, null, 2)}\n`,
+    `${JSON.stringify({ version, products: [value] }, null, 2)}\n`,
     "utf8",
   );
 
@@ -104,7 +104,7 @@ test("öffentlicher v2-Vertrag lehnt stock und Vinted ab", async () => {
 
 test("öffentlicher v2-Vertrag prüft Hash, Version und Mindestpreis", async () => {
   for (const [field, value, pattern] of [
-    ["productVersion", 0, /positiver Produktversion/],
+    ["productVersion", 0, /Produktversion erwartet/],
     ["sourceHash", "A".repeat(64), /Kleingeschriebener SHA-256/],
     ["priceMinor", 0, /mindestens 50 Cent/],
     ["currency", "usd", /Nur eur/],
@@ -116,5 +116,100 @@ test("öffentlicher v2-Vertrag prüft Hash, Version und Mindestpreis", async () 
     } finally {
       await rm(current.root, { recursive: true, force: true });
     }
+  }
+});
+
+test("öffentlicher v3-Vertrag akzeptiert sichere Formatkombinationen", async () => {
+  const description = '<script>alert("x")</script> bleibt sichtbarer Text.';
+  const descriptionDocument = {
+    version: 1,
+    blocks: [
+      {
+        type: "paragraph",
+        spans: [
+          {
+            text: '<script>alert("x")</script>',
+            bold: true,
+            italic: true,
+            font: "elegant",
+            size: "large",
+          },
+          {
+            text: " bleibt sichtbarer Text.",
+            bold: false,
+            italic: false,
+            font: "standard",
+            size: "normal",
+          },
+        ],
+      },
+    ],
+  };
+  const current = await fixture(
+    product({
+      productModelVersion: 3,
+      description,
+      descriptionDocument,
+    }),
+    3,
+  );
+
+  try {
+    const loaded = current.load();
+    assert.equal(loaded.version, 3);
+    assert.deepEqual(loaded.products[0].descriptionDocument, descriptionDocument);
+    assert.equal(loaded.products[0].description, description);
+  } finally {
+    await rm(current.root, { recursive: true, force: true });
+  }
+});
+
+test("öffentlicher v3-Vertrag lehnt unbekannte Stile und abweichenden Klartext ab", async () => {
+  const baseDocument = {
+    version: 1,
+    blocks: [
+      {
+        type: "paragraph",
+        spans: [
+          {
+            text: "Formatierter Text",
+            bold: false,
+            italic: false,
+            font: "standard",
+            size: "normal",
+          },
+        ],
+      },
+    ],
+  };
+  const cases = [
+    [
+      { ...baseDocument, blocks: [{ ...baseDocument.blocks[0], spans: [{ ...baseDocument.blocks[0].spans[0], font: "extern" }] }] },
+      "Formatierter Text",
+      /Textbereich ist ungültig/,
+    ],
+    [baseDocument, "Anderer Klartext", /stimmen nicht überein/],
+  ];
+
+  for (const [descriptionDocument, description, pattern] of cases) {
+    const current = await fixture(
+      product({ productModelVersion: 3, description, descriptionDocument }),
+      3,
+    );
+    try {
+      assert.throws(current.load, pattern);
+    } finally {
+      await rm(current.root, { recursive: true, force: true });
+    }
+  }
+});
+
+test("Wurzelversion 2 akzeptiert keine Produkte des Modells 3", async () => {
+  const current = await fixture(product({ productModelVersion: 3 }));
+
+  try {
+    assert.throws(current.load, /Version 2 darf nur Produkte des Modells 2 enthalten/);
+  } finally {
+    await rm(current.root, { recursive: true, force: true });
   }
 });

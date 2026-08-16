@@ -16,6 +16,7 @@ data class ProductServerImage(
 
 data class ProductServerUpdate(
     val draftId: String,
+    val productModelVersion: Int = PRODUCT_MODEL_V3,
     val version: Int,
     val productVersion: Int,
     val sourceHash: String,
@@ -29,6 +30,7 @@ data class ProductServerUpdate(
     val braceletSizeCm: String,
     val pearlSizeMm: String,
     val shortDescription: String,
+    val descriptionDocument: DescriptionDocument? = null,
     val careInstructions: List<String>,
     val priceMinor: Int,
     val currency: String,
@@ -81,7 +83,7 @@ open class ProductApiClient {
     ): ProductLoginResult {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v2/login",
+            path = "v3/login",
             method = "POST",
             token = null,
             body = JSONObject()
@@ -100,11 +102,11 @@ open class ProductApiClient {
 
     open fun saveDraft(baseUrl: String, token: String, draft: ProductDraft): ProductServerUpdate {
         val idempotencyKey = requireNotNull(draft.pendingV2SaveOperationId) {
-            "V2-Speichern benötigt eine persistierte Idempotenz-ID."
+            "V3-Speichern benötigt eine persistierte Idempotenz-ID."
         }
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v2/products/${draft.draftId}",
+            path = "v3/products/${draft.draftId}",
             method = "PUT",
             token = token,
             body = draft.toSaveJson(),
@@ -119,7 +121,7 @@ open class ProductApiClient {
     open fun getDraft(baseUrl: String, token: String, draftId: String): ProductServerUpdate {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v2/products/$draftId",
+            path = "v3/products/$draftId",
             method = "GET",
             token = token,
             body = null,
@@ -137,7 +139,7 @@ open class ProductApiClient {
         val boundary = "CarmajaBoundary${UUID.randomUUID()}"
         val connection = openConnection(
             baseUrl = baseUrl,
-            path = "v2/products/${draft.draftId}/images",
+            path = "v3/products/${draft.draftId}/images",
             method = "POST",
             token = token,
             headers = mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString()),
@@ -183,7 +185,7 @@ open class ProductApiClient {
             )
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v2/products/${draft.draftId}/publish",
+            path = "v3/products/${draft.draftId}/publish",
             method = "POST",
             token = token,
             body = JSONObject()
@@ -405,10 +407,13 @@ internal fun ProductDraft.toSaveJson(): JSONObject {
             isMain = index == 0,
         )
     }
-    return ProductV2Update(
+    val document = requireNotNull(descriptionDocument) {
+        "Formatierte Beschreibung fehlt."
+    }
+    return ProductV3Update(
         expectedProductVersion = productVersion,
         name = name,
-        description = shortDescription,
+        descriptionDocument = document,
         materials = materials,
         metalElements = metalElements,
         braceletSizeCm = braceletSizeCm,
@@ -455,6 +460,7 @@ private fun JSONObject.toServerUpdate(): ProductServerUpdate {
 
     return ProductServerUpdate(
         draftId = optString("draftId").ifBlank { getString("productId") },
+        productModelVersion = optInt("productModelVersion", 2),
         version = optInt("version", 0),
         productVersion = getInt("productVersion"),
         sourceHash = getString("sourceHash"),
@@ -467,7 +473,9 @@ private fun JSONObject.toServerUpdate(): ProductServerUpdate {
         metalElements = optStringList("metalElements"),
         braceletSizeCm = opt("braceletSizeCm")?.toString().orEmpty(),
         pearlSizeMm = opt("pearlSizeMm")?.toString().orEmpty(),
-        shortDescription = optString("shortDescription"),
+        shortDescription = optString("description").ifBlank { optString("shortDescription") },
+        descriptionDocument = optJSONObject("descriptionDocument")
+            ?.let(DescriptionDocument::fromJson),
         careInstructions = optStringList("careInstructions"),
         priceMinor = getInt("priceMinor"),
         currency = getString("currency"),

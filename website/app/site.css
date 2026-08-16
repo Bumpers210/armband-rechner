@@ -928,9 +928,51 @@
 }
 
 .v2-page .product-lede {
+  display: grid;
+  gap: 1rem;
   margin: 0;
   color: var(--v2-muted);
   font-size: 1.05rem;
+}
+
+.v2-page .product-lede p {
+  margin: 0;
+}
+
+.v2-page .product-description-span--bold {
+  font-weight: 700;
+}
+
+.v2-page .product-description-span {
+  white-space: pre-wrap;
+}
+
+.v2-page .product-description-span--italic {
+  font-style: italic;
+}
+
+.v2-page .product-description-span--font-standard {
+  font-family:
+    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+.v2-page .product-description-span--font-elegant {
+  font-family:
+    "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
+    serif;
+}
+
+.v2-page .product-description-span--size-small {
+  font-size: 0.875em;
+}
+
+.v2-page .product-description-span--size-normal {
+  font-size: 1em;
+}
+
+.v2-page .product-description-span--size-large {
+  font-size: 1.25em;
 }
 
 .v2-page .product-status {

@@ -36,15 +36,67 @@ function product(sequence, salesEnabled) {
   const sku = `CP-2026-${String(sequence).padStart(4, "0")}`;
   const imageCount = sequence === 1 ? 3 : 1;
 
+  const title = `Öffentlicher Produktname ${sequence}`;
+  const description = sequence === 1
+    ? `${title}\n\n<script>alert("nicht ausführen")</script> Sicherer Text.\n\nZweiter Absatz.`
+    : `Öffentliche Produktbeschreibung ${sequence}.`;
+  const descriptionDocument = sequence === 1
+    ? {
+        version: 1,
+        blocks: [
+          {
+            type: "paragraph",
+            spans: [{
+              text: title,
+              bold: false,
+              italic: false,
+              font: "standard",
+              size: "normal",
+            }],
+          },
+          {
+            type: "paragraph",
+            spans: [
+              {
+                text: '<script>alert("nicht ausführen")</script>',
+                bold: true,
+                italic: true,
+                font: "elegant",
+                size: "large",
+              },
+              {
+                text: " Sicherer Text.",
+                bold: false,
+                italic: false,
+                font: "standard",
+                size: "small",
+              },
+            ],
+          },
+          {
+            type: "paragraph",
+            spans: [{
+              text: "Zweiter Absatz.",
+              bold: false,
+              italic: false,
+              font: "standard",
+              size: "normal",
+            }],
+          },
+        ],
+      }
+    : undefined;
+
   return {
-    productModelVersion: 2,
+    productModelVersion: sequence === 1 ? 3 : 2,
     productId: `00000000-0000-4000-8000-${String(sequence).padStart(12, "0")}`,
     productVersion: 1,
     sourceHash: String(sequence).repeat(64),
     sku,
     slug: `testarmband-${sequence}`,
-    title: `Öffentlicher Produktname ${sequence}`,
-    description: `Öffentliche Produktbeschreibung ${sequence}.`,
+    title,
+    description,
+    ...(descriptionDocument ? { descriptionDocument } : {}),
     materials: ["Rosenquarz"],
     metalElements: ["Spacer Blume Edelstahl"],
     braceletSizeCm: 17.5,
@@ -102,7 +154,7 @@ test(
 
       await writeFile(
         productsFile,
-        `${JSON.stringify({ version: 2, products }, null, 2)}\n`,
+        `${JSON.stringify({ version: 3, products }, null, 2)}\n`,
         "utf8",
       );
       await mkdir(path.dirname(stalePage), { recursive: true });
@@ -167,6 +219,16 @@ test(
         ),
         "utf8",
       );
+      const legacyDetailHtml = await readFile(
+        path.join(
+          projectRoot,
+          "out-test",
+          "armbaender",
+          "testarmband-2",
+          "index.html",
+        ),
+        "utf8",
+      );
 
       assert.match(
         overviewHtml,
@@ -183,6 +245,21 @@ test(
       assert.ok(overviewHtml.includes("Nicht verfügbar"));
       assert.ok(detailHtml.includes("17,5 cm"));
       assert.ok(!detailHtml.includes("cm cm"));
+      assert.match(
+        detailHtml,
+        /product-description-span--bold product-description-span--italic product-description-span--font-elegant product-description-span--size-large/,
+      );
+      assert.match(detailHtml, /product-description-span--size-small/);
+      assert.ok(detailHtml.includes('&lt;script&gt;alert(&quot;nicht ausführen&quot;)&lt;/script&gt;'));
+      assert.ok(!detailHtml.includes('<script>alert("nicht ausführen")</script>'));
+      assert.doesNotMatch(
+        detailHtml,
+        /<div class="product-lede"><p>Öffentlicher Produktname 1<\/p>/,
+      );
+      assert.match(
+        legacyDetailHtml,
+        /<div class="product-lede"><p>Öffentliche Produktbeschreibung 2\.<\/p><\/div>/,
+      );
       assert.ok(detailHtml.includes('href="/material-pflege/"'));
       assert.ok(detailHtml.includes("Hinweise zu Material &amp; Pflege"));
       assert.ok(!detailHtml.includes("Vor dem Duschen und Baden ablegen"));

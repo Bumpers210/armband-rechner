@@ -35,7 +35,7 @@ class ProductEditorStateTest {
             ),
             braceletSizeCm = TextFieldValue(" 17,5 "),
             pearlSizeMm = TextFieldValue(" 6.0 "),
-            shortDescription = TextFieldValue(
+            shortDescription = RichDescriptionEditorState.fromPlainText(
                 "  Persoenliche Anfertigung  auf Anfrage  ",
             ),
         )

@@ -163,6 +163,7 @@ class ProductDraftRepository(
             .put("braceletSizeCm", draft.braceletSizeCm)
             .put("pearlSizeMm", draft.pearlSizeMm)
             .put("shortDescription", draft.shortDescription)
+            .put("descriptionDocument", draft.descriptionDocument?.toJson())
             .put("careInstructions", JSONArray(draft.careInstructions))
             .put("priceMinor", draft.priceMinor)
             .put("currency", draft.currency)
@@ -191,10 +192,12 @@ class ProductDraftRepository(
             name = json.optString("name"),
             materials = json.optStringList("materials"),
             metalElements = json.optStringList("metalElements"),
-            modelVersion = PRODUCT_MODEL_VERSION,
+            modelVersion = json.optInt("modelVersion", 2),
             braceletSizeCm = legacyBraceletSizeCm(json),
             pearlSizeMm = json.opt("pearlSizeMm")?.toString().orEmpty(),
             shortDescription = json.optString("shortDescription"),
+            descriptionDocument = json.optJSONObject("descriptionDocument")
+                ?.let(DescriptionDocument::fromJson),
             careInstructions = json.optStringList("careInstructions"),
             priceMinor = if (json.has("priceMinor")) {
                 json.optInt("priceMinor", 0)

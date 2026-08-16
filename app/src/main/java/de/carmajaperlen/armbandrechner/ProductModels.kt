@@ -63,6 +63,7 @@ data class ProductDraft(
     val braceletSizeCm: String = "",
     val pearlSizeMm: String = "",
     val shortDescription: String = "",
+    val descriptionDocument: DescriptionDocument? = null,
     val careInstructions: List<String> = emptyList(),
     val priceMinor: Int = 0,
     val currency: String = "eur",
@@ -90,6 +91,24 @@ data class ProductDraft(
             if (braceletSizeCm.isBlank()) put("braceletSizeCm", "Armbandgröße ist erforderlich.")
             if (pearlSizeMm.isBlank()) put("pearlSizeMm", "Perlengröße ist erforderlich.")
             if (shortDescription.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
+            if (shortDescription.length > DESCRIPTION_MAX_CHARACTERS) {
+                put("shortDescription", "Kurzbeschreibung darf höchstens 500 Zeichen enthalten.")
+            }
+            runCatching {
+                if (modelVersion >= PRODUCT_MODEL_VERSION) {
+                    requireNotNull(descriptionDocument) {
+                        "Formatierte Beschreibung ist erforderlich."
+                    }
+                }
+                descriptionDocument?.let { document ->
+                    document.requireValid()
+                    require(document.plainText() == shortDescription) {
+                        "Formatierte Beschreibung und Klartext stimmen nicht überein."
+                    }
+                }
+            }
+                .exceptionOrNull()
+                ?.let { put("shortDescription", it.message ?: "Formatierte Beschreibung ist ungültig.") }
             if (priceMinor < 50) put("priceMinor", "Verkaufspreis muss mindestens 0,50 € betragen.")
             if (currency != "eur") put("currency", "Für V1 ist ausschließlich EUR zulässig.")
             if (images.isEmpty()) put("images", "Mindestens ein Hauptfoto ist erforderlich.")
@@ -159,7 +178,7 @@ internal fun ProductDraft.prepareForPublish(
     )
 }
 
-const val PRODUCT_MODEL_VERSION = 2
+const val PRODUCT_MODEL_VERSION = 3
 
 internal fun normalizeMeasurement(value: String): String? {
     val normalized = value.trim().replace(',', '.')
