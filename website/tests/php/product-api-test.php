@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api.php';
 require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v2.php';
 require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v3.php';
+require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v4.php';
 
 final class CarmajaApiTestFailure extends RuntimeException
 {
@@ -2668,6 +2669,153 @@ carmaja_api_test('V3-Kette speichert, lädt ein Bild hoch und veröffentlicht Mo
     carmaja_api_test_same($document, $public['descriptionDocument'] ?? null, 'Formatierung fehlt öffentlich.');
     carmaja_api_test_same('Elegant und sicher.', $public['description'] ?? null, 'Klartext fehlt öffentlich.');
     carmaja_api_test_same(false, $public['salesEnabled'] ?? null, 'Kettentest darf nicht kaufbar sein.');
+});
+
+carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion idempotent wieder her', static function (): void {
+    carmaja_api_test_fixture();
+    carmaja_api_test_same(7, carmaja_api_v4_validate_client_version_code(7), 'Beta-Code 7 wurde abgelehnt.');
+    carmaja_api_test_exception(
+        static fn (): int => carmaja_api_v4_validate_client_version_code(6),
+        426,
+        'client_update_required'
+    );
+    $productId = '45454545-4545-4454-8454-454545454545';
+    $imageId = '67676767-6767-4676-8676-676767676767';
+    $body = [
+        'expectedProductVersion' => 0,
+        'name' => 'Dauerhafte Kollektion',
+        'descriptionDocument' => [
+            'version' => 1,
+            'blocks' => [['type' => 'paragraph', 'spans' => [[
+                'text' => 'Beliebig oft bestellbar.',
+                'bold' => true,
+                'italic' => false,
+                'font' => 'standard',
+                'size' => 'normal',
+            ]]]],
+        ],
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSizeCm' => 18,
+        'pearlSizeMm' => 8,
+        'careInstructions' => [],
+        'images' => [[
+            'imageId' => $imageId,
+            'fileName' => '01.jpg',
+            'alt' => 'Dauerhafte Kollektion',
+            'width' => 120,
+            'height' => 80,
+            'isMain' => true,
+        ]],
+        'priceMinor' => 2790,
+        'currency' => 'eur',
+    ];
+    $saved = carmaja_api_v4_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v4-collection-save-0001'
+    );
+    carmaja_api_test_same(false, $saved['available'], 'Unveröffentlichter Entwurf darf nicht verfügbar sein.');
+    carmaja_api_test_assert(!array_key_exists('salesEnabled', $saved), 'v4-Antwort enthält clientverwaltete Verfügbarkeit.');
+
+    $forbidden = $body;
+    $forbidden['expectedProductVersion'] = 1;
+    $forbidden['salesEnabled'] = true;
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_put_product(
+            $productId,
+            $forbidden,
+            carmaja_api_test_actor(),
+            'v4-forbidden-sales-field'
+        ),
+        422,
+        'client_managed_availability_forbidden'
+    );
+    $unknown = $body;
+    $unknown['expectedProductVersion'] = 1;
+    $unknown['unexpected'] = 'nicht erlaubt';
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_put_product(
+            $productId,
+            $unknown,
+            carmaja_api_test_actor(),
+            'v4-forbidden-unknown-field'
+        ),
+        422,
+        'unknown_fields'
+    );
+
+    $source = carmaja_api_path('v4-collection-source.jpg');
+    carmaja_api_test_create_jpeg($source, 120, 80);
+    carmaja_api_test_prepare_image_upload(
+        $saved['version'],
+        $imageId,
+        [$imageId],
+        $source,
+        'Dauerhafte Kollektion'
+    );
+    $GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS'] = true;
+    try {
+        $uploadedDraft = carmaja_api_upload_images($productId, $_POST, carmaja_api_test_actor());
+    } finally {
+        unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS']);
+    }
+    $uploaded = carmaja_api_v4_product_response_from_draft($uploadedDraft);
+    $projectionCalls = [];
+    $GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4'] = static function (
+        array $product,
+        string $action,
+        string $operationId,
+        string $requestHash
+    ) use (&$projectionCalls): array {
+        $projectionCalls[$operationId] ??= [
+            'action' => $action,
+            'productId' => $product['productId'],
+            'requestHash' => $requestHash,
+        ];
+        return ['action' => $action, 'available' => $action !== 'archive'];
+    };
+
+    $publishBody = [
+        'expectedProductVersion' => $uploaded['productVersion'],
+        'expectedSourceHash' => $uploaded['sourceHash'],
+        'operationId' => 'v4-collection-publish-0001',
+    ];
+    $published = carmaja_api_v4_publish_product($productId, $publishBody, carmaja_api_test_actor());
+    $publishedAgain = carmaja_api_v4_publish_product($productId, $publishBody, carmaja_api_test_actor());
+    carmaja_api_test_same($published, $publishedAgain, 'Veröffentlichung ist nicht idempotent.');
+    carmaja_api_test_same(true, $published['product']['available'], 'Veröffentlichte Kollektion ist nicht verfügbar.');
+    $sku = $published['product']['sku'];
+    $slug = $published['product']['slug'];
+
+    $archiveBody = [
+        'expectedProductVersion' => $published['product']['productVersion'],
+        'expectedSourceHash' => $published['product']['sourceHash'],
+        'operationId' => 'v4-collection-archive-0001',
+    ];
+    $archived = carmaja_api_v4_archive_product($productId, $archiveBody, carmaja_api_test_actor());
+    $archivedAgain = carmaja_api_v4_archive_product($productId, $archiveBody, carmaja_api_test_actor());
+    carmaja_api_test_same($archived, $archivedAgain, 'Archivierung ist nicht idempotent.');
+    carmaja_api_test_same('disabled', $archived['product']['status'], 'Kollektion wurde nicht archiviert.');
+    $publicAfterArchive = carmaja_api_read_json(
+        carmaja_api_path('products/public-products-v2.json'),
+        ['version' => 3, 'products' => []]
+    );
+    carmaja_api_test_same([], $publicAfterArchive['products'], 'Archivierte Kollektion blieb öffentlich.');
+    carmaja_api_test_assert(is_file($uploadedDraft['images'][0]['path']), 'Privates Bild wurde beim Archivieren gelöscht.');
+
+    $restoreBody = [
+        'expectedProductVersion' => $archived['product']['productVersion'],
+        'expectedSourceHash' => $archived['product']['sourceHash'],
+        'operationId' => 'v4-collection-restore-0001',
+    ];
+    $restored = carmaja_api_v4_restore_product($productId, $restoreBody, carmaja_api_test_actor());
+    carmaja_api_test_same(true, $restored['product']['available'], 'Wiederhergestellte Kollektion ist nicht verfügbar.');
+    carmaja_api_test_same($sku, $restored['product']['sku'], 'Wiederherstellung änderte die SKU.');
+    carmaja_api_test_same($slug, $restored['product']['slug'], 'Wiederherstellung änderte die Adresse.');
+    carmaja_api_test_same(3, count($projectionCalls), 'Lebenszyklus wurde nicht genau einmal je Vorgang projiziert.');
+    unset($GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4']);
 });
 
 carmaja_api_test('V2 kann ein auf V3 angehobenes Produkt nicht überschreiben', static function (): void {

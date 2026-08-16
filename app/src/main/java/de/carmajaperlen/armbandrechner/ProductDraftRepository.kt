@@ -175,8 +175,8 @@ class ProductDraftRepository(
             .put("serverUpdatedAt", draft.serverUpdatedAt)
             .put("pendingV2SaveOperationId", draft.pendingV2SaveOperationId)
             .put("pendingPublishOperationId", draft.pendingPublishOperationId)
-            .put("pendingSoldOperationId", draft.pendingSoldOperationId)
-            .put("pendingDisableOperationId", draft.pendingDisableOperationId)
+            .put("pendingArchiveOperationId", draft.pendingArchiveOperationId)
+            .put("pendingRestoreOperationId", draft.pendingRestoreOperationId)
     }
 
     private fun decodeDraft(json: JSONObject): ProductDraft {
@@ -219,8 +219,9 @@ class ProductDraftRepository(
             serverUpdatedAt = json.optStringOrNull("serverUpdatedAt"),
             pendingV2SaveOperationId = json.optStringOrNull("pendingV2SaveOperationId"),
             pendingPublishOperationId = json.optStringOrNull("pendingPublishOperationId"),
-            pendingSoldOperationId = json.optStringOrNull("pendingSoldOperationId"),
-            pendingDisableOperationId = json.optStringOrNull("pendingDisableOperationId"),
+            pendingArchiveOperationId = json.optStringOrNull("pendingArchiveOperationId")
+                ?: json.optStringOrNull("pendingDisableOperationId"),
+            pendingRestoreOperationId = json.optStringOrNull("pendingRestoreOperationId"),
         )
     }
 

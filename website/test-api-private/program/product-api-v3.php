@@ -275,7 +275,8 @@ function carmaja_api_v3_put_product(
     string $productId,
     array $body,
     array $actor,
-    mixed $idempotencyKey
+    mixed $idempotencyKey,
+    bool $serverManagedAvailability = false
 ): array {
     carmaja_api_validate_draft_id($productId);
     $idempotencyKey = carmaja_api_v2_validate_idempotency_key($idempotencyKey);
@@ -285,7 +286,8 @@ function carmaja_api_v3_put_product(
         $body,
         $actor,
         $idempotencyKey,
-        $requestHash
+        $requestHash,
+        $serverManagedAvailability
     ): array {
         $idempotencyPath = carmaja_api_v3_idempotency_path($idempotencyKey);
         $stored = is_file($idempotencyPath)
@@ -308,6 +310,10 @@ function carmaja_api_v3_put_product(
 
         $normalized = carmaja_api_v3_validate_put_payload($body);
         $existing = carmaja_api_load_draft($productId);
+        if ($serverManagedAvailability) {
+            $normalized['salesEnabled'] = is_array($existing)
+                && ($existing['status'] ?? null) === 'published';
+        }
         $currentProductVersion = is_array($existing)
             ? (int) ($existing['productVersion'] ?? 0)
             : 0;
@@ -558,7 +564,11 @@ function carmaja_api_local_publish_adapter_v3(array $publicProduct, array $opera
     $adapterPath = carmaja_api_path(
         'products/operations/v3-' . hash('sha256', $operationId) . '.json'
     );
-    $publicForJson = array_diff_key($publicProduct, ['_imageBlobs' => true]);
+    $isRemoval = ($publicProduct['_removePublic'] ?? false) === true;
+    $publicForJson = array_diff_key($publicProduct, [
+        '_imageBlobs' => true,
+        '_removePublic' => true,
+    ]);
     return carmaja_api_with_lock(
         'publish-adapter-v3-' . hash('sha256', $operationId),
         function () use (
@@ -566,7 +576,8 @@ function carmaja_api_local_publish_adapter_v3(array $publicProduct, array $opera
             $requestHash,
             $productId,
             $adapterPath,
-            $publicForJson
+            $publicForJson,
+            $isRemoval
         ): array {
             if (is_file($adapterPath)) {
                 $stored = carmaja_api_read_target_json($adapterPath, [], 'v3-Publishstatus');
@@ -590,12 +601,16 @@ function carmaja_api_local_publish_adapter_v3(array $publicProduct, array $opera
             $replaced = false;
             foreach ($products as $index => $product) {
                 if (is_array($product) && ($product['productId'] ?? null) === $productId) {
-                    $products[$index] = $publicForJson;
+                    if ($isRemoval) {
+                        unset($products[$index]);
+                    } else {
+                        $products[$index] = $publicForJson;
+                    }
                     $replaced = true;
                     break;
                 }
             }
-            if (!$replaced) {
+            if (!$replaced && !$isRemoval) {
                 $products[] = $publicForJson;
             }
             carmaja_api_write_json_atomic(

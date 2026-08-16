@@ -44,19 +44,19 @@ try {
 
     $repositoryRoot = dirname(__DIR__, 3);
     $manifest = carmaja_cutover_read_json(
-        dirname(__DIR__, 2) . '/config/production-cutover-manifest.v1.json'
+        dirname(__DIR__, 2) . '/config/production-collection-cutover-manifest.v2.json'
     );
     $contract = carmaja_cutover_validate_contract($manifest, $repositoryRoot);
     ap7_assert($contract['approved'] === false, 'Unfreigegebenes Manifest wurde als ausfuehrbar bewertet.');
     ap7_assert($contract['selectedProductCount'] === 1, 'Vorbereitete Ein-Produktauswahl fehlt.');
     ap7_assert(
-        ($manifest['selectedProducts'][0]['productId'] ?? null)
-            === '3a37a0a2-9bd6-4410-aa9c-a465fdc411a1',
-        'Unerwartetes Startprodukt im unfreigegebenen Manifest.'
+        ($manifest['selectedCollections'][0]['productId'] ?? null)
+            === '3da76a24-3213-4e8f-b9aa-336ea95e4aa3',
+        'Ares fehlt im unfreigegebenen Kollektionen-Manifest.'
     );
     try {
         carmaja_cutover_selected_product($manifest, [
-            'productModelVersion' => 2,
+            'version' => 3,
             'products' => [],
         ]);
         throw new RuntimeException('Unfreigegebene Produktauswahl wurde akzeptiert.');
@@ -68,11 +68,23 @@ try {
     }
 
     $sourceProduct = [
-        'productModelVersion' => 2,
+        'productModelVersion' => 3,
         'productId' => '11111111-1111-4111-8111-111111111111',
         'productVersion' => 3,
-        'name' => 'Kuenstliches AP7-Armband',
+        'sku' => 'CP-TEST-COLLECTION',
+        'title' => 'Kuenstliche AP7-Kollektion',
         'description' => 'Nur fuer den lokalen Vertragstest.',
+        'descriptionDocument' => [
+            'paragraphs' => [[
+                'runs' => [[
+                    'text' => 'Nur fuer den lokalen Vertragstest.',
+                    'bold' => false,
+                    'italic' => false,
+                    'font' => 'standard',
+                    'size' => 'normal',
+                ]],
+            ]],
+        ],
         'materials' => ['Testmaterial'],
         'metalElements' => [],
         'braceletSizeCm' => 18,
@@ -90,22 +102,23 @@ try {
             'isMain' => true,
         ]],
     ];
-    $sourceProduct['sourceHash'] = carmaja_cutover_source_hash($sourceProduct);
+    $sourceProduct['sourceHash'] = str_repeat('a', 64);
     $selection = [
         'productId' => $sourceProduct['productId'],
         'expectedProductVersion' => 3,
         'expectedSourceHash' => $sourceProduct['sourceHash'],
-        'legacyStock' => 1,
-        'targetOnHand' => 1,
+        'sku' => $sourceProduct['sku'],
+        'operationId' => 'ap7-collection-cutover-operation',
     ];
     $manifest['status'] = 'approved_for_cutover';
-    $manifest['selectedProducts'] = [$selection];
+    $manifest['legalBundle']['status'] = 'approved';
+    $manifest['selectedCollections'] = [$selection];
     $productSource = [
-        'productModelVersion' => 2,
+        'version' => 3,
         'products' => [$sourceProduct],
     ];
     $product = carmaja_cutover_selected_product($manifest, $productSource);
-    ap7_assert($product['productId'] === $selection['productId'], 'v2-Produktauswahl stimmt nicht.');
+    ap7_assert($product['productId'] === $selection['productId'], 'Kollektionen-Auswahl stimmt nicht.');
     $productSource['products'][0]['priceMinor'] = 49;
     try {
         carmaja_cutover_selected_product($manifest, $productSource);

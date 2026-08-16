@@ -26,3 +26,9 @@ Das Paket enthaelt nur den geprueften statischen Export, ein SHA-256-gebundenes 
 ## Oeffentliche Produktdaten
 
 Produkte duerfen nur ueber die validierte Oeffentlichkeits-Whitelist aus `lib/public-products.mjs` in den Export gelangen. Interne Verwaltungs-, Kalkulations- und Entwurfsdaten bleiben ausgeschlossen.
+
+Veröffentlichte Armbänder verwenden künftig das Kollektionen-Modell: Sie sind
+ohne Bestandsmenge wiederholt bestellbar, bis sie in der App archiviert werden.
+Der technische Vertrag und die Aktivierungsgrenzen stehen unter
+`docs/collection-availability.md`. Die neuen v4-/Shop-v2-Schalter bleiben bis
+zur Testabnahme deaktiviert.

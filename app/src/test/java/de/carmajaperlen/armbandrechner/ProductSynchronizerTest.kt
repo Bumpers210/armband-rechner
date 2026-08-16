@@ -367,7 +367,7 @@ private fun ProductDraft.toServerUpdate(
         careInstructions = careInstructions,
         priceMinor = priceMinor,
         currency = currency,
-        salesEnabled = salesEnabled,
+        available = salesEnabled,
         images = images,
     )
 }

@@ -141,6 +141,8 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'environment',
         'publishTarget',
         'productionPublishEnabled',
+        'productApiV4WritesEnabled',
+        'collectionCommerceEnabled',
         'privateDir',
         'productPrivateDir',
         'testPrivateDir',
@@ -207,10 +209,14 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $environment = carmaja_bootstrap_required_string($config, 'environment');
     $publishTarget = carmaja_bootstrap_required_string($config, 'publishTarget');
     $productionPublishEnabled = $config['productionPublishEnabled'] ?? null;
+    $productApiV4WritesEnabled = $config['productApiV4WritesEnabled'] ?? false;
+    $collectionCommerceEnabled = $config['collectionCommerceEnabled'] ?? false;
 
     if (!in_array($publishTarget, ['test', 'production'], true)
         || $environment !== $publishTarget
         || !is_bool($productionPublishEnabled)
+        || !is_bool($productApiV4WritesEnabled)
+        || !is_bool($collectionCommerceEnabled)
         || ($publishTarget === 'test' && $productionPublishEnabled)) {
         throw new CarmajaBootstrapException(
             'config_environment_invalid',
@@ -473,6 +479,8 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'environment' => $environment,
         'publishTarget' => $publishTarget,
         'productionPublishEnabled' => $productionPublishEnabled,
+        'productApiV4WritesEnabled' => $productApiV4WritesEnabled,
+        'collectionCommerceEnabled' => $collectionCommerceEnabled,
         'privateDir' => $privateDir,
         'productPrivateDir' => $productPrivateDir,
         'testPrivateDir' => $testPrivateDir,
@@ -620,6 +628,7 @@ function carmaja_bootstrap_prepare(?string $configPath = null): array
     require_once __DIR__ . '/product-api.php';
     require_once __DIR__ . '/product-api-v2.php';
     require_once __DIR__ . '/product-api-v3.php';
+    require_once __DIR__ . '/product-api-v4.php';
     require_once __DIR__ . '/commerce-bootstrap.php';
     require_once __DIR__ . '/shop-checkout.php';
     require_once __DIR__ . '/shop-public.php';
@@ -639,6 +648,19 @@ function carmaja_bootstrap_prepare(?string $configPath = null): array
         unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2']);
         unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V3']);
     }
+    $GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4'] = static function (
+        array $product,
+        string $action,
+        string $operationId,
+        string $requestHash
+    ) use ($config): array {
+        return carmaja_bootstrap_commerce($config)->projectCollectionProduct(
+            $product,
+            $action,
+            $operationId,
+            $requestHash
+        );
+    };
 
     return $config;
 }
@@ -665,6 +687,23 @@ function carmaja_bootstrap_send_unavailable(): never
     ]);
 }
 
+function carmaja_bootstrap_v4_writes_enabled(): bool
+{
+    return carmaja_bootstrap_load_config()['productApiV4WritesEnabled'] === true;
+}
+
+function carmaja_bootstrap_require_v4_writes(): void
+{
+    if (!carmaja_bootstrap_v4_writes_enabled()) {
+        throw new CarmajaApiException(
+            503,
+            'Die Kollektionen-Verwaltung ist noch nicht aktiviert.',
+            [],
+            'collection_writes_not_enabled'
+        );
+    }
+}
+
 function carmaja_bootstrap_route_request(): never
 {
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
@@ -675,7 +714,9 @@ function carmaja_bootstrap_route_request(): never
         array_shift($segments);
     }
 
-    $isShopRoute = ($segments[0] ?? null) === 'shop' && ($segments[1] ?? null) === 'v1';
+    $shopApiVersion = (string) ($segments[1] ?? '');
+    $isShopRoute = ($segments[0] ?? null) === 'shop'
+        && in_array($shopApiVersion, ['v1', 'v2'], true);
     $isAdminRoute = ($segments[0] ?? null) === 'admin' && ($segments[1] ?? null) === 'v1';
     if ($isAdminRoute) {
         $adminConfig = carmaja_bootstrap_load_config();
@@ -811,6 +852,20 @@ function carmaja_bootstrap_route_request(): never
     }
     if ($isShopRoute) {
         $shopConfig = carmaja_bootstrap_load_config();
+        if ($shopApiVersion === 'v2' && $shopConfig['collectionCommerceEnabled'] !== true) {
+            throw new CarmajaCommerceException(
+                'collection_commerce_not_enabled',
+                'Der Kollektionen-Checkout ist noch nicht aktiviert.',
+                503
+            );
+        }
+        if ($shopApiVersion === 'v1' && $shopConfig['collectionCommerceEnabled'] === true) {
+            throw new CarmajaCommerceException(
+                'shop_client_update_required',
+                'Der Shop verwendet jetzt den aktuellen Kollektionen-Checkout.',
+                426
+            );
+        }
         carmaja_shop_apply_cors($shopConfig, $_SERVER['HTTP_ORIGIN'] ?? null);
         carmaja_shop_set_no_store();
         carmaja_shop_require_origin($shopConfig);
@@ -822,7 +877,7 @@ function carmaja_bootstrap_route_request(): never
         $commerce = carmaja_bootstrap_commerce($shopConfig);
         $sessionCookie = $_COOKIE['__Host-cmj_shop_session'] ?? null;
 
-        if ($method === 'GET' && $segments === ['shop', 'v1', 'context']) {
+        if ($method === 'GET' && $segments === ['shop', $shopApiVersion, 'context']) {
             $sessionRaw = is_string($sessionCookie) && strlen($sessionCookie) >= 32
                 ? $sessionCookie
                 : carmaja_shop_token();
@@ -846,6 +901,16 @@ function carmaja_bootstrap_route_request(): never
         if ($method === 'GET' && ($segments[2] ?? null) === 'products' && isset($segments[3])
             && count($segments) === 4) {
             $live = $commerce->loadLiveProduct((string) $segments[3]);
+            if ($shopApiVersion === 'v2') {
+                $live = [
+                    'productId' => $live['productId'],
+                    'priceMinor' => $live['priceMinor'],
+                    'currency' => $live['currency'],
+                    'available' => $live['available'],
+                    'productVersion' => $live['productVersion'],
+                    'responseAt' => $live['responseAt'],
+                ];
+            }
             carmaja_bootstrap_send(200, ['ok' => true, 'product' => $live]);
         }
 
@@ -854,7 +919,7 @@ function carmaja_bootstrap_route_request(): never
         }
         $session = carmaja_shop_verify_context($commerce, $sessionCookie);
 
-        if ($method === 'POST' && $segments === ['shop', 'v1', 'checkouts']) {
+        if ($method === 'POST' && $segments === ['shop', $shopApiVersion, 'checkouts']) {
             carmaja_shop_verify_raw_context(
                 carmaja_shop_require_header('X-CSRF-Token'),
                 (string) $session['csrf_hash']
@@ -926,7 +991,7 @@ function carmaja_bootstrap_route_request(): never
             carmaja_bootstrap_send(200, ['ok' => true, 'checkout' => $status]);
         }
 
-        if ($method === 'POST' && $segments === ['shop', 'v1', 'withdrawals', 'preview']) {
+        if ($method === 'POST' && $segments === ['shop', $shopApiVersion, 'withdrawals', 'preview']) {
             carmaja_shop_verify_raw_context(
                 carmaja_shop_require_header('X-CSRF-Token'),
                 (string) $session['csrf_hash']
@@ -959,7 +1024,7 @@ function carmaja_bootstrap_route_request(): never
             ]);
         }
 
-        if ($method === 'POST' && $segments === ['shop', 'v1', 'withdrawals', 'confirm']) {
+        if ($method === 'POST' && $segments === ['shop', $shopApiVersion, 'withdrawals', 'confirm']) {
             carmaja_shop_verify_raw_context(
                 carmaja_shop_require_header('X-CSRF-Token'),
                 (string) $session['csrf_hash']
@@ -1032,6 +1097,92 @@ function carmaja_bootstrap_route_request(): never
         exit;
     }
 
+    if (($segments[0] ?? null) === 'v4') {
+        array_shift($segments);
+
+        if ($method === 'POST' && $segments === ['login']) {
+            carmaja_bootstrap_send(
+                200,
+                carmaja_api_v4_success_response(carmaja_api_login(carmaja_api_json_body()))
+            );
+        }
+
+        $actor = carmaja_api_authorize();
+        if ($method === 'GET' && $segments === ['products']) {
+            carmaja_bootstrap_send(
+                200,
+                carmaja_api_v4_success_response(carmaja_api_v4_list_products())
+            );
+        }
+
+        if (($segments[0] ?? null) === 'products' && isset($segments[1])) {
+            $productId = (string) $segments[1];
+            if ($method === 'GET' && count($segments) === 2) {
+                $draft = carmaja_api_load_draft($productId);
+                if (!is_array($draft)) {
+                    throw new CarmajaApiException(404, 'Kollektion wurde nicht gefunden.', [], 'product_not_found');
+                }
+                if (($draft['productModelVersion'] ?? null) === CARMAJA_PRODUCT_MODEL_V3) {
+                    $product = carmaja_api_v4_product_response_from_draft($draft);
+                } elseif (($draft['productModelVersion'] ?? null) === CARMAJA_PRODUCT_MODEL_V2) {
+                    $product = carmaja_api_v2_product_response_from_draft($draft);
+                    $product['available'] = ($draft['status'] ?? null) === 'published';
+                    $product['status'] = (string) ($draft['status'] ?? 'draft');
+                    unset($product['salesEnabled'], $product['stock']);
+                } else {
+                    throw new CarmajaApiException(409, 'Produktmodell muss aktualisiert werden.', [], 'product_model_migration_required');
+                }
+                carmaja_bootstrap_send(200, carmaja_api_v4_success_response(['product' => $product]));
+            }
+
+            if ($method !== 'GET') {
+                carmaja_bootstrap_require_v4_writes();
+                carmaja_api_v4_validate_client_version_code(
+                    $_SERVER['HTTP_X_CARMAJA_APP_VERSION_CODE'] ?? null
+                );
+            }
+
+            if ($method === 'PUT' && count($segments) === 2) {
+                carmaja_bootstrap_send(200, carmaja_api_v4_success_response([
+                    'product' => carmaja_api_v4_put_product(
+                        $productId,
+                        carmaja_api_json_body(),
+                        $actor,
+                        $_SERVER['HTTP_IDEMPOTENCY_KEY'] ?? null
+                    ),
+                ]));
+            }
+
+            if ($method === 'POST' && ($segments[2] ?? null) === 'images' && count($segments) === 3) {
+                $draft = carmaja_api_load_draft($productId);
+                if (!is_array($draft)
+                    || ($draft['productModelVersion'] ?? null) !== CARMAJA_PRODUCT_MODEL_V3) {
+                    throw new CarmajaApiException(409, 'Produkt muss zuerst aktuell gespeichert werden.', [], 'product_model_migration_required');
+                }
+                $savedDraft = carmaja_api_upload_images($productId, $_POST, $actor);
+                carmaja_bootstrap_send(200, carmaja_api_v4_success_response([
+                    'product' => carmaja_api_v4_product_response_from_draft($savedDraft),
+                ]));
+            }
+
+            $lifecycleAction = ($segments[2] ?? null);
+            if ($method === 'POST'
+                && in_array($lifecycleAction, ['publish', 'archive', 'restore'], true)
+                && count($segments) === 3) {
+                $handler = match ($lifecycleAction) {
+                    'publish' => 'carmaja_api_v4_publish_product',
+                    'archive' => 'carmaja_api_v4_archive_product',
+                    'restore' => 'carmaja_api_v4_restore_product',
+                };
+                carmaja_bootstrap_send(200, carmaja_api_v4_success_response([
+                    ...$handler($productId, carmaja_api_json_body(), $actor),
+                ]));
+            }
+        }
+
+        throw new CarmajaApiException(404, 'v4-API-Endpunkt wurde nicht gefunden.', [], 'endpoint_not_found');
+    }
+
     if (($segments[0] ?? null) === 'v3') {
         array_shift($segments);
 
@@ -1089,6 +1240,9 @@ function carmaja_bootstrap_route_request(): never
             }
 
             if ($method === 'PUT' && count($segments) === 2) {
+                if (carmaja_bootstrap_v4_writes_enabled()) {
+                    carmaja_api_v4_reject_legacy_write();
+                }
                 $body = carmaja_api_json_body();
                 carmaja_api_validate_product_write_payload($body);
                 carmaja_api_v3_validate_client_version_code(
@@ -1110,6 +1264,9 @@ function carmaja_bootstrap_route_request(): never
             if ($method === 'POST'
                 && ($segments[2] ?? null) === 'images'
                 && count($segments) === 3) {
+                if (carmaja_bootstrap_v4_writes_enabled()) {
+                    carmaja_api_v4_reject_legacy_write();
+                }
                 carmaja_api_v3_validate_client_version_code(
                     $_SERVER['HTTP_X_CARMAJA_APP_VERSION_CODE'] ?? null
                 );
@@ -1135,6 +1292,9 @@ function carmaja_bootstrap_route_request(): never
             if ($method === 'POST'
                 && ($segments[2] ?? null) === 'publish'
                 && count($segments) === 3) {
+                if (carmaja_bootstrap_v4_writes_enabled()) {
+                    carmaja_api_v4_reject_legacy_write();
+                }
                 carmaja_api_v3_validate_client_version_code(
                     $_SERVER['HTTP_X_CARMAJA_APP_VERSION_CODE'] ?? null
                 );

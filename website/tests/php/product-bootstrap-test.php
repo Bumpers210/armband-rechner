@@ -160,6 +160,8 @@ carmaja_bootstrap_test(
         $config = carmaja_bootstrap_prepare($fixture['configFile']);
 
         carmaja_bootstrap_test_same('test', $config['publishTarget'], 'Falsches Ziel.');
+        carmaja_bootstrap_test_same(false, $config['productApiV4WritesEnabled'], 'v4-Schreiben muss standardmäßig gesperrt sein.');
+        carmaja_bootstrap_test_same(false, $config['collectionCommerceEnabled'], 'Kollektionen-Checkout muss standardmäßig gesperrt sein.');
         carmaja_bootstrap_test_same(
             false,
             $config['githubAdapterEnabled'],
@@ -183,6 +185,20 @@ carmaja_bootstrap_test(
             realpath($fixture['private']),
             carmaja_api_private_dir(),
             'Aktiver privater Pfad stimmt nicht.'
+        );
+    }
+);
+
+carmaja_bootstrap_test(
+    'Kollektionen-Schalter akzeptieren ausschließlich boolesche Werte',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $config = $fixture['config'];
+        $config['productApiV4WritesEnabled'] = 'true';
+        carmaja_bootstrap_test_write_config($fixture['configFile'], $config);
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config($fixture['configFile']),
+            'config_environment_invalid'
         );
     }
 );

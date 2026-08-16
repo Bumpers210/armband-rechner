@@ -1,0 +1,52 @@
+{
+  "manifestVersion": 2,
+  "environment": "production",
+  "status": "prepared_awaiting_test_and_legal_approval",
+  "productModelVersion": 3,
+  "salesModel": "collection",
+  "availabilitySource": "commerce_products.sales_enabled",
+  "schemaMigrations": [
+    {
+      "migrationId": "commerce-v2-collections",
+      "path": "website/database/migrations/commerce-v2-collections.sql",
+      "fileSha256": "7398cf604854f84ba02429a6d34d1d12e0f6ed679ef4ca59e3c04cda6a31f035",
+      "journalSha256": "33bc5be8e76781b73ff6c23950bb99ac4d9bea67e4632c917f3002b37550d00d"
+    }
+  ],
+  "legalBundle": {
+    "legalBundleId": "cmj-production-legal-2026-08-16-v5",
+    "status": "draft",
+    "reviewManifest": "website/docs/legal-review/ap8-2026-08-16-v1/manifest.json"
+  },
+  "shipping": {
+    "methodId": "deutsche-post-maxibrief",
+    "publicName": "Deutsche Post Maxibrief",
+    "amountMinor": 270,
+    "currency": "eur",
+    "minBusinessDays": 2,
+    "maxBusinessDays": 4
+  },
+  "paymentMethodTypes": ["card", "klarna", "sepa_debit"],
+  "selectedCollections": [
+    {
+      "productId": "3da76a24-3213-4e8f-b9aa-336ea95e4aa3",
+      "sku": "CP-2026-0002",
+      "expectedProductVersion": null,
+      "expectedSourceHash": null,
+      "operationId": null
+    }
+  ],
+  "cutoverGuards": {
+    "requireAresModelV3": true,
+    "requireSourceHashMatch": true,
+    "requireStableSkuAndUrl": true,
+    "requireApprovedLegalBundleV5": true,
+    "requireV4WritesDisabledBeforeWindow": true,
+    "requireShopV2DisabledBeforeWindow": true,
+    "requireNoInventoryCreation": true,
+    "requireFreshEncryptedBackup": true,
+    "requireVerifiedOneDriveTransfer": true,
+    "requireIsolatedRestoreProof": true,
+    "rollbackMode": "close_new_checkouts_without_data_reset"
+  }
+}

@@ -28,6 +28,7 @@ das nur bei `publishTarget=test` und `productionPublishEnabled=false`.
 | `website/test-api-private/program/product-api.php` | `/home/www/carmaja-private-test/program/product-api.php` | `0640` |
 | `website/test-api-private/program/product-api-v2.php` | `/home/www/carmaja-private-test/program/product-api-v2.php` | `0640` |
 | `website/test-api-private/program/product-api-v3.php` | `/home/www/carmaja-private-test/program/product-api-v3.php` | `0640` |
+| `website/test-api-private/program/product-api-v4.php` | `/home/www/carmaja-private-test/program/product-api-v4.php` | `0640` |
 | `website/test-api-private/program/product-admin.php` | `/home/www/carmaja-private-test/program/product-admin.php` | `0640` |
 | `website/test-api-private/program/product-api-diagnostics.php` | `/home/www/carmaja-private-test/program/product-api-diagnostics.php` | `0640` |
 
@@ -47,7 +48,8 @@ nicht zur Test-API-Installation.
 3. `bootstrap.php` lädt ausschließlich die private
    `/home/www/carmaja-private-test/config/runtime-config.php`.
 4. Der Bootstrap validiert und aktiviert die Konfiguration, lädt
-   `product-api.php`, `product-api-v2.php` und `product-api-v3.php` aus
+   `product-api.php`, `product-api-v2.php`, `product-api-v3.php` und
+   `product-api-v4.php` aus
    demselben privaten Programmverzeichnis und startet den Router.
 5. Admin-CLI und Diagnose laden denselben Bootstrap über
    `CARMAJA_CONFIG_FILE`.
@@ -139,6 +141,8 @@ return [
     'environment' => 'test',
     'publishTarget' => 'test',
     'productionPublishEnabled' => false,
+    'productApiV4WritesEnabled' => false,
+    'collectionCommerceEnabled' => false,
     'privateDir' => '/home/www/carmaja-private-test',
     'testPrivateDir' => '/home/www/carmaja-private-test',
     'testApiWebroot' => '/home/www/carmaja-test-api',
@@ -207,6 +211,7 @@ chmod 0640 \
   /home/www/carmaja-private-test/program/product-api.php \
   /home/www/carmaja-private-test/program/product-api-v2.php \
   /home/www/carmaja-private-test/program/product-api-v3.php \
+  /home/www/carmaja-private-test/program/product-api-v4.php \
   /home/www/carmaja-private-test/program/product-admin.php \
   /home/www/carmaja-private-test/program/product-api-diagnostics.php
 
@@ -223,6 +228,7 @@ export CARMAJA_CONFIG_FILE=/home/www/carmaja-private-test/config/runtime-config.
 "$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/product-api.php
 "$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/product-api-v2.php
 "$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/product-api-v3.php
+"$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/product-api-v4.php
 "$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/product-admin.php
 "$CARMAJA_PHP_CLI" -l /home/www/carmaja-private-test/program/product-api-diagnostics.php
 
@@ -253,21 +259,28 @@ Erwartete Diagnose:
 Jeder Diagnosefehler stoppt die Installation. Die Ausgabe darf keine
 absoluten Pfade und keine Konfigurationswerte enthalten.
 
-## Produktmodell 3 in der Testumgebung
+## Produktmodell 3 und Kollektionen in der Testumgebung
 
-Die Beta-App 1.2.0-beta.1 (Code 6) verwendet ausschließlich die
-Produktwege unter `/v3`. Formatierte Beschreibungen werden dort als
+Die Beta-App 1.3.0-beta.1 (Code 7) verwendet ausschließlich die
+Produktwege unter `/v4`. Formatierte Beschreibungen werden weiterhin als
 strukturierte Absätze und Textbereiche gespeichert; die API erzeugt die
 zusätzliche reine Beschreibung selbst. Modell-2-Produkte bleiben über die
-lesenden `/v2`- und `/v3`-Wege verfügbar und werden erst beim Speichern mit
+lesenden `/v2`, `/v3`- und `/v4`-Wege verfügbar und werden erst beim Speichern mit
 der neuen App auf Modell 3 angehoben.
 
-Nach Installation von `product-api-v3.php` sind schreibende Modell-1- und
-Modell-2-Aufrufe gesperrt. Sie erhalten HTTP 426, damit eine ältere App eine
-bereits formatierte Beschreibung nicht überschreiben kann. Anmeldung und
-lesende Abfragen bleiben möglich. Die öffentliche Produktdatei besitzt ab
-der ersten Modell-3-Veröffentlichung Wurzelversion 3 und darf Modell-2- und
-Modell-3-Produkte gemeinsam enthalten.
+`productApiV4WritesEnabled` und `collectionCommerceEnabled` bleiben während
+Installation und Buildprüfung auf `false`. Erst nach Klärung des offenen
+Vorgangs „test 3“, erfolgreicher Migration und gesonderter Testfreigabe werden
+sie gemeinsam kontrolliert aktiviert. Dann sind schreibende `/v2`- und
+`/v3`-Aufrufe gesperrt und erhalten HTTP 426, damit eine ältere App weder
+Formatierung noch Verfügbarkeit überschreiben kann. Anmeldung und lesende
+Abfragen bleiben möglich.
+
+Veröffentlichen aktiviert eine Kollektion automatisch. Archivieren sperrt
+neue Checkouts und entfernt die öffentliche Projektion; Wiederherstellen nutzt
+dieselbe Produkt-ID, SKU und Adresse. Die Shop-API `/shop/v2` gibt nur
+`available` und keine Bestandsmenge aus. Details stehen in
+`website/docs/collection-availability.md`.
 
 Die sichere Token-Eingabe und erste GitHub-Prüfung erfolgen bei weiterhin
 deaktiviertem Adapter:

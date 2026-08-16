@@ -162,13 +162,14 @@ class ProductAuthenticationAndActionsTest {
     }
 
     @Test
-    fun publishedProductShowsOnlyItsShopIndependentEditAction() {
+    fun publishedCollectionOffersEditAndConfirmedArchiveActions() {
+        val archived = AtomicBoolean(false)
         composeRule.setContent {
             MaterialTheme {
                 PublishedProductView(
                     draft = publishedDraft(),
                     busy = false,
-                    actions = ProductUiActions.noop(),
+                    actions = ProductUiActions(onArchive = { archived.set(true) }),
                 )
             }
         }
@@ -176,9 +177,31 @@ class ProductAuthenticationAndActionsTest {
         composeRule.onNodeWithText("Verkauft").assertDoesNotExist()
         composeRule.onNodeWithText("Deaktivieren").assertDoesNotExist()
         composeRule.onNodeWithTag("published-edit").assertExists()
+        composeRule.onNodeWithTag("published-archive").performClick()
+        composeRule.onNodeWithText("Kollektion löschen?").assertIsDisplayed()
+        assertTrue(!archived.get())
+        composeRule.onNodeWithTag("confirm-collection-archive").performClick()
+        assertTrue(archived.get())
         composeRule.onNodeWithText("Auf Testwebsite veröffentlichen").assertDoesNotExist()
         composeRule.onNodeWithText("Speichern").assertDoesNotExist()
         composeRule.onNodeWithText("Speichern und synchronisieren").assertDoesNotExist()
+    }
+
+    @Test
+    fun archivedCollectionCanBeRestored() {
+        val restored = AtomicBoolean(false)
+        composeRule.setContent {
+            MaterialTheme {
+                ArchivedProductView(
+                    draft = publishedDraft().copy(status = ProductStatus.Disabled),
+                    busy = false,
+                    actions = ProductUiActions(onRestore = { restored.set(true) }),
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Wiederherstellen").performClick()
+        assertTrue(restored.get())
     }
 
     @Test

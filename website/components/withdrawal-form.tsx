@@ -20,7 +20,7 @@ export function WithdrawalForm() {
   const [busy, setBusy] = useState(false);
 
   async function context(): Promise<{ csrfToken: string }> {
-    const response = await fetch(`${apiOrigin}/shop/v1/context`, {
+    const response = await fetch(`${apiOrigin}/shop/v2/context`, {
       credentials: "include",
       cache: "no-store",
     });
@@ -38,7 +38,7 @@ export function WithdrawalForm() {
     try {
       const data = new FormData(event.currentTarget);
       const csrf = await context();
-      const response = await fetch(`${apiOrigin}/shop/v1/withdrawals/preview`, {
+      const response = await fetch(`${apiOrigin}/shop/v2/withdrawals/preview`, {
         method: "POST",
         credentials: "include",
         cache: "no-store",
@@ -69,7 +69,7 @@ export function WithdrawalForm() {
     setBusy(true);
     try {
       const csrf = await context();
-      const response = await fetch(`${apiOrigin}/shop/v1/withdrawals/confirm`, {
+      const response = await fetch(`${apiOrigin}/shop/v2/withdrawals/confirm`, {
         method: "POST",
         credentials: "include",
         cache: "no-store",

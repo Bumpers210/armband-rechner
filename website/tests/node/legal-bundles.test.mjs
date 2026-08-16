@@ -136,6 +136,44 @@ test("freigegebene Produktionsfassung v4 entfernt PayPal und ist aktiv", async (
   assert.match(source, /production: \[productionLegalBundleV4, productionLegalBundle\]/);
 });
 
+test("Legal Bundle v5 beschreibt Kollektionen und bleibt bis zur Abnahme inaktiv", async () => {
+  const source = await readFile(new URL("../../content/legal-bundles.ts", import.meta.url), "utf8");
+  assert.match(source, /id: "cmj-production-legal-2026-08-16-v5"/);
+  assert.match(source, /export const productionLegalBundleV5Draft/);
+  assert.match(source, /status: "awaiting_external_approval"/);
+  assert.match(source, /ce39a7b3dffca205c53ee30a7c0a08226595f1325c033c6788db634c6239ebef/);
+  assert.match(source, /wiederholt bestellbaren Kollektion/);
+  assert.match(source, /Andere Kundinnen und Kunden können dieselbe aktive Kollektion/);
+  assert.doesNotMatch(
+    source,
+    /production: \[productionLegalBundleV5Draft/,
+    "Ungeprüfter v5-Entwurf darf nicht aktiv sein.",
+  );
+});
+
+test("v5-Prüfpaket ist vollständig gehasht und ausdrücklich nicht freigegeben", async () => {
+  const packageBase = new URL("../../docs/legal-review/ap8-2026-08-16-v1/", import.meta.url);
+  const manifest = JSON.parse(await readFile(new URL("manifest.json", packageBase), "utf8"));
+  assert.equal(manifest.status, "entwurf_nicht_freigegeben");
+  assert.equal(manifest.legalBundleStatus, "draft");
+  assert.equal(
+    manifest.legalBundleContentSha256,
+    "ce39a7b3dffca205c53ee30a7c0a08226595f1325c033c6788db634c6239ebef",
+  );
+
+  for (const document of manifest.documents) {
+    const bytes = await readFile(new URL(document.file, packageBase));
+    const fileText = bytes.toString("utf8");
+    const contentMatch = fileText.match(/<!-- hash-begin -->\r?\n([\s\S]*?)\r?\n<!-- hash-end -->/);
+    assert.ok(contentMatch, `${document.file}: Hashbereich fehlt`);
+    const contentHash = createHash("sha256")
+      .update(contentMatch[1].replace(/\r\n?/g, "\n"), "utf8")
+      .digest("hex");
+    assert.equal(contentHash, document.contentSha256, `${document.file}: Inhalts-Hash`);
+    assert.equal(createHash("sha256").update(bytes).digest("hex"), document.fileSha256, `${document.file}: Datei-Hash`);
+  }
+});
+
 test("AP7-v4-Freigabepaket bindet die neue Fassung ohne aktive PayPal-Nennung", async () => {
   const packageBase = new URL("../../docs/legal-review/ap7-2026-08-11-v1/", import.meta.url);
   const manifest = JSON.parse(await readFile(new URL("manifest.json", packageBase), "utf8"));

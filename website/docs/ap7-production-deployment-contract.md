@@ -16,7 +16,7 @@ Produktdaten verbleiben getrennt unter `/home/www/carmaja-private-production`.
 Website und öffentliche API verwenden ausschließlich die bestehenden Webroots
 `/home/www/carmaja` und `/home/www/carmaja-production-api`. Produkt-API und
 Shop-API teilen diesen API-Webroot; die Shop-Routen liegen unter
-`https://api.carmaja-perlen.de/shop/v1`. Ein zweiter Shop-API-Webroot ist
+`https://api.carmaja-perlen.de/shop/v2`. Ein zweiter Shop-API-Webroot ist
 unzulässig.
 
 Der Produktionsworker wird ausschließlich so gestartet:
@@ -72,23 +72,25 @@ ausgeschlossen.
 3. Schema-Migrationsmanifest und Dateihashes prüfen.
 4. Private API-/Worker-Artefakte im Staging prüfen; noch nicht aktivieren.
 5. Website-Artefakt im Staging prüfen; noch nicht aktivieren.
-6. Legacy-Schreibsperre und Entfernung paralleler Verkaufsangebote belegen.
-7. Genau ein v2-Produkt im Cutovermanifest auswählen und Dry-Run abnehmen.
+6. Schreibsperre für ältere Produkt-Apps und deaktivierte v4-Schalter belegen.
+7. Ares mit Produktversion und Quellhash im Kollektionen-Cutovermanifest
+   auswählen und den Dry-Run ohne Bestandsimport abnehmen.
 8. Erst nach separater AP7-Freigabe Schema, Cutover, private API, Worker/Cron
    und Website in der Produktionscheckliste aktivieren.
 
 Bei fehlender Hashgleichheit, abweichender Zielidentität, unerwarteten
 Commerce-Daten, fehlendem Backup/Restore-Nachweis oder inkonsistenter
-Versand-, Legal- oder Zahlungsartenkonfiguration wird gestoppt. Es findet kein
-automatisches Zurückschreiben in `stock` statt.
+Versand-, Legal- oder Zahlungsartenkonfiguration wird gestoppt. Es findet
+weder ein Import aus noch ein Zurückschreiben in `stock` oder `onHand` statt.
 
 ## 4. Rollback und Notfallmodus
 
 Website-Rollback verändert keine Commerce-Daten. Code-Rollback ist nur auf
 eine Version erlaubt, die das aktuelle Commerce-Schema lesen kann.
-Bestands-Cutover-Rollback ist ausschließlich vor dem ersten Commerce-Checkout
-zulässig. Danach werden neue Checkouts deaktiviert, während Webhooks,
-Bestellungen, Worker und Stripe-Abgleich weiterlaufen.
+Ein Rückfall auf die Einzelstücklogik ist nach dem ersten Kollektionen-Checkout
+nicht vorgesehen. Bei Problemen werden neue Checkouts deaktiviert, während
+bereits begonnene Zahlungen, Webhooks, Bestellungen, Worker und Stripe-Abgleich
+weiterlaufen. Historische Commerce-Daten werden nicht zurückgesetzt.
 
 ## 5. Produktionsüberwachung
 

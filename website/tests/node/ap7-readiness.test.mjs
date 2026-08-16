@@ -34,7 +34,7 @@ test("Produktionsdeployment bleibt trotz automatischer Produktprüfung manuell u
 
 test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsarten identisch", async () => {
   const deployment = JSON.parse(await text("website/config/production-shop-deployment.json"));
-  const cutover = JSON.parse(await text("website/config/production-cutover-manifest.v1.json"));
+  const cutover = JSON.parse(await text("website/config/production-collection-cutover-manifest.v2.json"));
   const runtime = await text("website/config/runtime-config.production.example.php");
   const bootstrap = await text("website/test-api-private/program/bootstrap.php");
 
@@ -46,10 +46,13 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsa
     assert.match(bootstrap, new RegExp(`['\"]${method}['\"]`));
   }
   assert.equal(deployment.shop.shippingAmountMinor, 270);
+  assert.equal(deployment.shop.apiVersion, 2);
+  assert.equal(deployment.shop.salesModel, "collection");
   assert.equal(cutover.shipping.amountMinor, 270);
   assert.match(runtime, /'shippingAmountMinor'\s*=>\s*270/);
   assert.equal(deployment.shop.legalBundleId, "cmj-production-legal-2026-08-11-v4");
-  assert.equal(cutover.legalBundle.legalBundleId, deployment.shop.legalBundleId);
+  assert.equal(cutover.legalBundle.legalBundleId, "cmj-production-legal-2026-08-16-v5");
+  assert.equal(cutover.legalBundle.status, "draft");
   assert.match(runtime, /cmj-production-legal-2026-08-11-v4/);
   assert.equal(deployment.paths.worker, "/home/www/carmaja-private-shop/worker.php");
   assert.equal(deployment.paths.backupCli, "/home/www/carmaja-private-shop/backup.php");
@@ -68,6 +71,10 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsa
   assert.equal(deployment.guards.publisherEnabled, false);
   assert.equal(deployment.guards.automaticApiDeployment, false);
   assert.equal(deployment.guards.automaticWebsiteDeployment, false);
+  assert.equal(deployment.guards.productApiV4WritesEnabled, false);
+  assert.equal(deployment.guards.collectionCommerceEnabled, false);
+  assert.match(runtime, /'productApiV4WritesEnabled'\s*=>\s*false/);
+  assert.match(runtime, /'collectionCommerceEnabled'\s*=>\s*false/);
   assert.equal(deployment.runtime.cron, "*/5 * * * *");
   assert.equal(deployment.runtime.backupCron, "17 * * * *");
   assert.equal(
@@ -99,25 +106,21 @@ test("Website und v2-Publisher besitzen keinen produktiven Legacy-Verkaufsweg", 
   assert.doesNotMatch(hosting.join("\n"), /public-products\.json/);
 });
 
-test("Cutovermanifest ist versioniert, an genau ein Produkt gebunden und unfreigegeben", async () => {
-  const manifest = JSON.parse(await text("website/config/production-cutover-manifest.v1.json"));
-  assert.equal(manifest.manifestVersion, 1);
-  assert.equal(manifest.status, "prepared_awaiting_cutover_approval");
-  assert.deepEqual(manifest.selectedProducts, [{
-    productId: "3a37a0a2-9bd6-4410-aa9c-a465fdc411a1",
-    expectedProductVersion: 1,
-    expectedSourceHash: "09cd71d56561b08b8373c3bc804d3298b47096c470751da3407a5e0eff1e4444",
-    legacyStock: 1,
-    targetOnHand: 1,
+test("Kollektionen-Cutover ist versioniert, an Ares gebunden und unfreigegeben", async () => {
+  const manifest = JSON.parse(await text("website/config/production-collection-cutover-manifest.v2.json"));
+  assert.equal(manifest.manifestVersion, 2);
+  assert.equal(manifest.status, "prepared_awaiting_test_and_legal_approval");
+  assert.equal(manifest.salesModel, "collection");
+  assert.equal(manifest.availabilitySource, "commerce_products.sales_enabled");
+  assert.deepEqual(manifest.selectedCollections, [{
+    productId: "3da76a24-3213-4e8f-b9aa-336ea95e4aa3",
+    sku: "CP-2026-0002",
+    expectedProductVersion: null,
+    expectedSourceHash: null,
+    operationId: null,
   }]);
-  assert.deepEqual(manifest.selectionEvidence, {
-    migrationBackupId: "20260810-193548-5cebba9e",
-    legacyStockVerified: 1,
-    backupUnchanged: true,
-  });
-  assert.equal(manifest.cutoverGuards.exactlyOneSelectedProduct, true);
-  assert.equal(manifest.cutoverGuards.requireNoCommerceCheckout, true);
-  assert.equal(manifest.cutoverGuards.rollbackOnlyBeforeFirstCommerceCheckout, true);
+  assert.equal(manifest.cutoverGuards.requireNoInventoryCreation, true);
+  assert.equal(manifest.cutoverGuards.rollbackMode, "close_new_checkouts_without_data_reset");
 
   for (const migration of manifest.schemaMigrations) {
     const bytes = await readFile(path.join(repositoryRoot, migration.path));
@@ -130,8 +133,9 @@ test("Cutovermanifest ist versioniert, an genau ein Produkt gebunden und unfreig
   }
 
   const adapter = await text("website/scripts/production-cutover.php");
-  assert.match(adapter, /APPLY-CARMAJA-PRODUCTION-CUTOVER/);
-  assert.match(adapter, /commerce_not_empty/);
+  assert.match(adapter, /APPLY-CARMAJA-PRODUCTION-COLLECTION-CUTOVER/);
+  assert.match(adapter, /sales_model/);
   assert.match(adapter, /commerce_tls_not_active/);
   assert.match(adapter, /product_selection_not_approved/);
+  assert.doesNotMatch(adapter, /INSERT INTO commerce_inventory|UPDATE commerce_inventory|target_on_hand/);
 });
