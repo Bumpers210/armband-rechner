@@ -32,6 +32,48 @@
                 }
             ],
             "updatedAt": "2026-08-13T15:18:54+00:00"
+        },
+        {
+            "productModelVersion": 2,
+            "productId": "37fc562e-4ce8-42f9-b103-e3d050fa59ed",
+            "productVersion": 2,
+            "sourceHash": "4c24b1ac9c22487bc52015e8049e779b237d083faab2894a86b865b9e6236243",
+            "sku": "CP-2026-0007",
+            "slug": "cp-2026-0007-test-2",
+            "title": "Test 2",
+            "description": "Test-Armband Nr. 2",
+            "materials": [
+                "Rosenquarz"
+            ],
+            "metalElements": [
+                "Edelstahlspacer"
+            ],
+            "braceletSizeCm": 17,
+            "pearlSizeMm": 6,
+            "priceMinor": 2000,
+            "currency": "eur",
+            "salesEnabled": false,
+            "images": [
+                {
+                    "imageId": "45253ef2-5697-4004-b6bc-4d7c4f1e88c9",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0007/01.jpg",
+                    "alt": "Test 2",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "imageId": "e4ed41b8-2d8d-41aa-aac7-bd2e13a066e5",
+                    "fileName": "02.jpg",
+                    "src": "/images/products/CP-2026-0007/02.jpg",
+                    "alt": "Test 2",
+                    "width": 1600,
+                    "height": 900,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-08-16T06:33:11+00:00"
         }
     ]
 }
