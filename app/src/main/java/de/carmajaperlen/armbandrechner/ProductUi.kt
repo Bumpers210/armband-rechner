@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -70,6 +71,8 @@ data class ProductUiActions(
     val onLogin: () -> Unit = {},
     val onLogout: () -> Unit = {},
     val onEdit: () -> Unit = {},
+    val onArchive: () -> Unit = {},
+    val onRestore: () -> Unit = {},
     val onNameChange: (TextFieldValue) -> Unit = {},
     val onMaterialsChange: (TextFieldValue) -> Unit = {},
     val onMetalElementsChange: (TextFieldValue) -> Unit = {},
@@ -290,31 +293,34 @@ internal fun ProductManagementSection(
         val editor = state.selectedEditor
         if (draft != null && editor != null) {
             key(draft.draftId) {
-                if (draft.status == ProductStatus.Published &&
-                    state.editingDraftId != draft.draftId
-                ) {
-                    PublishedProductView(
+                when {
+                    draft.status == ProductStatus.Published &&
+                        state.editingDraftId != draft.draftId -> PublishedProductView(
+                            draft = draft,
+                            busy = state.busy,
+                            actions = actions,
+                        )
+                    draft.status == ProductStatus.Disabled -> ArchivedProductView(
                         draft = draft,
                         busy = state.busy,
                         actions = actions,
                     )
-                } else {
-                    ProductDraftForm(
-                        draft = draft,
-                        editor = editor,
-                        fieldErrors = state.fieldErrors,
-                        busy = state.busy,
-                        actions = actions,
-                        isPublishedEdit = state.editingDraftId == draft.draftId,
-                        hasUnsavedChanges = state.selectedHasUnsavedChanges,
-                        onPickImages = {
-                            imagePicker.launch(
-                                PickVisualMediaRequest(
-                                    ActivityResultContracts.PickVisualMedia.ImageOnly,
-                                ),
-                            )
-                        },
-                    )
+                    else -> ProductDraftForm(
+                            draft = draft,
+                            editor = editor,
+                            fieldErrors = state.fieldErrors,
+                            busy = state.busy,
+                            actions = actions,
+                            isPublishedEdit = state.editingDraftId == draft.draftId,
+                            hasUnsavedChanges = state.selectedHasUnsavedChanges,
+                            onPickImages = {
+                                imagePicker.launch(
+                                    PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly,
+                                    ),
+                                )
+                            },
+                        )
                 }
             }
         }
@@ -327,6 +333,34 @@ internal fun PublishedProductView(
     busy: Boolean,
     actions: ProductUiActions,
 ) {
+    var confirmArchive by rememberSaveable { mutableStateOf(false) }
+    if (confirmArchive) {
+        AlertDialog(
+            onDismissRequest = { if (!busy) confirmArchive = false },
+            title = { Text("Kollektion löschen?") },
+            text = {
+                Text(
+                    "${draft.name} wird sofort für neue Bestellungen gesperrt und von der Website entfernt. " +
+                        "Die Kollektion kann später wiederhergestellt werden.",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmArchive = false
+                        actions.onArchive()
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.testTag("confirm-collection-archive"),
+                ) { Text("Kollektion löschen") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmArchive = false }, enabled = !busy) {
+                    Text("Abbrechen")
+                }
+            },
+        )
+    }
     Surface(
         shape = MaterialTheme.shapes.small,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -356,7 +390,7 @@ internal fun PublishedProductView(
             )
             Text("Bilder: ${draft.images.size}/5")
             Text(
-                text = "Verkauf und Nichtverfügbarkeit werden vom Shop verwaltet.",
+                text = "Verfügbar, bis die Kollektion in der App gelöscht wird.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -367,7 +401,51 @@ internal fun PublishedProductView(
                     .fillMaxWidth()
                     .testTag("published-edit"),
             ) {
-                Text("Bearbeiten")
+                Text("Kollektion bearbeiten")
+            }
+            OutlinedButton(
+                onClick = { confirmArchive = true },
+                enabled = !busy,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("published-archive"),
+            ) {
+                Text("Kollektion löschen")
+            }
+        }
+    }
+}
+
+@Composable
+internal fun ArchivedProductView(
+    draft: ProductDraft,
+    busy: Boolean,
+    actions: ProductUiActions,
+) {
+    Surface(
+        shape = MaterialTheme.shapes.small,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(12.dp),
+        ) {
+            Text(draft.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = "${draft.sku.orEmpty()} · gelöscht · gleiche Adresse bleibt reserviert",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text("Private Produktdaten und Bilder bleiben für die Wiederherstellung erhalten.")
+            Button(
+                onClick = actions.onRestore,
+                enabled = !busy,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("archived-restore"),
+            ) {
+                Text("Wiederherstellen")
             }
         }
     }
@@ -383,11 +461,43 @@ private fun DraftList(
     busy: Boolean,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = "Entwürfe",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
+        val activeDrafts = drafts.filter { it.status != ProductStatus.Disabled }
+        val archivedDrafts = drafts.filter { it.status == ProductStatus.Disabled }
+        DraftListGroup(
+            title = "Aktive Kollektionen und Entwürfe",
+            drafts = activeDrafts,
+            editors = editors,
+            selectedDraftId = selectedDraftId,
+            unsavedDraftIds = unsavedDraftIds,
+            onSelectDraft = onSelectDraft,
+            busy = busy,
         )
+        if (archivedDrafts.isNotEmpty()) {
+            DraftListGroup(
+                title = "Gelöschte Kollektionen",
+                drafts = archivedDrafts,
+                editors = editors,
+                selectedDraftId = selectedDraftId,
+                unsavedDraftIds = unsavedDraftIds,
+                onSelectDraft = onSelectDraft,
+                busy = busy,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DraftListGroup(
+    title: String,
+    drafts: List<ProductDraft>,
+    editors: Map<String, ProductDraftEditorState>,
+    selectedDraftId: String?,
+    unsavedDraftIds: Set<String>,
+    onSelectDraft: (String) -> Unit,
+    busy: Boolean,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(text = title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
         drafts.forEach { draft ->
             OutlinedButton(
                 onClick = { onSelectDraft(draft.draftId) },
@@ -518,7 +628,7 @@ internal fun ProductDraftForm(
                 keyboardType = KeyboardType.Decimal,
             )
             Text(
-                text = "Währung: EUR · Verkaufsfreigabe: deaktiviert",
+                text = "Währung: EUR · Verfügbarkeit wird beim Veröffentlichen automatisch aktiviert",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -784,13 +894,11 @@ internal fun ProductPublicationPreviewScreen(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.testTag("publication-preview-title"),
             )
-            if (!draft.salesEnabled) {
-                Text(
-                    text = "Nicht verfügbar",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = WebsitePreviewClay,
-                )
-            }
+            Text(
+                text = "Verfügbar",
+                style = MaterialTheme.typography.labelLarge,
+                color = WebsitePreviewMoss,
+            )
             RichDescriptionText(
                 document = description,
                 modifier = Modifier.testTag("publication-preview-description"),
@@ -984,6 +1092,6 @@ private fun statusLabel(status: ProductStatus): String {
         ProductStatus.Ready -> "bereit"
         ProductStatus.Published -> "veröffentlicht"
         ProductStatus.Sold -> "verkauft"
-        ProductStatus.Disabled -> "deaktiviert"
+        ProductStatus.Disabled -> "gelöscht"
     }
 }

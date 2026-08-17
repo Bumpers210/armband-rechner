@@ -5,7 +5,7 @@ export default function ShopCancelPage() {
     <main id="main-content" className="legal-main">
       <div className="content-shell legal-content">
         <h1>Checkout nicht abgeschlossen</h1>
-        <p>Der Browserabbruch gibt keine Reservierung frei. Stripe bestätigt das Ende der Session; danach wird der Bestand automatisch geprüft.</p>
+        <p>Der Browserabbruch beendet keine möglicherweise laufende Zahlung. Stripe bestätigt den endgültigen Status; andere Bestellungen derselben Kollektion bleiben möglich.</p>
         <p><Link href="/armbaender/">Zurück zu den Armbändern</Link></p>
       </div>
     </main>

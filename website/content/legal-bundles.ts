@@ -265,6 +265,44 @@ const productionApprovedTextsV4: LegalBundleTexts = {
   ),
 };
 
+const productionDraftTextsV5: LegalBundleTexts = {
+  terms: productionApprovedTextsV4.terms.map((section) => {
+    if (section.heading === "1. Geltungsbereich") {
+      return {
+        ...section,
+        paragraphs: [
+          "Diese Shopbedingungen gelten für Bestellungen von Verbrauchern über den Online-Shop von Carmaja-Perlen. Pro Checkout kann genau ein Armband aus einer wiederholt bestellbaren Kollektion gekauft werden. Ein Warenkorb und ein Kundenkonto werden nicht angeboten.",
+        ],
+      };
+    }
+    return section;
+  }),
+  privacy: productionApprovedTextsV4.privacy,
+  withdrawal: productionApprovedTextsV4.withdrawal,
+  shipping: productionApprovedTextsV4.shipping.map((section) => {
+    if (section.heading === "Versand") {
+      return {
+        ...section,
+        paragraphs: [
+          ...section.paragraphs,
+          "Pro Checkout kann genau ein Armband aus einer Kollektion gekauft werden. Eine aktive Kollektion kann wiederholt bestellt werden.",
+        ],
+      };
+    }
+    if (section.heading === "Zahlung") {
+      return {
+        ...section,
+        paragraphs: [
+          section.paragraphs[0],
+          section.paragraphs[1],
+          "SEPA-Lastschrift kann zunächst als „in Bearbeitung“ angezeigt werden. Bis zur endgültigen Bestätigung entstehen noch keine angenommene Bestellung, Bestellnummer oder Versandfreigabe. Andere Kundinnen und Kunden können dieselbe aktive Kollektion währenddessen weiterhin bestellen. Bei endgültigem Fehlschlag kommt kein Vertrag zustande.",
+        ],
+      };
+    }
+    return section;
+  }),
+};
+
 export const testLegalBundle: LegalBundle = createLegalBundle({
   id: "cmj-test-legal-2026-08-06-v2",
   environment: "test",
@@ -297,6 +335,23 @@ export const productionLegalBundleV4: LegalBundle = createLegalBundle({
   createdAt: "2026-08-11T00:00:00.000Z",
   texts: productionApprovedTextsV4,
 });
+
+export const PRODUCTION_LEGAL_BUNDLE_V5_DRAFT_CONTENT_SHA256 =
+  "ce39a7b3dffca205c53ee30a7c0a08226595f1325c033c6788db634c6239ebef";
+
+export const productionLegalBundleV5Draft: LegalBundle = createLegalBundle({
+  id: "cmj-production-legal-2026-08-16-v5",
+  environment: "production",
+  version: "v5",
+  status: "awaiting_external_approval",
+  archiveUrl: "/legal-archive/production/cmj-production-legal-2026-08-16-v5/",
+  createdAt: "2026-08-16T00:00:00.000Z",
+  texts: productionDraftTextsV5,
+});
+
+if (productionLegalBundleV5Draft.contentHash !== PRODUCTION_LEGAL_BUNDLE_V5_DRAFT_CONTENT_SHA256) {
+  throw new Error("Legal-Bundle-v5-Entwurf stimmt nicht mit dem Prüfhash überein.");
+}
 
 if (productionLegalBundleV4.contentHash !== PRODUCTION_LEGAL_BUNDLE_V4_CONTENT_SHA256) {
   throw new Error("Freigegebenes Produktions-Legal-Bundle v4 stimmt nicht mit dem Inhalts-Hash überein.");

@@ -6,7 +6,7 @@ import org.junit.Test
 
 class ProductApiPayloadTest {
     @Test
-    fun savePayloadContainsCompleteV3ContractWithoutLegacyOrServerFields() {
+    fun savePayloadContainsCompleteV4ContractWithoutAvailabilityOrServerFields() {
         val payload = productDraft().toSaveJson()
 
         assertEquals("Rosenquarz", payload.getJSONArray("materials").getString(0))
@@ -21,8 +21,7 @@ class ProductApiPayloadTest {
         assertFalse(payload.has("description"))
         assertEquals(2490, payload.getInt("priceMinor"))
         assertEquals("eur", payload.getString("currency"))
-        assertFalse(payload.getBoolean("salesEnabled"))
-        for (field in listOf("stock", "vintedUrl", "productVersion", "sourceHash")) {
+        for (field in listOf("stock", "salesEnabled", "vintedUrl", "productVersion", "sourceHash")) {
             assertFalse(payload.has(field))
         }
     }

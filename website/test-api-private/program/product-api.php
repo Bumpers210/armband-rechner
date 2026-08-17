@@ -222,13 +222,16 @@ function carmaja_api_private_dir(): string
 {
     $target = carmaja_api_publish_target();
     $configuredPath = carmaja_api_required_path_setting('CARMAJA_PRIVATE_DIR');
-    $testPath = carmaja_api_required_path_setting('CARMAJA_TEST_PRIVATE_DIR');
+    $testPath = $target === 'test'
+        ? carmaja_api_required_path_setting('CARMAJA_TEST_PRIVATE_DIR')
+        : carmaja_api_optional_path_setting('CARMAJA_TEST_PRIVATE_DIR');
     $productionPath = $target === 'production'
         ? carmaja_api_required_path_setting('CARMAJA_PRODUCTION_PRIVATE_DIR')
         : carmaja_api_optional_path_setting('CARMAJA_PRODUCTION_PRIVATE_DIR');
     $publicWebroot = carmaja_api_required_path_setting('CARMAJA_PUBLIC_WEBROOT');
 
-    if ($productionPath !== null
+    if ($testPath !== null
+        && $productionPath !== null
         && carmaja_api_normalize_path($testPath)
             === carmaja_api_normalize_path($productionPath)) {
         throw new CarmajaApiException(
@@ -348,49 +351,6 @@ function carmaja_api_read_json(string $path, array $fallback = []): array
     return $decoded;
 }
 
-function carmaja_api_json_values_equal(mixed $expected, mixed $actual): bool
-{
-    $expectedIsNumber = is_int($expected) || is_float($expected);
-    $actualIsNumber = is_int($actual) || is_float($actual);
-
-    if ($expectedIsNumber || $actualIsNumber) {
-        if (!$expectedIsNumber || !$actualIsNumber) {
-            return false;
-        }
-
-        if (gettype($expected) === gettype($actual)) {
-            return $expected === $actual;
-        }
-
-        $integer = is_int($expected) ? $expected : $actual;
-        $floatingPoint = is_float($expected) ? $expected : $actual;
-
-        return is_finite($floatingPoint)
-            && floor($floatingPoint) === $floatingPoint
-            && abs($floatingPoint) <= 9007199254740991
-            && $integer === (int) $floatingPoint;
-    }
-
-    if (is_array($expected) || is_array($actual)) {
-        if (!is_array($expected)
-            || !is_array($actual)
-            || array_is_list($expected) !== array_is_list($actual)
-            || array_keys($expected) !== array_keys($actual)) {
-            return false;
-        }
-
-        foreach ($expected as $key => $value) {
-            if (!carmaja_api_json_values_equal($value, $actual[$key])) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    return $expected === $actual;
-}
-
 function carmaja_api_write_json_atomic(string $path, array $data): void
 {
     carmaja_api_ensure_directory(dirname($path));
@@ -409,7 +369,7 @@ function carmaja_api_write_json_atomic(string $path, array $data): void
         @chmod($temporaryPath, 0640);
         $validated = carmaja_api_read_json($temporaryPath);
 
-        if (!carmaja_api_json_values_equal($data, $validated)) {
+        if ($validated !== $data) {
             throw new CarmajaApiException(500, 'Geschriebene JSON-Datei ist nicht konsistent.');
         }
 
@@ -1052,12 +1012,68 @@ function carmaja_api_slugify(string $value): string
     return $slug !== '' ? $slug : 'armband';
 }
 
-function carmaja_api_validate_measurement(mixed $value, string $field): float
-{
-    if ((!is_int($value) && !is_float($value)) || !is_finite((float) $value) || (float) $value <= 0) {
-        throw new CarmajaApiException(422, $field . ' ist ungültig.', [$field => 'Positive Zahl erwartet.'], 'validation_failed');
+function carmaja_api_validate_vinted_url(
+    mixed $value,
+    bool $required
+): ?string {
+    if ($value === null || (is_string($value) && trim($value) === '')) {
+        if ($required) {
+            throw new CarmajaApiException(
+                422,
+                'Für Produktionsveröffentlichungen ist ein Vinted-Link erforderlich.',
+                ['vintedUrl' => 'Vinted-Link ist erforderlich.'],
+                'vinted_url_required'
+            );
+        }
+
+        return null;
     }
-    return (float) $value;
+
+    if (!is_string($value)) {
+        throw new CarmajaApiException(
+            422,
+            'Vinted-Link ist ungültig.',
+            ['vintedUrl' => 'Vinted-Link muss eine URL sein.'],
+            'vinted_url_invalid'
+        );
+    }
+
+    $url = trim($value);
+    $parts = parse_url($url);
+    $host = is_array($parts) && is_string($parts['host'] ?? null)
+        ? strtolower($parts['host'])
+        : null;
+    $hasCredentials = is_array($parts)
+        && (array_key_exists('user', $parts) || array_key_exists('pass', $parts));
+    $hasPort = is_array($parts) && array_key_exists('port', $parts);
+    $redirectKeys = ['url', 'redirect', 'redirect_url', 'redirect_uri', 'next', 'target'];
+    $query = [];
+
+    if (is_array($parts) && is_string($parts['query'] ?? null)) {
+        parse_str($parts['query'], $query);
+    }
+
+    $hasRedirect = array_intersect(
+        $redirectKeys,
+        array_map(static fn (mixed $key): string => strtolower((string) $key), array_keys($query))
+    ) !== [];
+
+    if (filter_var($url, FILTER_VALIDATE_URL) === false
+        || !is_array($parts)
+        || ($parts['scheme'] ?? null) !== 'https'
+        || !in_array($host, ['vinted.de', 'www.vinted.de'], true)
+        || $hasCredentials
+        || $hasPort
+        || $hasRedirect) {
+        throw new CarmajaApiException(
+            422,
+            'Vinted-Link ist ungültig.',
+            ['vintedUrl' => 'Erlaubt ist nur eine direkte HTTPS-URL auf vinted.de.'],
+            'vinted_url_invalid'
+        );
+    }
+
+    return $url;
 }
 
 function carmaja_api_reject_unknown_fields(
@@ -1210,23 +1226,19 @@ function carmaja_api_validate_draft_payload(
     ?array $existing
 ): array {
     carmaja_api_reject_unknown_fields($payload, [
-        'modelVersion',
         'draftId',
         'expectedVersion',
         'status',
         'name',
         'materials',
         'metalElements',
-        'braceletSizeCm',
-        'pearlSizeMm',
+        'braceletSize',
+        'stock',
         'shortDescription',
         'careInstructions',
+        'vintedUrl',
         'internalCalculation',
     ]);
-
-    if (($payload['modelVersion'] ?? null) !== 2) {
-        throw new CarmajaApiException(422, 'Nicht unterstützte Produktmodellversion.', ['modelVersion' => 'Version 2 erforderlich.'], 'unsupported_product_model_version');
-    }
 
     if (isset($payload['draftId'])
         && (!is_string($payload['draftId']) || $payload['draftId'] !== $draftId)) {
@@ -1269,6 +1281,17 @@ function carmaja_api_validate_draft_payload(
         );
     }
 
+    $stock = $payload['stock'] ?? 1;
+
+    if (!is_int($stock) || $stock < 0 || $stock > 99) {
+        throw new CarmajaApiException(
+            422,
+            'Bestand ist ungültig.',
+            ['stock' => 'Ganzzahl zwischen 0 und 99 erwartet.'],
+            'validation_failed'
+        );
+    }
+
     $draft = $existing ?? [
         'environment' => carmaja_api_publish_target(),
         'draftId' => $draftId,
@@ -1279,6 +1302,7 @@ function carmaja_api_validate_draft_payload(
         'images' => [],
     ];
 
+    $vintedUrl = carmaja_api_validate_vinted_url($payload['vintedUrl'] ?? null, false);
 
     $draft['draftId'] = $draftId;
     $draft['status'] = $status;
@@ -1288,10 +1312,13 @@ function carmaja_api_validate_draft_payload(
         $payload['metalElements'] ?? [],
         'metalElements'
     );
-    $draft['modelVersion'] = 2;
-    $draft['braceletSizeCm'] = carmaja_api_validate_measurement($payload['braceletSizeCm'] ?? null, 'braceletSizeCm');
-    $draft['pearlSizeMm'] = carmaja_api_validate_measurement($payload['pearlSizeMm'] ?? null, 'pearlSizeMm');
-    unset($draft['braceletSize'], $draft['stock'], $draft['vintedUrl']);
+    $draft['braceletSize'] = carmaja_api_validate_string(
+        $payload['braceletSize'] ?? '',
+        'braceletSize',
+        60,
+        $status === 'ready'
+    );
+    $draft['stock'] = $stock;
     $draft['shortDescription'] = carmaja_api_validate_string(
         $payload['shortDescription'] ?? '',
         'shortDescription',
@@ -1302,6 +1329,7 @@ function carmaja_api_validate_draft_payload(
         $payload['careInstructions'] ?? [],
         'careInstructions'
     );
+    $draft['vintedUrl'] = $vintedUrl;
     $draft['internalCalculation'] = carmaja_api_validate_internal_calculation(
         $payload['internalCalculation'] ?? []
     );
@@ -1366,7 +1394,7 @@ function carmaja_api_save_product(string $draftId, array $body, array $actor): a
 
 function carmaja_api_require_publishable(array $draft, string $target): void
 {
-    foreach (['name', 'shortDescription'] as $field) {
+    foreach (['name', 'braceletSize', 'shortDescription'] as $field) {
         if (!is_string($draft[$field] ?? null) || trim($draft[$field]) === '') {
             throw new CarmajaApiException(
                 422,
@@ -1415,8 +1443,10 @@ function carmaja_api_require_publishable(array $draft, string $target): void
         }
     }
 
-    carmaja_api_validate_measurement($draft['braceletSizeCm'] ?? null, 'braceletSizeCm');
-    carmaja_api_validate_measurement($draft['pearlSizeMm'] ?? null, 'pearlSizeMm');
+    carmaja_api_validate_vinted_url(
+        $draft['vintedUrl'] ?? null,
+        $target === 'production'
+    );
 }
 
 function carmaja_api_allocate_sku(string $operationId): string
@@ -1494,8 +1524,8 @@ function carmaja_api_public_product_from_draft(array $draft): array
         'description' => (string) $draft['shortDescription'],
         'materials' => array_values($draft['materials'] ?? []),
         'metalElements' => array_values($draft['metalElements'] ?? []),
-        'braceletSizeCm' => (float) $draft['braceletSizeCm'],
-        'pearlSizeMm' => (float) $draft['pearlSizeMm'],
+        'size' => (string) $draft['braceletSize'],
+        'stock' => (int) ($draft['stock'] ?? 1),
         'careInstructions' => array_values($draft['careInstructions'] ?? []),
         'images' => array_map(
             static fn (array $image): array => array_diff_key($image, [
@@ -1507,6 +1537,12 @@ function carmaja_api_public_product_from_draft(array $draft): array
         'updatedAt' => (string) $draft['updatedAt'],
         '_imageBlobs' => $publicImages,
     ];
+
+    $vintedUrl = carmaja_api_validate_vinted_url($draft['vintedUrl'] ?? null, false);
+
+    if ($vintedUrl !== null) {
+        $publicProduct['vintedUrl'] = $vintedUrl;
+    }
 
     return $publicProduct;
 }
@@ -2693,24 +2729,59 @@ function carmaja_api_commit_public_product(
         'GET',
         $repoPathPrefix . '/contents/website/content/products.json?ref=' . rawurlencode($branch)
     );
-    $currentProducts = [];
+    $productModelVersion = $publicProduct['productModelVersion'] ?? null;
+    $isVersionedProduct = in_array($productModelVersion, [2, 3], true);
+    $targetDocumentVersion = $isVersionedProduct ? (int) $productModelVersion : 1;
+    $currentProducts = ['version' => $targetDocumentVersion, 'products' => []];
 
     if (is_string($content['content'] ?? null)) {
         $decoded = json_decode(base64_decode((string) $content['content']), true);
-        $currentProducts = is_array($decoded) ? $decoded : ['version' => 1, 'products' => []];
+        $currentProducts = is_array($decoded)
+            ? $decoded
+            : ['version' => $targetDocumentVersion, 'products' => []];
     }
 
     $products = is_array($currentProducts['products'] ?? null)
         ? $currentProducts['products']
         : [];
-    $publicProductForJson = array_diff_key($publicProduct, ['_imageBlobs' => true]);
+    $currentDocumentVersion = $currentProducts['version'] ?? null;
+    $isSafeV3Upgrade = $targetDocumentVersion === 3
+        && $currentDocumentVersion === 2
+        && array_reduce(
+            $products,
+            static fn (bool $safe, mixed $product): bool => $safe
+                && is_array($product)
+                && ($product['productModelVersion'] ?? null) === 2,
+            true
+        );
+    if ($currentDocumentVersion !== $targetDocumentVersion
+        && $products !== []
+        && !$isSafeV3Upgrade) {
+        throw new CarmajaApiException(
+            409,
+            'Öffentliche Produktprojektion verwendet ein anderes Produktmodell.',
+            [],
+            'public_product_model_conflict'
+        );
+    }
+    $publicProductForJson = array_diff_key($publicProduct, [
+        '_imageBlobs' => true,
+        '_removePublic' => true,
+    ]);
     $replaced = false;
     $existingPublicProduct = null;
+    $isRemoval = ($publicProduct['_removePublic'] ?? false) === true
+        || (!$isVersionedProduct && ($publicProductForJson['status'] ?? null) === 'disabled');
 
     foreach ($products as $index => $product) {
-        if (is_array($product) && ($product['sku'] ?? null) === $publicProduct['sku']) {
+        $sameProduct = is_array($product) && (
+            $isVersionedProduct
+                ? ($product['productId'] ?? null) === ($publicProduct['productId'] ?? null)
+                : ($product['sku'] ?? null) === ($publicProduct['sku'] ?? null)
+        );
+        if ($sameProduct) {
             $existingPublicProduct = $product;
-            if (($publicProductForJson['status'] ?? null) === 'disabled') {
+            if ($isRemoval) {
                 unset($products[$index]);
             } else {
                 $products[$index] = $publicProductForJson;
@@ -2720,12 +2791,12 @@ function carmaja_api_commit_public_product(
         }
     }
 
-    if (!$replaced && ($publicProductForJson['status'] ?? null) !== 'disabled') {
+    if (!$replaced && !$isRemoval) {
         $products[] = $publicProductForJson;
     }
 
     $publicProductsFile = [
-        'version' => 1,
+        'version' => $targetDocumentVersion,
         'products' => array_values($products),
     ];
     $tree = [];
@@ -2778,7 +2849,7 @@ function carmaja_api_commit_public_product(
             );
         }
 
-        if (($publicProduct['status'] ?? null) === 'disabled'
+        if ($isRemoval
             || !in_array($repoPath, $newImagePaths, true)) {
             $tree[] = [
                 'path' => $repoPath,
@@ -2789,7 +2860,7 @@ function carmaja_api_commit_public_product(
         }
     }
 
-    if (($publicProduct['status'] ?? null) !== 'disabled') {
+    if (!$isRemoval) {
         foreach (($publicProduct['_imageBlobs'] ?? []) as $imageBlob) {
             if (!is_array($imageBlob)) {
                 continue;
