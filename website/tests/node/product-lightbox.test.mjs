@@ -44,6 +44,7 @@ test("Übersicht und Detailseite behalten ihre Produktnavigation", async () => {
   assert.ok(productList.includes("<ProductImageGallery"));
   assert.ok(productList.includes('variant="card"'));
   assert.ok(productList.includes("href={`/armbaender/${product.slug}/`}"));
+  assert.ok(!productList.includes("product.description"));
   assert.ok(detail.includes("<ProductImageGallery"));
   assert.ok(detail.includes('variant="detail"'));
   assert.ok(detail.includes('href="/armbaender/"'));
