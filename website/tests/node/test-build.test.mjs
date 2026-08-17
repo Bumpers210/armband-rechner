@@ -241,7 +241,7 @@ test(
       assert.ok(overviewHtml.includes("<dt>Materialien</dt>"));
       assert.ok(overviewHtml.includes("<dt>Metallelemente</dt>"));
       assert.ok(overviewHtml.includes("17,5 cm"));
-      assert.ok(overviewHtml.includes("Öffentliche Produktbeschreibung 3."));
+      assert.ok(!overviewHtml.includes("Öffentliche Produktbeschreibung 3."));
       assert.ok(overviewHtml.includes("Nicht verfügbar"));
       assert.ok(detailHtml.includes("17,5 cm"));
       assert.ok(!detailHtml.includes("cm cm"));
