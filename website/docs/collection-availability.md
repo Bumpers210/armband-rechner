@@ -30,6 +30,39 @@ Reservierungen bleiben zur Zuordnung und Wiederholungsvermeidung bestehen, trage
 
 Die Schalter `productApiV4WritesEnabled` und `collectionCommerceEnabled` bleiben bis zur Testabnahme auf `false`. Vor der Aktivierung muss der offene Veröffentlichungsversuch „test 3“ eindeutig abgeschlossen oder verworfen sein. Danach werden Schreibzugriffe älterer Apps verständlich abgewiesen; lesender Zugriff auf alte Produktmodelle bleibt möglich.
 
+### Auflösung von „test 3“ am 17. August 2026
+
+Eine rein lesende Prüfung der IONOS-Testumgebung hat den offenen Versuch
+eindeutig aufgelöst:
+
+- Der mit der neuen Beta-App bearbeitete Entwurf „test 3“ wurde weder als
+  Serverentwurf gespeichert noch teilweise veröffentlicht.
+- Es gibt keine zugehörige v3-/v4-Vorgangskennung und keinen Eintrag in der
+  öffentlichen Produktdatei.
+- Der ältere Datensatz `test3` mit SKU `CP-2026-0004` stammt vom 30. Juli
+  2026, ist davon unabhängig und nicht öffentlich sichtbar.
+- Auf dem Server war zu diesem Zeitpunkt noch keine v3-/v4-API installiert;
+  beide neuen Funktionen waren daher weiterhin aus.
+
+Es ist kein Rücksetzen von Produkt- oder Commerce-Daten erforderlich. Der
+nächste Test darf nach Installation der neuen API mit einem neuen oder erneut
+lokal gespeicherten Entwurf beginnen.
+
+### Letzte Testserver-Vorprüfung am 17. August 2026
+
+- SSH, PHP 8.4 und die benötigten PHP-Module sind erreichbar.
+- Test-API und Testwebsite antworten mit dem erwarteten Anmeldeschutz.
+- Test- und Produktions-Deployschalter stehen auf `false`; es besteht keine
+  Deploysperre.
+- Die aktive Runtime-Konfiguration blieb unverändert und privat.
+- `commerce-core.php` besitzt derzeit noch Modus `0644`. Das kontrollierte
+  Testdeployment muss die private Programmdatei auf den vorgesehenen Modus
+  `0640` setzen und dies anschließend prüfen.
+- Getrennte Zugangsdaten für den zerstörungsfreien künstlichen
+  MySQL-Integrationstest sind auf dem Server noch nicht eingerichtet. Die
+  Migration bleibt deshalb bis zu einem dafür klar abgegrenzten Testlauf
+  ungeändert.
+
 Für Produktion sind zusätzlich erforderlich:
 
 1. vollständige Testabnahme von Veröffentlichen, parallelem Kaufen, Archivieren und Wiederherstellen;
