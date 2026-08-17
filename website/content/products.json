@@ -1,5 +1,5 @@
 {
-    "version": 2,
+    "version": 3,
     "products": [
         {
             "productModelVersion": 2,
@@ -74,6 +74,126 @@
                 }
             ],
             "updatedAt": "2026-08-16T06:33:11+00:00"
+        },
+        {
+            "productModelVersion": 3,
+            "productId": "0748fc05-c9a2-4cab-b744-f84462801a85",
+            "productVersion": 1,
+            "sourceHash": "9e41c84d03a0bb0dc2f8c6b2c6f12ee6b0eb55465a17c669744a47586b04b2c9",
+            "sku": "CP-2026-0008",
+            "slug": "cp-2026-0008-test-3",
+            "title": "test 3",
+            "description": "Das ist der Test\nDas ist der Test\n\nDas ist der Test\nDas ist der Test\n\nDas ist der Test\nDas ist der Test",
+            "materials": [
+                "Rosenquarz"
+            ],
+            "metalElements": [
+                "Edelstahlspacer"
+            ],
+            "braceletSizeCm": 16,
+            "pearlSizeMm": 8,
+            "priceMinor": 2000,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "3b094476-ab6a-4b1f-a839-38182a6d5945",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0008/01.jpg",
+                    "alt": "test 3",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "imageId": "086c921c-56f6-4a95-88e1-1f9e5976234f",
+                    "fileName": "02.jpg",
+                    "src": "/images/products/CP-2026-0008/02.jpg",
+                    "alt": "test 3",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": false
+                },
+                {
+                    "imageId": "28db613a-ad9e-448c-9d59-1bd3b5f2e2e7",
+                    "fileName": "03.jpg",
+                    "src": "/images/products/CP-2026-0008/03.jpg",
+                    "alt": "test 3",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-08-17T15:18:50+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das ist der Test\n",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            },
+                            {
+                                "text": "Das ist der Test",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das ist der Test",
+                                "bold": true,
+                                "italic": true,
+                                "font": "standard",
+                                "size": "normal"
+                            },
+                            {
+                                "text": "\n",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            },
+                            {
+                                "text": "Das ist der Test",
+                                "bold": false,
+                                "italic": false,
+                                "font": "elegant",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das ist der Test\n",
+                                "bold": false,
+                                "italic": false,
+                                "font": "elegant",
+                                "size": "large"
+                            },
+                            {
+                                "text": "Das ist der Test",
+                                "bold": false,
+                                "italic": false,
+                                "font": "elegant",
+                                "size": "small"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     ]
 }
