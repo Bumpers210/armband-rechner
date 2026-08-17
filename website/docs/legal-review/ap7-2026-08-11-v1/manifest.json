@@ -1,0 +1,87 @@
+{
+  "packageId": "ap7-legal-review-2026-08-11-v1",
+  "status": "freigegeben",
+  "createdAt": "2026-08-11",
+  "approvalType": "shop_operator_confirmation",
+  "approvalEvidenceStored": false,
+  "approvalEvidenceNote": "Keine personenbezogenen oder vertraulichen Nachweisinhalte im Repository.",
+  "legalBundleId": "cmj-production-legal-2026-08-11-v4",
+  "legalBundleStatus": "approved",
+  "legalBundleContentSha256": "0bc420ad6dd574ae0005d63f9e6c494d6db18a71b4a9f294314209f0b4dea9f1",
+  "hashContract": {
+    "content": "SHA-256 over the exact UTF-8 text between hash-begin and hash-end after LF normalization; markers excluded",
+    "file": "SHA-256 over the complete file bytes"
+  },
+  "documents": [
+    {
+      "file": "00-prueferuebersicht.md",
+      "version": "ap7-legal-review-2026-08-11-v1/overview",
+      "productionUrl": "https://www.carmaja-perlen.de/",
+      "contentSha256": "8d19fc4ec9b2c88522f86d7895f8387b290c7894304bacc0a464606751c5aecb",
+      "fileSha256": "069298ac478e8fe84a2e44780c17d7f9e8e74c5bcaab6c6720aff706d6aca450"
+    },
+    {
+      "file": "01-impressum.md",
+      "version": "ap7-legal-review-2026-08-11-v1/imprint",
+      "productionUrl": "https://www.carmaja-perlen.de/impressum/",
+      "contentSha256": "80203b812f75cff055e934897962cf3e3e91fe02ece61f14e88b3e8bc6c2ce46",
+      "fileSha256": "a3d3c9ab4464a94e43278ed12cd5a3d28674412417da234bb3b11c789732ea29"
+    },
+    {
+      "file": "02-shopbedingungen-agb.md",
+      "version": "ap7-legal-review-2026-08-11-v1/terms",
+      "productionUrl": "https://www.carmaja-perlen.de/shopbedingungen/",
+      "contentSha256": "409c665b81cc4d5f7537cd379d7bfdab4fc6766fe5f1d843b2f0401620c8f94b",
+      "fileSha256": "6e9fce7cbedf232a24700a203f943d935940b18f451bf07c91f719e03d97b665"
+    },
+    {
+      "file": "03-widerruf-und-musterformular.md",
+      "version": "ap7-legal-review-2026-08-11-v1/withdrawal",
+      "productionUrl": "https://www.carmaja-perlen.de/widerruf/",
+      "contentSha256": "545b31b10af19073c0686de8daa9d9f7915da803eaf01fcc664f6c86684abd0a",
+      "fileSha256": "2e8220de0ed823590b9ff9607ee74cbaa6cf4dc84008538164ce23b8ba21b38a"
+    },
+    {
+      "file": "04-versand-und-zahlung.md",
+      "version": "ap7-legal-review-2026-08-11-v1/shipping-payment",
+      "productionUrl": "https://www.carmaja-perlen.de/versand-und-zahlung/",
+      "contentSha256": "8b03b582a604c803b030b1f5309b613de4648a7fb6ae131c028d0fac0d80119d",
+      "fileSha256": "e9be8466efb6738de0e6ad75c1c591448a934c7a56e7f98c90af744db570767c"
+    },
+    {
+      "file": "05-datenschutz.md",
+      "version": "ap7-legal-review-2026-08-11-v1/privacy",
+      "productionUrl": "https://www.carmaja-perlen.de/datenschutz/",
+      "contentSha256": "f970585011124069adf6c23a30c06527cb19bb3617e1b77aed9ddc392ed65ddc",
+      "fileSha256": "55b3583942c0b2a90f116868e6ca80eec30e4f293b8b8d99c914c14650a752da"
+    },
+    {
+      "file": "06-checkout-hinweise.md",
+      "version": "ap7-legal-review-2026-08-11-v1/checkout-notices",
+      "productionUrl": "dynamic Stripe Checkout; entry via https://www.carmaja-perlen.de/armbaender/<produkt-id>/",
+      "contentSha256": "76754995516489e0d0dad2ae0e2121c45e692fd23cfe6392fc8b957fd9258902",
+      "fileSha256": "772871bd4adb4c8eea8363993a643c07572c82914c0d99ea19befa90bba55836"
+    },
+    {
+      "file": "07-elektronischer-widerruf.md",
+      "version": "ap7-legal-review-2026-08-11-v1/electronic-withdrawal",
+      "productionUrl": "https://www.carmaja-perlen.de/widerruf/",
+      "contentSha256": "6a774505088182d449f5ce4ac7475982458a7e037ce46622a4fa4388afcd84e1",
+      "fileSha256": "a87342177dda6f956c93376b4ce06d6d39fbc84dc34dda4f95da396cd526998c"
+    },
+    {
+      "file": "08-vertragsschluss-und-agb-zustimmung.md",
+      "version": "ap7-legal-review-2026-08-11-v1/contract-consent",
+      "productionUrl": "https://www.carmaja-perlen.de/shopbedingungen/; dynamic Stripe Checkout",
+      "contentSha256": "6199251f4c68237178d9535cf7d1a8089acf8930d16d9ccd4d0622b16cc21d10",
+      "fileSha256": "414069a0053418ac60c12f8e7c37da4be33b4b6865b800c03036207d7c4cf6a3"
+    },
+    {
+      "file": "09-schriftliche-freigabebestaetigung.md",
+      "version": "ap7-legal-review-2026-08-11-v1/approval-record",
+      "productionUrl": "all URLs listed in this manifest",
+      "contentSha256": "d27bfe596fa1203fe6860ecaa4a9c849934372c3d83177650d75455f0c38d196",
+      "fileSha256": "88115d52e5a4924e137c22021d7fa663325ad9af33708a586d1cb66e5bfbfe70"
+    }
+  ]
+}

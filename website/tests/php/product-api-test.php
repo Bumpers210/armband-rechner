@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api.php';
+require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v2.php';
+require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v3.php';
+require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v4.php';
 
 final class CarmajaApiTestFailure extends RuntimeException
 {
@@ -306,6 +309,7 @@ function carmaja_api_test_prepare_image_upload(
 
 function carmaja_api_test_ready_draft(
     string $draftId,
+    ?string $vintedUrl = null,
     array $internalCalculation = []
 ): array {
     $imageDirectory = carmaja_api_path('uploads/' . $draftId);
@@ -321,11 +325,11 @@ function carmaja_api_test_ready_draft(
         'name' => 'Rosenquarz Armband',
         'materials' => ['Rosenquarz'],
         'metalElements' => [],
-        'modelVersion' => 2,
-        'braceletSizeCm' => 17.5,
-        'pearlSizeMm' => 6,
+        'braceletSize' => '17 cm',
+        'stock' => 1,
         'shortDescription' => 'Zartes Testarmband.',
         'careInstructions' => ['Vor Wasser schützen'],
+        'vintedUrl' => $vintedUrl,
         'internalCalculation' => $internalCalculation,
         'images' => [[
             'path' => $imagePath,
@@ -355,14 +359,13 @@ function carmaja_api_test_public_product(
 function carmaja_api_test_save_payload(int $expectedVersion): array
 {
     return [
-        'modelVersion' => 2,
         'expectedVersion' => $expectedVersion,
         'status' => 'ready',
         'name' => 'Rosenquarz Armband',
         'materials' => ['Rosenquarz'],
         'metalElements' => [],
-        'braceletSizeCm' => 17.5,
-        'pearlSizeMm' => 6,
+        'braceletSize' => '17 cm',
+        'stock' => 1,
         'shortDescription' => 'Zartes Testarmband.',
         'careInstructions' => [],
         'internalCalculation' => [],
@@ -571,57 +574,46 @@ carmaja_api_test('Fehlerantwort enthält keine Secrets', static function (): voi
     }
 });
 
-carmaja_api_test('Messwerte akzeptieren positive numerische Werte', static function (): void {
+carmaja_api_test('Vinted-URL wird strukturell validiert', static function (): void {
     carmaja_api_test_same(
-        17.5,
-        carmaja_api_validate_measurement(17.5, 'braceletSizeCm'),
-        'Armbandgröße wurde nicht als Dezimalzahl übernommen.'
+        null,
+        carmaja_api_validate_vinted_url('', false),
+        'Leerer Testlink muss zulässig sein.'
     );
     carmaja_api_test_same(
-        6.0,
-        carmaja_api_validate_measurement(6, 'pearlSizeMm'),
-        'Perlengröße wurde nicht als numerischer Wert übernommen.'
+        'https://www.vinted.de/items/123',
+        carmaja_api_validate_vinted_url('https://www.vinted.de/items/123', false),
+        'Gültiger Link wurde abgelehnt.'
     );
 
-    foreach ([null, '', '17.5', 0, -1, INF] as $value) {
+    foreach ([
+        'http://vinted.de/items/123',
+        'https://vinted.de.fremd.example/items/123',
+        'https://user@vinted.de/items/123',
+        'https://vinted.de:443/items/123',
+        'https://vinted.de/redirect?url=https://example.org',
+    ] as $url) {
         carmaja_api_test_exception(
-            static fn (): float => carmaja_api_validate_measurement($value, 'pearlSizeMm'),
+            static fn (): ?string => carmaja_api_validate_vinted_url($url, false),
             422,
-            'validation_failed'
+            'vinted_url_invalid'
         );
     }
+
+    carmaja_api_test_exception(
+        static fn (): ?string => carmaja_api_validate_vinted_url(null, true),
+        422,
+        'vinted_url_required'
+    );
 });
 
-carmaja_api_test('Atomare JSON-Prüfung behandelt nur gleiche Zahlen semantisch gleich', static function (): void {
-    $fixture = carmaja_api_test_fixture();
-    $path = $fixture['root'] . '/measurement.json';
-
-    carmaja_api_test_assert(
-        carmaja_api_json_values_equal(
-            ['braceletSizeCm' => 17.5, 'pearlSizeMm' => 6.0],
-            ['braceletSizeCm' => 17.5, 'pearlSizeMm' => 6]
-        ),
-        'Gleiche JSON-Zahlen mit unterschiedlicher PHP-Zahlendarstellung wurden abgelehnt.'
-    );
-    carmaja_api_test_assert(
-        !carmaja_api_json_values_equal(['value' => 6.0], ['value' => 6.1])
-            && !carmaja_api_json_values_equal(['value' => 6.0], ['value' => '6'])
-            && !carmaja_api_json_values_equal(['value' => 1], ['value' => true]),
-        'Unterschiedliche Zahlen, Strings oder Booleans dürfen nicht gleichgesetzt werden.'
-    );
-
-    carmaja_api_write_json_atomic($path, ['pearlSizeMm' => 6.0]);
-    $stored = carmaja_api_read_json($path);
-    carmaja_api_test_same(6, $stored['pearlSizeMm'], 'Der Regressionstest erwartet die JSON-Normalisierung auf eine Ganzzahl.');
-});
-
-carmaja_api_test('Test-Publish mit Produktmodell Version 2 ist erfolgreich', static function (): void {
+carmaja_api_test('Test-Publish ohne Vinted-Link ist erfolgreich', static function (): void {
     $fixture = carmaja_api_test_fixture();
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5401';
     carmaja_api_test_ready_draft($draftId);
     $result = carmaja_api_publish(
         $draftId,
-        ['expectedVersion' => 1, 'operationId' => 'test-model-v2-0001'],
+        ['expectedVersion' => 1, 'operationId' => 'test-no-vinted-0001'],
         carmaja_api_test_actor(),
         'published'
     );
@@ -635,14 +627,9 @@ carmaja_api_test('Test-Publish mit Produktmodell Version 2 ist erfolgreich', sta
         [],
         'Öffentliche Testproduktdaten'
     );
-    carmaja_api_test_same(
-        17.5,
-        $public['products'][0]['braceletSizeCm'],
-        'Öffentlicher Export enthält nicht die numerische Armbandgröße.'
-    );
     carmaja_api_test_assert(
-        carmaja_api_json_values_equal(6.0, $public['products'][0]['pearlSizeMm']),
-        'Öffentlicher Export enthält nicht die numerische Perlengröße.'
+        !array_key_exists('vintedUrl', $public['products'][0]),
+        'Öffentliches Testprodukt darf keinen leeren Vinted-Link enthalten.'
     );
     $publicKeys = array_keys($public['products'][0]);
     sort($publicKeys);
@@ -652,11 +639,11 @@ carmaja_api_test('Test-Publish mit Produktmodell Version 2 ist erfolgreich', sta
         'images',
         'materials',
         'metalElements',
-        'braceletSizeCm',
-        'pearlSizeMm',
+        'size',
         'sku',
         'slug',
         'status',
+        'stock',
         'title',
         'updatedAt',
     ];
@@ -726,80 +713,18 @@ carmaja_api_test('Unvollständiger Testentwurf bleibt ohne Nebenwirkungen', stat
     );
 });
 
-carmaja_api_test('Fehlende Perlengröße wird beim Speichern abgelehnt', static function (): void {
-    carmaja_api_test_fixture();
+carmaja_api_test('Test-Publish mit gültigem Vinted-Link ist erfolgreich', static function (): void {
+    $fixture = carmaja_api_test_fixture();
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5402';
-    $payload = carmaja_api_test_save_payload(0);
-    unset($payload['pearlSizeMm']);
-
-    carmaja_api_test_exception(
-        static fn (): array => carmaja_api_save_product(
-            $draftId,
-            $payload,
-            carmaja_api_test_actor()
-        ),
-        422,
-        'validation_failed'
+    carmaja_api_test_ready_draft($draftId, 'https://vinted.de/items/123');
+    $result = carmaja_api_publish(
+        $draftId,
+        ['expectedVersion' => 1, 'operationId' => 'test-with-vinted-0001'],
+        carmaja_api_test_actor(),
+        'published'
     );
-});
 
-carmaja_api_test('Veraltete Produktfelder werden durch die API abgelehnt', static function (): void {
-    carmaja_api_test_fixture();
-
-    foreach (['stock' => 4, 'vintedUrl' => 'https://example.invalid/item'] as $field => $value) {
-        $payload = carmaja_api_test_save_payload(0);
-        $payload[$field] = $value;
-
-        $error = carmaja_api_test_exception(
-            static fn (): array => carmaja_api_save_product(
-                '019fa2e6-cf3c-7073-9275-7d3b566f5402',
-                $payload,
-                carmaja_api_test_actor()
-            ),
-            422,
-            'unknown_fields'
-        );
-        carmaja_api_test_assert(
-            array_key_exists($field, $error->fields),
-            'Das veraltete Feld muss einzeln zurückgewiesen werden.'
-        );
-    }
-});
-
-carmaja_api_test('Produkt-API schützt commerceInventory.onHand', static function (): void {
-    carmaja_api_test_fixture();
-    $payload = carmaja_api_test_save_payload(0);
-    $payload['commerceInventory'] = ['onHand' => 4];
-
-    $error = carmaja_api_test_exception(
-        static fn (): array => carmaja_api_save_product(
-            '019fa2e6-cf3c-7073-9275-7d3b566f5402',
-            $payload,
-            carmaja_api_test_actor()
-        ),
-        422,
-        'unknown_fields'
-    );
-    carmaja_api_test_assert(
-        array_key_exists('commerceInventory', $error->fields),
-        'Die Produkt-API darf commerceInventory nicht entgegennehmen.'
-    );
-});
-
-carmaja_api_test('Produktmodell Version 1 wird beim Speichern abgelehnt', static function (): void {
-    carmaja_api_test_fixture();
-    $payload = carmaja_api_test_save_payload(0);
-    $payload['modelVersion'] = 1;
-
-    carmaja_api_test_exception(
-        static fn (): array => carmaja_api_save_product(
-            '019fa2e6-cf3c-7073-9275-7d3b566f5403',
-            $payload,
-            carmaja_api_test_actor()
-        ),
-        422,
-        'unsupported_product_model_version'
-    );
+    carmaja_api_test_same('published', $result['status'], 'Test-Publish fehlgeschlagen.');
 });
 
 carmaja_api_test('Produktion lehnt direkten Draft-Publish weiterhin ab', static function (): void {
@@ -807,7 +732,10 @@ carmaja_api_test('Produktion lehnt direkten Draft-Publish weiterhin ab', static 
     carmaja_api_test_use_target($fixture, 'production');
     putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5423';
-    $draft = carmaja_api_test_ready_draft($draftId);
+    $draft = carmaja_api_test_ready_draft(
+        $draftId,
+        'https://vinted.de/items/123'
+    );
     $draft['status'] = 'draft';
     carmaja_api_save_draft($draft);
 
@@ -832,11 +760,57 @@ carmaja_api_test('Produktion lehnt direkten Draft-Publish weiterhin ab', static 
     );
 });
 
+carmaja_api_test('Produktions-Publish ohne Link erhält HTTP 422', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    carmaja_api_test_use_target($fixture, 'production');
+    putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
+    $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5403';
+    carmaja_api_test_ready_draft($draftId);
+
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_publish(
+            $draftId,
+            ['expectedVersion' => 1, 'operationId' => 'production-no-link-0001'],
+            carmaja_api_test_actor(),
+            'published'
+        ),
+        422,
+        'vinted_url_required'
+    );
+    carmaja_api_test_same(
+        [],
+        carmaja_api_test_json_files($fixture['productionPrivate'] . '/idempotency'),
+        'Validierungsfehler darf keinen Idempotency-Datensatz erzeugen.'
+    );
+});
+
+carmaja_api_test('Produktions-Publish mit Fremddomain erhält HTTP 422', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    carmaja_api_test_use_target($fixture, 'production');
+    putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
+    $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5404';
+    carmaja_api_test_ready_draft(
+        $draftId,
+        'https://vinted.de.fremd.example/items/123'
+    );
+
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_publish(
+            $draftId,
+            ['expectedVersion' => 1, 'operationId' => 'production-bad-link-0001'],
+            carmaja_api_test_actor(),
+            'published'
+        ),
+        422,
+        'vinted_url_invalid'
+    );
+});
+
 carmaja_api_test('Deaktivierter Produktions-Publish hat keine Nebenwirkungen', static function (): void {
     $fixture = carmaja_api_test_fixture();
     carmaja_api_test_use_target($fixture, 'production');
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5405';
-    carmaja_api_test_ready_draft($draftId);
+    carmaja_api_test_ready_draft($draftId, 'https://vinted.de/items/123');
     $adapterCalls = 0;
     $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER'] = static function () use (&$adapterCalls): array {
         $adapterCalls++;
@@ -1383,7 +1357,7 @@ carmaja_api_test('Unvollständiger Upload blockiert Publish', static function ()
 carmaja_api_test('Öffentliche Daten enthalten keine internen Werte', static function (): void {
     $fixture = carmaja_api_test_fixture();
     $draftId = '019fa2e6-cf3c-7073-9275-7d3b566f5414';
-    carmaja_api_test_ready_draft($draftId, [
+    carmaja_api_test_ready_draft($draftId, null, [
         'materialCosts' => 'TESTSECRET-PRIVATE-COST',
         'recommendedSalePrice' => '999.99',
     ]);
@@ -1403,9 +1377,7 @@ carmaja_api_test('Öffentliche Daten enthalten keine internen Werte', static fun
         'recommendedSalePrice',
         'TESTSECRET-PRIVATE-COST',
         $fixture['testPrivate'],
-        '"stock":',
-        '"vintedUrl":',
-        '"commerceInventory":',
+        '"vintedUrl": ""',
     ] as $forbidden) {
         carmaja_api_test_assert(
             !str_contains($publicRaw, $forbidden),
@@ -1947,6 +1919,1031 @@ carmaja_api_test('IONOS-Diagnose erlaubt fehlende Produktionspfade im Testmodus'
     } finally {
         putenv('CARMAJA_TEST_WEBSITE_WEBROOT=' . $fixture['testWebsite']);
     }
+});
+
+carmaja_api_test('Produktmodell v2 erzeugt Version und sourceHash serverseitig', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '11111111-1111-4111-8111-111111111111';
+    $body = [
+        'expectedProductVersion' => 0,
+        'name' => 'V2-Testarmband',
+        'description' => 'V2-Beschreibung.',
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
+        'careInstructions' => [],
+        'images' => [],
+        'priceMinor' => 2490,
+        'currency' => 'eur',
+        'salesEnabled' => true,
+    ];
+
+    $first = carmaja_api_v2_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v2-contract-0001'
+    );
+
+    carmaja_api_test_same(2, $first['productModelVersion'] ?? null, 'Produktmodellversion fehlt.');
+    carmaja_api_test_same(1, $first['productVersion'] ?? null, 'Produktversion muss bei eins starten.');
+    carmaja_api_test_assert(
+        is_string($first['sourceHash'] ?? null)
+            && preg_match('/^[0-9a-f]{64}$/', $first['sourceHash']) === 1,
+        'sourceHash muss ein serverseitiger SHA-256-Hash sein.'
+    );
+    carmaja_api_test_same(
+        'f31f10410c31d160b40d78e79a922db5b73b955b1b23056d0ba710715dceea92',
+        $first['sourceHash'],
+        'PHP- und Node-Kanonisierung müssen denselben sourceHash erzeugen.'
+    );
+    carmaja_api_test_assert(
+        !array_key_exists('stock', $first) && !array_key_exists('vintedUrl', $first),
+        'v2-Produkt darf keine Legacy-Verkaufsfelder enthalten.'
+    );
+
+    $replay = carmaja_api_v2_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v2-contract-0001'
+    );
+    carmaja_api_test_same($first, $replay, 'Idempotente v2-Wiederholung muss identisch sein.');
+
+    $reusedKeyBody = $body;
+    $reusedKeyBody['name'] = 'Abweichender Inhalt';
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v2_put_product(
+            $productId,
+            $reusedKeyBody,
+            carmaja_api_test_actor(),
+            'v2-contract-0001'
+        ),
+        409,
+        'idempotency_key_reused'
+    );
+
+    $nextBody = $body;
+    $nextBody['expectedProductVersion'] = 1;
+    $nextBody['name'] = 'V2-Testarmband geändert';
+    $next = carmaja_api_v2_put_product(
+        $productId,
+        $nextBody,
+        carmaja_api_test_actor(),
+        'v2-contract-0002'
+    );
+    carmaja_api_test_same(2, $next['productVersion'], 'Produktversion wurde nicht monoton erhöht.');
+    carmaja_api_test_assert(
+        $next['sourceHash'] !== $first['sourceHash'],
+        'Produktänderung muss den sourceHash ändern.'
+    );
+});
+
+carmaja_api_test('V2-Kette speichert, lädt Bilder hoch und publiziert ohne Legacy-Felder', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '55555555-5555-4555-8555-555555555555';
+    $imageId = '66666666-6666-4666-8666-666666666666';
+    $body = [
+        'expectedProductVersion' => 0,
+        'name' => 'Künstliches V2-Kettentestarmband',
+        'description' => 'Ausschließlich künstliche Testdaten.',
+        'materials' => ['Testmaterial'],
+        'metalElements' => ['Testspacer Edelstahl'],
+        'braceletSizeCm' => 17.5,
+        'pearlSizeMm' => 6,
+        'careInstructions' => [],
+        'images' => [[
+            'imageId' => $imageId,
+            'fileName' => '01.jpg',
+            'alt' => 'Künstliches V2-Kettentestarmband',
+            'width' => 120,
+            'height' => 80,
+            'isMain' => true,
+        ]],
+        'priceMinor' => 2790,
+        'currency' => 'eur',
+        'salesEnabled' => false,
+    ];
+    $saved = carmaja_api_v2_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v2-chain-save-0001'
+    );
+    carmaja_api_test_same([], $saved['images'], 'Metadaten-PUT darf kein Bild als hochgeladen bestätigen.');
+
+    $source = carmaja_api_path('v2-chain-source.jpg');
+    carmaja_api_test_create_jpeg($source, 120, 80);
+    carmaja_api_test_prepare_image_upload(
+        $saved['version'],
+        $imageId,
+        [$imageId],
+        $source,
+        'Künstliches V2-Kettentestarmband'
+    );
+    $GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS'] = true;
+    try {
+        $uploadedDraft = carmaja_api_upload_images($productId, $_POST, carmaja_api_test_actor());
+    } finally {
+        unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS']);
+    }
+    $uploaded = carmaja_api_v2_product_response_from_draft($uploadedDraft);
+    carmaja_api_test_same(1, count($uploaded['images']), 'V2-Upload wurde nicht bestätigt.');
+    carmaja_api_test_same($saved['sourceHash'], $uploaded['sourceHash'], 'Bildtransfer darf den Produkthash nicht verändern.');
+
+    $publication = carmaja_api_v2_publish_product(
+        $productId,
+        [
+            'expectedProductVersion' => $uploaded['productVersion'],
+            'expectedSourceHash' => $uploaded['sourceHash'],
+            'operationId' => 'v2-chain-publish-0001',
+        ],
+        carmaja_api_test_actor()
+    );
+    $published = $publication['product'];
+    carmaja_api_test_same('published', $published['status'], 'V2-Produkt wurde nicht veröffentlicht.');
+    carmaja_api_test_same(17.5, $published['braceletSizeCm'], 'Armbandumfang ging verloren.');
+    carmaja_api_test_same(6, $published['pearlSizeMm'], 'Perlengröße ging verloren.');
+    carmaja_api_test_same(false, $published['salesEnabled'], 'Kettentest darf keine Verkaufsfreigabe aktivieren.');
+
+    $publicDocument = carmaja_api_v2_read_public_projection(
+        carmaja_api_path('products/public-products-v2.json'),
+        [],
+        'v2-Kettentest-Publikation'
+    );
+    $publicDocumentKeys = array_keys($publicDocument);
+    sort($publicDocumentKeys, SORT_STRING);
+    carmaja_api_test_same(
+        ['products', 'version'],
+        $publicDocumentKeys,
+        'Public V2 projection must match the strict website contract.'
+    );
+    $public = $publicDocument['products'][0] ?? [];
+    carmaja_api_test_same(17.5, $public['braceletSizeCm'] ?? null, 'Öffentlicher Umfang fehlt.');
+    carmaja_api_test_same(6, $public['pearlSizeMm'] ?? null, 'Öffentliche Perlengröße fehlt.');
+    carmaja_api_test_assert(
+        !array_key_exists('stock', $public) && !array_key_exists('vintedUrl', $public),
+        'Öffentliche V2-Projektion enthält Legacy-Felder.'
+    );
+});
+
+carmaja_api_test('Produktmodell v2 verwendet eine deterministische Kanonisierung', static function (): void {
+    carmaja_api_test_fixture();
+    $left = [
+        'productId' => '11111111-1111-4111-8111-111111111111',
+        'productVersion' => 1,
+        'name' => 'Kanonisch',
+        'description' => 'Beschreibung',
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
+        'careInstructions' => [],
+        'images' => [],
+        'priceMinor' => 2490,
+        'currency' => 'eur',
+        'salesEnabled' => true,
+    ];
+    $right = [
+        'salesEnabled' => true,
+        'currency' => 'eur',
+        'priceMinor' => 2490,
+        'images' => [],
+        'careInstructions' => [],
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
+        'metalElements' => [],
+        'materials' => ['Rosenquarz'],
+        'description' => 'Beschreibung',
+        'name' => 'Kanonisch',
+        'productVersion' => 1,
+        'productId' => '11111111-1111-4111-8111-111111111111',
+    ];
+
+    carmaja_api_test_same(
+        carmaja_api_v2_source_hash($left),
+        carmaja_api_v2_source_hash($right),
+        'Schlüsselreihenfolge darf sourceHash nicht verändern.'
+    );
+});
+
+carmaja_api_test('Produktmodell v2 lehnt clientseitige Legacy- und Versionsfelder ab', static function (): void {
+    carmaja_api_test_fixture();
+    $base = [
+        'expectedProductVersion' => 0,
+        'name' => 'V2-Testarmband',
+        'description' => 'V2-Beschreibung.',
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
+        'careInstructions' => [],
+        'images' => [],
+        'priceMinor' => 2490,
+        'currency' => 'eur',
+        'salesEnabled' => true,
+    ];
+
+    foreach ([
+        ['stock' => 1, 'error' => 'stock_write_disabled'],
+        ['vintedUrl' => 'https://example.invalid', 'error' => 'legacy_product_field_forbidden'],
+        ['sourceHash' => str_repeat('a', 64), 'error' => 'client_managed_field_forbidden'],
+        ['productVersion' => 9, 'error' => 'client_managed_field_forbidden'],
+    ] as $case) {
+        carmaja_api_test_exception(
+            static fn (): array => carmaja_api_v2_put_product(
+                '22222222-2222-4222-8222-222222222222',
+                array_merge($base, array_diff_key($case, ['error' => true])),
+                carmaja_api_test_actor(),
+                'v2-forbidden-' . $case['error']
+            ),
+            $case['error'] === 'stock_write_disabled' ? 409 : 422,
+            $case['error']
+        );
+    }
+
+    $incomplete = $base;
+    unset($incomplete['salesEnabled']);
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v2_validate_put_payload($incomplete),
+        422,
+        'validation_failed'
+    );
+});
+
+carmaja_api_test('Publisher v2 erzeugt nur den öffentlichen v2-Vertrag', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '33333333-3333-4333-8333-333333333333';
+    $body = [
+        'expectedProductVersion' => 0,
+        'name' => 'V2-Publisher-Test',
+        'description' => 'Öffentliche v2-Abbildung.',
+        'materials' => ['Amazonit'],
+        'metalElements' => [],
+        'braceletSizeCm' => 18.0,
+        'pearlSizeMm' => 6.0,
+        'careInstructions' => [],
+        'images' => [[
+            'imageId' => '44444444-4444-4444-8444-444444444444',
+            'fileName' => '01.jpg',
+            'alt' => 'V2-Publisher-Test',
+            'width' => 1200,
+            'height' => 900,
+            'isMain' => true,
+        ]],
+        'priceMinor' => 1990,
+        'currency' => 'eur',
+        'salesEnabled' => true,
+    ];
+    carmaja_api_v2_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v2-publisher-0001'
+    );
+    $draft = carmaja_api_load_draft($productId);
+    $draft['sku'] = 'CP-2026-0099';
+    $draft['slug'] = 'cp-2026-0099-v2-publisher-test';
+    $beforeStock = $draft['stock'] ?? null;
+    $public = carmaja_api_v2_public_product_from_draft($draft);
+
+    carmaja_api_test_assert(
+        !array_key_exists('stock', $public) && !array_key_exists('vintedUrl', $public),
+        'Publisher v2 darf keine Legacy-Felder ausgeben.'
+    );
+    carmaja_api_local_publish_adapter_v2($public, ['operationId' => 'v2-publisher-0001']);
+    carmaja_api_test_same(
+        ['commitSha' => null, 'deploymentStatus' => 'not_started'],
+        carmaja_api_local_publish_adapter_v2($public, ['operationId' => 'v2-publisher-0001']),
+        'Publisher v2 muss eine Wiederholung idempotent beantworten.'
+    );
+    $changedPublic = $public;
+    $changedPublic['priceMinor'] = 2090;
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_local_publish_adapter_v2(
+            $changedPublic,
+            ['operationId' => 'v2-publisher-0001']
+        ),
+        409,
+        'publish_adapter_conflict'
+    );
+    $stored = carmaja_api_v2_read_public_projection(
+        carmaja_api_path('products/public-products-v2.json'),
+        [],
+        'v2-Publisherdaten'
+    );
+    $afterPublishDraft = carmaja_api_load_draft($productId);
+    carmaja_api_test_same(2, $stored['version'] ?? null, 'v2-Publisher muss Dokumentversion 2 speichern.');
+    carmaja_api_test_same(
+        $beforeStock,
+        $afterPublishDraft['stock'] ?? null,
+        'Publisher darf den Bestand auch nach dem Schreiben nicht veraendern.'
+    );
+    carmaja_api_test_same($beforeStock, $draft['stock'] ?? null, 'Publisher darf Bestand nicht verändern.');
+
+    $uploadDirectory = carmaja_api_path('uploads/' . $productId);
+    carmaja_api_ensure_directory($uploadDirectory);
+    $uploadedImage = $draft['imageManifest'][0];
+    $uploadedImage['path'] = $uploadDirectory . DIRECTORY_SEPARATOR . '01.jpg';
+    file_put_contents($uploadedImage['path'], 'artificial-ap7-image');
+    $draft['images'] = [$uploadedImage];
+    carmaja_api_save_draft($draft);
+    $current = carmaja_api_v2_product_from_draft(carmaja_api_load_draft($productId));
+    $publication = carmaja_api_v2_publish_product(
+        $productId,
+        [
+            'expectedProductVersion' => $current['productVersion'],
+            'expectedSourceHash' => $current['sourceHash'],
+            'operationId' => 'v2-publisher-ap7-0002',
+        ],
+        carmaja_api_test_actor()
+    );
+    carmaja_api_test_same(
+        $current['sourceHash'],
+        $publication['publication']['sourceHash'] ?? null,
+        'v2-Publishroute muss den serverseitigen Quellhash binden.'
+    );
+    carmaja_api_test_same(
+        $beforeStock,
+        (carmaja_api_load_draft($productId)['stock'] ?? null),
+        'v2-Publishroute darf den Legacy-Bestand nicht verändern.'
+    );
+});
+
+carmaja_api_test('AP1.5 sperrt Legacy-Produktfelder und alte Clientversionen', static function (): void {
+    carmaja_api_test_fixture();
+
+    carmaja_api_test_exception(
+        static fn (): int => carmaja_api_validate_client_version_code('1'),
+        426,
+        'client_update_required'
+    );
+    carmaja_api_test_same(
+        2,
+        carmaja_api_validate_client_version_code('2'),
+        'Mindest-App-Version 2 muss akzeptiert werden.'
+    );
+    carmaja_api_test_same(
+        4,
+        carmaja_api_validate_client_version_code(4),
+        'Höhere App-Version muss akzeptiert werden.'
+    );
+
+    carmaja_api_test_exception(
+        static function (): void {
+            carmaja_api_validate_product_write_payload(['stock' => 1]);
+        },
+        409,
+        'stock_write_disabled'
+    );
+    carmaja_api_test_exception(
+        static function (): void {
+            carmaja_api_validate_product_write_payload(['productVersion' => 3]);
+        },
+        422,
+        'client_managed_field_forbidden'
+    );
+    carmaja_api_test_exception(
+        static function (): void {
+            carmaja_api_validate_product_write_payload(['sourceHash' => str_repeat('a', 64)]);
+        },
+        422,
+        'client_managed_field_forbidden'
+    );
+});
+
+carmaja_api_test('AP1.5 validiert den Inventory-Adjustment-Vertrag ohne Mutation', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '55555555-5555-4555-8555-555555555555';
+    $base = [
+        'productId' => $productId,
+        'targetOnHand' => 1,
+        'expectedInventoryVersion' => 0,
+        'reason' => 'activate_new_unique',
+        'correlationId' => 'ap15-inventory-0001',
+    ];
+
+    $validated = carmaja_api_validate_inventory_adjustment($base, 'ap15-idempotency-0001');
+    carmaja_api_test_same($productId, $validated['productId'], 'Produkt-ID fehlt im normalisierten Vertrag.');
+    carmaja_api_test_same(1, $validated['targetOnHand'], 'targetOnHand wurde nicht normalisiert.');
+    carmaja_api_test_same(
+        'ap15-idempotency-0001',
+        $validated['idempotencyKey'],
+        'Idempotency-Key fehlt im normalisierten Vertrag.'
+    );
+
+    foreach ([
+        ['targetOnHand' => 2, 'error' => 'validation_failed'],
+        ['expectedInventoryVersion' => -1, 'error' => 'validation_failed'],
+        ['reason' => 'unknown_reason', 'error' => 'invalid_inventory_reason'],
+        ['correlationId' => 'short', 'error' => 'validation_failed'],
+    ] as $case) {
+        $invalid = array_merge($base, array_diff_key($case, ['error' => true]));
+        carmaja_api_test_exception(
+            static fn (): array => carmaja_api_validate_inventory_adjustment(
+                $invalid,
+                'ap15-idempotency-' . $case['error']
+            ),
+            422,
+            $case['error']
+        );
+    }
+
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_validate_inventory_adjustment(
+            $base,
+            'bad key'
+        ),
+        422,
+        'validation_failed'
+    );
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_validate_inventory_adjustment(
+            array_merge($base, ['stock' => 1]),
+            'ap15-idempotency-stock'
+        ),
+        409,
+        'stock_write_disabled'
+    );
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_validate_inventory_adjustment(
+            array_merge($base, ['reason' => 'shop_sale', 'targetOnHand' => 0]),
+            'ap15-idempotency-manual-sale'
+        ),
+        422,
+        'invalid_inventory_reason'
+    );
+    $shopSale = carmaja_api_validate_inventory_adjustment(
+        array_merge($base, ['reason' => 'shop_sale', 'targetOnHand' => 0]),
+        'ap15-idempotency-shop-sale',
+        false
+    );
+    carmaja_api_test_same('shop_sale', $shopSale['reason'], 'Shopverkaufsgrund muss systemisch zulässig bleiben.');
+});
+
+carmaja_api_test('V3 speichert formatierte Beschreibungen sicher und idempotent', static function (): void {
+    carmaja_api_test_fixture();
+    carmaja_api_test_same(
+        6,
+        carmaja_api_v3_validate_client_version_code(6),
+        'Freigegebene Beta-Version wurde abgelehnt.'
+    );
+    carmaja_api_test_exception(
+        static fn (): int => carmaja_api_v3_validate_client_version_code(5),
+        426,
+        'client_update_required'
+    );
+    carmaja_api_test_exception(
+        static fn (): never => carmaja_api_v3_reject_legacy_write(),
+        426,
+        'client_update_required'
+    );
+    $productId = '77777777-7777-4777-8777-777777777777';
+    $document = [
+        'version' => 1,
+        'blocks' => [[
+            'type' => 'paragraph',
+            'spans' => [
+                [
+                    'text' => '<script>alert("x")</script>',
+                    'bold' => true,
+                    'italic' => false,
+                    'font' => 'elegant',
+                    'size' => 'large',
+                ],
+                [
+                    'text' => ' bleibt Text.',
+                    'bold' => false,
+                    'italic' => true,
+                    'font' => 'standard',
+                    'size' => 'normal',
+                ],
+            ],
+        ]],
+    ];
+    $payload = [
+        'expectedProductVersion' => 0,
+        'name' => 'V3 Testprodukt',
+        'descriptionDocument' => $document,
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSizeCm' => 18,
+        'pearlSizeMm' => 8,
+        'careInstructions' => [],
+        'images' => [],
+        'priceMinor' => 2490,
+        'currency' => 'eur',
+        'salesEnabled' => false,
+    ];
+    $saved = carmaja_api_v3_put_product(
+        $productId,
+        $payload,
+        carmaja_api_test_actor(),
+        'test-v3-put-0001'
+    );
+    carmaja_api_test_same(3, $saved['productModelVersion'], 'V3-Modell fehlt.');
+    carmaja_api_test_same(
+        '<script>alert("x")</script> bleibt Text.',
+        $saved['description'],
+        'Reine Beschreibung wurde nicht deterministisch abgeleitet.'
+    );
+    carmaja_api_test_same($document, $saved['descriptionDocument'], 'Formatierung ging verloren.');
+    $repeated = carmaja_api_v3_put_product(
+        $productId,
+        $payload,
+        carmaja_api_test_actor(),
+        'test-v3-put-0001'
+    );
+    carmaja_api_test_same($saved, $repeated, 'V3-PUT ist nicht idempotent.');
+
+    $invalid = $payload;
+    $invalid['descriptionDocument']['blocks'][0]['spans'][0]['font'] = 'fremd';
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v3_put_product(
+            '88888888-8888-4888-8888-888888888888',
+            $invalid,
+            carmaja_api_test_actor(),
+            'test-v3-put-invalid-font'
+        ),
+        422,
+        'validation_failed'
+    );
+});
+
+carmaja_api_test('V3 prüft Formatwerte, Grenzen, unbekannte Felder und Versionskonflikte', static function (): void {
+    carmaja_api_test_fixture();
+    $spans = [];
+    foreach (['standard', 'elegant'] as $font) {
+        foreach (['small', 'normal', 'large'] as $size) {
+            $spans[] = [
+                'text' => $font . '-' . $size . ' ',
+                'bold' => $size !== 'small',
+                'italic' => $font === 'elegant',
+                'font' => $font,
+                'size' => $size,
+            ];
+        }
+    }
+    $spans[array_key_last($spans)]['text'] = rtrim($spans[array_key_last($spans)]['text']);
+    $payload = [
+        'expectedProductVersion' => 0,
+        'name' => 'V3 Grenztest',
+        'descriptionDocument' => [
+            'version' => 1,
+            'blocks' => [['type' => 'paragraph', 'spans' => $spans]],
+        ],
+        'materials' => ['Achat'],
+        'metalElements' => [],
+        'braceletSizeCm' => 18,
+        'pearlSizeMm' => 8,
+        'careInstructions' => [],
+        'images' => [],
+        'priceMinor' => 2490,
+        'currency' => 'eur',
+        'salesEnabled' => false,
+    ];
+    $productId = '12121212-1212-4212-8212-121212121212';
+    $saved = carmaja_api_v3_put_product(
+        $productId,
+        $payload,
+        carmaja_api_test_actor(),
+        'test-v3-format-matrix'
+    );
+    carmaja_api_test_same(3, $saved['productModelVersion'], 'V3-Formatmatrix wurde abgelehnt.');
+
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v3_put_product(
+            $productId,
+            $payload,
+            carmaja_api_test_actor(),
+            'test-v3-version-conflict'
+        ),
+        409,
+        'product_version_conflict'
+    );
+
+    $unknown = $payload;
+    $unknown['description'] = 'Darf nicht vom Client gesendet werden.';
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v3_validate_put_payload($unknown),
+        422,
+        'unknown_fields'
+    );
+
+    $tooManyParagraphs = $payload;
+    $tooManyParagraphs['descriptionDocument']['blocks'] = array_fill(
+        0,
+        26,
+        ['type' => 'paragraph', 'spans' => [[
+            'text' => 'x',
+            'bold' => false,
+            'italic' => false,
+            'font' => 'standard',
+            'size' => 'normal',
+        ]]]
+    );
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v3_validate_put_payload($tooManyParagraphs),
+        422,
+        'validation_failed'
+    );
+
+    $tooManySpans = $payload;
+    $tooManySpans['descriptionDocument']['blocks'] = [[
+        'type' => 'paragraph',
+        'spans' => array_map(
+            static fn (int $index): array => [
+                'text' => 'x',
+                'bold' => $index % 2 === 0,
+                'italic' => false,
+                'font' => 'standard',
+                'size' => 'normal',
+            ],
+            range(0, 100)
+        ),
+    ]];
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v3_validate_put_payload($tooManySpans),
+        422,
+        'validation_failed'
+    );
+
+    $tooLong = $payload;
+    $tooLong['descriptionDocument']['blocks'] = [[
+        'type' => 'paragraph',
+        'spans' => [[
+            'text' => str_repeat('x', 501),
+            'bold' => false,
+            'italic' => false,
+            'font' => 'standard',
+            'size' => 'normal',
+        ]],
+    ]];
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v3_validate_put_payload($tooLong),
+        422,
+        'validation_failed'
+    );
+});
+
+carmaja_api_test('V3-Kette speichert, lädt ein Bild hoch und veröffentlicht Modell 3', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '34343434-3434-4434-8434-343434343434';
+    $imageId = '56565656-5656-4656-8656-565656565656';
+    $document = [
+        'version' => 1,
+        'blocks' => [[
+            'type' => 'paragraph',
+            'spans' => [[
+                'text' => 'Elegant und sicher.',
+                'bold' => true,
+                'italic' => true,
+                'font' => 'elegant',
+                'size' => 'large',
+            ]],
+        ]],
+    ];
+    $body = [
+        'expectedProductVersion' => 0,
+        'name' => 'Künstliches V3-Kettentestarmband',
+        'descriptionDocument' => $document,
+        'materials' => ['Testmaterial'],
+        'metalElements' => [],
+        'braceletSizeCm' => 17.5,
+        'pearlSizeMm' => 6,
+        'careInstructions' => [],
+        'images' => [[
+            'imageId' => $imageId,
+            'fileName' => '01.jpg',
+            'alt' => 'Künstliches V3-Kettentestarmband',
+            'width' => 120,
+            'height' => 80,
+            'isMain' => true,
+        ]],
+        'priceMinor' => 2790,
+        'currency' => 'eur',
+        'salesEnabled' => false,
+    ];
+    $saved = carmaja_api_v3_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v3-chain-save-0001'
+    );
+
+    $source = carmaja_api_path('v3-chain-source.jpg');
+    carmaja_api_test_create_jpeg($source, 120, 80);
+    carmaja_api_test_prepare_image_upload(
+        $saved['version'],
+        $imageId,
+        [$imageId],
+        $source,
+        'Künstliches V3-Kettentestarmband'
+    );
+    $GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS'] = true;
+    try {
+        $uploadedDraft = carmaja_api_upload_images($productId, $_POST, carmaja_api_test_actor());
+    } finally {
+        unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS']);
+    }
+    $uploaded = carmaja_api_v3_product_response_from_draft($uploadedDraft);
+    $publication = carmaja_api_v3_publish_product(
+        $productId,
+        [
+            'expectedProductVersion' => $uploaded['productVersion'],
+            'expectedSourceHash' => $uploaded['sourceHash'],
+            'operationId' => 'v3-chain-publish-0001',
+        ],
+        carmaja_api_test_actor()
+    );
+
+    carmaja_api_test_same('published', $publication['product']['status'], 'V3 wurde nicht veröffentlicht.');
+    $publicDocument = carmaja_api_read_json(
+        carmaja_api_path('products/public-products-v2.json'),
+        ['version' => 3, 'products' => []]
+    );
+    carmaja_api_test_same(3, $publicDocument['version'] ?? null, 'Wurzelversion 3 fehlt.');
+    $public = $publicDocument['products'][0] ?? [];
+    carmaja_api_test_same(3, $public['productModelVersion'] ?? null, 'Öffentliches V3-Modell fehlt.');
+    carmaja_api_test_same($document, $public['descriptionDocument'] ?? null, 'Formatierung fehlt öffentlich.');
+    carmaja_api_test_same('Elegant und sicher.', $public['description'] ?? null, 'Klartext fehlt öffentlich.');
+    carmaja_api_test_same(false, $public['salesEnabled'] ?? null, 'Kettentest darf nicht kaufbar sein.');
+});
+
+carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion idempotent wieder her', static function (): void {
+    carmaja_api_test_fixture();
+    carmaja_api_test_same(7, carmaja_api_v4_validate_client_version_code(7), 'Beta-Code 7 wurde abgelehnt.');
+    carmaja_api_test_exception(
+        static fn (): int => carmaja_api_v4_validate_client_version_code(6),
+        426,
+        'client_update_required'
+    );
+    $productId = '45454545-4545-4454-8454-454545454545';
+    $imageId = '67676767-6767-4676-8676-676767676767';
+    $body = [
+        'expectedProductVersion' => 0,
+        'name' => 'Dauerhafte Kollektion',
+        'descriptionDocument' => [
+            'version' => 1,
+            'blocks' => [['type' => 'paragraph', 'spans' => [[
+                'text' => 'Beliebig oft bestellbar.',
+                'bold' => true,
+                'italic' => false,
+                'font' => 'standard',
+                'size' => 'normal',
+            ]]]],
+        ],
+        'materials' => ['Rosenquarz'],
+        'metalElements' => [],
+        'braceletSizeCm' => 18,
+        'pearlSizeMm' => 8,
+        'careInstructions' => [],
+        'images' => [[
+            'imageId' => $imageId,
+            'fileName' => '01.jpg',
+            'alt' => 'Dauerhafte Kollektion',
+            'width' => 120,
+            'height' => 80,
+            'isMain' => true,
+        ]],
+        'priceMinor' => 2790,
+        'currency' => 'eur',
+    ];
+    $saved = carmaja_api_v4_put_product(
+        $productId,
+        $body,
+        carmaja_api_test_actor(),
+        'v4-collection-save-0001'
+    );
+    carmaja_api_test_same(false, $saved['available'], 'Unveröffentlichter Entwurf darf nicht verfügbar sein.');
+    carmaja_api_test_assert(!array_key_exists('salesEnabled', $saved), 'v4-Antwort enthält clientverwaltete Verfügbarkeit.');
+
+    $forbidden = $body;
+    $forbidden['expectedProductVersion'] = 1;
+    $forbidden['salesEnabled'] = true;
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_put_product(
+            $productId,
+            $forbidden,
+            carmaja_api_test_actor(),
+            'v4-forbidden-sales-field'
+        ),
+        422,
+        'client_managed_availability_forbidden'
+    );
+    $unknown = $body;
+    $unknown['expectedProductVersion'] = 1;
+    $unknown['unexpected'] = 'nicht erlaubt';
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_put_product(
+            $productId,
+            $unknown,
+            carmaja_api_test_actor(),
+            'v4-forbidden-unknown-field'
+        ),
+        422,
+        'unknown_fields'
+    );
+
+    $source = carmaja_api_path('v4-collection-source.jpg');
+    carmaja_api_test_create_jpeg($source, 120, 80);
+    carmaja_api_test_prepare_image_upload(
+        $saved['version'],
+        $imageId,
+        [$imageId],
+        $source,
+        'Dauerhafte Kollektion'
+    );
+    $GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS'] = true;
+    try {
+        $uploadedDraft = carmaja_api_upload_images($productId, $_POST, carmaja_api_test_actor());
+    } finally {
+        unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS']);
+    }
+    $uploaded = carmaja_api_v4_product_response_from_draft($uploadedDraft);
+    $projectionCalls = [];
+    $projectionAttempts = [];
+    $failProjectionAction = null;
+    $GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4'] = static function (
+        array $product,
+        string $action,
+        string $operationId,
+        string $requestHash
+    ) use (&$projectionCalls, &$projectionAttempts, &$failProjectionAction): array {
+        $projectionAttempts[$operationId] = ($projectionAttempts[$operationId] ?? 0) + 1;
+        if ($failProjectionAction === $action && $projectionAttempts[$operationId] === 1) {
+            throw new CarmajaApiException(
+                503,
+                'Künstlicher Projektionsausfall.',
+                [],
+                'collection_projection_temporarily_unavailable'
+            );
+        }
+        $projectionCalls[$operationId] ??= [
+            'action' => $action,
+            'productId' => $product['productId'],
+            'requestHash' => $requestHash,
+        ];
+        return ['action' => $action, 'available' => $action !== 'archive'];
+    };
+
+    $publishBody = [
+        'expectedProductVersion' => $uploaded['productVersion'],
+        'expectedSourceHash' => $uploaded['sourceHash'],
+        'operationId' => 'v4-collection-publish-0001',
+    ];
+    $published = carmaja_api_v4_publish_product($productId, $publishBody, carmaja_api_test_actor());
+    $publishedAgain = carmaja_api_v4_publish_product($productId, $publishBody, carmaja_api_test_actor());
+    carmaja_api_test_same($published, $publishedAgain, 'Veröffentlichung ist nicht idempotent.');
+    carmaja_api_test_same(true, $published['product']['available'], 'Veröffentlichte Kollektion ist nicht verfügbar.');
+    $sku = $published['product']['sku'];
+    $slug = $published['product']['slug'];
+
+    $archiveBody = [
+        'expectedProductVersion' => $published['product']['productVersion'],
+        'expectedSourceHash' => $published['product']['sourceHash'],
+        'operationId' => 'v4-collection-archive-0001',
+    ];
+    $archivePublishAttempts = 0;
+    $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V3'] = static function (
+        array $publicProduct,
+        array $operation
+    ) use (&$archivePublishAttempts): array {
+        $archivePublishAttempts++;
+        if ($archivePublishAttempts === 1) {
+            throw new CarmajaApiException(
+                503,
+                'Künstlicher Publisherausfall.',
+                [],
+                'publish_adapter_temporarily_unavailable'
+            );
+        }
+        return carmaja_api_local_publish_adapter_v3($publicProduct, $operation);
+    };
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_archive_product(
+            $productId,
+            $archiveBody,
+            carmaja_api_test_actor()
+        ),
+        503,
+        'publish_adapter_temporarily_unavailable'
+    );
+    $draftAfterFailedArchive = carmaja_api_load_draft($productId);
+    carmaja_api_test_same(
+        'disabled',
+        $draftAfterFailedArchive['status'] ?? null,
+        'Fehlgeschlagene Archivierung blieb nicht sicher wiederaufnehmbar.'
+    );
+    $archived = carmaja_api_v4_archive_product($productId, $archiveBody, carmaja_api_test_actor());
+    $archivedAgain = carmaja_api_v4_archive_product($productId, $archiveBody, carmaja_api_test_actor());
+    unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V3']);
+    carmaja_api_test_same($archived, $archivedAgain, 'Archivierung ist nicht idempotent.');
+    carmaja_api_test_same(3, $archivePublishAttempts, 'Archiv-Publisher wurde nicht deterministisch wiederholt.');
+    carmaja_api_test_same('disabled', $archived['product']['status'], 'Kollektion wurde nicht archiviert.');
+    $publicAfterArchive = carmaja_api_read_json(
+        carmaja_api_path('products/public-products-v2.json'),
+        ['version' => 3, 'products' => []]
+    );
+    carmaja_api_test_same([], $publicAfterArchive['products'], 'Archivierte Kollektion blieb öffentlich.');
+    carmaja_api_test_assert(is_file($uploadedDraft['images'][0]['path']), 'Privates Bild wurde beim Archivieren gelöscht.');
+
+    $restoreBody = [
+        'expectedProductVersion' => $archived['product']['productVersion'],
+        'expectedSourceHash' => $archived['product']['sourceHash'],
+        'operationId' => 'v4-collection-restore-0001',
+    ];
+    $failProjectionAction = 'restore';
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_restore_product(
+            $productId,
+            $restoreBody,
+            carmaja_api_test_actor()
+        ),
+        503,
+        'collection_projection_temporarily_unavailable'
+    );
+    $publicAfterFailedRestore = carmaja_api_read_json(
+        carmaja_api_path('products/public-products-v2.json'),
+        ['version' => 3, 'products' => []]
+    );
+    carmaja_api_test_same(
+        [],
+        $publicAfterFailedRestore['products'],
+        'Teilweise Wiederherstellung wurde vor der Commerce-Projektion öffentlich.'
+    );
+    $failProjectionAction = null;
+    $restored = carmaja_api_v4_restore_product($productId, $restoreBody, carmaja_api_test_actor());
+    carmaja_api_test_same(true, $restored['product']['available'], 'Wiederhergestellte Kollektion ist nicht verfügbar.');
+    carmaja_api_test_same($sku, $restored['product']['sku'], 'Wiederherstellung änderte die SKU.');
+    carmaja_api_test_same($slug, $restored['product']['slug'], 'Wiederherstellung änderte die Adresse.');
+    carmaja_api_test_same(3, count($projectionCalls), 'Lebenszyklus wurde nicht genau einmal je Vorgang projiziert.');
+    carmaja_api_test_same(
+        2,
+        $projectionAttempts[$restoreBody['operationId']] ?? 0,
+        'Fehlgeschlagene Commerce-Projektion wurde nicht mit derselben Vorgangskennung wiederholt.'
+    );
+    unset($GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4']);
+});
+
+carmaja_api_test('V2 kann ein auf V3 angehobenes Produkt nicht überschreiben', static function (): void {
+    carmaja_api_test_fixture();
+    $productId = '99999999-9999-4999-8999-999999999999';
+    $v2 = [
+        'expectedProductVersion' => 0,
+        'name' => 'Altes Produkt',
+        'description' => 'Alte Beschreibung.',
+        'materials' => ['Achat'],
+        'metalElements' => [],
+        'braceletSizeCm' => 18,
+        'pearlSizeMm' => 8,
+        'careInstructions' => [],
+        'images' => [],
+        'priceMinor' => 2490,
+        'currency' => 'eur',
+        'salesEnabled' => false,
+    ];
+    carmaja_api_v2_put_product(
+        $productId,
+        $v2,
+        carmaja_api_test_actor(),
+        'test-v2-before-upgrade'
+    );
+    $v3 = $v2;
+    unset($v3['description']);
+    $v3['expectedProductVersion'] = 1;
+    $v3['descriptionDocument'] = [
+        'version' => 1,
+        'blocks' => [[
+            'type' => 'paragraph',
+            'spans' => [[
+                'text' => 'Alte Beschreibung.',
+                'bold' => false,
+                'italic' => false,
+                'font' => 'standard',
+                'size' => 'normal',
+            ]],
+        ]],
+    ];
+    $upgraded = carmaja_api_v3_put_product(
+        $productId,
+        $v3,
+        carmaja_api_test_actor(),
+        'test-v3-upgrade'
+    );
+    carmaja_api_test_same(3, $upgraded['productModelVersion'], 'V2 wurde nicht auf V3 angehoben.');
+    $v2['expectedProductVersion'] = 2;
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v2_put_product(
+            $productId,
+            $v2,
+            carmaja_api_test_actor(),
+            'test-v2-after-upgrade'
+        ),
+        409,
+        'product_model_upgrade_required'
+    );
 });
 
 $failures = 0;

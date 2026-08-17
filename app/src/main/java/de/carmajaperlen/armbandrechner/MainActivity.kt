@@ -101,6 +101,8 @@ class MainActivity : ComponentActivity() {
                     onLogin = productViewModel::login,
                     onLogout = productViewModel::logout,
                     onEdit = productViewModel::beginEditingSelected,
+                    onArchive = productViewModel::archiveSelected,
+                    onRestore = productViewModel::restoreSelected,
                     onNameChange = { value ->
                         productViewModel.updateSelectedEditor(ProductEditorField.Name, value)
                     },

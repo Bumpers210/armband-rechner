@@ -160,10 +160,17 @@ carmaja_bootstrap_test(
         $config = carmaja_bootstrap_prepare($fixture['configFile']);
 
         carmaja_bootstrap_test_same('test', $config['publishTarget'], 'Falsches Ziel.');
+        carmaja_bootstrap_test_same(false, $config['productApiV4WritesEnabled'], 'v4-Schreiben muss standardmäßig gesperrt sein.');
+        carmaja_bootstrap_test_same(false, $config['collectionCommerceEnabled'], 'Kollektionen-Checkout muss standardmäßig gesperrt sein.');
         carmaja_bootstrap_test_same(
             false,
             $config['githubAdapterEnabled'],
             'GitHub-Adapter muss ohne ausdrückliche Konfiguration deaktiviert sein.'
+        );
+        carmaja_bootstrap_test_same(
+            false,
+            $config['monitorEnabled'],
+            'Produktionsmonitoring muss ohne ausdrückliche Konfiguration deaktiviert sein.'
         );
         carmaja_bootstrap_test_assert(
             !isset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']),
@@ -178,6 +185,38 @@ carmaja_bootstrap_test(
             realpath($fixture['private']),
             carmaja_api_private_dir(),
             'Aktiver privater Pfad stimmt nicht.'
+        );
+    }
+);
+
+carmaja_bootstrap_test(
+    'Kollektionen-Schalter akzeptieren ausschließlich boolesche Werte',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $config = $fixture['config'];
+        $config['productApiV4WritesEnabled'] = 'true';
+        carmaja_bootstrap_test_write_config($fixture['configFile'], $config);
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config($fixture['configFile']),
+            'config_environment_invalid'
+        );
+    }
+);
+
+carmaja_bootstrap_test(
+    'Produktionsmonitoring kann in der Testumgebung nicht aktiviert werden',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $config = $fixture['config'];
+        $config['monitorEnabled'] = true;
+        $config['monitorAlertEmail'] = 'operator@example.invalid';
+        $config['brevoApiKey'] = 'synthetic';
+        $config['brevoSenderEmail'] = 'sender@example.invalid';
+        carmaja_bootstrap_test_write_config($fixture['configFile'], $config);
+
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config($fixture['configFile']),
+            'config_secret_invalid'
         );
     }
 );
@@ -206,7 +245,124 @@ carmaja_bootstrap_test(
             $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER'] ?? null,
             'GitHub-Testadapter wurde nicht eindeutig verdrahtet.'
         );
+        carmaja_bootstrap_test_same(
+            'carmaja_api_github_publish_adapter',
+            $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2'] ?? null,
+            'GitHub-Testadapter wurde nicht für den v2-Publisher verdrahtet.'
+        );
         unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER']);
+        unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V2']);
+    }
+);
+
+carmaja_bootstrap_test(
+    'Produktionskonfiguration darf main nur ohne automatischen GitHub-Adapter referenzieren',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $productionPrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-runtime-private';
+        $productionProductPrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-product-private';
+        $productionApi = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-api';
+        $productionWebsite = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-site';
+        foreach ([$productionPrivate, $productionProductPrivate, $productionApi, $productionWebsite] as $directory) {
+            mkdir($directory, 0750, true);
+        }
+        $productionAuth = $productionProductPrivate . DIRECTORY_SEPARATOR . 'auth';
+        $productionConfigDirectory = $productionPrivate . DIRECTORY_SEPARATOR . 'config';
+        mkdir($productionAuth, 0750, true);
+        mkdir($productionConfigDirectory, 0750, true);
+        $productionUsers = $productionAuth . DIRECTORY_SEPARATOR . 'api-users.json';
+        file_put_contents($productionUsers, '{"environment":"production","users":[]}');
+        file_put_contents(
+            $productionProductPrivate . DIRECTORY_SEPARATOR . 'environment.json',
+            '{"environment":"production"}'
+        );
+        $productionConfig = $productionConfigDirectory . DIRECTORY_SEPARATOR . 'runtime-config.php';
+        $config = $fixture['config'];
+        $config['environment'] = 'production';
+        $config['publishTarget'] = 'production';
+        $config['privateDir'] = $productionPrivate;
+        $config['productPrivateDir'] = $productionProductPrivate;
+        unset($config['testPrivateDir'], $config['testApiWebroot'], $config['testWebsiteWebroot']);
+        $config['productionPrivateDir'] = $productionPrivate;
+        $config['productionApiWebroot'] = $productionApi;
+        $config['productionWebsiteWebroot'] = $productionWebsite;
+        $config['usersFile'] = $productionUsers;
+        $config['backupEncryptionKeyFile'] = $productionConfigDirectory
+            . DIRECTORY_SEPARATOR
+            . 'backup-key.php';
+        $config['githubBranch'] = 'main';
+        $config['brevoApiKey'] = 'synthetic';
+        $config['brevoSenderEmail'] = 'sender@example.invalid';
+        $config['brevoOperatorEmail'] = 'operator@example.invalid';
+        $config['monitorEnabled'] = true;
+        $config['monitorAlertEmail'] = 'operator@example.invalid';
+        carmaja_bootstrap_test_write_config($productionConfig, $config);
+        $loaded = carmaja_bootstrap_prepare($productionConfig);
+        carmaja_bootstrap_test_same('main', $loaded['githubBranch'], 'Main-Referenz fehlt.');
+        carmaja_bootstrap_test_same(false, $loaded['githubAdapterEnabled'], 'GitHub-Adapter muss deaktiviert bleiben.');
+        carmaja_bootstrap_test_same(true, $loaded['monitorEnabled'], 'Produktionsmonitoring wurde nicht aktiviert.');
+        carmaja_bootstrap_test_same(
+            'operator@example.invalid',
+            $loaded['monitorAlertEmail'],
+            'Alarmadresse wurde nicht geladen.'
+        );
+        carmaja_bootstrap_test_same(
+            $productionProductPrivate,
+            $loaded['productPrivateDir'],
+            'Produktdatenpfad wurde nicht getrennt geladen.'
+        );
+        carmaja_bootstrap_test_same(
+            $config['backupEncryptionKeyFile'],
+            $loaded['backupEncryptionKeyFile'],
+            'Private Backup-Schlüsseldatei wurde nicht geladen.'
+        );
+        carmaja_bootstrap_test_same(
+            realpath($productionProductPrivate),
+            carmaja_api_private_dir(),
+            'Produktionspfad muss ohne Testpfad sicher aktiviert werden.'
+        );
+    }
+);
+
+carmaja_bootstrap_test(
+    'Produktionskonfiguration lehnt Legacy-GitHub-Token ab',
+    static function (): void {
+        $fixture = carmaja_bootstrap_test_fixture();
+        $runtimePrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-runtime-private';
+        $productPrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-product-private';
+        $apiWebroot = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-api';
+        $websiteWebroot = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-site';
+        foreach ([$runtimePrivate, $productPrivate, $apiWebroot, $websiteWebroot] as $directory) {
+            mkdir($directory, 0750, true);
+        }
+        mkdir($runtimePrivate . DIRECTORY_SEPARATOR . 'config', 0750, true);
+        mkdir($productPrivate . DIRECTORY_SEPARATOR . 'auth', 0750, true);
+        $usersFile = $productPrivate . DIRECTORY_SEPARATOR . 'auth' . DIRECTORY_SEPARATOR . 'api-users.json';
+        file_put_contents($usersFile, '{"environment":"production","users":[]}');
+        $tokenFile = $runtimePrivate . DIRECTORY_SEPARATOR . 'github-token';
+        file_put_contents($tokenFile, 'legacy-token-placeholder');
+        $configFile = $runtimePrivate . DIRECTORY_SEPARATOR . 'config' . DIRECTORY_SEPARATOR . 'runtime-config.php';
+        $config = [
+            'environment' => 'production',
+            'publishTarget' => 'production',
+            'productionPublishEnabled' => false,
+            'privateDir' => $runtimePrivate,
+            'productPrivateDir' => $productPrivate,
+            'productionPrivateDir' => $runtimePrivate,
+            'productionApiWebroot' => $apiWebroot,
+            'productionWebsiteWebroot' => $websiteWebroot,
+            'usersFile' => $usersFile,
+            'tokenPepper' => str_repeat('p', 48),
+            'githubAdapterEnabled' => false,
+            'githubBranch' => 'main',
+            'githubTokenFile' => $tokenFile,
+        ];
+        carmaja_bootstrap_test_write_config($configFile, $config);
+
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config($configFile),
+            'production_github_token_forbidden'
+        );
     }
 );
 

@@ -138,13 +138,13 @@ class ProductDraftRepositoryTest {
         val saved = repository.saveDraft(migrated)
         val persisted = JSONObject(draftFile.readText())
 
-        assertEquals(PRODUCT_MODEL_VERSION, saved.modelVersion)
+        assertEquals(2, saved.modelVersion)
         assertEquals("17.5", saved.braceletSizeCm)
         assertEquals("", saved.pearlSizeMm)
         assertFalse(persisted.has("braceletSize"))
         assertFalse(persisted.has("stock"))
         assertFalse(persisted.has("vintedUrl"))
-        assertEquals(PRODUCT_MODEL_VERSION, persisted.getInt("modelVersion"))
+        assertEquals(2, persisted.getInt("modelVersion"))
     }
 
     private fun testDraft(): ProductDraft {

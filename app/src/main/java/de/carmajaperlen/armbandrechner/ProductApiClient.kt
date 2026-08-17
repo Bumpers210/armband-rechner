@@ -34,7 +34,7 @@ data class ProductServerUpdate(
     val careInstructions: List<String>,
     val priceMinor: Int,
     val currency: String,
-    val salesEnabled: Boolean,
+    val available: Boolean,
     val images: List<ProductServerImage>,
 )
 
@@ -46,6 +46,9 @@ data class PublishResult(
     val commitSha: String?,
     val deploymentStatus: String,
     val status: ProductStatus,
+    val productVersion: Int,
+    val sourceHash: String,
+    val available: Boolean,
 )
 
 data class ProductLoginResult(
@@ -83,7 +86,7 @@ open class ProductApiClient {
     ): ProductLoginResult {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v3/login",
+            path = "v4/login",
             method = "POST",
             token = null,
             body = JSONObject()
@@ -102,11 +105,11 @@ open class ProductApiClient {
 
     open fun saveDraft(baseUrl: String, token: String, draft: ProductDraft): ProductServerUpdate {
         val idempotencyKey = requireNotNull(draft.pendingV2SaveOperationId) {
-            "V3-Speichern benötigt eine persistierte Idempotenz-ID."
+            "V4-Speichern benötigt eine persistierte Idempotenz-ID."
         }
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v3/products/${draft.draftId}",
+            path = "v4/products/${draft.draftId}",
             method = "PUT",
             token = token,
             body = draft.toSaveJson(),
@@ -121,7 +124,7 @@ open class ProductApiClient {
     open fun getDraft(baseUrl: String, token: String, draftId: String): ProductServerUpdate {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v3/products/$draftId",
+            path = "v4/products/$draftId",
             method = "GET",
             token = token,
             body = null,
@@ -139,7 +142,7 @@ open class ProductApiClient {
         val boundary = "CarmajaBoundary${UUID.randomUUID()}"
         val connection = openConnection(
             baseUrl = baseUrl,
-            path = "v3/products/${draft.draftId}/images",
+            path = "v4/products/${draft.draftId}/images",
             method = "POST",
             token = token,
             headers = mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString()),
@@ -176,16 +179,34 @@ open class ProductApiClient {
         return response.getJSONObject("product").toServerUpdate()
     }
 
-    fun publish(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
+    open fun publish(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
+        return lifecycle(baseUrl, token, draft, operationId, "publish")
+    }
+
+    open fun archive(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
+        return lifecycle(baseUrl, token, draft, operationId, "archive")
+    }
+
+    open fun restore(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
+        return lifecycle(baseUrl, token, draft, operationId, "restore")
+    }
+
+    private fun lifecycle(
+        baseUrl: String,
+        token: String,
+        draft: ProductDraft,
+        operationId: String,
+        action: String,
+    ): PublishResult {
         val sourceHash = draft.sourceHash
             ?: throw ProductApiException(
                 409,
                 "source_hash_missing",
-                message = "Produkt muss vor der Veröffentlichung vollständig synchronisiert sein.",
+                message = "Kollektion muss vor dieser Aktion vollständig synchronisiert sein.",
             )
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v3/products/${draft.draftId}/publish",
+            path = "v4/products/${draft.draftId}/$action",
             method = "POST",
             token = token,
             body = JSONObject()
@@ -204,22 +225,9 @@ open class ProductApiClient {
             commitSha = publication.optStringOrNull("commitSha"),
             deploymentStatus = publication.optString("deploymentStatus", "not_started"),
             status = product.status,
-        )
-    }
-
-    fun markSold(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
-        throw ProductApiException(
-            410,
-            "commerce_status_managed",
-            message = "Verkäufe werden ausschließlich durch den Commerce-Kern bestätigt.",
-        )
-    }
-
-    fun disable(baseUrl: String, token: String, draft: ProductDraft, operationId: String): PublishResult {
-        throw ProductApiException(
-            410,
-            "commerce_status_managed",
-            message = "Nichtverfügbarkeit wird über den versionierten Commerce-Vertrag verwaltet.",
+            productVersion = product.productVersion,
+            sourceHash = product.sourceHash,
+            available = product.available,
         )
     }
 
@@ -422,8 +430,10 @@ internal fun ProductDraft.toSaveJson(): JSONObject {
         images = imagesV2,
         priceMinor = priceMinor,
         currency = currency,
-        salesEnabled = salesEnabled,
-    ).toJson()
+        salesEnabled = false,
+    ).toJson().apply {
+        remove("salesEnabled")
+    }
 }
 
 private fun CalculationSnapshot.toJson(): JSONObject {
@@ -479,7 +489,7 @@ private fun JSONObject.toServerUpdate(): ProductServerUpdate {
         careInstructions = optStringList("careInstructions"),
         priceMinor = getInt("priceMinor"),
         currency = getString("currency"),
-        salesEnabled = getBoolean("salesEnabled"),
+        available = optBoolean("available", optString("status", "draft") == "published"),
         images = serverImages,
     )
 }
