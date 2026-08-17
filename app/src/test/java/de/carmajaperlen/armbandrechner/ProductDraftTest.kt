@@ -80,6 +80,7 @@ class ProductDraftTest {
         )
         val draft = ProductDraft(
             draftId = "019fa2e6-cf3c-7073-9275-7d3b566f54ee",
+            modelVersion = 2,
             internalCalculation = snapshot,
             createdAtMillis = 1L,
             updatedAtMillis = 1L,

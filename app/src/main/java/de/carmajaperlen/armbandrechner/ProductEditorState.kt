@@ -31,7 +31,7 @@ data class ProductDraftEditorState(
     val metalElements: TextFieldValue,
     val braceletSizeCm: TextFieldValue,
     val pearlSizeMm: TextFieldValue,
-    val shortDescription: TextFieldValue,
+    val shortDescription: RichDescriptionEditorState,
     val price: TextFieldValue,
 ) {
     fun update(field: ProductEditorField, value: TextFieldValue): ProductDraftEditorState {
@@ -41,7 +41,7 @@ data class ProductDraftEditorState(
             ProductEditorField.MetalElements -> copy(metalElements = value)
             ProductEditorField.BraceletSizeCm -> copy(braceletSizeCm = value)
             ProductEditorField.PearlSizeMm -> copy(pearlSizeMm = value)
-            ProductEditorField.ShortDescription -> copy(shortDescription = value)
+            ProductEditorField.ShortDescription -> copy(shortDescription = shortDescription.update(value))
             ProductEditorField.Price -> copy(price = value)
         }
     }
@@ -51,6 +51,13 @@ data class ProductDraftEditorState(
             if (normalizeMeasurement(braceletSizeCm.text) == null) put("braceletSizeCm", "Armbandgröße muss größer als null sein.")
             if (normalizeMeasurement(pearlSizeMm.text) == null) put("pearlSizeMm", "Perlengröße muss größer als null sein.")
             if (parsePriceMinor(price.text) == null) put("priceMinor", "Preis mit höchstens zwei Nachkommastellen, mindestens 0,50 €.")
+            if (shortDescription.value.text.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
+            if (shortDescription.characterCount > DESCRIPTION_MAX_CHARACTERS) {
+                put("shortDescription", "Kurzbeschreibung darf höchstens 500 Zeichen enthalten.")
+            }
+            runCatching { shortDescription.toDocument() }
+                .exceptionOrNull()
+                ?.let { put("shortDescription", it.message ?: "Formatierte Beschreibung ist ungültig.") }
         }
     }
 
@@ -60,6 +67,9 @@ data class ProductDraftEditorState(
         val pearlSizeMm = requireNotNull(normalizeMeasurement(pearlSizeMm.text)) { "Perlengröße muss größer als null sein." }
         val priceMinor = requireNotNull(parsePriceMinor(price.text)) { "Verkaufspreis ist ungültig." }
 
+        val descriptionDocument = shortDescription.value.text
+            .takeIf { it.isNotBlank() }
+            ?.let { shortDescription.toDocument() }
         return draft.copy(
             name = name.text.trim(),
             materials = multilineTextToList(materials.text),
@@ -68,7 +78,9 @@ data class ProductDraftEditorState(
                 .distinct(),
             braceletSizeCm = braceletSizeCm,
             pearlSizeMm = pearlSizeMm,
-            shortDescription = shortDescription.text.trim(),
+            modelVersion = if (descriptionDocument == null) draft.modelVersion else PRODUCT_MODEL_VERSION,
+            shortDescription = descriptionDocument?.plainText().orEmpty(),
+            descriptionDocument = descriptionDocument,
             priceMinor = priceMinor,
         )
     }
@@ -82,7 +94,10 @@ data class ProductDraftEditorState(
                 metalElements = editorValue(draft.metalElements.toMultilineText()),
                 braceletSizeCm = editorValue(draft.braceletSizeCm.replace('.', ',')),
                 pearlSizeMm = editorValue(draft.pearlSizeMm.replace('.', ',')),
-                shortDescription = editorValue(draft.shortDescription),
+                shortDescription = RichDescriptionEditorState.fromDocument(
+                    draft.descriptionDocument
+                        ?: DescriptionDocument.fromPlainText(draft.shortDescription),
+                ),
                 price = editorValue(displayPriceMinor(draft.priceMinor)),
             )
         }

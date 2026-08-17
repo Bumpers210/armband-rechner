@@ -32,6 +32,7 @@ data class ProductUiState(
     val error: String? = null,
     val fieldErrors: Map<String, String> = emptyMap(),
     val conflict: ProductSyncConflictState? = null,
+    val publicationPreview: ProductDraft? = null,
 ) {
     val selectedDraft: ProductDraft?
         get() = drafts.firstOrNull { it.draftId == selectedDraftId }
@@ -156,6 +157,30 @@ class ProductViewModel(
             ),
             unsavedDraftIds = draftSession.unsavedDraftIds,
             fieldErrors = _uiState.value.fieldErrors - field.errorKey,
+            publicationPreview = null,
+        )
+    }
+
+    fun toggleDescriptionBold() = updateDescriptionEditor(RichDescriptionEditorState::toggleBold)
+
+    fun toggleDescriptionItalic() = updateDescriptionEditor(RichDescriptionEditorState::toggleItalic)
+
+    fun setDescriptionFont(font: DescriptionFont) = updateDescriptionEditor { it.setFont(font) }
+
+    fun setDescriptionSize(size: DescriptionSize) = updateDescriptionEditor { it.setSize(size) }
+
+    private fun updateDescriptionEditor(
+        transform: (RichDescriptionEditorState) -> RichDescriptionEditorState,
+    ) {
+        val editor = _uiState.value.selectedEditor ?: return
+        draftSession.markChanged(editor.draftId)
+        _uiState.value = _uiState.value.copy(
+            editors = _uiState.value.editors + (
+                editor.draftId to editor.copy(shortDescription = transform(editor.shortDescription))
+            ),
+            unsavedDraftIds = draftSession.unsavedDraftIds,
+            fieldErrors = _uiState.value.fieldErrors - ProductEditorField.ShortDescription.errorKey,
+            publicationPreview = null,
         )
     }
 
@@ -264,11 +289,32 @@ class ProductViewModel(
         }
     }
 
-    fun publishSelected() {
+    fun requestPublicationPreview() {
         val draft = selectedDraftSnapshot() ?: return
         val validation = draft.validateForPublish()
         if (validation.isNotEmpty()) {
             _uiState.value = _uiState.value.copy(fieldErrors = validation)
+            return
+        }
+
+        _uiState.value = _uiState.value.copy(
+            publicationPreview = draft,
+            fieldErrors = emptyMap(),
+            error = null,
+        )
+    }
+
+    fun cancelPublicationPreview() {
+        if (_uiState.value.busy) return
+        _uiState.value = _uiState.value.copy(publicationPreview = null)
+    }
+
+    fun publishSelected() {
+        val draft = _uiState.value.publicationPreview
+        if (draft == null) {
+            _uiState.value = _uiState.value.copy(
+                error = "Vor der Veröffentlichung muss die Vorschau geöffnet werden.",
+            )
             return
         }
 
@@ -298,6 +344,7 @@ class ProductViewModel(
                 },
                 fieldErrors = emptyMap(),
                 editingDraftId = null,
+                publicationPreview = null,
             )
         }
     }
@@ -369,6 +416,7 @@ class ProductViewModel(
                 message = result.commitSha?.let { "$successMessage Commit ${it.take(7)}." }
                     ?: "$successMessage Verarbeitung: ${result.deploymentStatus}.",
                 editingDraftId = null,
+                publicationPreview = null,
             )
         }
     }
@@ -469,6 +517,7 @@ class ProductViewModel(
                     selectedDraftId = remainingDrafts.firstOrNull()?.draftId,
                     editors = _uiState.value.editors - result.draftId,
                     editingDraftId = null,
+                    publicationPreview = null,
                     unsavedDraftIds = draftSession.unsavedDraftIds,
                     fieldErrors = emptyMap(),
                 )
@@ -485,6 +534,7 @@ class ProductViewModel(
                         restored.draftId to ProductDraftEditorState.fromDraft(restored)
                     ),
                     editingDraftId = null,
+                    publicationPreview = null,
                     unsavedDraftIds = draftSession.unsavedDraftIds,
                     fieldErrors = emptyMap(),
                 )

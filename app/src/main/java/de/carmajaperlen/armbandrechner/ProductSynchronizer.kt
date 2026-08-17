@@ -196,6 +196,7 @@ internal fun applyServerUpdate(
     }
 
     return draft.copy(
+        modelVersion = update.productModelVersion,
         version = update.version,
         productVersion = update.productVersion,
         sourceHash = update.sourceHash,
@@ -206,6 +207,8 @@ internal fun applyServerUpdate(
         priceMinor = update.priceMinor,
         currency = update.currency,
         salesEnabled = update.salesEnabled,
+        shortDescription = update.shortDescription,
+        descriptionDocument = update.descriptionDocument ?: draft.descriptionDocument,
         pendingV2SaveOperationId = null,
         images = images,
     )
@@ -218,6 +221,7 @@ private fun ProductServerUpdate.matchesMetadata(draft: ProductDraft): Boolean {
         braceletSizeCm == draft.braceletSizeCm &&
         pearlSizeMm == draft.pearlSizeMm &&
         shortDescription == draft.shortDescription &&
+        descriptionDocument == draft.descriptionDocument &&
         careInstructions == draft.careInstructions
         && priceMinor == draft.priceMinor
         && currency == draft.currency

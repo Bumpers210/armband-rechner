@@ -591,6 +591,15 @@ function carmaja_api_v2_put_product(
 
         $normalized = carmaja_api_v2_validate_put_payload($body);
         $existing = carmaja_api_load_draft($productId);
+        if (is_array($existing)
+            && ($existing['productModelVersion'] ?? null) === 3) {
+            throw new CarmajaApiException(
+                409,
+                'Formatierte Produktbeschreibung benötigt die aktuelle App.',
+                [],
+                'product_model_upgrade_required'
+            );
+        }
         $currentProductVersion = is_array($existing)
             ? (int) ($existing['productVersion'] ?? 0)
             : 0;

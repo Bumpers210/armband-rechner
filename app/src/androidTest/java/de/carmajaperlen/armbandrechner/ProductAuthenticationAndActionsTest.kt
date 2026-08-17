@@ -1,5 +1,8 @@
 package de.carmajaperlen.armbandrechner
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -13,6 +16,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import java.util.concurrent.atomic.AtomicBoolean
@@ -135,21 +140,23 @@ class ProductAuthenticationAndActionsTest {
         val draft = publishedDraft().copy(status = ProductStatus.Draft, sku = null)
         composeRule.setContent {
             MaterialTheme {
-                ProductDraftForm(
-                    draft = draft,
-                    editor = ProductDraftEditorState.fromDraft(draft),
-                    fieldErrors = emptyMap(),
-                    busy = false,
-                    actions = ProductUiActions(
-                        onDiscardSelected = { discarded.set(true) },
-                    ),
-                    onPickImages = {},
-                    hasUnsavedChanges = true,
-                )
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    ProductDraftForm(
+                        draft = draft,
+                        editor = ProductDraftEditorState.fromDraft(draft),
+                        fieldErrors = emptyMap(),
+                        busy = false,
+                        actions = ProductUiActions(
+                            onDiscardSelected = { discarded.set(true) },
+                        ),
+                        onPickImages = {},
+                        hasUnsavedChanges = true,
+                    )
+                }
             }
         }
 
-        composeRule.onNodeWithTag("product-discard-unsaved").performClick()
+        composeRule.onNodeWithTag("product-discard-unsaved").performScrollTo().performClick()
 
         assertTrue(discarded.get())
     }
@@ -181,15 +188,17 @@ class ProductAuthenticationAndActionsTest {
             val draft = remember { publishedDraft() }
             MaterialTheme {
                 if (editing) {
-                    ProductDraftForm(
-                        draft = draft,
-                        editor = ProductDraftEditorState.fromDraft(draft),
-                        fieldErrors = emptyMap(),
-                        busy = false,
-                        actions = ProductUiActions.noop(),
-                        onPickImages = {},
-                        isPublishedEdit = true,
-                    )
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        ProductDraftForm(
+                            draft = draft,
+                            editor = ProductDraftEditorState.fromDraft(draft),
+                            fieldErrors = emptyMap(),
+                            busy = false,
+                            actions = ProductUiActions.noop(),
+                            onPickImages = {},
+                            isPublishedEdit = true,
+                        )
+                    }
                 } else {
                     PublishedProductView(
                         draft = draft,
@@ -204,9 +213,9 @@ class ProductAuthenticationAndActionsTest {
 
         composeRule.onNodeWithTag("published-edit").performClick()
 
-        composeRule.onNodeWithText("Änderungen erneut veröffentlichen").assertIsDisplayed()
-        composeRule.onNodeWithTag("product-pearls").assertIsDisplayed()
-        composeRule.onNodeWithTag("product-spacers").assertIsDisplayed()
+        composeRule.onNodeWithText("Vorschau der Änderungen").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("product-pearls").performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag("product-spacers").performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText("Pflegehinweise").assertDoesNotExist()
         composeRule.onNodeWithText("Verkauft").assertDoesNotExist()
         composeRule.onNodeWithText("Deaktivieren").assertDoesNotExist()

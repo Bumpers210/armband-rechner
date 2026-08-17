@@ -128,30 +128,48 @@ class MainActivity : ComponentActivity() {
                             value,
                         )
                     },
+                    onToggleDescriptionBold = productViewModel::toggleDescriptionBold,
+                    onToggleDescriptionItalic = productViewModel::toggleDescriptionItalic,
+                    onDescriptionFontChange = productViewModel::setDescriptionFont,
+                    onDescriptionSizeChange = productViewModel::setDescriptionSize,
                     onPriceChange = { value ->
                         productViewModel.updateSelectedEditor(ProductEditorField.Price, value)
                     },
                     onImagesPicked = productViewModel::addImages,
                     onSave = productViewModel::saveSelected,
                     onSync = productViewModel::syncSelected,
+                    onRequestPublicationPreview = productViewModel::requestPublicationPreview,
+                    onCancelPublicationPreview = productViewModel::cancelPublicationPreview,
                     onPublish = productViewModel::publishSelected,
                     onDiscardSelected = productViewModel::discardSelected,
                     onMessageShown = productViewModel::consumeMessage,
                 )
                 if (productState.authenticated) {
-                    ArmbandCalculatorScreen(
-                        state = state,
-                        productState = productState,
-                        onRefresh = viewModel::refreshPriceList,
-                        onQuantityChange = viewModel::changeQuantity,
-                        onWorkMinutesChange = viewModel::updateWorkMinutes,
-                        onHourlyRateChange = viewModel::updateHourlyRate,
-                        onOtherCostsChange = viewModel::updateOtherCosts,
-                        onMarkupChange = viewModel::updateMarkup,
-                        onNewCalculation = viewModel::newCalculation,
-                        onNoticeShown = viewModel::consumeNotice,
-                        productActions = productActions,
-                    )
+                    val preview = productState.publicationPreview
+                    if (preview != null) {
+                        ProductPublicationPreviewScreen(
+                            draft = preview,
+                            environmentLabel = productState.apiEndpoint?.environmentLabel
+                                ?: "Produktverwaltung",
+                            busy = productState.busy,
+                            onBack = productActions.onCancelPublicationPreview,
+                            onPublish = productActions.onPublish,
+                        )
+                    } else {
+                        ArmbandCalculatorScreen(
+                            state = state,
+                            productState = productState,
+                            onRefresh = viewModel::refreshPriceList,
+                            onQuantityChange = viewModel::changeQuantity,
+                            onWorkMinutesChange = viewModel::updateWorkMinutes,
+                            onHourlyRateChange = viewModel::updateHourlyRate,
+                            onOtherCostsChange = viewModel::updateOtherCosts,
+                            onMarkupChange = viewModel::updateMarkup,
+                            onNewCalculation = viewModel::newCalculation,
+                            onNoticeShown = viewModel::consumeNotice,
+                            productActions = productActions,
+                        )
+                    }
                 } else {
                     ProductLoginScreen(
                         state = productState,
