@@ -2763,12 +2763,23 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
     }
     $uploaded = carmaja_api_v4_product_response_from_draft($uploadedDraft);
     $projectionCalls = [];
+    $projectionAttempts = [];
+    $failProjectionAction = null;
     $GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4'] = static function (
         array $product,
         string $action,
         string $operationId,
         string $requestHash
-    ) use (&$projectionCalls): array {
+    ) use (&$projectionCalls, &$projectionAttempts, &$failProjectionAction): array {
+        $projectionAttempts[$operationId] = ($projectionAttempts[$operationId] ?? 0) + 1;
+        if ($failProjectionAction === $action && $projectionAttempts[$operationId] === 1) {
+            throw new CarmajaApiException(
+                503,
+                'Künstlicher Projektionsausfall.',
+                [],
+                'collection_projection_temporarily_unavailable'
+            );
+        }
         $projectionCalls[$operationId] ??= [
             'action' => $action,
             'productId' => $product['productId'],
@@ -2794,9 +2805,42 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
         'expectedSourceHash' => $published['product']['sourceHash'],
         'operationId' => 'v4-collection-archive-0001',
     ];
+    $archivePublishAttempts = 0;
+    $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V3'] = static function (
+        array $publicProduct,
+        array $operation
+    ) use (&$archivePublishAttempts): array {
+        $archivePublishAttempts++;
+        if ($archivePublishAttempts === 1) {
+            throw new CarmajaApiException(
+                503,
+                'Künstlicher Publisherausfall.',
+                [],
+                'publish_adapter_temporarily_unavailable'
+            );
+        }
+        return carmaja_api_local_publish_adapter_v3($publicProduct, $operation);
+    };
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_archive_product(
+            $productId,
+            $archiveBody,
+            carmaja_api_test_actor()
+        ),
+        503,
+        'publish_adapter_temporarily_unavailable'
+    );
+    $draftAfterFailedArchive = carmaja_api_load_draft($productId);
+    carmaja_api_test_same(
+        'disabled',
+        $draftAfterFailedArchive['status'] ?? null,
+        'Fehlgeschlagene Archivierung blieb nicht sicher wiederaufnehmbar.'
+    );
     $archived = carmaja_api_v4_archive_product($productId, $archiveBody, carmaja_api_test_actor());
     $archivedAgain = carmaja_api_v4_archive_product($productId, $archiveBody, carmaja_api_test_actor());
+    unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V3']);
     carmaja_api_test_same($archived, $archivedAgain, 'Archivierung ist nicht idempotent.');
+    carmaja_api_test_same(3, $archivePublishAttempts, 'Archiv-Publisher wurde nicht deterministisch wiederholt.');
     carmaja_api_test_same('disabled', $archived['product']['status'], 'Kollektion wurde nicht archiviert.');
     $publicAfterArchive = carmaja_api_read_json(
         carmaja_api_path('products/public-products-v2.json'),
@@ -2810,11 +2854,36 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
         'expectedSourceHash' => $archived['product']['sourceHash'],
         'operationId' => 'v4-collection-restore-0001',
     ];
+    $failProjectionAction = 'restore';
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_restore_product(
+            $productId,
+            $restoreBody,
+            carmaja_api_test_actor()
+        ),
+        503,
+        'collection_projection_temporarily_unavailable'
+    );
+    $publicAfterFailedRestore = carmaja_api_read_json(
+        carmaja_api_path('products/public-products-v2.json'),
+        ['version' => 3, 'products' => []]
+    );
+    carmaja_api_test_same(
+        [],
+        $publicAfterFailedRestore['products'],
+        'Teilweise Wiederherstellung wurde vor der Commerce-Projektion öffentlich.'
+    );
+    $failProjectionAction = null;
     $restored = carmaja_api_v4_restore_product($productId, $restoreBody, carmaja_api_test_actor());
     carmaja_api_test_same(true, $restored['product']['available'], 'Wiederhergestellte Kollektion ist nicht verfügbar.');
     carmaja_api_test_same($sku, $restored['product']['sku'], 'Wiederherstellung änderte die SKU.');
     carmaja_api_test_same($slug, $restored['product']['slug'], 'Wiederherstellung änderte die Adresse.');
     carmaja_api_test_same(3, count($projectionCalls), 'Lebenszyklus wurde nicht genau einmal je Vorgang projiziert.');
+    carmaja_api_test_same(
+        2,
+        $projectionAttempts[$restoreBody['operationId']] ?? 0,
+        'Fehlgeschlagene Commerce-Projektion wurde nicht mit derselben Vorgangskennung wiederholt.'
+    );
     unset($GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4']);
 });
 
