@@ -94,7 +94,7 @@
             "pearlSizeMm": 8,
             "priceMinor": 2000,
             "currency": "eur",
-            "salesEnabled": true,
+            "salesEnabled": false,
             "images": [
                 {
                     "imageId": "3b094476-ab6a-4b1f-a839-38182a6d5945",
