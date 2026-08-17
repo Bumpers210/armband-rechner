@@ -34,7 +34,6 @@ export function ProductList({
                 Nicht verfügbar
               </p>
             ) : null}
-            <p>{product.description}</p>
             <dl className="product-facts">
               <div>
                 <dt>Materialien</dt>

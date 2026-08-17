@@ -219,7 +219,7 @@ for (const product of enabled) {
 
   assert(
     overviewHtml.includes(product.publicTitle) &&
-      overviewHtml.includes(escapeHtmlText(product.description)) &&
+      !overviewHtml.includes(escapeHtmlText(product.description)) &&
       detailHtml.includes(product.publicTitle) &&
       visibleDescriptionFragments(product).every((fragment) =>
         detailHtml.includes(escapeHtmlText(fragment)),
@@ -277,7 +277,7 @@ for (const product of unavailable) {
   );
   assert(
     overviewHtml.includes(product.publicTitle) &&
-      overviewHtml.includes(escapeHtmlText(product.description)) &&
+      !overviewHtml.includes(escapeHtmlText(product.description)) &&
       overviewHtml.includes("Nicht verfügbar") &&
       detailHtml.includes("Nicht verfügbar") &&
       detailHtml.includes('href="/material-pflege/"') &&
