@@ -1009,6 +1009,69 @@
   color: var(--v2-muted);
 }
 
+.v2-page .shop-buy-now {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 0.35rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid var(--v2-line);
+}
+
+.v2-page .shop-price {
+  margin: 0;
+  color: var(--v2-moss);
+  font-family:
+    "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia,
+    serif;
+  font-size: clamp(2.15rem, 8vw, 2.8rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.v2-page .shop-message {
+  margin: 0;
+  color: var(--v2-muted);
+}
+
+.v2-page .shop-buy-button {
+  display: inline-flex;
+  width: 100%;
+  min-height: 4.35rem;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 1.5rem;
+  border: 2px solid var(--v2-clay);
+  border-radius: 7px;
+  color: var(--v2-surface);
+  background: var(--v2-clay);
+  box-shadow: 0 0.45rem 1rem rgb(75 48 39 / 22%);
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.v2-page .shop-buy-button:hover:not(:disabled) {
+  border-color: var(--v2-moss);
+  background: var(--v2-moss);
+  box-shadow: 0 0.55rem 1.2rem rgb(36 49 39 / 24%);
+  transform: translateY(-1px);
+}
+
+.v2-page .shop-buy-button:disabled {
+  border-color: var(--v2-line);
+  color: var(--v2-muted);
+  background: var(--v2-surface);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
