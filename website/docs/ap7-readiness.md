@@ -313,18 +313,18 @@ fail-closed.
 4. Unmittelbar vor dem Cutover ein neues verschlüsseltes Produkt- und
    Commerce-Backup erzeugen, den Offsite-Abruf bestätigen und den
    Restore-Dry-Run erneut bestehen.
-5. In einem kontrollierten Wartungsfenster `salesEnabled=true` ausschließlich
-   für das Startprodukt setzen. Die dadurch neu entstehenden Werte für
-   `productVersion` und `sourceHash` erneut lesen, prüfen und in das Manifest
-   binden.
-6. Das Manifest nach Vier-Augen-Prüfung separat freigeben, den Cutover zuerst
-   im Planmodus prüfen und erst nach ausdrücklicher Apply-Freigabe
-   `commerce_products` sowie `commerce_inventory.onHand=1` initialisieren.
+5. In einem kontrollierten Wartungsfenster die v4-Produkt- und
+   `/shop/v2`-Schalter aktivieren und Ares mit einer dauerhaften Vorgangskennung
+   als aktive Kollektion projizieren. Es wird kein Bestand importiert.
+6. Das Kollektionen-Manifest nach Vier-Augen-Prüfung und Freigabe von Legal
+   Bundle v5 separat freigeben, den Cutover zuerst im Planmodus prüfen und erst
+   nach ausdrücklicher Apply-Freigabe `commerce_products.sales_model=collection`
+   und `sales_enabled=1` setzen. Eine Inventory-Zeile wird nicht erzeugt.
 7. Publisher und Produktprojektion in der festgelegten Reihenfolge separat
    freigeben, die bereits bereitgestellte Produktionswebsite prüfen, genau eine
    echte Gastbestellung durchführen und das Beobachtungsfenster ohne weitere
    Produktfreigabe abschließen.
 
-Jede Abweichung bei Produktidentität, Hash, Preis, Bestand, Migration,
+Jede Abweichung bei Produktidentität, Hash, Preis, Verfügbarkeit, Migration,
 Zahlungszuordnung, Backup, Worker oder Monitoring stoppt neue Checkouts. Ein
 Website-Rollback verändert keine Commerce-Daten.

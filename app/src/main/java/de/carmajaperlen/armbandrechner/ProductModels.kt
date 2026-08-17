@@ -75,8 +75,8 @@ data class ProductDraft(
     val serverUpdatedAt: String? = null,
     val pendingV2SaveOperationId: String? = null,
     val pendingPublishOperationId: String? = null,
-    val pendingSoldOperationId: String? = null,
-    val pendingDisableOperationId: String? = null,
+    val pendingArchiveOperationId: String? = null,
+    val pendingRestoreOperationId: String? = null,
 ) {
     val displayName: String
         get() = name.ifBlank { "Unbenannter Entwurf" }

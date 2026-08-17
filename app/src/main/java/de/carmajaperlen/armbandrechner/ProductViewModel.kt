@@ -333,6 +333,9 @@ class ProductViewModel(
                     sku = result.sku,
                     version = result.version,
                     status = result.status,
+                    productVersion = result.productVersion,
+                    sourceHash = result.sourceHash,
+                    salesEnabled = result.available,
                     pendingPublishOperationId = null,
                 ),
             )
@@ -349,25 +352,25 @@ class ProductViewModel(
         }
     }
 
-    fun markSelectedSold() {
+    fun archiveSelected() {
         changeLiveStatus(
-            operationSelector = { pendingSoldOperationId },
-            operationWriter = { copy(pendingSoldOperationId = it) },
+            operationSelector = { pendingArchiveOperationId },
+            operationWriter = { copy(pendingArchiveOperationId = it) },
             apiCall = { draft, operationId ->
-                apiClient.markSold(requireBaseUrl(), requireToken(), draft, operationId)
+                apiClient.archive(requireBaseUrl(), requireToken(), draft, operationId)
             },
-            successMessage = "Produkt wurde als verkauft markiert.",
+            successMessage = "Kollektion wurde gelöscht.",
         )
     }
 
-    fun disableSelected() {
+    fun restoreSelected() {
         changeLiveStatus(
-            operationSelector = { pendingDisableOperationId },
-            operationWriter = { copy(pendingDisableOperationId = it) },
+            operationSelector = { pendingRestoreOperationId },
+            operationWriter = { copy(pendingRestoreOperationId = it) },
             apiCall = { draft, operationId ->
-                apiClient.disable(requireBaseUrl(), requireToken(), draft, operationId)
+                apiClient.restore(requireBaseUrl(), requireToken(), draft, operationId)
             },
-            successMessage = "Produkt wurde deaktiviert.",
+            successMessage = "Kollektion wurde wiederhergestellt.",
         )
     }
 
@@ -408,8 +411,11 @@ class ProductViewModel(
                 withOperation.copy(
                     version = result.version,
                     status = result.status,
-                    pendingSoldOperationId = null,
-                    pendingDisableOperationId = null,
+                    productVersion = result.productVersion,
+                    sourceHash = result.sourceHash,
+                    salesEnabled = result.available,
+                    pendingArchiveOperationId = null,
+                    pendingRestoreOperationId = null,
                 ),
             )
             _uiState.value = _uiState.value.copy(

@@ -37,6 +37,7 @@ final class CarmajaCheckoutService
             'sourceHash' => $product['source_hash'],
             'priceMinor' => (int) $product['price_minor'],
             'currency' => $product['currency'],
+            'salesModel' => $product['sales_model'],
             'shippingSnapshot' => $shipping,
             'legalBundleId' => $legalBundleId,
         ]);
@@ -71,6 +72,7 @@ final class CarmajaCheckoutService
             'productName' => $product['name'],
             'priceMinor' => (int) $product['price_minor'],
             'currency' => $product['currency'],
+            'salesModel' => $product['sales_model'],
             'shippingSnapshot' => $shipping,
             'legalBundleId' => $legalBundleId,
         ];
@@ -83,6 +85,7 @@ final class CarmajaCheckoutService
             'sourceHash' => $product['source_hash'],
             'priceMinor' => (int) $product['price_minor'],
             'currency' => $product['currency'],
+            'salesModel' => $product['sales_model'],
             'shippingSnapshot' => $shipping,
             'legalBundleId' => $legalBundleId,
             'expiresAt' => gmdate('Y-m-d H:i:s', $expiresAt),

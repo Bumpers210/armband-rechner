@@ -30,13 +30,15 @@ test("AP4-Bootstrap interpretiert MySQL-DATETIME verbindlich als UTC", async () 
   assert.match(bootstrap, /timezone_configuration_failed/);
 });
 
-test("AP4-Checkout verwendet nur Live-Daten und keinen statischen Bestand", async () => {
+test("Shop-v2-Checkout verwendet nur Live-Verfügbarkeit und keine Bestandsmenge", async () => {
   const page = await source("app/armbaender/[slug]/page.tsx");
   const buyNow = await source("components/shop-buy-now.tsx");
   assert.match(page, /ShopBuyNow/);
   assert.doesNotMatch(page, /product\.stock/);
   assert.match(buyNow, /cache: "no-store"/);
-  assert.match(buyNow, /shop\/v1\/products/);
+  assert.match(buyNow, /shop\/v2\/products/);
+  assert.match(buyNow, /liveProduct\.available/);
+  assert.doesNotMatch(buyNow, /availableQuantity|buyable/);
   assert.match(buyNow, /Jetzt kaufen/);
 });
 

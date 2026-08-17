@@ -197,9 +197,12 @@ function carmaja_commerce_validate_checkout(array $input): array
         }
     }
 
+    $input['salesModel'] ??= 'unique';
+
     if (!is_int($input['productVersion']) || $input['productVersion'] < 1
         || !is_int($input['priceMinor']) || $input['priceMinor'] < CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR
         || $input['currency'] !== CARMAJA_COMMERCE_CURRENCY
+        || !in_array($input['salesModel'], ['unique', 'collection'], true)
         || !is_array($input['shippingSnapshot'])) {
         throw new CarmajaCommerceException('validation_failed', 'Checkout-Snapshot ist ungültig.', 422);
     }
@@ -238,6 +241,7 @@ final class CarmajaCommerceMemory
     public array $reviewCases = [];
     public array $refunds = [];
     public array $disputes = [];
+    public array $projectionOperations = [];
     public int $orderSequence = 1;
 
     public function __construct(public readonly ?string $operatorEmail = null)
@@ -259,13 +263,16 @@ final class CarmajaCommerceMemory
         }
 
         $id = (string) ($product['productId'] ?? '');
+        $product['salesModel'] = (string) ($product['salesModel'] ?? 'unique');
         $product['productId'] = $id;
         $this->products[$id] = $product;
-        $this->inventory[$id] = [
-            'productId' => $id,
-            'onHand' => $onHand,
-            'inventoryVersion' => 0,
-        ];
+        if ($product['salesModel'] === 'unique') {
+            $this->inventory[$id] = [
+                'productId' => $id,
+                'onHand' => $onHand,
+                'inventoryVersion' => 0,
+            ];
+        }
     }
 
     public function addLegalBundle(string $id, array $metadata = []): void
@@ -280,6 +287,48 @@ final class CarmajaCommerceMemory
             'merchantVersion' => 'merchant-v1',
             'status' => 'approved',
         ], $metadata);
+    }
+
+    public function projectCollectionProduct(
+        array $product,
+        string $action,
+        string $operationId,
+        string $requestHash
+    ): array {
+        if (isset($this->projectionOperations[$operationId])) {
+            $existing = $this->projectionOperations[$operationId];
+            if (!hash_equals($existing['requestHash'], $requestHash)) {
+                throw new CarmajaCommerceException('idempotency_conflict', 'Vorgangskennung gehört zu einer anderen Anfrage.', 409);
+            }
+            return $existing['result'];
+        }
+        if (!in_array($action, ['publish', 'archive', 'restore'], true)) {
+            throw new CarmajaCommerceException('projection_action_invalid', 'Projektionsaktion ist ungültig.', 422);
+        }
+        $productId = (string) ($product['productId'] ?? '');
+        $salesEnabled = $action !== 'archive';
+        $this->products[$productId] = [
+            'productId' => $productId,
+            'productVersion' => (int) ($product['productVersion'] ?? 0),
+            'sourceHash' => (string) ($product['sourceHash'] ?? ''),
+            'name' => (string) ($product['title'] ?? $product['name'] ?? ''),
+            'priceMinor' => (int) ($product['priceMinor'] ?? 0),
+            'currency' => (string) ($product['currency'] ?? 'eur'),
+            'salesEnabled' => $salesEnabled,
+            'salesModel' => 'collection',
+        ];
+        $result = [
+            'productId' => $productId,
+            'productVersion' => (int) ($product['productVersion'] ?? 0),
+            'salesModel' => 'collection',
+            'available' => $salesEnabled,
+            'action' => $action,
+        ];
+        $this->projectionOperations[$operationId] = [
+            'requestHash' => $requestHash,
+            'result' => $result,
+        ];
+        return $result;
     }
 
     public function createCheckout(array $raw): array
@@ -298,8 +347,10 @@ final class CarmajaCommerceMemory
         }
 
         $product = $this->products[$input['productId']] ?? null;
+        $salesModel = (string) ($product['salesModel'] ?? 'unique');
         $inventory = $this->inventory[$input['productId']] ?? null;
-        if (!is_array($product) || !is_array($inventory)
+        if (!is_array($product)
+            || $salesModel !== $input['salesModel']
             || ($product['productVersion'] ?? null) !== $input['productVersion']
             || ($product['sourceHash'] ?? null) !== $input['sourceHash']
             || ($product['priceMinor'] ?? null) !== $input['priceMinor']
@@ -308,16 +359,20 @@ final class CarmajaCommerceMemory
             throw new CarmajaCommerceException('product_snapshot_stale', 'Produkt-Snapshot ist nicht mehr aktuell.', 409);
         }
 
-        $blocked = 0;
-        foreach ($this->reservations as $reservation) {
-            if (($reservation['productId'] ?? null) === $input['productId']
-                && carmaja_commerce_active_reservation($reservation)) {
-                $blocked++;
+        if ($salesModel === 'unique') {
+            if (!is_array($inventory)) {
+                throw new CarmajaCommerceException('inventory_missing', 'Bestand ist nicht verfügbar.', 409);
             }
-        }
-
-        if ($inventory['onHand'] - $blocked < 1) {
-            throw new CarmajaCommerceException('sold_out_or_reserved', 'Produkt ist nicht verfügbar.', 409);
+            $blocked = 0;
+            foreach ($this->reservations as $reservation) {
+                if (($reservation['productId'] ?? null) === $input['productId']
+                    && carmaja_commerce_active_reservation($reservation)) {
+                    $blocked++;
+                }
+            }
+            if ($inventory['onHand'] - $blocked < 1) {
+                throw new CarmajaCommerceException('sold_out_or_reserved', 'Produkt ist nicht verfügbar.', 409);
+            }
         }
 
         $checkout = [
@@ -331,6 +386,7 @@ final class CarmajaCommerceMemory
             'currency' => $input['currency'],
             'shippingSnapshot' => $input['shippingSnapshot'],
             'legalBundleId' => $input['legalBundleId'],
+            'salesModel' => $salesModel,
             'state' => 'created',
             'expiresAt' => $input['expiresAt'],
         ];
@@ -341,7 +397,7 @@ final class CarmajaCommerceMemory
             'checkoutId' => $checkout['checkoutId'],
             'productId' => $input['productId'],
             'state' => 'active',
-            'blocksStock' => true,
+            'blocksStock' => $salesModel === 'unique',
             'expiresAt' => $input['expiresAt'],
         ];
         $paymentId = $input['checkoutId'] . '-payment';
@@ -385,7 +441,7 @@ final class CarmajaCommerceMemory
         if ($outcome === 'unknown') {
             $checkout['state'] = 'manual_review';
             $reservation['state'] = 'manual_review';
-            $reservation['blocksStock'] = true;
+            $reservation['blocksStock'] = $checkout['salesModel'] === 'unique';
             $this->openReview('checkout', $checkoutId, 'stripe_creation_unknown');
             return;
         }
@@ -425,24 +481,28 @@ final class CarmajaCommerceMemory
             $payment['verificationStatus'] = 'manual_review';
             $checkout['state'] = 'manual_review';
             $reservation['state'] = 'manual_review';
-            $reservation['blocksStock'] = true;
+            $reservation['blocksStock'] = $checkout['salesModel'] === 'unique';
             $this->openReview('payment', $paymentId, 'payment_verification_failed');
             throw new CarmajaCommerceException('manual_review', 'Zahlung konnte nicht sicher zugeordnet werden.', 409);
         }
 
         $inventory = &$this->inventory[$checkout['productId']];
-        if ($inventory['onHand'] !== 1 || $reservation['state'] !== 'active') {
+        if ($reservation['state'] !== 'active'
+            || ($checkout['salesModel'] === 'unique'
+                && (!is_array($inventory) || $inventory['onHand'] !== 1))) {
             $payment['status'] = 'manual_review';
             $payment['verificationStatus'] = 'manual_review';
             $checkout['state'] = 'manual_review';
             $reservation['state'] = 'manual_review';
-            $reservation['blocksStock'] = true;
+            $reservation['blocksStock'] = $checkout['salesModel'] === 'unique';
             $this->openReview('payment', $paymentId, 'inventory_or_reservation_conflict');
             throw new CarmajaCommerceException('manual_review', 'Bestand oder Reservierung ist widersprüchlich.', 409);
         }
 
-        $inventory['onHand'] = 0;
-        $inventory['inventoryVersion']++;
+        if ($checkout['salesModel'] === 'unique') {
+            $inventory['onHand'] = 0;
+            $inventory['inventoryVersion']++;
+        }
         $orderId = $checkoutId . '-order';
         $orderNumber = 'CMJ-' . str_pad((string) $this->orderSequence++, 8, '0', STR_PAD_LEFT);
         $this->orders[$orderId] = [
@@ -518,14 +578,14 @@ final class CarmajaCommerceMemory
             && ($payment['paymentMethodType'] === null
                 || $payment['paymentMethodType'] === $paymentMethodType)
             && $reservation['state'] === 'active'
-            && $reservation['blocksStock'] === true
+            && $reservation['blocksStock'] === ($checkout['salesModel'] === 'unique')
             && $payment['orderId'] === null;
         if (!$valid) {
             $payment['status'] = 'manual_review';
             $payment['verificationStatus'] = 'manual_review';
             $checkout['state'] = 'manual_review';
             $reservation['state'] = 'manual_review';
-            $reservation['blocksStock'] = true;
+            $reservation['blocksStock'] = $checkout['salesModel'] === 'unique';
             $this->openReview('payment', $paymentId, 'processing_payment_verification_failed');
             throw new CarmajaCommerceException('manual_review', 'Laufende Zahlung konnte nicht sicher geprüft werden.', 409);
         }
@@ -567,7 +627,7 @@ final class CarmajaCommerceMemory
             $payment['status'] = 'manual_review';
             $checkout['state'] = 'manual_review';
             $reservation['state'] = 'manual_review';
-            $reservation['blocksStock'] = true;
+            $reservation['blocksStock'] = $checkout['salesModel'] === 'unique';
             $this->openReview('payment', $paymentId, 'async_failure_verification_failed');
             throw new CarmajaCommerceException('manual_review', 'Fehlgeschlagene Zahlung konnte nicht sicher geprüft werden.', 409);
         }
@@ -587,7 +647,7 @@ final class CarmajaCommerceMemory
         $payment = &$this->payments[$checkoutId . '-payment'];
         if (!$stripeEndStateConfirmed || $payment['status'] === 'processing') {
             $reservation['state'] = 'manual_review';
-            $reservation['blocksStock'] = true;
+            $reservation['blocksStock'] = $this->checkouts[$checkoutId]['salesModel'] === 'unique';
             $this->openReview(
                 'reservation',
                 $reservation['reservationId'],
@@ -638,6 +698,13 @@ final class CarmajaCommerceMemory
         }
 
         $productId = (string) ($input['productId'] ?? '');
+        if (($this->products[$productId]['salesModel'] ?? 'unique') === 'collection') {
+            throw new CarmajaCommerceException(
+                'inventory_not_used_for_collections',
+                'Kollektionen verwenden keinen Bestand.',
+                409
+            );
+        }
         $inventory = &$this->inventory[$productId];
         $target = $input['targetOnHand'] ?? null;
         if (!is_int($target) || !in_array($target, [0, 1], true)) {
@@ -724,18 +791,19 @@ final class CarmajaCommercePdo
         $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
     }
 
-    /** Read the authoritative product and binary inventory without a static fallback. */
+    /** Read the authoritative product availability without a static fallback. */
     public function loadLiveProduct(string $productId): array
     {
         $statement = $this->pdo->prepare(
             'SELECT p.product_id, p.name, p.price_minor, p.currency,
-                    p.product_version, p.sales_enabled, i.on_hand,
+                    p.product_version, p.sales_enabled, p.sales_model,
+                    i.on_hand,
                     COALESCE((SELECT COUNT(*) FROM reservations r
                         WHERE r.product_id = p.product_id
                           AND r.blocks_stock = 1
                           AND r.state IN (\'creating\',\'active\',\'expired\',\'manual_review\')), 0) AS blocked
              FROM commerce_products p
-             JOIN commerce_inventory i ON i.product_id = p.product_id
+             LEFT JOIN commerce_inventory i ON i.product_id = p.product_id
              WHERE p.product_id = ?'
         );
         $statement->execute([$productId]);
@@ -744,14 +812,19 @@ final class CarmajaCommercePdo
             throw new CarmajaCommerceException('product_not_found', 'Produkt ist nicht verfÃ¼gbar.', 404);
         }
 
-        $available = max(0, (int) $row['on_hand'] - (int) $row['blocked']);
+        $salesModel = (string) ($row['sales_model'] ?? 'unique');
+        $available = $salesModel === 'collection'
+            ? (int) $row['sales_enabled'] === 1
+            : max(0, (int) $row['on_hand'] - (int) $row['blocked']) > 0;
 
         return [
             'productId' => (string) $row['product_id'],
             'priceMinor' => (int) $row['price_minor'],
             'currency' => (string) $row['currency'],
-            'buyable' => (int) $row['sales_enabled'] === 1 && $available > 0,
-            'availableQuantity' => $available,
+            'buyable' => (int) $row['sales_enabled'] === 1 && $available,
+            'available' => (int) $row['sales_enabled'] === 1 && $available,
+            'availableQuantity' => $salesModel === 'collection' ? null : ($available ? 1 : 0),
+            'salesModel' => $salesModel,
             'productVersion' => (int) $row['product_version'],
             'responseAt' => gmdate(DATE_ATOM),
         ];
@@ -1040,6 +1113,113 @@ final class CarmajaCommercePdo
         $journal->execute([$migrationId, $checksum]);
     }
 
+    public function projectCollectionProduct(
+        array $product,
+        string $action,
+        string $operationId,
+        string $requestHash
+    ): array {
+        carmaja_commerce_assert_id($operationId, 'operationId');
+        if (preg_match('/^[a-f0-9]{64}$/', $requestHash) !== 1
+            || !in_array($action, ['publish', 'archive', 'restore'], true)) {
+            throw new CarmajaCommerceException('projection_request_invalid', 'Produktprojektion ist ungültig.', 422);
+        }
+        $productId = (string) ($product['productId'] ?? '');
+        $productVersion = (int) ($product['productVersion'] ?? 0);
+        $sourceHash = (string) ($product['sourceHash'] ?? '');
+        $title = trim((string) ($product['title'] ?? $product['name'] ?? ''));
+        $priceMinor = (int) ($product['priceMinor'] ?? 0);
+        $currency = (string) ($product['currency'] ?? '');
+        if ($productId === '' || $productVersion < 1 || $title === ''
+            || preg_match('/^[a-f0-9]{64}$/', $sourceHash) !== 1
+            || $priceMinor < CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR
+            || $currency !== CARMAJA_COMMERCE_CURRENCY) {
+            throw new CarmajaCommerceException('projection_product_invalid', 'Produktprojektion ist unvollständig.', 422);
+        }
+
+        return $this->transaction(function (PDO $pdo) use (
+            $product,
+            $action,
+            $operationId,
+            $requestHash,
+            $productId,
+            $productVersion,
+            $sourceHash,
+            $title,
+            $priceMinor,
+            $currency
+        ): array {
+            $existing = $pdo->prepare(
+                'SELECT request_hash, result FROM product_projection_operations
+                 WHERE operation_id = ? FOR UPDATE'
+            );
+            $existing->execute([$operationId]);
+            $row = $existing->fetch(PDO::FETCH_ASSOC);
+            if (is_array($row)) {
+                if (!hash_equals((string) $row['request_hash'], $requestHash)) {
+                    throw new CarmajaCommerceException('idempotency_conflict', 'Vorgangskennung gehört zu einer anderen Anfrage.', 409);
+                }
+                $result = json_decode((string) $row['result'], true, 16, JSON_THROW_ON_ERROR);
+                return is_array($result) ? $result : [];
+            }
+
+            $salesEnabled = $action === 'archive' ? 0 : 1;
+            $upsert = $pdo->prepare(
+                'INSERT INTO commerce_products
+                    (product_id, product_version, source_hash, name, description,
+                     materials, metal_elements, bracelet_size, care_instructions,
+                     images, price_minor, currency, sales_enabled, sales_model, synchronized_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'collection\', UTC_TIMESTAMP(6))
+                 ON DUPLICATE KEY UPDATE
+                    product_version = VALUES(product_version),
+                    source_hash = VALUES(source_hash),
+                    name = VALUES(name), description = VALUES(description),
+                    materials = VALUES(materials), metal_elements = VALUES(metal_elements),
+                    bracelet_size = VALUES(bracelet_size),
+                    care_instructions = VALUES(care_instructions), images = VALUES(images),
+                    price_minor = VALUES(price_minor), currency = VALUES(currency),
+                    sales_enabled = VALUES(sales_enabled), sales_model = \'collection\',
+                    synchronized_at = UTC_TIMESTAMP(6)'
+            );
+            $upsert->execute([
+                $productId,
+                $productVersion,
+                $sourceHash,
+                $title,
+                (string) ($product['description'] ?? ''),
+                json_encode($product['materials'] ?? [], JSON_THROW_ON_ERROR),
+                json_encode($product['metalElements'] ?? [], JSON_THROW_ON_ERROR),
+                (string) ($product['braceletSizeCm'] ?? ''),
+                is_array($product['careInstructions'] ?? null)
+                    ? implode("\n", array_map('strval', $product['careInstructions']))
+                    : (string) ($product['careInstructions'] ?? ''),
+                json_encode($product['images'] ?? [], JSON_THROW_ON_ERROR),
+                $priceMinor,
+                $currency,
+                $salesEnabled,
+            ]);
+            $result = [
+                'productId' => $productId,
+                'productVersion' => $productVersion,
+                'salesModel' => 'collection',
+                'available' => $salesEnabled === 1,
+                'action' => $action,
+            ];
+            $pdo->prepare(
+                'INSERT INTO product_projection_operations
+                    (operation_id, request_hash, product_id, action, result)
+                 VALUES (?, ?, ?, ?, ?)'
+            )->execute([
+                $operationId,
+                $requestHash,
+                $productId,
+                $action,
+                json_encode($result, JSON_THROW_ON_ERROR),
+            ]);
+            return $result;
+        });
+    }
+
     public function transaction(callable $callback): mixed
     {
         $this->pdo->beginTransaction();
@@ -1075,7 +1255,7 @@ final class CarmajaCommercePdo
 
             $productStatement = $pdo->prepare(
                 'SELECT product_id, product_version, source_hash, price_minor,
-                    currency, sales_enabled FROM commerce_products
+                    currency, sales_enabled, sales_model FROM commerce_products
                  WHERE product_id = ? FOR UPDATE'
             );
             $productStatement->execute([$input['productId']]);
@@ -1092,24 +1272,30 @@ final class CarmajaCommercePdo
                 throw new CarmajaCommerceException('product_snapshot_stale', 'Produkt-Snapshot ist nicht mehr aktuell.', 409);
             }
 
-            $inventoryStatement = $pdo->prepare(
-                'SELECT on_hand FROM commerce_inventory WHERE product_id = ? FOR UPDATE'
-            );
-            $inventoryStatement->execute([$input['productId']]);
-            $inventory = $inventoryStatement->fetch(PDO::FETCH_ASSOC);
-            if (!is_array($inventory)) {
-                throw new CarmajaCommerceException('inventory_missing', 'Bestand ist nicht verfügbar.', 409);
+            $salesModel = (string) ($product['sales_model'] ?? 'unique');
+            if ($salesModel !== $input['salesModel']) {
+                throw new CarmajaCommerceException('product_snapshot_stale', 'Verkaufsmodell ist nicht mehr aktuell.', 409);
             }
+            if ($salesModel === 'unique') {
+                $inventoryStatement = $pdo->prepare(
+                    'SELECT on_hand FROM commerce_inventory WHERE product_id = ? FOR UPDATE'
+                );
+                $inventoryStatement->execute([$input['productId']]);
+                $inventory = $inventoryStatement->fetch(PDO::FETCH_ASSOC);
+                if (!is_array($inventory)) {
+                    throw new CarmajaCommerceException('inventory_missing', 'Bestand ist nicht verfügbar.', 409);
+                }
 
-            $blockingStatement = $pdo->prepare(
-                "SELECT COUNT(*) FROM reservations
-                 WHERE product_id = ? AND blocks_stock = 1
-                   AND state IN ('creating','active','expired','manual_review')
-                 FOR UPDATE"
-            );
-            $blockingStatement->execute([$input['productId']]);
-            if ((int) $inventory['on_hand'] - (int) $blockingStatement->fetchColumn() < 1) {
-                throw new CarmajaCommerceException('sold_out_or_reserved', 'Produkt ist nicht verfügbar.', 409);
+                $blockingStatement = $pdo->prepare(
+                    "SELECT COUNT(*) FROM reservations
+                     WHERE product_id = ? AND blocks_stock = 1
+                       AND state IN ('creating','active','expired','manual_review')
+                     FOR UPDATE"
+                );
+                $blockingStatement->execute([$input['productId']]);
+                if ((int) $inventory['on_hand'] - (int) $blockingStatement->fetchColumn() < 1) {
+                    throw new CarmajaCommerceException('sold_out_or_reserved', 'Produkt ist nicht verfügbar.', 409);
+                }
             }
 
             $legal = $pdo->prepare(
@@ -1125,15 +1311,15 @@ final class CarmajaCommercePdo
                 'INSERT INTO checkout_sagas
                     (checkout_id, idempotency_key, request_hash, product_id,
                      product_version, source_hash, price_minor, currency,
-                     shipping_snapshot, legal_bundle_id, state, expires_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'created\', ?)'
+                     shipping_snapshot, legal_bundle_id, sales_model, state, expires_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'created\', ?)'
             );
             $checkoutInsert->execute([
                 $input['checkoutId'], $input['idempotencyKey'], $input['requestHash'],
                 $input['productId'], $input['productVersion'], $input['sourceHash'],
                 $input['priceMinor'], $input['currency'],
                 json_encode($input['shippingSnapshot'], JSON_THROW_ON_ERROR),
-                $input['legalBundleId'], $input['expiresAt'],
+                $input['legalBundleId'], $salesModel, $input['expiresAt'],
             ]);
 
             $reservationId = carmaja_commerce_new_id();
@@ -1141,9 +1327,15 @@ final class CarmajaCommercePdo
                 'INSERT INTO reservations
                     (reservation_id, checkout_id, product_id, quantity, state,
                      blocks_stock, expires_at)
-                 VALUES (?, ?, ?, 1, \'active\', 1, ?)'
+                 VALUES (?, ?, ?, 1, \'active\', ?, ?)'
             );
-            $reservationInsert->execute([$reservationId, $input['checkoutId'], $input['productId'], $input['expiresAt']]);
+            $reservationInsert->execute([
+                $reservationId,
+                $input['checkoutId'],
+                $input['productId'],
+                $salesModel === 'unique' ? 1 : 0,
+                $input['expiresAt'],
+            ]);
 
             $paymentId = carmaja_commerce_new_id();
             $shippingAmount = (int) ($input['shippingSnapshot']['amountMinor'] ?? 0);
@@ -1170,7 +1362,7 @@ final class CarmajaCommercePdo
     {
         $statement = $this->pdo->prepare(
             'SELECT product_id, product_version, source_hash, name, price_minor,
-                    currency, sales_enabled
+                    currency, sales_enabled, sales_model
              FROM commerce_products WHERE product_id = ?'
         );
         $statement->execute([$productId]);
@@ -1295,8 +1487,11 @@ final class CarmajaCommercePdo
                 $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
                     ->execute([$checkoutId]);
                 $pdo->prepare(
-                    "UPDATE reservations SET state = 'manual_review', blocks_stock = 1
-                     WHERE checkout_id = ? AND state NOT IN ('converted','released')"
+                    "UPDATE reservations r
+                     JOIN checkout_sagas c ON c.checkout_id = r.checkout_id
+                     SET r.state = 'manual_review',
+                         r.blocks_stock = IF(c.sales_model = 'unique', 1, 0)
+                     WHERE r.checkout_id = ? AND r.state NOT IN ('converted','released')"
                 )->execute([$checkoutId]);
                 $this->openReviewCase($pdo, 'checkout', $checkoutId, 'stripe_creation_unknown');
                 return;
@@ -1347,7 +1542,11 @@ final class CarmajaCommercePdo
                 $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
                     ->execute([$checkoutId]);
                 $pdo->prepare(
-                    "UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?"
+                    "UPDATE reservations r
+                     JOIN checkout_sagas c ON c.checkout_id = r.checkout_id
+                     SET r.state = 'manual_review',
+                         r.blocks_stock = IF(c.sales_model = 'unique', 1, 0)
+                     WHERE r.checkout_id = ?"
                 )->execute([$checkoutId]);
                 if ($checkoutState !== 'manual_review') {
                     $this->openReviewCase(
@@ -1416,13 +1615,21 @@ final class CarmajaCommercePdo
                 && ($payment['payment_method_type'] === null
                     || $payment['payment_method_type'] === $paymentMethodType)
                 && $reservation['state'] === 'active'
-                && (int) $reservation['blocks_stock'] === 1;
+                && (int) $reservation['blocks_stock'] === (
+                    ($checkout['sales_model'] ?? 'unique') === 'unique' ? 1 : 0
+                );
             if (!$valid) {
                 $pdo->prepare("UPDATE payments SET status = 'manual_review', verification_status = 'manual_review' WHERE payment_id = ?")
                     ->execute([$payment['payment_id']]);
                 $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
                     ->execute([$checkoutId]);
-                $pdo->prepare("UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?")
+                $pdo->prepare(
+                    "UPDATE reservations r
+                     JOIN checkout_sagas c ON c.checkout_id = r.checkout_id
+                     SET r.state = 'manual_review',
+                         r.blocks_stock = IF(c.sales_model = 'unique', 1, 0)
+                     WHERE r.checkout_id = ?"
+                )
                     ->execute([$checkoutId]);
                 $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'processing_payment_verification_failed');
                 return ['paymentId' => $payment['payment_id'], 'status' => 'manual_review'];
@@ -1498,7 +1705,13 @@ final class CarmajaCommercePdo
                     ->execute([$payment['payment_id']]);
                 $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
                     ->execute([$checkoutId]);
-                $pdo->prepare("UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?")
+                $pdo->prepare(
+                    "UPDATE reservations r
+                     JOIN checkout_sagas c ON c.checkout_id = r.checkout_id
+                     SET r.state = 'manual_review',
+                         r.blocks_stock = IF(c.sales_model = 'unique', 1, 0)
+                     WHERE r.checkout_id = ?"
+                )
                     ->execute([$checkoutId]);
                 $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'async_failure_verification_failed');
                 return ['paymentId' => $payment['payment_id'], 'status' => 'manual_review'];
@@ -1534,9 +1747,12 @@ final class CarmajaCommercePdo
             if (!is_array($checkout)) {
                 throw new CarmajaCommerceException('checkout_not_found', 'Checkout fehlt.', 404);
             }
-            $inventoryStatement = $pdo->prepare('SELECT on_hand, inventory_version FROM commerce_inventory WHERE product_id = ? FOR UPDATE');
-            $inventoryStatement->execute([$checkout['product_id']]);
-            $inventory = $inventoryStatement->fetch(PDO::FETCH_ASSOC);
+            $inventory = null;
+            if (($checkout['sales_model'] ?? 'unique') === 'unique') {
+                $inventoryStatement = $pdo->prepare('SELECT on_hand, inventory_version FROM commerce_inventory WHERE product_id = ? FOR UPDATE');
+                $inventoryStatement->execute([$checkout['product_id']]);
+                $inventory = $inventoryStatement->fetch(PDO::FETCH_ASSOC);
+            }
             $paymentStatement = $pdo->prepare('SELECT * FROM payments WHERE checkout_id = ? FOR UPDATE');
             $paymentStatement->execute([$checkoutId]);
             $payment = $paymentStatement->fetch(PDO::FETCH_ASSOC);
@@ -1578,18 +1794,31 @@ final class CarmajaCommercePdo
                     ->execute([$payment['payment_id']]);
                 $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
                     ->execute([$checkoutId]);
-                $pdo->prepare("UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?")
+                $pdo->prepare(
+                    "UPDATE reservations r
+                     JOIN checkout_sagas c ON c.checkout_id = r.checkout_id
+                     SET r.state = 'manual_review',
+                         r.blocks_stock = IF(c.sales_model = 'unique', 1, 0)
+                     WHERE r.checkout_id = ?"
+                )
                     ->execute([$checkoutId]);
                 $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'payment_verification_failed');
                 return ['paymentId' => $payment['payment_id'], 'status' => 'manual_review'];
             }
 
-            if (!is_array($inventory) || (int) $inventory['on_hand'] !== 1) {
+            if (($checkout['sales_model'] ?? 'unique') === 'unique'
+                && (!is_array($inventory) || (int) $inventory['on_hand'] !== 1)) {
                 $pdo->prepare("UPDATE payments SET status = 'manual_review', verification_status = 'manual_review' WHERE payment_id = ?")
                     ->execute([$payment['payment_id']]);
                 $pdo->prepare("UPDATE checkout_sagas SET state = 'manual_review' WHERE checkout_id = ?")
                     ->execute([$checkoutId]);
-                $pdo->prepare("UPDATE reservations SET state = 'manual_review', blocks_stock = 1 WHERE checkout_id = ?")
+                $pdo->prepare(
+                    "UPDATE reservations r
+                     JOIN checkout_sagas c ON c.checkout_id = r.checkout_id
+                     SET r.state = 'manual_review',
+                         r.blocks_stock = IF(c.sales_model = 'unique', 1, 0)
+                     WHERE r.checkout_id = ?"
+                )
                     ->execute([$checkoutId]);
                 $this->openReviewCase($pdo, 'payment', $payment['payment_id'], 'inventory_conflict_after_payment');
                 return ['paymentId' => $payment['payment_id'], 'status' => 'manual_review'];
@@ -1676,9 +1905,11 @@ final class CarmajaCommercePdo
                     (shipment_id, order_id, status, shipping_method_id)
                  VALUES (?, ?, \'ready\', ?)'
             )->execute([carmaja_commerce_new_id(), $orderId, json_decode($shippingSnapshot, true, 512, JSON_THROW_ON_ERROR)['shippingMethodId'] ?? 'de-standard']);
-            $pdo->prepare(
-                'UPDATE commerce_inventory SET on_hand = 0, inventory_version = inventory_version + 1 WHERE product_id = ?'
-            )->execute([$checkout['product_id']]);
+            if (($checkout['sales_model'] ?? 'unique') === 'unique') {
+                $pdo->prepare(
+                    'UPDATE commerce_inventory SET on_hand = 0, inventory_version = inventory_version + 1 WHERE product_id = ?'
+                )->execute([$checkout['product_id']]);
+            }
             $pdo->prepare(
                 "UPDATE reservations SET state = 'converted', blocks_stock = 0, converted_at = UTC_TIMESTAMP(6) WHERE checkout_id = ?"
             )->execute([$checkoutId]);
@@ -1803,6 +2034,18 @@ final class CarmajaCommercePdo
             $existing = $idempotency->fetch(PDO::FETCH_ASSOC);
             if (is_array($existing)) {
                 return $existing;
+            }
+
+            $productModel = $pdo->prepare(
+                'SELECT sales_model FROM commerce_products WHERE product_id = ? FOR UPDATE'
+            );
+            $productModel->execute([$input['productId']]);
+            if ($productModel->fetchColumn() === 'collection') {
+                throw new CarmajaCommerceException(
+                    'inventory_not_used_for_collections',
+                    'Kollektionen verwenden keinen Bestand.',
+                    409
+                );
             }
 
             $select = $pdo->prepare(
@@ -2619,9 +2862,10 @@ final class CarmajaCommercePdo
             }
             $query = $pdo->prepare(
                 "SELECT o.order_id, oi.product_id, s.status AS shipment_status,
-                        w.state AS withdrawal_state
+                        w.state AS withdrawal_state, cp.sales_model
                  FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
                  JOIN shipments s ON s.order_id = o.order_id
+                 JOIN commerce_products cp ON cp.product_id = oi.product_id
                  LEFT JOIN withdrawal_requests w ON w.order_id = o.order_id
                  WHERE o.order_id = ? FOR UPDATE"
             );
@@ -2630,6 +2874,13 @@ final class CarmajaCommercePdo
             if (!is_array($row) || $row['shipment_status'] !== 'returned'
                 || !in_array((string) ($row['withdrawal_state'] ?? ''), ['reviewed', 'closed'], true)) {
                 throw new CarmajaCommerceException('restock_not_ready', 'Rückgabe ist noch nicht für Wiedereinlagerung freigegeben.', 409);
+            }
+            if (($row['sales_model'] ?? 'unique') === 'collection') {
+                throw new CarmajaCommerceException(
+                    'inventory_not_used_for_collections',
+                    'Kollektionen bleiben unabhängig von Rückgaben verfügbar.',
+                    409
+                );
             }
             $inventory = $pdo->prepare('SELECT on_hand, inventory_version FROM commerce_inventory WHERE product_id = ? FOR UPDATE');
             $inventory->execute([$row['product_id']]);

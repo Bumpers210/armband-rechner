@@ -30,7 +30,7 @@ test("AP3b-Vorwärtsmigration ergänzt Zahlungsart und processing", async () => 
   assert.match(migration, /'card', 'paypal', 'klarna', 'sepa_debit'/);
 });
 
-test("AP2-Schema hält die Unikatgründe und Binärbestand fest", async () => {
+test("Schema behält historische Unikatnachweise und ergänzt Kollektionen", async () => {
   const schema = await readFile(schemaPath, "utf8");
   for (const reason of [
     "activate_new_unique",
@@ -41,4 +41,17 @@ test("AP2-Schema hält die Unikatgründe und Binärbestand fest", async () => {
     assert.match(schema, new RegExp(reason));
   }
   assert.match(schema, /CHECK \(on_hand IN \(0, 1\)\)/);
+  assert.match(schema, /sales_model ENUM\('unique', 'collection'\)/);
+  assert.match(schema, /product_projection_operations/);
+});
+
+test("Kollektionen-Migration ist vorwärtsgerichtet und wiederholbar", async () => {
+  const migration = await readFile(
+    new URL("../../database/migrations/commerce-v2-collections.sql", import.meta.url),
+    "utf8",
+  );
+  assert.match(migration, /information_schema\.COLUMNS/);
+  assert.match(migration, /sales_model/);
+  assert.match(migration, /product_projection_operations/);
+  assert.doesNotMatch(migration, /targetOnHand|on_hand\s*=/);
 });

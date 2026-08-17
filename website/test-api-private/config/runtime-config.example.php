@@ -6,6 +6,10 @@ return [
     'environment' => 'test',
     'publishTarget' => 'test',
     'productionPublishEnabled' => false,
+    // Erst nach Abschluss eines offenen v3-Publishvorgangs aktivieren.
+    'productApiV4WritesEnabled' => false,
+    // Aktiviert /shop/v2 erst nach Migration und Testabnahme.
+    'collectionCommerceEnabled' => false,
     'privateDir' => '/home/www/carmaja-private-test',
     'testPrivateDir' => '/home/www/carmaja-private-test',
     'testApiWebroot' => '/home/www/carmaja-test-api',

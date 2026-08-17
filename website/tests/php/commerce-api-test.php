@@ -65,7 +65,133 @@ function checkout_input(string $id, string $key = 'ap2-checkout-0001'): array
     ];
 }
 
+function collection_fixture(): CarmajaCommerceMemory
+{
+    $commerce = new CarmajaCommerceMemory();
+    $commerce->addLegalBundle('legal-v1');
+    $commerce->seedProduct([
+        'productId' => 'CP-2026-COLLECTION',
+        'name' => 'Carmaja Kollektion',
+        'productVersion' => 1,
+        'sourceHash' => str_repeat('d', 64),
+        'priceMinor' => 4200,
+        'currency' => 'eur',
+        'salesEnabled' => true,
+        'salesModel' => 'collection',
+    ]);
+    return $commerce;
+}
+
+function collection_checkout_input(string $id): array
+{
+    $input = checkout_input($id, $id . '-idem');
+    $input['productId'] = 'CP-2026-COLLECTION';
+    $input['productVersion'] = 1;
+    $input['sourceHash'] = str_repeat('d', 64);
+    $input['salesModel'] = 'collection';
+    return $input;
+}
+
+function collection_payment_event(string $intentId, string $method = 'card'): array
+{
+    return [
+        'paymentStatus' => 'succeeded',
+        'paymentIntentStatus' => 'succeeded',
+        'paymentMethodType' => $method,
+        'stripePaymentIntentId' => $intentId,
+        'amountMinor' => 4690,
+        'currency' => 'eur',
+        'productId' => 'CP-2026-COLLECTION',
+        'legalBundleId' => 'legal-v1',
+        'termsAccepted' => true,
+    ];
+}
+
 $tests = [
+    'Zehn parallele Checkouts derselben Kollektion blockieren einander nicht' => static function (): void {
+        $commerce = collection_fixture();
+        for ($index = 1; $index <= 10; $index++) {
+            $checkoutId = 'collection-checkout-' . str_pad((string) $index, 2, '0', STR_PAD_LEFT);
+            $commerce->createCheckout(collection_checkout_input($checkoutId));
+        }
+        commerce_assert(count($commerce->reservations) === 10, 'Nicht alle Kollektionen-Checkouts wurden angelegt.');
+        foreach ($commerce->reservations as $reservation) {
+            commerce_assert($reservation['blocksStock'] === false, 'Kollektionen dürfen keinen Bestand blockieren.');
+        }
+        commerce_assert(!isset($commerce->inventory['CP-2026-COLLECTION']), 'Kollektion darf keine Bestandszeile benötigen.');
+    },
+    'Mehrere Kollektionen-Käufe lassen die Verfügbarkeit unverändert' => static function (): void {
+        $commerce = collection_fixture();
+        foreach ([1, 2] as $index) {
+            $checkoutId = 'collection-order-' . $index;
+            $commerce->createCheckout(collection_checkout_input($checkoutId));
+            $commerce->finalizePayment($checkoutId, collection_payment_event('pi_collection_' . $index));
+        }
+        commerce_assert(count($commerce->orders) === 2, 'Zwei Käufe müssen zwei Bestellungen erzeugen.');
+        commerce_assert($commerce->products['CP-2026-COLLECTION']['salesEnabled'] === true, 'Kauf hat Kollektion deaktiviert.');
+        commerce_assert(!isset($commerce->inventory['CP-2026-COLLECTION']), 'Kauf hat unerlaubt Bestand erzeugt.');
+    },
+    'Laufende SEPA-Zahlung blockiert keine weitere Kollektionen-Bestellung' => static function (): void {
+        $commerce = collection_fixture();
+        $first = 'collection-sepa-01';
+        $commerce->createCheckout(collection_checkout_input($first));
+        $processing = collection_payment_event('pi_collection_sepa', 'sepa_debit');
+        $processing['paymentStatus'] = 'processing';
+        $processing['paymentIntentStatus'] = 'processing';
+        $commerce->markPaymentProcessing($first, $processing);
+        commerce_assert($commerce->reservations[$first . '-reservation']['blocksStock'] === false, 'SEPA darf Kollektion nicht blockieren.');
+        $commerce->createCheckout(collection_checkout_input('collection-sepa-02'));
+        commerce_assert(count($commerce->checkouts) === 2, 'Zweiter Checkout wurde durch SEPA blockiert.');
+    },
+    'Archivieren sperrt neue Checkouts, bestehender Snapshot bleibt abschließbar' => static function (): void {
+        $commerce = collection_fixture();
+        $openCheckout = 'collection-before-archive';
+        $commerce->createCheckout(collection_checkout_input($openCheckout));
+        $product = [
+            'productId' => 'CP-2026-COLLECTION', 'productVersion' => 1,
+            'sourceHash' => str_repeat('d', 64), 'title' => 'Carmaja Kollektion',
+            'priceMinor' => 4200, 'currency' => 'eur',
+        ];
+        $commerce->projectCollectionProduct(
+            $product,
+            'archive',
+            'collection-archive-operation',
+            str_repeat('e', 64)
+        );
+        commerce_exception(
+            static fn (): array => $commerce->createCheckout(collection_checkout_input('collection-after-archive')),
+            'product_snapshot_stale'
+        );
+        $commerce->finalizePayment($openCheckout, collection_payment_event('pi_after_archive'));
+        commerce_assert(count($commerce->orders) === 1, 'Offener Checkout wurde nach Archivierung nicht abgeschlossen.');
+    },
+    'Kollektionen-Projektion und Archivierung sind idempotent' => static function (): void {
+        $commerce = collection_fixture();
+        $product = [
+            'productId' => 'CP-2026-COLLECTION', 'productVersion' => 2,
+            'sourceHash' => str_repeat('f', 64), 'title' => 'Neue Fassung',
+            'priceMinor' => 4300, 'currency' => 'eur',
+        ];
+        $operationId = 'collection-publish-operation';
+        $requestHash = str_repeat('1', 64);
+        $first = $commerce->projectCollectionProduct($product, 'publish', $operationId, $requestHash);
+        $second = $commerce->projectCollectionProduct($product, 'publish', $operationId, $requestHash);
+        commerce_assert($first === $second, 'Projektionswiederholung liefert anderes Ergebnis.');
+        commerce_assert(count($commerce->projectionOperations) === 1, 'Projektionswiederholung erzeugt Duplikat.');
+        commerce_exception(
+            static fn (): array => $commerce->projectCollectionProduct($product, 'publish', $operationId, str_repeat('2', 64)),
+            'idempotency_conflict'
+        );
+    },
+    'Bestandskorrektur wird für Kollektionen abgewiesen' => static function (): void {
+        $commerce = collection_fixture();
+        commerce_exception(static fn (): array => $commerce->adjustInventory([
+            'productId' => 'CP-2026-COLLECTION', 'targetOnHand' => 1,
+            'expectedInventoryVersion' => 0, 'reason' => 'activate_new_unique',
+            'correlationId' => 'collection-adjust-correlation',
+            'idempotencyKey' => 'collection-adjust-operation',
+        ], 'admin-1'), 'inventory_not_used_for_collections');
+    },
     'Checkout, Reservierung und Payment sind getrennte Objekte' => static function (): void {
         $commerce = commerce_fixture();
         $checkout = $commerce->createCheckout(checkout_input('ap2-checkout-0001'));

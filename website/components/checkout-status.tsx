@@ -28,7 +28,7 @@ function customerMessage(status: CheckoutStatus): string {
     return "Die Zahlung ist fehlgeschlagen. Es wurde keine Bestellung angelegt.";
   }
   if (status.state === "manual_review") {
-    return "Der Zahlungsstatus wird geprüft. Das Unikat bleibt bis zur Klärung reserviert.";
+    return "Der Zahlungsstatus wird geprüft. Andere Bestellungen dieser Kollektion bleiben möglich.";
   }
   return "Stripe hat den Checkout zurückgemeldet. Die signierte Zahlungsbestätigung steht noch aus.";
 }
@@ -51,7 +51,7 @@ export function CheckoutStatusPanel() {
     const poll = async (): Promise<void> => {
       try {
         const response = await fetch(
-          `${apiOrigin}/shop/v1/checkouts/${encodeURIComponent(checkoutId)}/status`,
+          `${apiOrigin}/shop/v2/checkouts/${encodeURIComponent(checkoutId)}/status`,
           { credentials: "include", cache: "no-store" },
         );
         const body = await response.json().catch(() => null);

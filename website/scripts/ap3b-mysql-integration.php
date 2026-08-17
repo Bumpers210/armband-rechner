@@ -555,7 +555,62 @@ function ap3b_main(array $args): int
         )->fetchColumn();
         ap3b_assert((int) $journalCount === 1, 'migration_not_idempotent');
 
+        $collectionMigration = dirname(__DIR__)
+            . '/database/migrations/commerce-v2-collections.sql';
+        $commerce->migrateForward('commerce-v2-collections', $collectionMigration);
+        $commerce->migrateForward('commerce-v2-collections', $collectionMigration);
+        $collectionJournalCount = $source->query(
+            "SELECT COUNT(*) FROM schema_migrations
+             WHERE migration_id = 'commerce-v2-collections'"
+        )->fetchColumn();
+        ap3b_assert((int) $collectionJournalCount === 1, 'collection_migration_not_idempotent');
+
+        $collectionProduct = [
+            'productId' => 'AP3B-COLLECTION',
+            'productVersion' => 1,
+            'sourceHash' => str_repeat('6', 64),
+            'title' => 'AP3b Kunstkollektion',
+            'description' => 'Kuenstliche Kollektion fuer den MySQL-Test.',
+            'materials' => ['test'],
+            'metalElements' => [],
+            'braceletSizeCm' => 18,
+            'careInstructions' => [],
+            'images' => [['src' => '/images/products/test/01.jpg']],
+            'priceMinor' => 4200,
+            'currency' => 'eur',
+        ];
+        $commerce->projectCollectionProduct(
+            $collectionProduct,
+            'publish',
+            'ap3b-collection-publish-operation',
+            str_repeat('7', 64)
+        );
+        $commerce->projectCollectionProduct(
+            $collectionProduct,
+            'publish',
+            'ap3b-collection-publish-operation',
+            str_repeat('7', 64)
+        );
+        $collectionInventory = $source->query(
+            "SELECT COUNT(*) FROM commerce_inventory WHERE product_id = 'AP3B-COLLECTION'"
+        )->fetchColumn();
+        ap3b_assert((int) $collectionInventory === 0, 'collection_inventory_was_created');
+
         ap3b_seed_legal($source);
+        for ($index = 1; $index <= 10; $index++) {
+            $checkoutId = sprintf('35000000-0000-4000-8000-%012d', $index);
+            $input = ap3b_checkout($checkoutId, 'AP3B-COLLECTION', str_repeat('6', 64));
+            $input['salesModel'] = 'collection';
+            $commerce->createCheckout($input);
+        }
+        $nonBlockingReservations = $source->query(
+            "SELECT COUNT(*) FROM reservations r
+             INNER JOIN checkout_sagas c ON c.checkout_id = r.checkout_id
+             WHERE c.product_id = 'AP3B-COLLECTION' AND r.blocks_stock = 0"
+        )->fetchColumn();
+        ap3b_assert((int) $nonBlockingReservations === 10, 'collection_parallel_checkouts_blocked');
+        $collectionLive = $commerce->loadLiveProduct('AP3B-COLLECTION');
+        ap3b_assert(($collectionLive['available'] ?? false) === true, 'collection_became_unavailable');
         $methods = ['card', 'paypal', 'klarna'];
         foreach ($methods as $index => $method) {
             $productId = 'AP3B-' . strtoupper($method);
@@ -686,6 +741,9 @@ function ap3b_main(array $args): int
                 'mysql8InnoDbTls' => true,
                 'migrationFromAp5' => true,
                 'migrationIdempotent' => true,
+                'collectionMigrationIdempotent' => true,
+                'collectionHasNoInventory' => true,
+                'tenCollectionCheckouts' => true,
                 'fourPaymentMethods' => true,
                 'processingBlocksStock' => true,
                 'noOrderBeforeSuccess' => true,

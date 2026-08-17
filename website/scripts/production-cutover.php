@@ -29,14 +29,14 @@ function carmaja_cutover_sha256_file(string $path): string
 
 function carmaja_cutover_validate_contract(array $manifest, string $repositoryRoot): array
 {
-    if (($manifest['manifestVersion'] ?? null) !== 1
+    if (($manifest['manifestVersion'] ?? null) !== 2
         || ($manifest['environment'] ?? null) !== 'production'
-        || ($manifest['productModelVersion'] ?? null) !== 2
-        || ($manifest['inventorySource'] ?? null) !== 'commerce_inventory.on_hand') {
+        || ($manifest['productModelVersion'] ?? null) !== 3
+        || ($manifest['salesModel'] ?? null) !== 'collection'
+        || ($manifest['availabilitySource'] ?? null) !== 'commerce_products.sales_enabled') {
         throw new CarmajaProductionCutoverException('cutover_contract_invalid');
     }
-    if (($manifest['paymentMethodTypes'] ?? null)
-        !== ['card', 'klarna', 'sepa_debit']) {
+    if (($manifest['paymentMethodTypes'] ?? null) !== ['card', 'klarna', 'sepa_debit']) {
         throw new CarmajaProductionCutoverException('payment_method_contract_invalid');
     }
     $shipping = $manifest['shipping'] ?? null;
@@ -48,103 +48,63 @@ function carmaja_cutover_validate_contract(array $manifest, string $repositoryRo
     }
     $legal = $manifest['legalBundle'] ?? null;
     if (!is_array($legal)
-        || ($legal['legalBundleId'] ?? null) !== 'cmj-production-legal-2026-08-11-v4'
-        || ($legal['status'] ?? null) !== 'approved') {
+        || ($legal['legalBundleId'] ?? null) !== 'cmj-production-legal-2026-08-16-v5'
+        || !in_array(($legal['status'] ?? null), ['draft', 'approved'], true)) {
         throw new CarmajaProductionCutoverException('legal_bundle_contract_invalid');
     }
-
     $migrations = $manifest['schemaMigrations'] ?? null;
-    if (!is_array($migrations) || count($migrations) !== 3) {
+    if (!is_array($migrations) || count($migrations) !== 1 || !is_array($migrations[0])) {
         throw new CarmajaProductionCutoverException('migration_manifest_invalid');
     }
-    foreach ($migrations as $migration) {
-        if (!is_array($migration)
-            || preg_match('/^[A-Za-z0-9._:-]{1,100}$/', (string) ($migration['migrationId'] ?? '')) !== 1
-            || preg_match('/^[0-9a-f]{64}$/', (string) ($migration['fileSha256'] ?? '')) !== 1
-            || preg_match('/^[0-9a-f]{64}$/', (string) ($migration['journalSha256'] ?? '')) !== 1) {
-            throw new CarmajaProductionCutoverException('migration_manifest_invalid');
-        }
-        $relativePath = str_replace('/', DIRECTORY_SEPARATOR, (string) ($migration['path'] ?? ''));
-        $absolutePath = $repositoryRoot . DIRECTORY_SEPARATOR . $relativePath;
-        if (!hash_equals($migration['fileSha256'], carmaja_cutover_sha256_file($absolutePath))) {
-            throw new CarmajaProductionCutoverException('migration_file_hash_mismatch');
-        }
+    $migration = $migrations[0];
+    if (($migration['migrationId'] ?? null) !== 'commerce-v2-collections'
+        || ($migration['path'] ?? null) !== 'website/database/migrations/commerce-v2-collections.sql'
+        || preg_match('/^[0-9a-f]{64}$/', (string) ($migration['fileSha256'] ?? '')) !== 1
+        || preg_match('/^[0-9a-f]{64}$/', (string) ($migration['journalSha256'] ?? '')) !== 1) {
+        throw new CarmajaProductionCutoverException('migration_manifest_invalid');
+    }
+    $absolutePath = $repositoryRoot . DIRECTORY_SEPARATOR
+        . str_replace('/', DIRECTORY_SEPARATOR, (string) $migration['path']);
+    if (!hash_equals((string) $migration['fileSha256'], carmaja_cutover_sha256_file($absolutePath))) {
+        throw new CarmajaProductionCutoverException('migration_file_hash_mismatch');
     }
 
-    $selection = $manifest['selectedProducts'] ?? null;
-    $approved = ($manifest['status'] ?? null) === 'approved_for_cutover';
+    $selection = $manifest['selectedCollections'] ?? null;
+    $approved = ($manifest['status'] ?? null) === 'approved_for_cutover'
+        && ($legal['status'] ?? null) === 'approved';
     return [
         'approved' => $approved,
         'selectedProductCount' => is_array($selection) ? count($selection) : -1,
-        'legalBundleId' => $legal['legalBundleId'],
+        'legalBundleId' => (string) $legal['legalBundleId'],
     ];
-}
-
-function carmaja_cutover_canonicalize(mixed $value): mixed
-{
-    if (!is_array($value)) {
-        return $value;
-    }
-    if (array_is_list($value)) {
-        return array_map('carmaja_cutover_canonicalize', $value);
-    }
-    ksort($value, SORT_STRING);
-    foreach ($value as $key => $entry) {
-        $value[$key] = carmaja_cutover_canonicalize($entry);
-    }
-    return $value;
-}
-
-function carmaja_cutover_source_hash(array $product): string
-{
-    $canonical = [
-        'braceletSizeCm' => $product['braceletSizeCm'] ?? 0,
-        'careInstructions' => array_values($product['careInstructions'] ?? []),
-        'currency' => (string) ($product['currency'] ?? ''),
-        'description' => (string) ($product['description'] ?? ''),
-        'images' => array_values($product['images'] ?? []),
-        'materials' => array_values($product['materials'] ?? []),
-        'metalElements' => array_values($product['metalElements'] ?? []),
-        'productModelVersion' => 2,
-        'name' => (string) ($product['name'] ?? ''),
-        'pearlSizeMm' => $product['pearlSizeMm'] ?? 0,
-        'priceMinor' => (int) ($product['priceMinor'] ?? 0),
-        'productId' => (string) ($product['productId'] ?? ''),
-        'productVersion' => (int) ($product['productVersion'] ?? 0),
-        'salesEnabled' => (bool) ($product['salesEnabled'] ?? false),
-    ];
-    return hash('sha256', json_encode(
-        carmaja_cutover_canonicalize($canonical),
-        JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
-    ));
 }
 
 function carmaja_cutover_selected_product(array $manifest, array $productSource): array
 {
-    $selection = $manifest['selectedProducts'] ?? null;
+    $selection = $manifest['selectedCollections'] ?? null;
     if (($manifest['status'] ?? null) !== 'approved_for_cutover'
+        || ($manifest['legalBundle']['status'] ?? null) !== 'approved'
         || !is_array($selection) || count($selection) !== 1
         || !is_array($selection[0])) {
         throw new CarmajaProductionCutoverException('product_selection_not_approved');
     }
     $selected = $selection[0];
     $expectedKeys = [
-        'expectedProductVersion', 'expectedSourceHash', 'legacyStock',
-        'productId', 'targetOnHand',
+        'expectedProductVersion', 'expectedSourceHash', 'operationId', 'productId', 'sku',
     ];
     $keys = array_keys($selected);
     sort($keys);
     sort($expectedKeys);
     if ($keys !== $expectedKeys
-        || ($selected['legacyStock'] ?? null) !== 1
-        || ($selected['targetOnHand'] ?? null) !== 1
         || !is_int($selected['expectedProductVersion'] ?? null)
         || $selected['expectedProductVersion'] < 1
-        || preg_match('/^[0-9a-f]{64}$/', (string) ($selected['expectedSourceHash'] ?? '')) !== 1) {
+        || preg_match('/^[0-9a-f]{64}$/', (string) ($selected['expectedSourceHash'] ?? '')) !== 1
+        || preg_match('/^[A-Za-z0-9._:-]{8,100}$/', (string) ($selected['operationId'] ?? '')) !== 1
+        || !is_string($selected['productId'] ?? null) || $selected['productId'] === ''
+        || !is_string($selected['sku'] ?? null) || $selected['sku'] === '') {
         throw new CarmajaProductionCutoverException('product_selection_invalid');
     }
-    if (($productSource['productModelVersion'] ?? null) !== 2
-        || !is_array($productSource['products'] ?? null)) {
+    if (($productSource['version'] ?? null) !== 3 || !is_array($productSource['products'] ?? null)) {
         throw new CarmajaProductionCutoverException('product_source_invalid');
     }
     $matches = array_values(array_filter(
@@ -156,26 +116,17 @@ function carmaja_cutover_selected_product(array $manifest, array $productSource)
         throw new CarmajaProductionCutoverException('selected_product_not_unique');
     }
     $product = $matches[0];
-    if (($product['productModelVersion'] ?? null) !== 2
+    if (($product['productModelVersion'] ?? null) !== 3
         || ($product['productVersion'] ?? null) !== $selected['expectedProductVersion']
         || ($product['sourceHash'] ?? null) !== $selected['expectedSourceHash']
+        || ($product['sku'] ?? null) !== $selected['sku']
         || ($product['salesEnabled'] ?? null) !== true
         || ($product['currency'] ?? null) !== 'eur'
-        || !is_int($product['priceMinor'] ?? null)
-        || $product['priceMinor'] < 50
-        || !is_string($product['name'] ?? null)
-        || trim($product['name']) === ''
+        || !is_int($product['priceMinor'] ?? null) || $product['priceMinor'] < 50
+        || !is_string($product['title'] ?? null) || trim($product['title']) === ''
         || !is_string($product['description'] ?? null)
-        || (!is_int($product['braceletSizeCm'] ?? null) && !is_float($product['braceletSizeCm'] ?? null))
-        || (float) $product['braceletSizeCm'] <= 0
-        || (!is_int($product['pearlSizeMm'] ?? null) && !is_float($product['pearlSizeMm'] ?? null))
-        || (float) $product['pearlSizeMm'] <= 0
-        || !is_array($product['materials'] ?? null)
-        || !is_array($product['metalElements'] ?? null)
-        || !is_array($product['careInstructions'] ?? null)
-        || !is_array($product['images'] ?? null)
-        || count($product['images']) < 1
-        || !hash_equals($product['sourceHash'], carmaja_cutover_source_hash($product))) {
+        || !is_array($product['descriptionDocument'] ?? null)
+        || !is_array($product['images'] ?? null) || count($product['images']) < 1) {
         throw new CarmajaProductionCutoverException('selected_product_contract_mismatch');
     }
     return $product;
@@ -241,18 +192,12 @@ function carmaja_cutover_connect(array $config): PDO
 
 function carmaja_cutover_verify_database(PDO $pdo, array $manifest): void
 {
+    $migration = $manifest['schemaMigrations'][0];
     $query = $pdo->prepare('SELECT checksum FROM schema_migrations WHERE migration_id = ?');
-    foreach ($manifest['schemaMigrations'] as $migration) {
-        $query->execute([$migration['migrationId']]);
-        $stored = $query->fetchColumn();
-        if (!is_string($stored) || !hash_equals($migration['journalSha256'], $stored)) {
-            throw new CarmajaProductionCutoverException('migration_journal_mismatch');
-        }
-    }
-    foreach (['checkout_sagas', 'payments', 'orders', 'commerce_products', 'commerce_inventory'] as $table) {
-        if ((int) $pdo->query('SELECT COUNT(*) FROM ' . $table)->fetchColumn() !== 0) {
-            throw new CarmajaProductionCutoverException('commerce_not_empty');
-        }
+    $query->execute([$migration['migrationId']]);
+    $stored = $query->fetchColumn();
+    if (!is_string($stored) || !hash_equals((string) $migration['journalSha256'], $stored)) {
+        throw new CarmajaProductionCutoverException('migration_journal_mismatch');
     }
     $legal = $pdo->prepare('SELECT status FROM legal_bundles WHERE legal_bundle_id = ?');
     $legal->execute([$manifest['legalBundle']['legalBundleId']]);
@@ -263,39 +208,66 @@ function carmaja_cutover_verify_database(PDO $pdo, array $manifest): void
 
 function carmaja_cutover_apply(PDO $pdo, array $manifest, array $product): void
 {
-    $manifestHash = hash('sha256', json_encode($manifest, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+    $selected = $manifest['selectedCollections'][0];
+    $requestHash = hash('sha256', json_encode([
+        'action' => 'publish',
+        'operationId' => $selected['operationId'],
+        'productId' => $product['productId'],
+        'productVersion' => $product['productVersion'],
+        'sourceHash' => $product['sourceHash'],
+    ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
     $pdo->beginTransaction();
     try {
         carmaja_cutover_verify_database($pdo, $manifest);
-        $insertProduct = $pdo->prepare(
-            'INSERT INTO commerce_products
-             (product_id, product_version, source_hash, name, description, materials,
-              metal_elements, bracelet_size, care_instructions, images, price_minor,
-              currency, sales_enabled, synchronized_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, UTC_TIMESTAMP(6))'
+        $existing = $pdo->prepare(
+            'SELECT request_hash FROM product_projection_operations WHERE operation_id = ? FOR UPDATE'
         );
-        $insertProduct->execute([
-            $product['productId'], $product['productVersion'], $product['sourceHash'],
-            $product['name'], $product['description'],
-            json_encode($product['materials'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-            json_encode($product['metalElements'], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-            (string) $product['braceletSizeCm'], implode("\n", $product['careInstructions']),
-            json_encode($product['images'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+        $existing->execute([$selected['operationId']]);
+        $storedHash = $existing->fetchColumn();
+        if (is_string($storedHash)) {
+            if (!hash_equals($storedHash, $requestHash)) {
+                throw new CarmajaProductionCutoverException('idempotency_conflict');
+            }
+            $pdo->commit();
+            return;
+        }
+
+        $upsert = $pdo->prepare(
+            'INSERT INTO commerce_products
+                (product_id, product_version, source_hash, name, description, materials,
+                 metal_elements, bracelet_size, care_instructions, images, price_minor,
+                 currency, sales_enabled, sales_model, synchronized_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, \'collection\', UTC_TIMESTAMP(6))
+             ON DUPLICATE KEY UPDATE
+                product_version = VALUES(product_version), source_hash = VALUES(source_hash),
+                name = VALUES(name), description = VALUES(description), materials = VALUES(materials),
+                metal_elements = VALUES(metal_elements), bracelet_size = VALUES(bracelet_size),
+                care_instructions = VALUES(care_instructions), images = VALUES(images),
+                price_minor = VALUES(price_minor), currency = VALUES(currency),
+                sales_enabled = 1, sales_model = \'collection\', synchronized_at = UTC_TIMESTAMP(6)'
+        );
+        $care = $product['careInstructions'] ?? '';
+        $upsert->execute([
+            $product['productId'], $product['productVersion'], $product['sourceHash'], $product['title'],
+            $product['description'], json_encode($product['materials'] ?? [], JSON_THROW_ON_ERROR),
+            json_encode($product['metalElements'] ?? [], JSON_THROW_ON_ERROR),
+            (string) ($product['braceletSizeCm'] ?? ''),
+            is_array($care) ? implode("\n", array_map('strval', $care)) : (string) $care,
+            json_encode($product['images'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),
             $product['priceMinor'], $product['currency'],
         ]);
-        $pdo->prepare('INSERT INTO commerce_inventory (product_id, on_hand, inventory_version) VALUES (?, 0, 0)')
-            ->execute([$product['productId']]);
-        $pdo->prepare('UPDATE commerce_inventory SET on_hand = 1, inventory_version = 1 WHERE product_id = ?')
-            ->execute([$product['productId']]);
+        $result = json_encode([
+            'productId' => $product['productId'],
+            'productVersion' => $product['productVersion'],
+            'salesModel' => 'collection',
+            'available' => true,
+            'action' => 'publish',
+        ], JSON_THROW_ON_ERROR);
         $pdo->prepare(
-            'INSERT INTO inventory_adjustments
-             (product_id, target_on_hand, previous_on_hand, inventory_version, reason,
-              correlation_id, idempotency_key, actor_id)
-             VALUES (?, 1, 0, 1, ?, ?, ?, ?)'
-        )->execute([
-            $product['productId'], 'activate_new_unique', 'ap7-cutover-' . substr($manifestHash, 0, 24),
-            'ap7-cutover-' . $manifestHash, 'ap7-production-cutover',
-        ]);
+            'INSERT INTO product_projection_operations
+                (operation_id, request_hash, product_id, action, result)
+             VALUES (?, ?, ?, \'publish\', ?)'
+        )->execute([$selected['operationId'], $requestHash, $product['productId'], $result]);
         $pdo->commit();
     } catch (Throwable $error) {
         if ($pdo->inTransaction()) {
@@ -328,8 +300,7 @@ function carmaja_cutover_main(array $arguments): int
         throw new CarmajaProductionCutoverException('manifest_required');
     }
     $manifest = carmaja_cutover_read_json($manifestPath);
-    $repositoryRoot = dirname(__DIR__, 2);
-    $contract = carmaja_cutover_validate_contract($manifest, $repositoryRoot);
+    $contract = carmaja_cutover_validate_contract($manifest, dirname(__DIR__, 2));
     $mode = $options['mode'] ?? 'plan';
     if ($mode === 'plan') {
         echo json_encode([
@@ -338,11 +309,13 @@ function carmaja_cutover_main(array $arguments): int
             'readyForApply' => $contract['approved'] && $contract['selectedProductCount'] === 1,
             'selectedProductCount' => $contract['selectedProductCount'],
             'legalBundleId' => $contract['legalBundleId'],
+            'salesModel' => 'collection',
+            'inventoryMutation' => false,
         ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL;
         return 0;
     }
     if ($mode !== 'apply'
-        || ($options['confirmation'] ?? null) !== 'APPLY-CARMAJA-PRODUCTION-CUTOVER') {
+        || ($options['confirmation'] ?? null) !== 'APPLY-CARMAJA-PRODUCTION-COLLECTION-CUTOVER') {
         throw new CarmajaProductionCutoverException('cutover_confirmation_missing');
     }
     $productsPath = $options['products'] ?? null;
@@ -356,7 +329,8 @@ function carmaja_cutover_main(array $arguments): int
         $manifest,
         $product
     );
-    echo json_encode(['ok' => true, 'mode' => 'apply'], JSON_THROW_ON_ERROR) . PHP_EOL;
+    echo json_encode(['ok' => true, 'mode' => 'apply', 'salesModel' => 'collection'], JSON_THROW_ON_ERROR)
+        . PHP_EOL;
     return 0;
 }
 
@@ -364,7 +338,7 @@ if (!defined('CARMAJA_PRODUCTION_CUTOVER_NO_RUN')) {
     try {
         exit(carmaja_cutover_main($argv));
     } catch (Throwable $error) {
-        fwrite(STDERR, 'AP7-Cutover abgebrochen: ' . $error->getMessage() . PHP_EOL);
+        fwrite(STDERR, 'Kollektionen-Cutover abgebrochen: ' . $error->getMessage() . PHP_EOL);
         exit(1);
     }
 }

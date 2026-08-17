@@ -35,51 +35,42 @@ abgenommen. Die Produktions-App und die Produktions-API blieben unverändert.
 
 **Stop:** abweichender Commit, unaufgelöster Review oder ungeprüfter Build.
 
-## 2. Startprodukt
+## 2. Startkollektion
 
-- [x] Genau einen realen Datensatz aus der autoritativen Produktverwaltung
+- [x] Ares als realen Datensatz aus der autoritativen Produktverwaltung
   auswählen.
-- [x] Produktmodell `2`, eindeutige `productId`, monotone `productVersion` und
+- [ ] Ares mit der aktuellen App auf Produktmodell 3 speichern und eindeutige
+  `productId`, unveränderte SKU/Adresse, monotone `productVersion` und
   serverseitigen 64-stelligen `sourceHash` nachweisen.
-- [x] Namen, Beschreibung, Bilder, Preis `>= 50` Cent, Währung `eur`,
-  `salesEnabled=false`, bisherigen Wert `stock=1` aus der unveränderten
-  Migrationssicherung und Zielbestand `onHand=1` fachlich bestätigen.
-- [x] Produkt- und Bildprojektion mit der öffentlichen v2-Projektion
-  vergleichen; keine externen Verkaufsfelder zulassen.
-- [x] Nur diesen Datensatz mit `legacyStock=1`, `targetOnHand=1`, erwarteter
-  Version und erwartetem Hash in
-  `website/config/production-cutover-manifest.v1.json` eintragen.
-- [ ] Manifeststatus erst nach Vier-Augen-Prüfung auf
-  `approved_for_cutover` setzen.
+- [ ] Namen, formatierte Beschreibung, Bilder, Preis `>= 50` Cent und Währung
+  `eur` fachlich bestätigen. `stock`, `targetOnHand` und ein Bestandsimport
+  sind nicht Teil des Vertrags.
+- [ ] Produkt- und Bildprojektion mit der öffentlichen v3-Projektion
+  vergleichen; keine internen Felder zulassen.
+- [ ] Ares mit erwarteter Version, erwartetem Hash und dauerhafter
+  Vorgangskennung in `website/config/production-collection-cutover-manifest.v2.json`
+  eintragen.
+- [ ] Manifeststatus erst nach Vier-Augen-Prüfung und freigegebenem Legal
+  Bundle v5 auf `approved_for_cutover` setzen.
 
-**Aktueller Nachweis:** Produkt
-`3a37a0a2-9bd6-4410-aa9c-a465fdc411a1` ist als Produktmodell V2 mit
-`productVersion=1`, Preis 2800 Cent, Währung EUR, `salesEnabled=false` und
-serverseitigem `sourceHash`
-`09cd71d56561b08b8373c3bc804d3298b47096c470751da3407a5e0eff1e4444`
-vorbereitet. Die ausschließlich lesende Prüfung der unveränderten
-Migrationssicherung `20260810-193548-5cebba9e` bestätigte den früheren Wert
-`stock=1`. Das Manifest bindet genau dieses Produkt, bleibt mit Status
-`prepared_awaiting_cutover_approval` aber nicht ausführbar.
+**Aktueller Nachweis:** Ares ist öffentlich als `CP-2026-0002` vorhanden.
+Die aktuelle Version und der Quellhash müssen unmittelbar vor dem Cutover neu
+gelesen und gebunden werden. Die frühere Bestandsauswahl ist überholt und darf
+nicht ausgeführt werden.
 
-Vor einer späteren Freigabe sind `salesEnabled=true`, die dadurch neu
-entstehenden Werte für `productVersion` und `sourceHash` sowie alle übrigen
-Produkt- und Cutovergates erneut zu prüfen und atomar im Manifest zu binden.
-Der aktuell vorbereitete Hash darf nicht freigegeben oder für den Cutover
-verwendet werden.
+**Stop:** kein exakt passender Ares-Datensatz, fehlende v3-Speicherung,
+irgendein Feldkonflikt oder nicht freigegebenes Legal Bundle v5.
 
-**Stop:** kein exakt passender v2-Datensatz oder irgendein Feldkonflikt.
+## 3. Öffentliche Produktprojektion
 
-## 3. Parallele Verkaufsangebote
+- [ ] Öffentliche Produktseite, Produktprojektion, Hosting und Suchindex auf
+  unerwünschte externe Kauflinks prüfen.
+- [ ] Belegen, dass App und Publisher Verfügbarkeit nur durch
+  Veröffentlichen, Archivieren und Wiederherstellen ändern.
+- [ ] Belegen, dass Archivieren zuerst neue Checkouts sperrt und danach Seite,
+  Sitemap und öffentliche Bilder entfernt.
 
-- [x] Alle Vinted-Angebote und sonstigen parallelen Verkaufsangebote des
-  ausgewählten Unikats deaktivieren oder löschen.
-- [x] Öffentliche Produktseite, Produktprojektion, Hosting und Suchindex auf
-  verbleibende externe Kauflinks prüfen.
-- [x] Betreiberin bestätigt schriftlich, dass der eigene Shop der einzige
-  Verkaufskanal ist.
-
-**Stop:** weiterhin kaufbares externes Angebot.
+**Stop:** abweichende Produktprojektion oder ein Checkout trotz Archivierung.
 
 ## 4. Produktionsdatenbank
 
@@ -229,7 +220,7 @@ bestandener Restore.
 - [x] Private Programme nach `/home/www/carmaja-private-shop/program`, Worker
   nach `/home/www/carmaja-private-shop/worker.php` und öffentlichen Einstieg
   in den bestehenden Webroot `/home/www/carmaja-production-api` staged
-  bereitstellen. Die Shop-API bleibt unter `/shop/v1`; ein zweiter
+  bereitstellen. Die Shop-API bleibt unter `/shop/v2`; ein zweiter
   öffentlicher API-Webroot ist ausgeschlossen.
 - [x] Release-SHA und alle Artefakthashes vor atomarer Aktivierung prüfen.
 - [x] Öffentlicher Einstieg darf nur den privaten Produktions-Bootstrap laden;
@@ -277,16 +268,17 @@ Produktionszustand wurde dabei nicht verändert. Details stehen in
 - [x] Neue Checkouts bis zum ausdrücklich freigegebenen Cutover deaktiviert
   halten.
 - [ ] Produktverwaltung für das kurze Cutoverfenster sperren.
-- [x] Alte `stock`-Schreibwege durch den V2-Vertrag vom Commerce-Bestand
-  trennen und Clients unter Mindestversion serverseitig sperren.
+- [ ] Alte v2-/v3-Schreibwege nach Aktivierung von `/v4` sperren und Clients
+  unter Mindestversion verständlich zum Update auffordern.
 - [ ] Finales Backup erneut bestätigen.
 - [ ] Cutoveradapter zuerst mit `--mode=plan` ausführen und Ausgabe gegen das
   freigegebene Manifest prüfen.
 - [ ] Apply nur mit der expliziten Produktionsbestätigung ausführen.
 - [ ] Atomar prüfen: `commerce_products` entspricht Quellversion/-hash,
-  `commerce_inventory.on_hand=1`, `inventoryVersion=1` und genau ein
-  `activate_new_unique`-Auditdatensatz.
-- [ ] Nach erstem Commerce-Checkout ist ein Rollback zu `stock` verboten.
+  `sales_model=collection`, `sales_enabled=1`, keine neue Inventory-Zeile und
+  genau ein idempotenter Projektionsvorgang.
+- [ ] Nach erstem Kollektionen-Checkout bei Problemen neue Checkouts schließen;
+  keine Rückkehr zu `stock` oder `onHand`.
 
 **Stop:** jede Abweichung; bei unklarem Zustand Shop deaktivieren und Daten
 nicht zurückschreiben.
@@ -298,15 +290,15 @@ nicht zurückschreiben.
 - [x] Danach `CARMAJA_PRODUCTION_DEPLOY_ENABLED` wieder auf `false` setzen.
 - [x] Öffentliche Legal-Seiten, Footer, fehlende interne Bundle-Metadaten,
   fehlende PayPal-/Testmarker und erfolgreiche Antworten live prüfen.
-- [ ] Genau das ausgewählte Produkt aktivieren; alle weiteren Produkte bleiben
-  deaktiviert.
+- [ ] Ares als aktive Kollektion projizieren; Testprodukte bleiben getrennt.
 - [ ] Live-Preis, EUR, Verfügbarkeit, Versand, Legal Consent, Datenschutz- und
   Widerrufsseiten prüfen.
 - [ ] Eine echte Erstbestellung als Gast mit Menge 1 kontrolliert durchführen.
-- [ ] Reservierung, Stripe-Zustand, Webhook-Inbox, Worker, atomare Bestellung,
-  Bestellnummer, Bestandsabgang, Brevo-Mail, Admin und Versandfreigabe prüfen.
+- [ ] Nicht blockierende Zuordnung, Stripe-Zustand, Webhook-Inbox, Worker,
+  atomare Bestellung, Bestellnummer, unveränderte Verfügbarkeit, Brevo-Mail,
+  Admin und Versandfreigabe prüfen.
 - [ ] Beobachtungsfenster ohne weitere Produktfreigabe abschließen; bei jedem
   Widerspruch neue Checkouts deaktivieren.
 
 **Stop:** falscher Preis/Versand, fehlende Zustimmung, doppelte Bestellung,
-unklare Zahlung, falscher Bestand, fehlende Mail oder Worker-/Webhookfehler.
+unklare Zahlung, geänderte Verfügbarkeit, fehlende Mail oder Worker-/Webhookfehler.

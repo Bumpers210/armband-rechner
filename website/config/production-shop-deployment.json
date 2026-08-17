@@ -45,6 +45,8 @@
     "stateChangesOnly": true
   },
   "shop": {
+    "apiVersion": 2,
+    "salesModel": "collection",
     "paymentMethodTypes": ["card", "klarna", "sepa_debit"],
     "shippingMethodId": "deutsche-post-maxibrief",
     "shippingPublicName": "Deutsche Post Maxibrief",
@@ -60,6 +62,8 @@
     "productionDataAccess": false,
     "publisherEnabled": false,
     "automaticApiDeployment": false,
-    "automaticWebsiteDeployment": false
+    "automaticWebsiteDeployment": false,
+    "productApiV4WritesEnabled": false,
+    "collectionCommerceEnabled": false
   }
 }

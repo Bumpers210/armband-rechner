@@ -8,6 +8,8 @@ return [
     'environment' => 'production',
     'publishTarget' => 'production',
     'productionPublishEnabled' => false,
+    'productApiV4WritesEnabled' => false,
+    'collectionCommerceEnabled' => false,
     'privateDir' => '/home/www/carmaja-private-shop',
     'productPrivateDir' => '/home/www/carmaja-private-production',
     'productionPrivateDir' => '/home/www/carmaja-private-shop',

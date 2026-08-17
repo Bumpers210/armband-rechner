@@ -2764,11 +2764,14 @@ function carmaja_api_commit_public_product(
             'public_product_model_conflict'
         );
     }
-    $publicProductForJson = array_diff_key($publicProduct, ['_imageBlobs' => true]);
+    $publicProductForJson = array_diff_key($publicProduct, [
+        '_imageBlobs' => true,
+        '_removePublic' => true,
+    ]);
     $replaced = false;
     $existingPublicProduct = null;
-    $isRemoval = !$isVersionedProduct
-        && ($publicProductForJson['status'] ?? null) === 'disabled';
+    $isRemoval = ($publicProduct['_removePublic'] ?? false) === true
+        || (!$isVersionedProduct && ($publicProductForJson['status'] ?? null) === 'disabled');
 
     foreach ($products as $index => $product) {
         $sameProduct = is_array($product) && (

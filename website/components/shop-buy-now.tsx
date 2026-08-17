@@ -6,8 +6,7 @@ type LiveProduct = {
   productId: string;
   priceMinor: number;
   currency: string;
-  buyable: boolean;
-  availableQuantity: number;
+  available: boolean;
 };
 
 const apiOrigin =
@@ -39,14 +38,14 @@ export function ShopBuyNow({ productId }: { productId: string }) {
     let cancelled = false;
     async function load(): Promise<void> {
       try {
-        const context = await fetch(`${apiOrigin}/shop/v1/context`, {
+        const context = await fetch(`${apiOrigin}/shop/v2/context`, {
           credentials: "include",
           cache: "no-store",
         });
         if (!context.ok) throw new Error("context");
         const contextJson = await context.json();
         const product = await fetch(
-          `${apiOrigin}/shop/v1/products/${encodeURIComponent(productId)}`,
+          `${apiOrigin}/shop/v2/products/${encodeURIComponent(productId)}`,
           { credentials: "include", cache: "no-store" },
         );
         if (!product.ok) throw new Error("product");
@@ -57,8 +56,8 @@ export function ShopBuyNow({ productId }: { productId: string }) {
           throw new Error("response");
         }
         setLive(liveProduct);
-        setState(liveProduct.buyable ? "ready" : "error");
-        setMessage(liveProduct.buyable ? "Jetzt sicher kaufen" : "Vorübergehend nicht verfügbar");
+        setState(liveProduct.available ? "ready" : "error");
+        setMessage(liveProduct.available ? "Jetzt sicher kaufen" : "Vorübergehend nicht verfügbar");
       } catch {
         if (!cancelled) {
           setState("error");
@@ -76,13 +75,13 @@ export function ShopBuyNow({ productId }: { productId: string }) {
     setState("starting");
     setMessage("Checkout wird vorbereitet …");
     try {
-      const contextResponse = await fetch(`${apiOrigin}/shop/v1/context`, {
+      const contextResponse = await fetch(`${apiOrigin}/shop/v2/context`, {
         credentials: "include",
         cache: "no-store",
       });
       const contextJson = await contextResponse.json();
       if (!contextResponse.ok) throw new Error("context");
-      const response = await fetch(`${apiOrigin}/shop/v1/checkouts`, {
+      const response = await fetch(`${apiOrigin}/shop/v2/checkouts`, {
         method: "POST",
         credentials: "include",
         cache: "no-store",

@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS commerce_products (
     price_minor INT UNSIGNED NOT NULL,
     currency CHAR(3) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     sales_enabled TINYINT(1) NOT NULL,
+    sales_model ENUM('unique', 'collection') NOT NULL DEFAULT 'unique',
     synchronized_at TIMESTAMP(6) NOT NULL,
     updated_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
         ON UPDATE CURRENT_TIMESTAMP(6),
@@ -58,6 +59,22 @@ CREATE TABLE IF NOT EXISTS commerce_inventory (
     CONSTRAINT fk_inventory_product FOREIGN KEY (product_id)
         REFERENCES commerce_products (product_id),
     CONSTRAINT chk_inventory_binary CHECK (on_hand IN (0, 1))
+) ENGINE=InnoDB;
+
+-- Legacy inventory remains available for historical unique-product records.
+-- Collection products never receive or read an inventory row.
+
+CREATE TABLE IF NOT EXISTS product_projection_operations (
+    operation_id VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    request_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    product_id VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    action ENUM('publish', 'archive', 'restore') NOT NULL,
+    result JSON NOT NULL,
+    created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+    PRIMARY KEY (operation_id),
+    KEY idx_projection_product (product_id, created_at),
+    CONSTRAINT fk_projection_product FOREIGN KEY (product_id)
+        REFERENCES commerce_products (product_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS inventory_adjustments (
@@ -93,6 +110,7 @@ CREATE TABLE IF NOT EXISTS checkout_sagas (
     currency CHAR(3) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     shipping_snapshot JSON NOT NULL,
     legal_bundle_id VARCHAR(100) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    sales_model ENUM('unique', 'collection') NOT NULL DEFAULT 'unique',
     state VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     failure_code VARCHAR(80) CHARACTER SET ascii COLLATE ascii_bin NULL,
     expires_at DATETIME(6) NOT NULL,
