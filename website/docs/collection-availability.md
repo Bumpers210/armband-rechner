@@ -71,4 +71,12 @@ Für Produktion sind zusätzlich erforderlich:
 4. idempotente Vorwärtsmigration `commerce-v2-collections.sql`;
 5. kontrollierte Projektion von Ares als aktive Kollektion ohne Bestandsimport.
 
+### Freigabe von Legal Bundle v5 am 18. August 2026
+
+Die Shopbetreiberfreigabe ist dem Prüfpaket `ap8-2026-08-16-v1` und dem
+Produktions-Legal-Bundle `cmj-production-legal-2026-08-16-v5` eindeutig
+zugeordnet. Das Bundle ist im Repository freigegeben. Produktionsdeployment,
+Checkoutstart und Kollektionen-Cutover bleiben eigene, weiterhin gesperrte
+Arbeitsschritte.
+
 Nach dem ersten Kollektionen-Checkout gibt es keinen Rückfall auf die Einzelstücklogik. Bei einem Problem werden neue Checkouts geschlossen. Bestellungen und Commerce-Daten werden weder zurückgesetzt noch in `stock` oder `onHand` zurückgeschrieben.
