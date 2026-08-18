@@ -1921,6 +1921,24 @@ carmaja_api_test('IONOS-Diagnose erlaubt fehlende Produktionspfade im Testmodus'
     }
 });
 
+carmaja_api_test('IONOS-Diagnose erlaubt fehlende Testpfade im Produktionsmodus', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    carmaja_api_test_use_target($fixture, 'production');
+    putenv('CARMAJA_TEST_PRIVATE_DIR');
+    putenv('CARMAJA_TEST_API_WEBROOT');
+    putenv('CARMAJA_TEST_WEBSITE_WEBROOT');
+
+    $result = carmaja_api_diagnose_environment();
+    $encoded = json_encode($result, JSON_THROW_ON_ERROR);
+
+    carmaja_api_test_same(true, $result['ok'], 'Diagnose muss erfolgreich sein.');
+    carmaja_api_test_same('production', $result['publishTarget'], 'Diagnoseziel stimmt nicht.');
+    carmaja_api_test_assert(
+        !str_contains($encoded, $fixture['root']),
+        'Diagnoseausgabe darf keine privaten Pfade enthalten.'
+    );
+});
+
 carmaja_api_test('Produktmodell v2 erzeugt Version und sourceHash serverseitig', static function (): void {
     carmaja_api_test_fixture();
     $productId = '11111111-1111-4111-8111-111111111111';

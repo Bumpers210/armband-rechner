@@ -3544,11 +3544,15 @@ function carmaja_api_diagnose_environment(): array
     $target = carmaja_api_publish_target();
     $private = carmaja_api_private_dir();
     $publicWebroot = carmaja_api_required_directory_setting('CARMAJA_PUBLIC_WEBROOT');
-    $testPrivateDir = carmaja_api_required_directory_setting('CARMAJA_TEST_PRIVATE_DIR');
-    $testApiWebroot = carmaja_api_required_directory_setting('CARMAJA_TEST_API_WEBROOT');
-    $testWebsiteWebroot = carmaja_api_required_directory_setting(
-        'CARMAJA_TEST_WEBSITE_WEBROOT'
-    );
+    $testPrivateDir = $target === 'test'
+        ? carmaja_api_required_directory_setting('CARMAJA_TEST_PRIVATE_DIR')
+        : carmaja_api_optional_path_setting('CARMAJA_TEST_PRIVATE_DIR');
+    $testApiWebroot = $target === 'test'
+        ? carmaja_api_required_directory_setting('CARMAJA_TEST_API_WEBROOT')
+        : carmaja_api_optional_path_setting('CARMAJA_TEST_API_WEBROOT');
+    $testWebsiteWebroot = $target === 'test'
+        ? carmaja_api_required_directory_setting('CARMAJA_TEST_WEBSITE_WEBROOT')
+        : carmaja_api_optional_path_setting('CARMAJA_TEST_WEBSITE_WEBROOT');
     $productionPrivateDir = $target === 'production'
         ? carmaja_api_required_directory_setting('CARMAJA_PRODUCTION_PRIVATE_DIR')
         : carmaja_api_optional_path_setting('CARMAJA_PRODUCTION_PRIVATE_DIR');
