@@ -1,6 +1,6 @@
 # Checkout-Hinweise – Änderungsfassung v5
 
-Status: **Entwurf – nicht freigegeben**  
+Status: **freigegeben**
 Dokumentversion: `ap8-legal-review-2026-08-16-v1/checkout-notices`  
 Standdatum: `2026-08-16`
 

@@ -1,13 +1,15 @@
 {
   "packageId": "ap8-2026-08-16-v1",
-  "status": "entwurf_nicht_freigegeben",
+  "status": "freigegeben",
   "createdAt": "2026-08-16",
-  "approvalType": "external_review_required",
+  "approvedAt": "2026-08-18",
+  "approvalType": "shop_operator_confirmation",
   "approvalEvidenceStored": false,
+  "approvalEvidenceNote": "Keine personenbezogenen oder vertraulichen Nachweisinhalte im Repository.",
   "legalBundleId": "cmj-production-legal-2026-08-16-v5",
-  "legalBundleStatus": "draft",
-  "legalBundleContentSha256": "ce39a7b3dffca205c53ee30a7c0a08226595f1325c033c6788db634c6239ebef",
-  "supersedesAfterApproval": "cmj-production-legal-2026-08-11-v4",
+  "legalBundleStatus": "approved",
+  "legalBundleContentSha256": "dd37346635df45d48b9789484940942783606946ceec7ff3eed3e4173f1aef49",
+  "supersedes": "cmj-production-legal-2026-08-11-v4",
   "hashContract": {
     "content": "SHA-256 over exact UTF-8 text between hash-begin and hash-end after LF normalization; markers excluded",
     "file": "SHA-256 over complete file bytes"
@@ -16,32 +18,32 @@
     {
       "file": "00-prueferuebersicht.md",
       "version": "ap8-legal-review-2026-08-16-v1/overview",
-      "contentSha256": "b288d16095747516ad4234c4316c461c15c2f53ef779c3b0cd96624784ad4263",
-      "fileSha256": "38df58af981568c9972775e04f5a9b0974f49f9787a513241ea6449c9d51d6f9"
+      "contentSha256": "13b4000f7a888120a311f1c7887fbd19d9011102861b55d1fa1db9d7f53b88a3",
+      "fileSha256": "f622e29cfc889cbd0ff71dd9ea6a859623018d3dbecbe36129b7b4ae51316bce"
     },
     {
       "file": "01-shopbedingungen-agb.md",
       "version": "ap8-legal-review-2026-08-16-v1/terms",
       "contentSha256": "b5ed29fddfaa553d8035f81a2fa807018b380fbcbbd8edd0bb27cc4c07959e78",
-      "fileSha256": "a0cbdf199df464b04caa7e014a5dd62415afbaca5793629d96fd9805b8187650"
+      "fileSha256": "33a6839dde519952c499b447f211c1c2aff461c5b07a359b477157eb37e2409a"
     },
     {
       "file": "02-versand-und-zahlung.md",
       "version": "ap8-legal-review-2026-08-16-v1/shipping-payment",
       "contentSha256": "4a96355d534b232edc25a7db23ccbe4b38c144a24d571d97540d73bda52e3c01",
-      "fileSha256": "88a6c9fa140ade0747b1f7264140730a0eaaf842ca6369d2a72d26194e7c950a"
+      "fileSha256": "de92d549bab352b4ec55ddae8ebd912401b02c4d02672938820f5b6e8a7816f1"
     },
     {
       "file": "03-checkout-hinweise.md",
       "version": "ap8-legal-review-2026-08-16-v1/checkout-notices",
       "contentSha256": "9234841b3339adb63ec6860393e4859e12993d6861ccc2e6ebba3d15e220a4ac",
-      "fileSha256": "da64c6c61370d5bd97c4701025b5c481df1068739c8d2c5afbb19850ede7d8e5"
+      "fileSha256": "25b0f231f6091f4e8e082a14585ff8ad67a0859174d262323f4467d7d726105e"
     },
     {
-      "file": "04-freigabevermerk-vorlage.md",
+      "file": "04-freigabevermerk.md",
       "version": "ap8-legal-review-2026-08-16-v1/approval-record",
-      "contentSha256": "ba7dbec92e623eccc23a49ab3533a6c9d4d98aae0e9d1232fc613b642e80742c",
-      "fileSha256": "564965e281a8dc6571c4ba1f6b6f603d0a7bcfc8da73fb50a7cc65ea1728d2ca"
+      "contentSha256": "39edc7354bf0d7806331c13fdef4f9645730400d45cc5275a9f778c85a1c5b6a",
+      "fileSha256": "d2d7e9520fa17c7fb61767c2c83e83f58bbb8b836f92e3d356a7bb0b482389c6"
     }
   ]
 }

@@ -50,10 +50,10 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsa
   assert.equal(deployment.shop.salesModel, "collection");
   assert.equal(cutover.shipping.amountMinor, 270);
   assert.match(runtime, /'shippingAmountMinor'\s*=>\s*270/);
-  assert.equal(deployment.shop.legalBundleId, "cmj-production-legal-2026-08-11-v4");
+  assert.equal(deployment.shop.legalBundleId, "cmj-production-legal-2026-08-16-v5");
   assert.equal(cutover.legalBundle.legalBundleId, "cmj-production-legal-2026-08-16-v5");
-  assert.equal(cutover.legalBundle.status, "draft");
-  assert.match(runtime, /cmj-production-legal-2026-08-11-v4/);
+  assert.equal(cutover.legalBundle.status, "approved");
+  assert.match(runtime, /cmj-production-legal-2026-08-16-v5/);
   assert.equal(deployment.paths.worker, "/home/www/carmaja-private-shop/worker.php");
   assert.equal(deployment.paths.backupCli, "/home/www/carmaja-private-shop/backup.php");
   assert.equal(deployment.paths.backupDirectory, "/home/www/carmaja-private-shop/backups");
@@ -109,7 +109,7 @@ test("Website und v2-Publisher besitzen keinen produktiven Legacy-Verkaufsweg", 
 test("Kollektionen-Cutover ist versioniert, an Ares gebunden und unfreigegeben", async () => {
   const manifest = JSON.parse(await text("website/config/production-collection-cutover-manifest.v2.json"));
   assert.equal(manifest.manifestVersion, 2);
-  assert.equal(manifest.status, "prepared_awaiting_test_and_legal_approval");
+  assert.equal(manifest.status, "prepared_awaiting_product_binding");
   assert.equal(manifest.salesModel, "collection");
   assert.equal(manifest.availabilitySource, "commerce_products.sales_enabled");
   assert.deepEqual(manifest.selectedCollections, [{

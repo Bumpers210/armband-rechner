@@ -39,8 +39,8 @@ test("Signierung bleibt geschützt, gepinnt und wird wieder entfernt", () => {
 
 test("Produktions-APK bleibt von Test-App und Test-API getrennt", () => {
   assert.match(workflow, /package: name='de\.carmajaperlen\.armbandrechner'/);
-  assert.match(workflow, /versionCode='4'/);
-  assert.match(workflow, /versionName='1\.1\.2'/);
+  assert.match(workflow, /versionCode='5'/);
+  assert.match(workflow, /versionName='1\.3\.0'/);
   assert.match(workflow, /https:\/\/api\.carmaja-perlen\.de\//);
   assert.match(workflow, /! grep -Fq 'https:\/\/test-api\.carmaja-perlen\.de\/'/);
   assert.match(workflow, /installation requires separate approval/);
@@ -52,4 +52,6 @@ test("unsignierte Produktionsvalidierung läuft auch für relevante main-PRs", (
   assert.match(validationWorkflow, /android-production-release\.yml/);
   assert.match(validationWorkflow, /connectedDebugAndroidTest/);
   assert.match(validationWorkflow, /allowUnsignedProductionValidation=true/);
+  assert.match(validationWorkflow, /versionCode='5'/);
+  assert.match(validationWorkflow, /versionName='1\.3\.0'/);
 });

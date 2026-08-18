@@ -33,6 +33,7 @@ test("AP4-Bootstrap interpretiert MySQL-DATETIME verbindlich als UTC", async () 
 test("Shop-v2-Checkout verwendet nur Live-Verfügbarkeit und keine Bestandsmenge", async () => {
   const page = await source("app/armbaender/[slug]/page.tsx");
   const buyNow = await source("components/shop-buy-now.tsx");
+  const styles = await source("app/site.css");
   assert.match(page, /ShopBuyNow/);
   assert.doesNotMatch(page, /product\.stock/);
   assert.match(buyNow, /cache: "no-store"/);
@@ -40,6 +41,10 @@ test("Shop-v2-Checkout verwendet nur Live-Verfügbarkeit und keine Bestandsmenge
   assert.match(buyNow, /liveProduct\.available/);
   assert.doesNotMatch(buyNow, /availableQuantity|buyable/);
   assert.match(buyNow, /Jetzt kaufen/);
+  assert.doesNotMatch(buyNow, /Jetzt sicher kaufen/);
+  assert.match(buyNow, /message \? <p className="shop-message">/);
+  assert.match(styles, /\.shop-price[\s\S]*font-size: clamp\(2\.15rem, 8vw, 2\.8rem\)/);
+  assert.match(styles, /\.shop-buy-button[\s\S]*min-height: 4\.35rem/);
 });
 
 test("AP4-Widerruf verlangt Vorschau und ausdrückliche Bestätigung", async () => {

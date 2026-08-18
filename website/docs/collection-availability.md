@@ -1,7 +1,7 @@
 # Kollektionen und Verfügbarkeit
 
 Stand: 2026-08-16  
-Status: technische Umsetzung; Test- und Produktionsaktivierung ausstehend
+Status: Testabnahme und Legal-Freigabe abgeschlossen; Produktionsaktivierung ausstehend
 
 Dieses Dokument ersetzt für neue Shopstände die bisherige Annahme „Unikatbestand 1“. Historische Abnahmeprotokolle bleiben unverändert, damit frühere Entscheidungen nachvollziehbar bleiben.
 
@@ -28,7 +28,7 @@ Reservierungen bleiben zur Zuordnung und Wiederholungsvermeidung bestehen, trage
 
 ## Aktivierungsgrenzen
 
-Die Schalter `productApiV4WritesEnabled` und `collectionCommerceEnabled` bleiben bis zur Testabnahme auf `false`. Vor der Aktivierung muss der offene Veröffentlichungsversuch „test 3“ eindeutig abgeschlossen oder verworfen sein. Danach werden Schreibzugriffe älterer Apps verständlich abgewiesen; lesender Zugriff auf alte Produktmodelle bleibt möglich.
+Die Testabnahme einschließlich Veröffentlichen, parallelem Kaufen, Archivieren und Wiederherstellen ist abgeschlossen. Legal Bundle v5 ist freigegeben. Die Schalter `productApiV4WritesEnabled` und `collectionCommerceEnabled` bleiben bis zum kontrollierten Produktionsfenster auf `false`. Danach werden Schreibzugriffe älterer Apps verständlich abgewiesen; lesender Zugriff auf alte Produktmodelle bleibt möglich.
 
 ### Auflösung von „test 3“ am 17. August 2026
 
@@ -65,10 +65,17 @@ lokal gespeicherten Entwurf beginnen.
 
 Für Produktion sind zusätzlich erforderlich:
 
-1. vollständige Testabnahme von Veröffentlichen, parallelem Kaufen, Archivieren und Wiederherstellen;
-2. freigegebenes Legal Bundle v5;
-3. frisches verschlüsseltes Backup, geprüfte OneDrive-Übertragung und isolierte Restore-Probe;
-4. idempotente Vorwärtsmigration `commerce-v2-collections.sql`;
-5. kontrollierte Projektion von Ares als aktive Kollektion ohne Bestandsimport.
+1. idempotente Vorwärtsmigration `commerce-v2-collections.sql` bei geschlossenem Shop;
+2. Ares mit der Produktions-App 1.3.0 speichern und Version sowie Quellhash binden;
+3. unmittelbar vor dem Cutover die Aktualität des verschlüsselten Backups bestätigen;
+4. kontrollierte Projektion von Ares als aktive Kollektion ohne Bestandsimport.
+
+### Freigabe von Legal Bundle v5 am 18. August 2026
+
+Die Shopbetreiberfreigabe ist dem Prüfpaket `ap8-2026-08-16-v1` und dem
+Produktions-Legal-Bundle `cmj-production-legal-2026-08-16-v5` eindeutig
+zugeordnet. Das Bundle ist im Repository freigegeben. Produktionsdeployment,
+Checkoutstart und Kollektionen-Cutover bleiben eigene, weiterhin gesperrte
+Arbeitsschritte.
 
 Nach dem ersten Kollektionen-Checkout gibt es keinen Rückfall auf die Einzelstücklogik. Bei einem Problem werden neue Checkouts geschlossen. Bestellungen und Commerce-Daten werden weder zurückgesetzt noch in `stock` oder `onHand` zurückgeschrieben.

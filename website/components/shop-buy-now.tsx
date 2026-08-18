@@ -57,7 +57,7 @@ export function ShopBuyNow({ productId }: { productId: string }) {
         }
         setLive(liveProduct);
         setState(liveProduct.available ? "ready" : "error");
-        setMessage(liveProduct.available ? "Jetzt sicher kaufen" : "Vorübergehend nicht verfügbar");
+        setMessage(liveProduct.available ? "" : "Vorübergehend nicht verfügbar");
       } catch {
         if (!cancelled) {
           setState("error");
@@ -110,8 +110,13 @@ export function ShopBuyNow({ productId }: { productId: string }) {
   return (
     <section className="shop-buy-now" aria-live="polite">
       {live ? <p className="shop-price">{formatPrice(live)}</p> : null}
-      <p>{message}</p>
-      <button type="button" disabled={state !== "ready"} onClick={() => void startCheckout()}>
+      {message ? <p className="shop-message">{message}</p> : null}
+      <button
+        className="shop-buy-button"
+        type="button"
+        disabled={state !== "ready"}
+        onClick={() => void startCheckout()}
+      >
         {state === "starting" ? "Wird vorbereitet …" : "Jetzt kaufen"}
       </button>
     </section>

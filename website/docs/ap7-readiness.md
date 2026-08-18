@@ -25,6 +25,20 @@ Aktueller `main`-Stand: `b55d457fb0dfa1886a6ba00612882024023c4488`
 Aktuell bereitgestellter Produktionswebsite-Stand:
 `01e86d61c4eb6b620e013ccb64522dc6b90adf1c`
 
+## Aktualisierung 18. August 2026
+
+- Testabnahme von formatierten Beschreibungen, Vorschau, parallelem Kaufen,
+  Archivieren und Wiederherstellen: abgeschlossen.
+- Legal Bundle `cmj-production-legal-2026-08-16-v5` und Prüfpaket
+  `ap8-2026-08-16-v1`: freigegeben.
+- Frisches verschlüsseltes Produktionsbackup: nach OneDrive übertragen,
+  quittiert und isoliert vollständig wiederhergestellt und verglichen.
+- Produktions-App-Kandidat: Version `1.3.0`, Versionscode `5`.
+- Noch offen: geschlossene Codebereitstellung, Ares-Bindung, Cutover,
+  Produktionswebsite, erste echte Gastbestellung und Beobachtungsfenster.
+- Produkt-API-v4-Schreiben, Kollektionen-Checkout und Publisher bleiben bis zu
+  den jeweiligen kontrollierten Schritten ausgeschaltet.
+
 ## Urteil
 
 Der Android-Versions- und Draft-Synchronisierungsblocker ist in AP7.2b

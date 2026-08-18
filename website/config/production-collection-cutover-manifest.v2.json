@@ -1,7 +1,7 @@
 {
   "manifestVersion": 2,
   "environment": "production",
-  "status": "prepared_awaiting_test_and_legal_approval",
+  "status": "prepared_awaiting_product_binding",
   "productModelVersion": 3,
   "salesModel": "collection",
   "availabilitySource": "commerce_products.sales_enabled",
@@ -15,7 +15,7 @@
   ],
   "legalBundle": {
     "legalBundleId": "cmj-production-legal-2026-08-16-v5",
-    "status": "draft",
+    "status": "approved",
     "reviewManifest": "website/docs/legal-review/ap8-2026-08-16-v1/manifest.json"
   },
   "shipping": {

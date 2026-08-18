@@ -77,6 +77,11 @@ test("Technische Seiten und Footer bieten alle öffentlichen Legal-Einstiege an"
   }
   const footer = await readFile(new URL("../../components/site-footer.tsx", import.meta.url), "utf8");
   for (const route of routes) assert.match(footer, new RegExp(`/${route}`));
+  assert.match(
+    footer,
+    /<Link href="\/widerruf\/">Vertrag widerrufen<\/Link>/,
+    "Der dauerhaft erreichbare Zugang zur Widerrufsfunktion muss eindeutig beschriftet sein.",
+  );
 });
 
 test("Legal-Bundle-Archiv wird für das aktive Buildziel statisch erzeugt", async () => {
@@ -120,7 +125,7 @@ test("freigegebene AP6-Produktionsfassung ist dem aktuellen Shopvertrag zugeordn
   assert.match(source, /zahlungspflichtig bestellen/);
 });
 
-test("freigegebene Produktionsfassung v4 entfernt PayPal und ist aktiv", async () => {
+test("freigegebene Produktionsfassung v4 bleibt unverändert archiviert", async () => {
   const source = await readFile(new URL("../../content/legal-bundles.ts", import.meta.url), "utf8");
   const candidateStart = source.indexOf("const productionApprovedTextsV4");
   const candidateEnd = source.indexOf("export const testLegalBundle");
@@ -133,32 +138,36 @@ test("freigegebene Produktionsfassung v4 entfernt PayPal und ist aktiv", async (
   assert.match(source, /export const productionLegalBundleV4/);
   assert.match(source, /status: "approved"/);
   assert.match(source, /0bc420ad6dd574ae0005d63f9e6c494d6db18a71b4a9f294314209f0b4dea9f1/);
-  assert.match(source, /production: \[productionLegalBundleV4, productionLegalBundle\]/);
-});
-
-test("Legal Bundle v5 beschreibt Kollektionen und bleibt bis zur Abnahme inaktiv", async () => {
-  const source = await readFile(new URL("../../content/legal-bundles.ts", import.meta.url), "utf8");
-  assert.match(source, /id: "cmj-production-legal-2026-08-16-v5"/);
-  assert.match(source, /export const productionLegalBundleV5Draft/);
-  assert.match(source, /status: "awaiting_external_approval"/);
-  assert.match(source, /ce39a7b3dffca205c53ee30a7c0a08226595f1325c033c6788db634c6239ebef/);
-  assert.match(source, /wiederholt bestellbaren Kollektion/);
-  assert.match(source, /Andere Kundinnen und Kunden können dieselbe aktive Kollektion/);
-  assert.doesNotMatch(
+  assert.match(
     source,
-    /production: \[productionLegalBundleV5Draft/,
-    "Ungeprüfter v5-Entwurf darf nicht aktiv sein.",
+    /production: \[productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle\]/,
   );
 });
 
-test("v5-Prüfpaket ist vollständig gehasht und ausdrücklich nicht freigegeben", async () => {
+test("freigegebenes Legal Bundle v5 beschreibt Kollektionen und ist aktiv", async () => {
+  const source = await readFile(new URL("../../content/legal-bundles.ts", import.meta.url), "utf8");
+  assert.match(source, /id: "cmj-production-legal-2026-08-16-v5"/);
+  assert.match(source, /export const productionLegalBundleV5/);
+  assert.doesNotMatch(source, /productionLegalBundleV5Draft|awaiting_external_approval/);
+  assert.match(source, /dd37346635df45d48b9789484940942783606946ceec7ff3eed3e4173f1aef49/);
+  assert.match(source, /wiederholt bestellbaren Kollektion/);
+  assert.match(source, /Andere Kundinnen und Kunden können dieselbe aktive Kollektion/);
+  assert.match(
+    source,
+    /production: \[productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle\]/,
+  );
+});
+
+test("freigegebenes v5-Prüfpaket ist vollständig gehasht", async () => {
   const packageBase = new URL("../../docs/legal-review/ap8-2026-08-16-v1/", import.meta.url);
   const manifest = JSON.parse(await readFile(new URL("manifest.json", packageBase), "utf8"));
-  assert.equal(manifest.status, "entwurf_nicht_freigegeben");
-  assert.equal(manifest.legalBundleStatus, "draft");
+  assert.equal(manifest.status, "freigegeben");
+  assert.equal(manifest.approvalType, "shop_operator_confirmation");
+  assert.equal(manifest.approvalEvidenceStored, false);
+  assert.equal(manifest.legalBundleStatus, "approved");
   assert.equal(
     manifest.legalBundleContentSha256,
-    "ce39a7b3dffca205c53ee30a7c0a08226595f1325c033c6788db634c6239ebef",
+    "dd37346635df45d48b9789484940942783606946ceec7ff3eed3e4173f1aef49",
   );
 
   for (const document of manifest.documents) {
@@ -171,6 +180,7 @@ test("v5-Prüfpaket ist vollständig gehasht und ausdrücklich nicht freigegeben
       .digest("hex");
     assert.equal(contentHash, document.contentSha256, `${document.file}: Inhalts-Hash`);
     assert.equal(createHash("sha256").update(bytes).digest("hex"), document.fileSha256, `${document.file}: Datei-Hash`);
+    assert.match(fileText, /Status: \*\*freigegeben\*\*/);
   }
 });
 
