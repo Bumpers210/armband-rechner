@@ -77,6 +77,11 @@ test("Technische Seiten und Footer bieten alle öffentlichen Legal-Einstiege an"
   }
   const footer = await readFile(new URL("../../components/site-footer.tsx", import.meta.url), "utf8");
   for (const route of routes) assert.match(footer, new RegExp(`/${route}`));
+  assert.match(
+    footer,
+    /<Link href="\/widerruf\/">Vertrag widerrufen<\/Link>/,
+    "Der dauerhaft erreichbare Zugang zur Widerrufsfunktion muss eindeutig beschriftet sein.",
+  );
 });
 
 test("Legal-Bundle-Archiv wird für das aktive Buildziel statisch erzeugt", async () => {
