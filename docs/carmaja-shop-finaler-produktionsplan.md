@@ -1,6 +1,6 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
-Stand: 2026-08-11
+Stand: 2026-08-18
 Änderungsvermerk: AP1, AP2, AP2a, AP3, AP4 und AP5 sind abgeschlossen und
 abgenommen. AP3b ist für `card`, `paypal`, `klarna` und `sepa_debit` technisch
 vollständig abgenommen; die AP6-Gesamtregression wurde danach erfolgreich
@@ -53,6 +53,22 @@ AP7.3d-Abschlusscommit: `3ae346c095d8564c07ce6539a70d38a936a20ff6`
 Produktionsziel: ausschließlich der eigene Carmaja-Shop. Parallele externe
 Verkaufsangebote müssen vor dem produktiven Cutover deaktiviert oder gelöscht
 sein; eine Synchronisierung wird nicht entwickelt.
+
+## Aktualisierung zum Kollektionen-Produktionskandidaten
+
+Die formatierte Produktbeschreibung, die verpflichtende App-Vorschau und das
+Kollektionen-Modell sind auf der Testumgebung abgenommen. Legal Bundle v5 und
+das Prüfpaket `ap8-2026-08-16-v1` sind freigegeben. Das frische verschlüsselte
+Produktionsbackup vom 18. August wurde hashgeprüft nach OneDrive übertragen,
+serverseitig quittiert und in einer isolierten Restore-Datenbank vollständig
+wiederhergestellt und verglichen.
+
+Der Produktionskandidat verwendet App-Version `1.3.0` mit Versionscode `5`,
+Produkt-API v4 und Shop-API v2. Bis zum kontrollierten Produktionsfenster
+bleiben `productionPublishEnabled`, `productApiV4WritesEnabled` und
+`collectionCommerceEnabled` auf `false`. Ares ist noch nicht an Version,
+Quellhash und dauerhafte Vorgangskennung gebunden; das Cutovermanifest bleibt
+deshalb ausdrücklich nicht zur Anwendung freigegeben.
 
 ## Aktueller AP7-Produktionsstand
 
