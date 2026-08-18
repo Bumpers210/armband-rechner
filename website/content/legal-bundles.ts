@@ -265,7 +265,7 @@ const productionApprovedTextsV4: LegalBundleTexts = {
   ),
 };
 
-const productionDraftTextsV5: LegalBundleTexts = {
+const productionApprovedTextsV5: LegalBundleTexts = {
   terms: productionApprovedTextsV4.terms.map((section) => {
     if (section.heading === "1. Geltungsbereich") {
       return {
@@ -336,21 +336,21 @@ export const productionLegalBundleV4: LegalBundle = createLegalBundle({
   texts: productionApprovedTextsV4,
 });
 
-export const PRODUCTION_LEGAL_BUNDLE_V5_DRAFT_CONTENT_SHA256 =
-  "ce39a7b3dffca205c53ee30a7c0a08226595f1325c033c6788db634c6239ebef";
+export const PRODUCTION_LEGAL_BUNDLE_V5_CONTENT_SHA256 =
+  "dd37346635df45d48b9789484940942783606946ceec7ff3eed3e4173f1aef49";
 
-export const productionLegalBundleV5Draft: LegalBundle = createLegalBundle({
+export const productionLegalBundleV5: LegalBundle = createLegalBundle({
   id: "cmj-production-legal-2026-08-16-v5",
   environment: "production",
   version: "v5",
-  status: "awaiting_external_approval",
+  status: "approved",
   archiveUrl: "/legal-archive/production/cmj-production-legal-2026-08-16-v5/",
   createdAt: "2026-08-16T00:00:00.000Z",
-  texts: productionDraftTextsV5,
+  texts: productionApprovedTextsV5,
 });
 
-if (productionLegalBundleV5Draft.contentHash !== PRODUCTION_LEGAL_BUNDLE_V5_DRAFT_CONTENT_SHA256) {
-  throw new Error("Legal-Bundle-v5-Entwurf stimmt nicht mit dem Prüfhash überein.");
+if (productionLegalBundleV5.contentHash !== PRODUCTION_LEGAL_BUNDLE_V5_CONTENT_SHA256) {
+  throw new Error("Freigegebenes Produktions-Legal-Bundle v5 stimmt nicht mit dem Inhalts-Hash überein.");
 }
 
 if (productionLegalBundleV4.contentHash !== PRODUCTION_LEGAL_BUNDLE_V4_CONTENT_SHA256) {
@@ -359,7 +359,7 @@ if (productionLegalBundleV4.contentHash !== PRODUCTION_LEGAL_BUNDLE_V4_CONTENT_S
 
 export const legalBundlesByTarget = {
   test: [testLegalBundle],
-  production: [productionLegalBundleV4, productionLegalBundle],
+  production: [productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle],
 } as const;
 
 export function getActiveLegalBundle(): LegalBundle {

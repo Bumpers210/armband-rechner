@@ -1,6 +1,6 @@
 # Allgemeine Geschäftsbedingungen – Änderungsfassung v5
 
-Status: **Entwurf – nicht freigegeben**  
+Status: **freigegeben**
 Dokumentversion: `ap8-legal-review-2026-08-16-v1/terms`  
 Standdatum: `2026-08-16`  
 Vorgesehene URL: `https://www.carmaja-perlen.de/shopbedingungen/`
