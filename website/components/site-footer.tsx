@@ -45,7 +45,7 @@ export function SiteFooter() {
               <Link href="/shopbedingungen/">Shopbedingungen</Link>
             </li>
             <li>
-              <Link href="/widerruf/">Widerruf</Link>
+              <Link href="/widerruf/">Vertrag widerrufen</Link>
             </li>
             <li>
               <Link href="/versand-und-zahlung/">Versand und Zahlung</Link>
