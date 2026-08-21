@@ -66,9 +66,11 @@ wiederhergestellt und verglichen.
 Der Produktionskandidat verwendet App-Version `1.3.0` mit Versionscode `5`,
 Produkt-API v4 und Shop-API v2. Bis zum kontrollierten Produktionsfenster
 bleiben `productionPublishEnabled`, `productApiV4WritesEnabled` und
-`collectionCommerceEnabled` auf `false`. Ares ist noch nicht an Version,
-Quellhash und dauerhafte Vorgangskennung gebunden; das Cutovermanifest bleibt
-deshalb ausdrücklich nicht zur Anwendung freigegeben.
+`collectionCommerceEnabled` auf `false`. Ares wurde am 21. August 2026 mit der
+Produktions-App als Modell 3 gespeichert und an Produktversion 4, den
+serverseitigen Quellhash sowie eine dauerhafte Vorgangskennung gebunden. Das
+Cutovermanifest wartet weiterhin auf die getrennte Freigabe und ist noch nicht
+zur Anwendung freigegeben.
 
 ## Aktueller AP7-Produktionsstand
 
@@ -79,18 +81,18 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Bereich | Stand | Freigabewirkung |
 | --- | --- | --- |
 | AP1 bis AP6 | vollständig abgenommen | abgeschlossen |
-| Integrationsstand `main` | `0ff38c8849e70dbf098af658f78507930ab95cab` | produktive Deployments bleiben einzeln gegatet |
+| Integrationsstand `main` | `c6111a8781d6af6df0ff33e6ed4e20c52594c298` | produktive Deployments bleiben einzeln gegatet |
 | Produktions-V2-/Shop-API | kombinierter Einstieg fail-closed bereitgestellt und per Smoke-Test geprüft | kein Checkout, kein Publisher, kein Shopstart |
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
-| Reales Startprodukt | V2, 2800 Cent, EUR, `salesEnabled=false` | nicht kaufbar |
+| Reales Startprodukt | Ares, Modell 3, Produktversion 4, 2000 Cent, EUR; private Quelle gebunden | öffentliche Projektion und Commerce bleiben nicht kaufbar |
 | Historischer Bestand | `stock=1` aus Sicherung `20260810-193548-5cebba9e` schreibfrei bestätigt | Grundlage für späteres `targetOnHand=1` |
-| Cutovermanifest | in `main` vorhanden; interner Basisstand weiterhin `b1d7ea4d`, Produktstand unverändert | Status `prepared_awaiting_cutover_approval`, vor Cutover neu zu binden und nicht ausführbar |
+| Cutovermanifest | an Ares-Version 4, Quellhash und dauerhafte Vorgangskennung gebunden | Status `prepared_awaiting_cutover_approval`, nicht ausführbar |
 | Verschlüsseltes Backup | Produktionsbackup, OneDrive-Abruf, Websichtbarkeit und Restore-Dry-Run nachgewiesen | Backupgrundlage bestanden |
 | Backup-Cron und Offsite-Pull | `17 * * * *` sowie Windows-Pull im 30-Minuten-Takt aktiv; Status nicht überfällig | Alarm-/Langzeitbeobachtung bleibt laufender Betrieb |
 | Externe Verkaufsangebote | nach Betreiberbestätigung vollständig entfernt; Live-Website ohne Marktplatzverweise | Verkaufskanalgrenze bestanden |
 | Stripe Live | Konto/SDK/API lesend bestätigt; Terms-URL gespeichert; Karte, Apple Pay, Google Pay, Klarna und SEPA aktiv | PayPal bewusst auf eine spätere Erweiterung verschoben; Live-Webhook-/Checkoutnachweis offen |
 | Brevo Live | API und aktiv konfigurierter Absender lesend bestätigt | bereit; echter Versand erst mit kontrollierter Erstbestellung |
-| Commerce-Schema und Legal Bundle | drei Migrationen vorhanden; Bundle v4 lokal freigegeben, aber noch nicht in Produktionsdatenbank und Runtime aktiviert; Geschäfts- und Bestandsobjekte leer | Checkout bleibt bis zur getrennten v4-Aktivierung gesperrt |
+| Commerce-Schema und Legal Bundle | Kollektionen-Migration und Legal Bundle v5 aktiv; Geschäfts- und Bestandsobjekte leer | Checkout bleibt bis zur getrennten Aktivierung gesperrt |
 | Shop-Worker und `*/5`-Cron | privates Artefakt, Direktlauf, Lock/Lease/Runlog und zwei echte Cronläufe bestanden | technisch bereit, ohne fällige Fachaktion |
 | Shop-Admin | genau ein aktives Konto, Argon2id, erfolgreicher produktiver Browser-Login; unauthentifizierte API antwortet `401` und `no-store` | Betreiberzugang bereit |
 | Produktionswebsite | SHA-gepinnt aus `2cd1c5a2…` bereitgestellt, Smoke-Test und `mark_verified` bestanden | statische Website und Legal-Seiten live; kein Produkt, kein Checkout |
@@ -99,11 +101,11 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 ```mermaid
 flowchart LR
     A["AP1–AP6\nabgenommen"] --> B["V2-API und\nProduktmigration"]
-    B --> C["Startprodukt V2\nsalesEnabled=false"]
-    C --> D["Manifest lokal vorbereitet\nnicht freigegeben"]
-    D --> E["PR, Review und\nProduktionsgates"]
-    E --> F["Manifest neu binden\nund freigeben"]
-    F --> G["Bestands-Cutover\nweiterhin gesperrt"]
+    B --> C["Ares Modell 3\nVersion 4 gebunden"]
+    C --> D["Manifest gebunden\nnicht freigegeben"]
+    D --> E["Vier-Augen-Prüfung und\nProduktionsgates"]
+    E --> F["Planlauf und\nCutover-Freigabe"]
+    F --> G["Kollektionen-Cutover\nweiterhin gesperrt"]
     G --> H["Kontrollierter\nShopstart"]
 ```
 

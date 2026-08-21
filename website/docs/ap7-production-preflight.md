@@ -39,24 +39,29 @@ abgenommen. Die Produktions-App und die Produktions-API blieben unverändert.
 
 - [x] Ares als realen Datensatz aus der autoritativen Produktverwaltung
   auswählen.
-- [ ] Ares mit der aktuellen App auf Produktmodell 3 speichern und eindeutige
+- [x] Ares mit der aktuellen App auf Produktmodell 3 speichern und eindeutige
   `productId`, unveränderte SKU/Adresse, monotone `productVersion` und
   serverseitigen 64-stelligen `sourceHash` nachweisen.
-- [ ] Namen, formatierte Beschreibung, Bilder, Preis `>= 50` Cent und Währung
+- [x] Namen, formatierte Beschreibung, Bilder, Preis `>= 50` Cent und Währung
   `eur` fachlich bestätigen. `stock`, `targetOnHand` und ein Bestandsimport
   sind nicht Teil des Vertrags.
-- [ ] Produkt- und Bildprojektion mit der öffentlichen v3-Projektion
+- [x] Produkt- und Bildprojektion mit der öffentlichen Projektion
   vergleichen; keine internen Felder zulassen.
-- [ ] Ares mit erwarteter Version, erwartetem Hash und dauerhafter
+- [x] Ares mit erwarteter Version, erwartetem Hash und dauerhafter
   Vorgangskennung in `website/config/production-collection-cutover-manifest.v2.json`
   eintragen.
 - [ ] Manifeststatus erst nach Vier-Augen-Prüfung und freigegebenem Legal
   Bundle v5 auf `approved_for_cutover` setzen.
 
-**Aktueller Nachweis:** Ares ist öffentlich als `CP-2026-0002` vorhanden.
-Die aktuelle Version und der Quellhash müssen unmittelbar vor dem Cutover neu
-gelesen und gebunden werden. Die frühere Bestandsauswahl ist überholt und darf
-nicht ausgeführt werden.
+**Aktueller Nachweis vom 21. August 2026:** Ares wurde mit der Produktions-App
+`1.3.0` als Produktmodell 3 gespeichert. Produkt-ID
+`3da76a24-3213-4e8f-b9aa-336ea95e4aa3`, SKU `CP-2026-0002`, Adresse
+`cp-2026-0002-ares`, Preis 2000 Cent und Währung `eur` blieben stabil. Gebunden
+sind Produktversion 4, der serverseitige Quellhash und die dauerhafte
+Vorgangskennung `production-collection-cutover-ares-20260821-v1`. Die
+vorhandene öffentliche Projektion blieb absichtlich unverändert und nicht
+kaufbar; Publisher, Checkout und Shopstart waren durchgehend deaktiviert.
+Das Manifest wartet weiterhin auf die getrennte Cutover-Freigabe.
 
 **Stop:** kein exakt passender Ares-Datensatz, fehlende v3-Speicherung,
 irgendein Feldkonflikt oder nicht freigegebenes Legal Bundle v5.
