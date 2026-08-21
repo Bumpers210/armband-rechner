@@ -47,16 +47,18 @@ try {
         dirname(__DIR__, 2) . '/config/production-collection-cutover-manifest.v2.json'
     );
     $contract = carmaja_cutover_validate_contract($manifest, $repositoryRoot);
-    ap7_assert($contract['readyForPlan'] === true, 'Freigegebenes Planmanifest wurde nicht erkannt.');
-    ap7_assert($contract['readyForApply'] === false, 'Planmanifest wurde als ausfuehrbar bewertet.');
+    ap7_assert($contract['readyForPlan'] === true, 'Freigegebenes Cutovermanifest wurde nicht erkannt.');
+    ap7_assert($contract['readyForApply'] === true, 'Cutovermanifest wurde nicht als bereit bewertet.');
     ap7_assert($contract['selectedProductCount'] === 1, 'Vorbereitete Ein-Produktauswahl fehlt.');
     ap7_assert(
         ($manifest['selectedCollections'][0]['productId'] ?? null)
             === '3da76a24-3213-4e8f-b9aa-336ea95e4aa3',
-        'Ares fehlt im planfreigegebenen Kollektionen-Manifest.'
+        'Ares fehlt im freigegebenen Kollektionen-Manifest.'
     );
+    $planOnlyManifest = $manifest;
+    $planOnlyManifest['status'] = 'approved_for_plan';
     try {
-        carmaja_cutover_selected_product($manifest, [
+        carmaja_cutover_selected_product($planOnlyManifest, [
             'version' => 3,
             'products' => [],
         ]);
