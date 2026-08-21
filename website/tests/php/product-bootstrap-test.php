@@ -267,8 +267,12 @@ carmaja_bootstrap_test(
             mkdir($directory, 0750, true);
         }
         $productionAuth = $productionProductPrivate . DIRECTORY_SEPARATOR . 'auth';
+        $productionProductConfigDirectory = $productionProductPrivate
+            . DIRECTORY_SEPARATOR
+            . 'config';
         $productionConfigDirectory = $productionPrivate . DIRECTORY_SEPARATOR . 'config';
         mkdir($productionAuth, 0750, true);
+        mkdir($productionProductConfigDirectory, 0750, true);
         mkdir($productionConfigDirectory, 0750, true);
         $productionUsers = $productionAuth . DIRECTORY_SEPARATOR . 'api-users.json';
         file_put_contents($productionUsers, '{"environment":"production","users":[]}');
@@ -322,7 +326,7 @@ carmaja_bootstrap_test(
             'Produktionspfad muss ohne Testpfad sicher aktiviert werden.'
         );
 
-        $tokenFile = $productionConfigDirectory . DIRECTORY_SEPARATOR . 'github-token';
+        $tokenFile = $productionProductConfigDirectory . DIRECTORY_SEPARATOR . 'github-token';
         file_put_contents($tokenFile, 'production-token-placeholder');
         $config['productionPublishEnabled'] = true;
         $config['githubAdapterEnabled'] = true;

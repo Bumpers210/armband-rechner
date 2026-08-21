@@ -34,11 +34,11 @@ Der Produktionspublisher akzeptiert ausschließlich das Repository
 `Bumpers210/armband-rechner` und den Branch `main`. Eine schreibende
 Veröffentlichung ist nur möglich, wenn `githubAdapterEnabled` und
 `productionPublishEnabled` gleichzeitig aktiviert sind und die Token-Datei
-innerhalb des privaten Produktionsbereichs liegt. Nach einem kontrollierten
-Publish werden beide Schalter wieder deaktiviert. Ein Produktcommit startet
-keinen Website-Deploy; der geschützte Produktionsworkflow erstellt auf `main`
-lediglich den prüfbaren Buildstand, solange kein gesonderter manueller
-Deploymentauftrag vorliegt.
+innerhalb des privaten Shop- oder Produktbereichs liegt. Nach einem
+kontrollierten Publish werden beide Schalter wieder deaktiviert. Ein
+Produktcommit startet keinen Website-Deploy; der geschützte
+Produktionsworkflow erstellt auf `main` lediglich den prüfbaren Buildstand,
+solange kein gesonderter manueller Deploymentauftrag vorliegt.
 
 ### Auflösung von „test 3“ am 17. August 2026
 

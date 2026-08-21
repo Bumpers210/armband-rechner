@@ -462,7 +462,8 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         || ($backupEncryptionKeyFile !== null
             && !carmaja_bootstrap_path_is_inside($backupEncryptionKeyFile, $privateDir))
         || ($githubTokenFile !== null
-            && !carmaja_bootstrap_path_is_inside($githubTokenFile, $privateDir))) {
+            && !carmaja_bootstrap_path_is_inside($githubTokenFile, $privateDir)
+            && !carmaja_bootstrap_path_is_inside($githubTokenFile, $productPrivateDir))) {
         throw new CarmajaBootstrapException(
             'config_private_file_exposed',
             'Private Konfigurationsdateien liegen nicht im privaten Datenbereich.'
