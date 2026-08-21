@@ -70,10 +70,14 @@ function carmaja_cutover_validate_contract(array $manifest, string $repositoryRo
     }
 
     $selection = $manifest['selectedCollections'] ?? null;
-    $approved = ($manifest['status'] ?? null) === 'approved_for_cutover'
-        && ($legal['status'] ?? null) === 'approved';
+    $status = $manifest['status'] ?? null;
+    $legalApproved = ($legal['status'] ?? null) === 'approved';
+    $readyForPlan = in_array($status, ['approved_for_plan', 'approved_for_cutover'], true)
+        && $legalApproved;
+    $readyForApply = $status === 'approved_for_cutover' && $legalApproved;
     return [
-        'approved' => $approved,
+        'readyForPlan' => $readyForPlan,
+        'readyForApply' => $readyForApply,
         'selectedProductCount' => is_array($selection) ? count($selection) : -1,
         'legalBundleId' => (string) $legal['legalBundleId'],
     ];
@@ -306,7 +310,8 @@ function carmaja_cutover_main(array $arguments): int
         echo json_encode([
             'ok' => true,
             'mode' => 'plan',
-            'readyForApply' => $contract['approved'] && $contract['selectedProductCount'] === 1,
+            'readyForPlan' => $contract['readyForPlan'] && $contract['selectedProductCount'] === 1,
+            'readyForApply' => $contract['readyForApply'] && $contract['selectedProductCount'] === 1,
             'selectedProductCount' => $contract['selectedProductCount'],
             'legalBundleId' => $contract['legalBundleId'],
             'salesModel' => 'collection',

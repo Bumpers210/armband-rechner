@@ -1,7 +1,7 @@
 {
   "manifestVersion": 2,
   "environment": "production",
-  "status": "prepared_awaiting_cutover_approval",
+  "status": "approved_for_plan",
   "productModelVersion": 3,
   "salesModel": "collection",
   "availabilitySource": "commerce_products.sales_enabled",

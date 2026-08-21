@@ -50,8 +50,11 @@ abgenommen. Die Produktions-App und die Produktions-API blieben unverändert.
 - [x] Ares mit erwarteter Version, erwartetem Hash und dauerhafter
   Vorgangskennung in `website/config/production-collection-cutover-manifest.v2.json`
   eintragen.
-- [ ] Manifeststatus erst nach Vier-Augen-Prüfung und freigegebenem Legal
-  Bundle v5 auf `approved_for_cutover` setzen.
+- [x] Manifest nach menschlicher Prüfung und mit freigegebenem Legal Bundle v5
+  auf `approved_for_plan` setzen. Dieser Status erlaubt ausschließlich den
+  wirkungslosen Planlauf.
+- [ ] Manifest erst nach frischem Backup-/Restore-Nachweis und einer weiteren
+  ausdrücklichen Freigabe auf `approved_for_cutover` setzen.
 
 **Aktueller Nachweis vom 21. August 2026:** Ares wurde mit der Produktions-App
 `1.3.0` als Produktmodell 3 gespeichert. Produkt-ID
@@ -61,7 +64,8 @@ sind Produktversion 4, der serverseitige Quellhash und die dauerhafte
 Vorgangskennung `production-collection-cutover-ares-20260821-v1`. Die
 vorhandene öffentliche Projektion blieb absichtlich unverändert und nicht
 kaufbar; Publisher, Checkout und Shopstart waren durchgehend deaktiviert.
-Das Manifest wartet weiterhin auf die getrennte Cutover-Freigabe.
+Das Manifest ist ausschließlich für den Planlauf freigegeben. Ein echter
+Cutover bleibt durch den abweichenden Status technisch gesperrt.
 
 **Stop:** kein exakt passender Ares-Datensatz, fehlende v3-Speicherung,
 irgendein Feldkonflikt oder nicht freigegebenes Legal Bundle v5.

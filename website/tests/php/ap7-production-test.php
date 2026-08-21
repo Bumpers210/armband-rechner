@@ -47,23 +47,24 @@ try {
         dirname(__DIR__, 2) . '/config/production-collection-cutover-manifest.v2.json'
     );
     $contract = carmaja_cutover_validate_contract($manifest, $repositoryRoot);
-    ap7_assert($contract['approved'] === false, 'Unfreigegebenes Manifest wurde als ausfuehrbar bewertet.');
+    ap7_assert($contract['readyForPlan'] === true, 'Freigegebenes Planmanifest wurde nicht erkannt.');
+    ap7_assert($contract['readyForApply'] === false, 'Planmanifest wurde als ausfuehrbar bewertet.');
     ap7_assert($contract['selectedProductCount'] === 1, 'Vorbereitete Ein-Produktauswahl fehlt.');
     ap7_assert(
         ($manifest['selectedCollections'][0]['productId'] ?? null)
             === '3da76a24-3213-4e8f-b9aa-336ea95e4aa3',
-        'Ares fehlt im unfreigegebenen Kollektionen-Manifest.'
+        'Ares fehlt im planfreigegebenen Kollektionen-Manifest.'
     );
     try {
         carmaja_cutover_selected_product($manifest, [
             'version' => 3,
             'products' => [],
         ]);
-        throw new RuntimeException('Unfreigegebene Produktauswahl wurde akzeptiert.');
+        throw new RuntimeException('Nur planfreigegebene Produktauswahl wurde fuer Apply akzeptiert.');
     } catch (CarmajaProductionCutoverException $error) {
         ap7_assert(
             $error->getMessage() === 'product_selection_not_approved',
-            'Unfreigegebenes Manifest ist nicht fail-closed.'
+            'Planmanifest ist fuer Apply nicht fail-closed.'
         );
     }
 
