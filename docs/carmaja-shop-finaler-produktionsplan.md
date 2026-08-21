@@ -69,8 +69,9 @@ bleiben `productionPublishEnabled`, `productApiV4WritesEnabled` und
 `collectionCommerceEnabled` auf `false`. Ares wurde am 21. August 2026 mit der
 Produktions-App als Modell 3 gespeichert und an Produktversion 4, den
 serverseitigen Quellhash sowie eine dauerhafte Vorgangskennung gebunden. Das
-Cutovermanifest wartet weiterhin auf die getrennte Freigabe und ist noch nicht
-zur Anwendung freigegeben.
+Cutovermanifest ist nach der menschlichen Prüfung ausschließlich für den
+wirkungslosen Planlauf freigegeben. Ein echter Cutover bleibt technisch und
+fachlich gesperrt.
 
 ## Aktueller AP7-Produktionsstand
 
@@ -86,7 +87,7 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
 | Reales Startprodukt | Ares, Modell 3, Produktversion 4, 2000 Cent, EUR; private Quelle gebunden | öffentliche Projektion und Commerce bleiben nicht kaufbar |
 | Historischer Bestand | `stock=1` aus Sicherung `20260810-193548-5cebba9e` schreibfrei bestätigt | Grundlage für späteres `targetOnHand=1` |
-| Cutovermanifest | an Ares-Version 4, Quellhash und dauerhafte Vorgangskennung gebunden | Status `prepared_awaiting_cutover_approval`, nicht ausführbar |
+| Cutovermanifest | an Ares-Version 4, Quellhash und dauerhafte Vorgangskennung gebunden | Status `approved_for_plan`; Planlauf erlaubt, Cutover nicht ausführbar |
 | Verschlüsseltes Backup | Produktionsbackup, OneDrive-Abruf, Websichtbarkeit und Restore-Dry-Run nachgewiesen | Backupgrundlage bestanden |
 | Backup-Cron und Offsite-Pull | `17 * * * *` sowie Windows-Pull im 30-Minuten-Takt aktiv; Status nicht überfällig | Alarm-/Langzeitbeobachtung bleibt laufender Betrieb |
 | Externe Verkaufsangebote | nach Betreiberbestätigung vollständig entfernt; Live-Website ohne Marktplatzverweise | Verkaufskanalgrenze bestanden |
@@ -102,45 +103,33 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 flowchart LR
     A["AP1–AP6\nabgenommen"] --> B["V2-API und\nProduktmigration"]
     B --> C["Ares Modell 3\nVersion 4 gebunden"]
-    C --> D["Manifest gebunden\nnicht freigegeben"]
-    D --> E["Vier-Augen-Prüfung und\nProduktionsgates"]
-    E --> F["Planlauf und\nCutover-Freigabe"]
+    C --> D["Manifest gebunden\nPlanlauf freigegeben"]
+    D --> E["Wirkungsloser\nPlanlauf"]
+    E --> F["Neue Freigabe vor\nechtem Cutover"]
     F --> G["Kollektionen-Cutover\nweiterhin gesperrt"]
     G --> H["Kontrollierter\nShopstart"]
 ```
 
 ### Nächste strikt sequenzielle Schritte
 
-1. Den aktualisierten Readiness-/Manifeststand per Pull Request prüfen und erst
-   nach gesonderter Mergefreigabe nach `main` übernehmen. Der Manifeststatus
-   bleibt unverändert unfreigegeben.
-2. Vor jeder Checkout- oder Verkaufsaktivierung die exakte V1-Allowlist
-   `card`, `klarna`, `sepa_debit` sowie Google Pay auf Kartenbasis nachweisen.
-   PayPal darf nicht angefordert werden. Danach Terms-Consent, Live-Webhook,
-   Link-Unterdrückung sowie Recovery- und Promotion-Code-Sperre nachweisen.
-3. Unmittelbar vor dem Cutover ein neues verschlüsseltes Backup erzeugen,
-   Offsite abrufen und den Restore-Dry-Run bestehen.
-4. In einem kontrollierten Wartungsfenster `salesEnabled=true` für genau das
-   Startprodukt setzen. Die dadurch serverseitig neu entstehenden Werte für
-   `productVersion` und `sourceHash` erneut lesen und prüfen.
-5. Das Manifest an die neue Version und den neuen Hash binden, Vier-Augen-
-   Prüfung durchführen und den Status erst nach gesonderter Freigabe auf
-   `approved_for_cutover` setzen. Danach den Cutover zunächst nochmals im
-   Planmodus ausführen.
-6. Bestands-Cutover mit `targetOnHand=1` kontrolliert anwenden, Produktprojektion
-   und Publisher in der festgelegten Reihenfolge aktivieren, die bereits
-   bereitgestellte Website prüfen und eine echte Erstbestellung unter
-   Beobachtung durchführen.
-7. Nach dem ersten erfolgreichen Commerce-Checkout ist die Rückkehr zu
-    `stock` als Bestandsquelle unzulässig. Weitere Produkte bleiben bis zu
-    ihrer jeweiligen Freigabe deaktiviert.
+1. Manifeststatus `approved_for_plan` per Pull Request prüfen und übernehmen.
+2. Den wirkungslosen Planlauf ausführen. Er muss `readyForPlan=true`,
+   `readyForApply=false` und `inventoryMutation=false` melden.
+3. Unmittelbar vor einem späteren Cutover ein neues verschlüsseltes Backup
+   erzeugen, nach OneDrive übertragen und die Restore-Probe bestehen.
+4. Produktversion, Quellhash, geschlossene Laufzeitschalter und leere
+   Commerce-Tabellen erneut prüfen. Jede Abweichung stoppt den Ablauf.
+5. Erst nach einer neuen ausdrücklichen Freigabe den Manifeststatus auf
+   `approved_for_cutover` setzen und den Planlauf erneut prüfen.
+6. Kollektionen-Cutover, Publisher und Website jeweils getrennt freigeben und
+   ohne Bestandsimport kontrolliert ausführen.
+7. Checkout, Zahlungen und Shopstart erst in einem weiteren beobachteten
+   Freigabeschritt aktivieren.
 
-**Aktuelles Stopkriterium:** Der reduzierte Zahlungsartenvertrag muss erst
-lokal abgenommen, nach `main` übernommen und privat bereitgestellt werden. Bis
-Schritt 2 vollständig bestanden ist, bleiben Checkout,
-Produktaktivierung und Bestands-Cutover gesperrt. Vor Schritt 4 bleibt das
-Produkt nicht kaufbar. Der erste fachlich irreversible Punkt ist der erste
-erfolgreiche Commerce-Checkout nach dem Bestands-Cutover.
+**Aktuelles Stopkriterium:** Nach dem bestandenen reinen Planlauf wird
+gestoppt. Ares bleibt öffentlich nicht kaufbar; Publisher, Checkout,
+Zahlungen und Shopstart bleiben deaktiviert. Der erste fachlich irreversible
+Punkt bleibt der erste erfolgreiche Commerce-Checkout.
 
 ## 1. Status und Leitplanken
 

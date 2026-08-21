@@ -106,10 +106,10 @@ test("Website und v2-Publisher besitzen keinen produktiven Legacy-Verkaufsweg", 
   assert.doesNotMatch(hosting.join("\n"), /public-products\.json/);
 });
 
-test("Kollektionen-Cutover ist versioniert, an Ares gebunden und unfreigegeben", async () => {
+test("Kollektionen-Cutover ist an Ares gebunden und nur fuer den Planlauf freigegeben", async () => {
   const manifest = JSON.parse(await text("website/config/production-collection-cutover-manifest.v2.json"));
   assert.equal(manifest.manifestVersion, 2);
-  assert.equal(manifest.status, "prepared_awaiting_cutover_approval");
+  assert.equal(manifest.status, "approved_for_plan");
   assert.equal(manifest.salesModel, "collection");
   assert.equal(manifest.availabilitySource, "commerce_products.sales_enabled");
   assert.deepEqual(manifest.selectedCollections, [{
@@ -137,5 +137,7 @@ test("Kollektionen-Cutover ist versioniert, an Ares gebunden und unfreigegeben",
   assert.match(adapter, /sales_model/);
   assert.match(adapter, /commerce_tls_not_active/);
   assert.match(adapter, /product_selection_not_approved/);
+  assert.match(adapter, /approved_for_plan/);
+  assert.match(adapter, /readyForPlan/);
   assert.doesNotMatch(adapter, /INSERT INTO commerce_inventory|UPDATE commerce_inventory|target_on_hand/);
 });
