@@ -65,10 +65,14 @@ lokal gespeicherten Entwurf beginnen.
 
 Für Produktion sind zusätzlich erforderlich:
 
-1. idempotente Vorwärtsmigration `commerce-v2-collections.sql` bei geschlossenem Shop;
-2. Ares mit der Produktions-App 1.3.0 speichern und Version sowie Quellhash binden;
-3. unmittelbar vor dem Cutover die Aktualität des verschlüsselten Backups bestätigen;
-4. kontrollierte Projektion von Ares als aktive Kollektion ohne Bestandsimport.
+1. Die idempotente Vorwärtsmigration `commerce-v2-collections.sql` wurde bei
+   geschlossenem Shop ausgeführt.
+2. Ares wurde mit der Produktions-App 1.3.0 als Modell 3 gespeichert und an
+   Version 4 sowie den serverseitigen Quellhash gebunden.
+3. Unmittelbar vor dem Cutover muss die Aktualität des verschlüsselten Backups
+   erneut bestätigt werden.
+4. Die kontrollierte Projektion von Ares als aktive Kollektion ohne
+   Bestandsimport bleibt bis zur getrennten Freigabe gesperrt.
 
 ### Freigabe von Legal Bundle v5 am 18. August 2026
 

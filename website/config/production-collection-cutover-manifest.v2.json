@@ -1,7 +1,7 @@
 {
   "manifestVersion": 2,
   "environment": "production",
-  "status": "prepared_awaiting_product_binding",
+  "status": "prepared_awaiting_cutover_approval",
   "productModelVersion": 3,
   "salesModel": "collection",
   "availabilitySource": "commerce_products.sales_enabled",
@@ -31,9 +31,9 @@
     {
       "productId": "3da76a24-3213-4e8f-b9aa-336ea95e4aa3",
       "sku": "CP-2026-0002",
-      "expectedProductVersion": null,
-      "expectedSourceHash": null,
-      "operationId": null
+      "expectedProductVersion": 4,
+      "expectedSourceHash": "04460e81f96a578813b165d37bcd231bbf10e3e6ceb4759aa64702dad28afe97",
+      "operationId": "production-collection-cutover-ares-20260821-v1"
     }
   ],
   "cutoverGuards": {

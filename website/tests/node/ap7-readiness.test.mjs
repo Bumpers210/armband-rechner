@@ -109,15 +109,15 @@ test("Website und v2-Publisher besitzen keinen produktiven Legacy-Verkaufsweg", 
 test("Kollektionen-Cutover ist versioniert, an Ares gebunden und unfreigegeben", async () => {
   const manifest = JSON.parse(await text("website/config/production-collection-cutover-manifest.v2.json"));
   assert.equal(manifest.manifestVersion, 2);
-  assert.equal(manifest.status, "prepared_awaiting_product_binding");
+  assert.equal(manifest.status, "prepared_awaiting_cutover_approval");
   assert.equal(manifest.salesModel, "collection");
   assert.equal(manifest.availabilitySource, "commerce_products.sales_enabled");
   assert.deepEqual(manifest.selectedCollections, [{
     productId: "3da76a24-3213-4e8f-b9aa-336ea95e4aa3",
     sku: "CP-2026-0002",
-    expectedProductVersion: null,
-    expectedSourceHash: null,
-    operationId: null,
+    expectedProductVersion: 4,
+    expectedSourceHash: "04460e81f96a578813b165d37bcd231bbf10e3e6ceb4759aa64702dad28afe97",
+    operationId: "production-collection-cutover-ares-20260821-v1",
   }]);
   assert.equal(manifest.cutoverGuards.requireNoInventoryCreation, true);
   assert.equal(manifest.cutoverGuards.rollbackMode, "close_new_checkouts_without_data_reset");
