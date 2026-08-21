@@ -1,6 +1,6 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
-Stand: 2026-08-18
+Stand: 2026-08-21
 Änderungsvermerk: AP1, AP2, AP2a, AP3, AP4 und AP5 sind abgeschlossen und
 abgenommen. AP3b ist für `card`, `paypal`, `klarna` und `sepa_debit` technisch
 vollständig abgenommen; die AP6-Gesamtregression wurde danach erfolgreich
@@ -59,9 +59,9 @@ sein; eine Synchronisierung wird nicht entwickelt.
 Die formatierte Produktbeschreibung, die verpflichtende App-Vorschau und das
 Kollektionen-Modell sind auf der Testumgebung abgenommen. Legal Bundle v5 und
 das Prüfpaket `ap8-2026-08-16-v1` sind freigegeben. Das frische verschlüsselte
-Produktionsbackup vom 18. August wurde hashgeprüft nach OneDrive übertragen,
-serverseitig quittiert und in einer isolierten Restore-Datenbank vollständig
-wiederhergestellt und verglichen.
+Produktionsbackup `20260821T173214Z-14e01e5f5813` wurde hashgeprüft nach
+OneDrive übertragen, serverseitig quittiert und in einer isolierten
+Restore-Datenbank vollständig wiederhergestellt und verglichen.
 
 Der Produktionskandidat verwendet App-Version `1.3.0` mit Versionscode `5`,
 Produkt-API v4 und Shop-API v2. Bis zum kontrollierten Produktionsfenster
@@ -69,9 +69,10 @@ bleiben `productionPublishEnabled`, `productApiV4WritesEnabled` und
 `collectionCommerceEnabled` auf `false`. Ares wurde am 21. August 2026 mit der
 Produktions-App als Modell 3 gespeichert und an Produktversion 4, den
 serverseitigen Quellhash sowie eine dauerhafte Vorgangskennung gebunden. Das
-Cutovermanifest ist nach der menschlichen Prüfung ausschließlich für den
-wirkungslosen Planlauf freigegeben. Ein echter Cutover bleibt technisch und
-fachlich gesperrt.
+Cutovermanifest ist nach der menschlichen Prüfung sowie dem bestandenen
+Backup- und Restore-Nachweis auf `approved_for_cutover` gesetzt. Es wird
+zunächst ausschließlich der finale wirkungslose Planlauf ausgeführt. Ein
+echter Cutover bleibt ohne gesonderten Auftrag fachlich gesperrt.
 
 ## Aktueller AP7-Produktionsstand
 
@@ -86,9 +87,9 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Produktions-V2-/Shop-API | kombinierter Einstieg fail-closed bereitgestellt und per Smoke-Test geprüft | kein Checkout, kein Publisher, kein Shopstart |
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
 | Reales Startprodukt | Ares, Modell 3, Produktversion 4, 2000 Cent, EUR; private Quelle gebunden | öffentliche Projektion und Commerce bleiben nicht kaufbar |
-| Historischer Bestand | `stock=1` aus Sicherung `20260810-193548-5cebba9e` schreibfrei bestätigt | Grundlage für späteres `targetOnHand=1` |
-| Cutovermanifest | an Ares-Version 4, Quellhash und dauerhafte Vorgangskennung gebunden | Status `approved_for_plan`; Planlauf erlaubt, Cutover nicht ausführbar |
-| Verschlüsseltes Backup | Produktionsbackup, OneDrive-Abruf, Websichtbarkeit und Restore-Dry-Run nachgewiesen | Backupgrundlage bestanden |
+| Historisches Produktfeld | früheres `stock=1` nur als unveränderter Nachweis erhalten | wird im Kollektionen-Modell weder gelesen noch importiert |
+| Cutovermanifest | an Ares-Version 4, Quellhash und dauerhafte Vorgangskennung gebunden | Status `approved_for_cutover`; finaler Planlauf erlaubt, noch kein Cutover beauftragt |
+| Verschlüsseltes Backup | Abschlussbackup `20260821T173214Z-14e01e5f5813`, OneDrive-Abruf, Quittierung und Restore-Dry-Run nachgewiesen | Backup- und Restore-Nachweis bestanden |
 | Backup-Cron und Offsite-Pull | `17 * * * *` sowie Windows-Pull im 30-Minuten-Takt aktiv; Status nicht überfällig | Alarm-/Langzeitbeobachtung bleibt laufender Betrieb |
 | Externe Verkaufsangebote | nach Betreiberbestätigung vollständig entfernt; Live-Website ohne Marktplatzverweise | Verkaufskanalgrenze bestanden |
 | Stripe Live | Konto/SDK/API lesend bestätigt; Terms-URL gespeichert; Karte, Apple Pay, Google Pay, Klarna und SEPA aktiv | PayPal bewusst auf eine spätere Erweiterung verschoben; Live-Webhook-/Checkoutnachweis offen |
@@ -103,27 +104,26 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 flowchart LR
     A["AP1–AP6\nabgenommen"] --> B["V2-API und\nProduktmigration"]
     B --> C["Ares Modell 3\nVersion 4 gebunden"]
-    C --> D["Manifest gebunden\nPlanlauf freigegeben"]
-    D --> E["Wirkungsloser\nPlanlauf"]
-    E --> F["Neue Freigabe vor\nechtem Cutover"]
+    C --> D["Backup und Restore\nbestanden"]
+    D --> E["Finaler wirkungsloser\nPlanlauf"]
+    E --> F["Getrennte Freigabe vor\nechtem Cutover"]
     F --> G["Kollektionen-Cutover\nweiterhin gesperrt"]
     G --> H["Kontrollierter\nShopstart"]
 ```
 
 ### Nächste strikt sequenzielle Schritte
 
-1. Manifeststatus `approved_for_plan` per Pull Request prüfen und übernehmen.
-2. Den wirkungslosen Planlauf ausführen. Er muss `readyForPlan=true`,
-   `readyForApply=false` und `inventoryMutation=false` melden.
-3. Unmittelbar vor einem späteren Cutover ein neues verschlüsseltes Backup
-   erzeugen, nach OneDrive übertragen und die Restore-Probe bestehen.
-4. Produktversion, Quellhash, geschlossene Laufzeitschalter und leere
-   Commerce-Tabellen erneut prüfen. Jede Abweichung stoppt den Ablauf.
-5. Erst nach einer neuen ausdrücklichen Freigabe den Manifeststatus auf
-   `approved_for_cutover` setzen und den Planlauf erneut prüfen.
-6. Kollektionen-Cutover, Publisher und Website jeweils getrennt freigeben und
-   ohne Bestandsimport kontrolliert ausführen.
-7. Checkout, Zahlungen und Shopstart erst in einem weiteren beobachteten
+1. Manifeststatus `approved_for_cutover` per Pull Request prüfen und
+   übernehmen.
+2. Den finalen wirkungslosen Planlauf ausführen. Er muss
+   `readyForPlan=true`, `readyForApply=true` und `inventoryMutation=false`
+   melden.
+3. Danach stoppen. Der echte Cutover benötigt einen neuen ausdrücklichen
+   Auftrag; Produktversion, Quellhash, geschlossene Laufzeitschalter und leere
+   Commerce-Tabellen werden unmittelbar davor erneut geprüft.
+4. Den Kollektionen-Cutover ohne Bestandsimport kontrolliert ausführen.
+5. Publisher und Website erst anschließend getrennt freigeben.
+6. Checkout, Zahlungen und Shopstart erst in einem weiteren beobachteten
    Freigabeschritt aktivieren.
 
 **Aktuelles Stopkriterium:** Nach dem bestandenen reinen Planlauf wird

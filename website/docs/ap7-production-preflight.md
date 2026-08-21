@@ -51,10 +51,10 @@ abgenommen. Die Produktions-App und die Produktions-API blieben unverändert.
   Vorgangskennung in `website/config/production-collection-cutover-manifest.v2.json`
   eintragen.
 - [x] Manifest nach menschlicher Prüfung und mit freigegebenem Legal Bundle v5
-  auf `approved_for_plan` setzen. Dieser Status erlaubt ausschließlich den
-  wirkungslosen Planlauf.
-- [ ] Manifest erst nach frischem Backup-/Restore-Nachweis und einer weiteren
-  ausdrücklichen Freigabe auf `approved_for_cutover` setzen.
+  zunächst auf `approved_for_plan` setzen.
+- [x] Manifest nach frischem Backup-/Restore-Nachweis und der ausdrücklichen
+  Freigabe auf `approved_for_cutover` setzen. Auch dieser Schritt führt noch
+  keinen Cutover aus.
 
 **Aktueller Nachweis vom 21. August 2026:** Ares wurde mit der Produktions-App
 `1.3.0` als Produktmodell 3 gespeichert. Produkt-ID
@@ -64,8 +64,9 @@ sind Produktversion 4, der serverseitige Quellhash und die dauerhafte
 Vorgangskennung `production-collection-cutover-ares-20260821-v1`. Die
 vorhandene öffentliche Projektion blieb absichtlich unverändert und nicht
 kaufbar; Publisher, Checkout und Shopstart waren durchgehend deaktiviert.
-Das Manifest ist ausschließlich für den Planlauf freigegeben. Ein echter
-Cutover bleibt durch den abweichenden Status technisch gesperrt.
+Das Manifest ist nach bestandenem Abschlussbackup und Restore-Nachweis für
+den finalen Planlauf freigegeben. Der echte Cutover benötigt weiterhin einen
+gesonderten Auftrag und wird durch diesen Planlauf nicht ausgeführt.
 
 **Stop:** kein exakt passender Ares-Datensatz, fehlende v3-Speicherung,
 irgendein Feldkonflikt oder nicht freigegebenes Legal Bundle v5.
@@ -197,8 +198,8 @@ Fehlersichtbarkeit.
   offline sichern; private Serverdatei und Runtime mit Modus `0600` prüfen.
 - [x] Stündlichen privaten Backupdienst (`17 * * * *`) und 30-minütigen
   Windows-Pull ohne HTTP-Route nachweisen.
-- [ ] Unmittelbar vor Migration vollständiges verschlüsseltes Produkt- und
-  Commerce-Backup erstellen.
+- [x] Unmittelbar vor dem finalen Planlauf ein vollständiges verschlüsseltes
+  Produkt- und Commerce-Backup erstellen.
 - [x] Dateigrößen, SHA-256, Manifest-HMAC, Key-ID, atomare OneDrive-Ablage und
   Sichtbarkeit in OneDrive Web prüfen; erst danach Download quittieren.
 - [x] Restore-Dry-Run in ein isoliertes Ziel durchführen; Struktur, Inhalt und
@@ -208,12 +209,15 @@ Fehlersichtbarkeit.
 - [ ] Alarm nach 90 Minuten ohne Serverbackup und nach 24 Stunden ohne
   bestätigten Download sowie Zugriff der dokumentierten Notfallperson prüfen.
 
-**Aktueller Nachweis:** Das nach der Legal-v4-Aktivierung erzeugte Backup
-`20260812T161001Z-3e6dd5bdd009` ist verschlüsselt und hashgeprüft im
+**Aktueller Nachweis vom 21. August 2026:** Das frische Produktionsbackup
+`20260821T173214Z-14e01e5f5813` ist verschlüsselt und hashgeprüft im
 festgelegten OneDrive-Ziel abgelegt, serverseitig quittiert und in einem
-isolierten Restore-Dry-Run erfolgreich geprüft. Der aktuelle Status meldete
-weder Server- noch Offsite-Überfälligkeit. Dieses Backup ersetzt nicht das
-unmittelbar vor dem späteren Cutover vorgeschriebene Abschlussbackup.
+isolierten Restore-Dry-Run vollständig wiederhergestellt und verglichen.
+Produktversion 4 und Quellhash von Ares blieben unverändert, alle Commerce-
+Tabellen waren leer und sämtliche Laufzeitschalter blieben geschlossen.
+Dieser Nachweis ist die Grundlage für den finalen Planlauf; vor einem später
+gesondert freizugebenden Cutover werden seine Aktualität und die geschlossenen
+Schalter erneut geprüft.
 
 Eine erneute lesende Prüfung vom 14. August 2026 bestätigte aktuelle, nicht
 überfällige Server- und Offsite-Stände, einen erfolgreichen Windows-Task und
