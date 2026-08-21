@@ -19,6 +19,9 @@ const CARMAJA_OPERATION_RETENTION_SECONDS = 2592000;
 const CARMAJA_TEST_REPOSITORY = 'Bumpers210/armband-rechner';
 const CARMAJA_TEST_BRANCH = 'test/product-management-beta';
 const CARMAJA_TEST_DEPLOY_WORKFLOW = 'deploy-test-website.yml';
+const CARMAJA_PRODUCTION_REPOSITORY = 'Bumpers210/armband-rechner';
+const CARMAJA_PRODUCTION_BRANCH = 'main';
+const CARMAJA_PRODUCTION_DEPLOY_WORKFLOW = 'deploy-website.yml';
 
 class CarmajaApiException extends RuntimeException
 {
@@ -2165,7 +2168,7 @@ function carmaja_api_operation_status(string $operationId): array
         : null;
 
     if (($operation['status'] ?? null) === 'succeeded'
-        && ($operation['publishTarget'] ?? null) === 'test'
+        && in_array($operation['publishTarget'] ?? null, ['test', 'production'], true)
         && $commitSha !== null
         && carmaja_api_github_adapter_enabled()) {
         try {
@@ -2209,16 +2212,23 @@ function carmaja_api_github_adapter_enabled(): bool
     return getenv('CARMAJA_GITHUB_ADAPTER_ENABLED') === 'true';
 }
 
-function carmaja_api_require_github_test_configuration(
+function carmaja_api_require_github_configuration(
     bool $requireEnabled = true
 ): void
 {
-    if (($requireEnabled && !carmaja_api_github_adapter_enabled())
-        || carmaja_api_publish_target() !== 'test'
-        || carmaja_api_production_publish_enabled()) {
+    $target = carmaja_api_publish_target();
+    $adapterEnabled = carmaja_api_github_adapter_enabled();
+    $productionPublishEnabled = carmaja_api_production_publish_enabled();
+    $valid = $target === 'test'
+        ? (!$productionPublishEnabled && (!$requireEnabled || $adapterEnabled))
+        : (!$requireEnabled || ($adapterEnabled && $productionPublishEnabled));
+
+    if (!$valid) {
         throw new CarmajaApiException(
             503,
-            'GitHub-Testadapter ist deaktiviert.',
+            $target === 'production'
+                ? 'GitHub-Produktionsadapter ist deaktiviert.'
+                : 'GitHub-Testadapter ist deaktiviert.',
             [],
             'github_adapter_disabled'
         );
@@ -2227,12 +2237,12 @@ function carmaja_api_require_github_test_configuration(
 
 function carmaja_api_require_github_adapter_enabled(): void
 {
-    carmaja_api_require_github_test_configuration(true);
+    carmaja_api_require_github_configuration(true);
 }
 
 function carmaja_api_github_token(bool $requireEnabled = true): string
 {
-    carmaja_api_require_github_test_configuration($requireEnabled);
+    carmaja_api_require_github_configuration($requireEnabled);
 
     if (!$requireEnabled) {
         $readonlyToken = $GLOBALS['CARMAJA_API_GITHUB_READONLY_TOKEN'] ?? null;
@@ -2286,11 +2296,14 @@ function carmaja_api_validate_github_token(string $token): string
 
 function carmaja_api_github_repository(bool $requireEnabled = true): string
 {
-    carmaja_api_require_github_test_configuration($requireEnabled);
+    carmaja_api_require_github_configuration($requireEnabled);
     $repository = getenv('CARMAJA_GITHUB_REPOSITORY');
     $repository = is_string($repository) ? trim($repository) : '';
+    $expectedRepository = carmaja_api_publish_target() === 'production'
+        ? CARMAJA_PRODUCTION_REPOSITORY
+        : CARMAJA_TEST_REPOSITORY;
 
-    if ($repository !== CARMAJA_TEST_REPOSITORY) {
+    if ($repository !== $expectedRepository) {
         throw new CarmajaApiException(503, 'CARMAJA_GITHUB_REPOSITORY ist nicht korrekt konfiguriert.');
     }
 
@@ -2299,14 +2312,20 @@ function carmaja_api_github_repository(bool $requireEnabled = true): string
 
 function carmaja_api_github_branch(bool $requireEnabled = true): string
 {
-    carmaja_api_require_github_test_configuration($requireEnabled);
+    carmaja_api_require_github_configuration($requireEnabled);
     $branch = getenv('CARMAJA_GITHUB_BRANCH');
     $branch = is_string($branch) ? trim($branch) : '';
+    $target = carmaja_api_publish_target();
+    $expectedBranch = $target === 'production'
+        ? CARMAJA_PRODUCTION_BRANCH
+        : CARMAJA_TEST_BRANCH;
 
-    if ($branch !== CARMAJA_TEST_BRANCH) {
+    if ($branch !== $expectedBranch) {
         throw new CarmajaApiException(
             503,
-            'GitHub-Zielbranch ist für den Testadapter nicht erlaubt.',
+            $target === 'production'
+                ? 'GitHub-Zielbranch ist für den Produktionsadapter nicht erlaubt.'
+                : 'GitHub-Zielbranch ist für den Testadapter nicht erlaubt.',
             [],
             'github_branch_mismatch'
         );
@@ -2322,7 +2341,7 @@ function carmaja_api_github_request(
     bool $requireEnabled = true
 ): array
 {
-    carmaja_api_require_github_test_configuration($requireEnabled);
+    carmaja_api_require_github_configuration($requireEnabled);
     $mock = $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] ?? null;
 
     if (is_callable($mock)) {
@@ -2443,8 +2462,15 @@ function carmaja_api_github_deployment_status(string $commitSha): array
 
     $repository = carmaja_api_github_repository();
     $branch = carmaja_api_github_branch();
+    $target = carmaja_api_publish_target();
+    $workflow = $target === 'production'
+        ? CARMAJA_PRODUCTION_DEPLOY_WORKFLOW
+        : CARMAJA_TEST_DEPLOY_WORKFLOW;
+    $expectedBranch = $target === 'production'
+        ? CARMAJA_PRODUCTION_BRANCH
+        : CARMAJA_TEST_BRANCH;
     $path = '/repos/' . $repository
-        . '/actions/workflows/' . rawurlencode(CARMAJA_TEST_DEPLOY_WORKFLOW)
+        . '/actions/workflows/' . rawurlencode($workflow)
         . '/runs?branch=' . rawurlencode($branch)
         . '&event=push&head_sha=' . rawurlencode($commitSha)
         . '&per_page=10';
@@ -2457,7 +2483,7 @@ function carmaja_api_github_deployment_status(string $commitSha): array
         static fn (mixed $run): bool =>
             is_array($run)
             && ($run['head_sha'] ?? null) === $commitSha
-            && ($run['head_branch'] ?? null) === CARMAJA_TEST_BRANCH
+            && ($run['head_branch'] ?? null) === $expectedBranch
             && ($run['event'] ?? null) === 'push'
     ));
 

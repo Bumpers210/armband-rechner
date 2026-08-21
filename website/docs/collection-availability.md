@@ -30,6 +30,16 @@ Reservierungen bleiben zur Zuordnung und Wiederholungsvermeidung bestehen, trage
 
 Die Testabnahme einschließlich Veröffentlichen, parallelem Kaufen, Archivieren und Wiederherstellen ist abgeschlossen. Legal Bundle v5 ist freigegeben. Die Schalter `productApiV4WritesEnabled` und `collectionCommerceEnabled` bleiben bis zum kontrollierten Produktionsfenster auf `false`. Danach werden Schreibzugriffe älterer Apps verständlich abgewiesen; lesender Zugriff auf alte Produktmodelle bleibt möglich.
 
+Der Produktionspublisher akzeptiert ausschließlich das Repository
+`Bumpers210/armband-rechner` und den Branch `main`. Eine schreibende
+Veröffentlichung ist nur möglich, wenn `githubAdapterEnabled` und
+`productionPublishEnabled` gleichzeitig aktiviert sind und die Token-Datei
+innerhalb des privaten Produktionsbereichs liegt. Nach einem kontrollierten
+Publish werden beide Schalter wieder deaktiviert. Ein Produktcommit startet
+keinen Website-Deploy; der geschützte Produktionsworkflow erstellt auf `main`
+lediglich den prüfbaren Buildstand, solange kein gesonderter manueller
+Deploymentauftrag vorliegt.
+
 ### Auflösung von „test 3“ am 17. August 2026
 
 Eine rein lesende Prüfung der IONOS-Testumgebung hat den offenen Versuch

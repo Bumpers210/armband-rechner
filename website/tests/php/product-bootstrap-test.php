@@ -256,7 +256,7 @@ carmaja_bootstrap_test(
 );
 
 carmaja_bootstrap_test(
-    'Produktionskonfiguration darf main nur ohne automatischen GitHub-Adapter referenzieren',
+    'Produktionspublisher akzeptiert main nur mit gekoppelten Schutzschaltern',
     static function (): void {
         $fixture = carmaja_bootstrap_test_fixture();
         $productionPrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-runtime-private';
@@ -321,11 +321,42 @@ carmaja_bootstrap_test(
             carmaja_api_private_dir(),
             'Produktionspfad muss ohne Testpfad sicher aktiviert werden.'
         );
+
+        $tokenFile = $productionConfigDirectory . DIRECTORY_SEPARATOR . 'github-token';
+        file_put_contents($tokenFile, 'production-token-placeholder');
+        $config['productionPublishEnabled'] = true;
+        $config['githubAdapterEnabled'] = true;
+        $config['githubRepository'] = 'Bumpers210/armband-rechner';
+        $config['githubTokenFile'] = $tokenFile;
+        carmaja_bootstrap_test_write_config($productionConfig, $config);
+        $enabled = carmaja_bootstrap_prepare($productionConfig);
+        carmaja_bootstrap_test_same(true, $enabled['productionPublishEnabled'], 'Produktionsfreigabe fehlt.');
+        carmaja_bootstrap_test_same(true, $enabled['githubAdapterEnabled'], 'Produktionsadapter fehlt.');
+        carmaja_bootstrap_test_same(
+            'carmaja_api_github_publish_adapter',
+            $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V3'] ?? null,
+            'V3-Produktionspublisher wurde nicht eindeutig verdrahtet.'
+        );
+
+        $config['githubAdapterEnabled'] = false;
+        carmaja_bootstrap_test_write_config($productionConfig, $config);
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config($productionConfig),
+            'github_adapter_configuration_invalid'
+        );
+
+        $config['productionPublishEnabled'] = false;
+        $config['githubAdapterEnabled'] = true;
+        carmaja_bootstrap_test_write_config($productionConfig, $config);
+        carmaja_bootstrap_test_exception(
+            static fn (): array => carmaja_bootstrap_load_config($productionConfig),
+            'github_adapter_configuration_invalid'
+        );
     }
 );
 
 carmaja_bootstrap_test(
-    'Produktionskonfiguration lehnt Legacy-GitHub-Token ab',
+    'Deaktivierter Produktionspublisher darf einen privaten Diagnosetoken referenzieren',
     static function (): void {
         $fixture = carmaja_bootstrap_test_fixture();
         $runtimePrivate = $fixture['root'] . DIRECTORY_SEPARATOR . 'production-runtime-private';
@@ -354,14 +385,18 @@ carmaja_bootstrap_test(
             'usersFile' => $usersFile,
             'tokenPepper' => str_repeat('p', 48),
             'githubAdapterEnabled' => false,
+            'githubRepository' => 'Bumpers210/armband-rechner',
             'githubBranch' => 'main',
             'githubTokenFile' => $tokenFile,
         ];
         carmaja_bootstrap_test_write_config($configFile, $config);
 
-        carmaja_bootstrap_test_exception(
-            static fn (): array => carmaja_bootstrap_load_config($configFile),
-            'production_github_token_forbidden'
+        $loaded = carmaja_bootstrap_load_config($configFile);
+        carmaja_bootstrap_test_same(false, $loaded['githubAdapterEnabled'], 'Diagnose darf den Adapter nicht aktivieren.');
+        carmaja_bootstrap_test_same(
+            $tokenFile,
+            $loaded['githubTokenFile'],
+            'Private Produktions-Token-Datei wurde nicht sicher geladen.'
         );
     }
 );

@@ -244,7 +244,7 @@ function carmaja_api_test_use_target(array $fixture, string $target): void
     putenv('CARMAJA_GITHUB_REPOSITORY');
     putenv(
         'CARMAJA_GITHUB_BRANCH='
-            . ($isTest ? CARMAJA_TEST_BRANCH : 'main')
+            . ($isTest ? CARMAJA_TEST_BRANCH : CARMAJA_PRODUCTION_BRANCH)
     );
     putenv('CARMAJA_GITHUB_TOKEN_FILE');
     $_SERVER['DOCUMENT_ROOT'] = $apiWebroot;
@@ -1443,7 +1443,7 @@ carmaja_api_test(
     }
 );
 
-carmaja_api_test('GitHub-Testbranch und Pfad-Allowlist sind fest', static function (): void {
+carmaja_api_test('GitHub-Zielbranch und Pfad-Allowlist sind je Umgebung fest', static function (): void {
     $fixture = carmaja_api_test_fixture();
     putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
     putenv('CARMAJA_GITHUB_REPOSITORY=Bumpers210/armband-rechner');
@@ -1468,6 +1468,23 @@ carmaja_api_test('GitHub-Testbranch und Pfad-Allowlist sind fest', static functi
         'service_unavailable'
     );
     putenv('CARMAJA_GITHUB_REPOSITORY=' . CARMAJA_TEST_REPOSITORY);
+
+    carmaja_api_test_use_target($fixture, 'production');
+    putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+    putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
+    putenv('CARMAJA_GITHUB_REPOSITORY=' . CARMAJA_PRODUCTION_REPOSITORY);
+    putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_PRODUCTION_BRANCH);
+    carmaja_api_test_same(
+        CARMAJA_PRODUCTION_BRANCH,
+        carmaja_api_github_branch(),
+        'Erlaubter Produktionsbranch wurde abgelehnt.'
+    );
+    putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_TEST_BRANCH);
+    carmaja_api_test_exception(
+        static fn (): string => carmaja_api_github_branch(),
+        503,
+        'github_branch_mismatch'
+    );
 
     foreach ([
         '.github/workflows/deploy.yml',
@@ -1638,6 +1655,160 @@ carmaja_api_test(
                 );
             }
         }
+    }
+);
+
+carmaja_api_test(
+    'Produktionspublisher schreibt ein V3-Produkt atomar nach main ohne Website-Deployment',
+    static function (): void {
+        $fixture = carmaja_api_test_fixture();
+        carmaja_api_test_use_target($fixture, 'production');
+        putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+        putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
+        putenv('CARMAJA_GITHUB_REPOSITORY=' . CARMAJA_PRODUCTION_REPOSITORY);
+        putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_PRODUCTION_BRANCH);
+        $source = carmaja_api_path('production-v3-publisher.jpg');
+        carmaja_api_test_create_jpeg($source, 120, 80);
+        $productId = '3da76a24-3213-4e8f-b9aa-336ea95e4aa3';
+        $imageId = '11111111-1111-4111-8111-111111111111';
+        $descriptionDocument = [
+            'blocks' => [[
+                'type' => 'paragraph',
+                'spans' => [[
+                    'text' => 'Ares als aktive Kollektion.',
+                    'bold' => false,
+                    'italic' => false,
+                    'font' => 'standard',
+                    'size' => 'normal',
+                ]],
+            ]],
+        ];
+        $publicProduct = [
+            'productModelVersion' => 3,
+            'productId' => $productId,
+            'productVersion' => 4,
+            'sourceHash' => str_repeat('1', 64),
+            'sku' => 'CP-2026-0002',
+            'slug' => 'cp-2026-0002-ares',
+            'title' => 'Ares',
+            'description' => 'Ares als aktive Kollektion.',
+            'descriptionDocument' => $descriptionDocument,
+            'materials' => ['Tigerauge'],
+            'metalElements' => ['Edelstahl'],
+            'braceletSizeCm' => 17.0,
+            'pearlSizeMm' => 8.0,
+            'priceMinor' => 2000,
+            'currency' => 'eur',
+            'salesEnabled' => true,
+            'images' => [[
+                'imageId' => $imageId,
+                'fileName' => '01.jpg',
+                'src' => '/images/products/CP-2026-0002/01.jpg',
+                'alt' => 'Ares',
+                'width' => 120,
+                'height' => 80,
+                'isMain' => true,
+            ]],
+            'updatedAt' => '2026-08-21T18:00:00+00:00',
+            '_imageBlobs' => [[
+                '_sourcePath' => $source,
+                '_repoPath' => 'website/public/images/products/CP-2026-0002/01.jpg',
+            ]],
+        ];
+        $existingProduct = array_diff_key($publicProduct, [
+            'descriptionDocument' => true,
+            '_imageBlobs' => true,
+        ]);
+        $existingProduct['productModelVersion'] = 2;
+        $existingProduct['productVersion'] = 3;
+        $existingProduct['salesEnabled'] = false;
+        $headSha = str_repeat('a', 40);
+        $treeSha = str_repeat('b', 40);
+        $newTreeSha = str_repeat('c', 40);
+        $commitSha = str_repeat('d', 40);
+        $calls = [];
+        $treeBody = null;
+        $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] =
+            static function (string $method, string $path, ?array $body) use (
+                &$calls,
+                &$treeBody,
+                $headSha,
+                $treeSha,
+                $newTreeSha,
+                $commitSha,
+                $existingProduct
+            ): array {
+                $calls[] = [$method, $path, $body];
+                carmaja_api_test_assert(
+                    str_contains($path, '/repos/' . CARMAJA_PRODUCTION_REPOSITORY . '/'),
+                    'Produktionspublisher hat ein anderes Repository angesprochen.'
+                );
+                if ($method === 'GET' && str_contains($path, '/git/ref/heads/')) {
+                    carmaja_api_test_assert(
+                        str_ends_with($path, rawurlencode(CARMAJA_PRODUCTION_BRANCH)),
+                        'Produktionspublisher hat nicht main adressiert.'
+                    );
+                    return ['object' => ['sha' => $headSha]];
+                }
+                if ($method === 'GET' && str_contains($path, '/git/commits/')) {
+                    return ['tree' => ['sha' => $treeSha]];
+                }
+                if ($method === 'GET' && str_contains($path, '/contents/')) {
+                    return ['content' => base64_encode(json_encode([
+                        'version' => 2,
+                        'products' => [$existingProduct],
+                    ], JSON_THROW_ON_ERROR))];
+                }
+                if ($method === 'POST' && str_ends_with($path, '/git/blobs')) {
+                    return ['sha' => str_repeat('e', 40)];
+                }
+                if ($method === 'POST' && str_ends_with($path, '/git/trees')) {
+                    $treeBody = $body;
+                    return ['sha' => $newTreeSha];
+                }
+                if ($method === 'POST' && str_ends_with($path, '/git/commits')) {
+                    return ['sha' => $commitSha];
+                }
+                if ($method === 'PATCH' && str_contains($path, '/git/refs/heads/')) {
+                    carmaja_api_test_same(false, $body['force'] ?? null, 'main darf nie mit Force aktualisiert werden.');
+                    return ['object' => ['sha' => $commitSha]];
+                }
+                throw new CarmajaApiTestFailure(
+                    'Unerwarteter Produktions-GitHub-Aufruf: ' . $method . ' ' . $path
+                );
+            };
+        $result = carmaja_api_github_publish_adapter($publicProduct, [
+            'operationId' => 'production-collection-publish-ares-0001',
+            'requestHash' => hash('sha256', 'production-collection-publish-ares-0001'),
+        ]);
+
+        carmaja_api_test_same($commitSha, $result['commitSha'] ?? null, 'Produktions-Commit fehlt.');
+        carmaja_api_test_same('queued', $result['deploymentStatus'] ?? null, 'Buildstatus fehlt.');
+        carmaja_api_test_assert(
+            array_reduce(
+                $calls,
+                static fn (bool $safe, array $call): bool => $safe
+                    && !str_contains((string) ($call[1] ?? ''), '/actions/'),
+                true
+            ),
+            'Publisher darf keinen Website-Workflow starten.'
+        );
+        $productsEntry = null;
+        foreach (($treeBody['tree'] ?? []) as $entry) {
+            if (($entry['path'] ?? null) === 'website/content/products.json') {
+                $productsEntry = $entry;
+                break;
+            }
+        }
+        $document = is_array($productsEntry)
+            ? json_decode((string) ($productsEntry['content'] ?? ''), true, 512, JSON_THROW_ON_ERROR)
+            : null;
+        carmaja_api_test_same(3, $document['version'] ?? null, 'Öffentliche Projektion wurde nicht sicher auf V3 angehoben.');
+        carmaja_api_test_same(
+            $descriptionDocument,
+            $document['products'][0]['descriptionDocument'] ?? null,
+            'Formatierte Beschreibung fehlt im Produktionscommit.'
+        );
     }
 );
 
@@ -1871,6 +2042,70 @@ carmaja_api_test(
         carmaja_api_test_assert(
             str_contains($calls[array_key_last($calls)][1], CARMAJA_TEST_DEPLOY_WORKFLOW),
             'Statusabfrage verwendet nicht den festen Testworkflow.'
+        );
+    }
+);
+
+carmaja_api_test(
+    'Produktionsdiagnose bleibt bei deaktiviertem Publisher lesend und auf main begrenzt',
+    static function (): void {
+        $fixture = carmaja_api_test_fixture();
+        carmaja_api_test_use_target($fixture, 'production');
+        putenv('CARMAJA_GITHUB_REPOSITORY=' . CARMAJA_PRODUCTION_REPOSITORY);
+        putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_PRODUCTION_BRANCH);
+        $commitSha = str_repeat('e', 40);
+        $calls = [];
+        $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] =
+            static function (string $method, string $path, ?array $body) use (
+                &$calls,
+                $commitSha
+            ): array {
+                $calls[] = [$method, $path, $body];
+                if (str_contains($path, '/git/ref/heads/')) {
+                    carmaja_api_test_assert(
+                        str_ends_with($path, rawurlencode(CARMAJA_PRODUCTION_BRANCH)),
+                        'Produktionsdiagnose hat nicht main gelesen.'
+                    );
+                    return ['object' => ['sha' => $commitSha]];
+                }
+                if (str_contains($path, '/contents/website/content/products.json')) {
+                    return ['content' => base64_encode('{"version":2,"products":[]}')];
+                }
+                if (str_contains($path, '/actions/workflows/')) {
+                    return ['workflow_runs' => [[
+                        'id' => 654321,
+                        'head_sha' => $commitSha,
+                        'head_branch' => CARMAJA_PRODUCTION_BRANCH,
+                        'event' => 'push',
+                        'status' => 'completed',
+                        'conclusion' => 'success',
+                        'html_url' =>
+                            'https://github.com/Bumpers210/armband-rechner/actions/runs/654321',
+                    ]]];
+                }
+                throw new CarmajaApiTestFailure('Unerwarteter Produktionsdiagnoseaufruf.');
+            };
+
+        $diagnostic = carmaja_api_github_readonly_diagnostic();
+        carmaja_api_test_same(CARMAJA_PRODUCTION_REPOSITORY, $diagnostic['repository'], 'Repository ist falsch.');
+        carmaja_api_test_same(CARMAJA_PRODUCTION_BRANCH, $diagnostic['branch'], 'Branch ist falsch.');
+        carmaja_api_test_same(false, $diagnostic['writePerformed'], 'Diagnose darf nicht schreiben.');
+        carmaja_api_test_assert(
+            array_reduce(
+                $calls,
+                static fn (bool $onlyGet, array $call): bool => $onlyGet && $call[0] === 'GET',
+                true
+            ),
+            'Produktionsdiagnose hat eine mutierende GitHub-Anfrage erzeugt.'
+        );
+
+        putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+        putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
+        $status = carmaja_api_github_deployment_status($commitSha);
+        carmaja_api_test_same('succeeded', $status['deploymentStatus'], 'Produktions-Buildstatus ist falsch.');
+        carmaja_api_test_assert(
+            str_contains($calls[array_key_last($calls)][1], CARMAJA_PRODUCTION_DEPLOY_WORKFLOW),
+            'Statusabfrage verwendet nicht den festen Produktionsworkflow.'
         );
     }
 );

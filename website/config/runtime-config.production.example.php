@@ -20,6 +20,8 @@ return [
     'githubAdapterEnabled' => false,
     'githubRepository' => 'Bumpers210/armband-rechner',
     'githubBranch' => 'main',
+    // Private Token-Datei nur für die kontrollierte Publisher-Aktivierung setzen.
+    'githubTokenFile' => null,
     'commerceDsn' => null,
     'commerceUser' => null,
     'commercePassword' => null,

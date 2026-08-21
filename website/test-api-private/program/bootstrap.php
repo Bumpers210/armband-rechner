@@ -320,13 +320,11 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         );
     }
 
-    $productionMainReference = $publishTarget === 'production'
-        && $githubBranch === 'main'
-        && !$githubAdapterEnabled
-        && !$productionPublishEnabled;
+    $expectedGithubBranch = $publishTarget === 'production'
+        ? 'main'
+        : 'test/product-management-beta';
     if ($githubBranch !== null
-        && $githubBranch !== 'test/product-management-beta'
-        && !$productionMainReference) {
+        && $githubBranch !== $expectedGithubBranch) {
         throw new CarmajaBootstrapException(
             'github_branch_invalid',
             'GitHub-Branch ist nicht sicher konfiguriert.'
@@ -341,22 +339,18 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         );
     }
 
-    if ($githubAdapterEnabled
-        && ($publishTarget !== 'test'
-            || $productionPublishEnabled
-            || $githubRepository !== 'Bumpers210/armband-rechner'
-            || $githubBranch !== 'test/product-management-beta'
-            || $githubTokenFile === null)) {
+    $githubAdapterTargetValid = $publishTarget === 'production'
+        ? $productionPublishEnabled
+        : !$productionPublishEnabled;
+    if (($productionPublishEnabled && !$githubAdapterEnabled)
+        || ($githubAdapterEnabled
+            && (!$githubAdapterTargetValid
+                || $githubRepository !== 'Bumpers210/armband-rechner'
+                || $githubBranch !== $expectedGithubBranch
+                || $githubTokenFile === null))) {
         throw new CarmajaBootstrapException(
             'github_adapter_configuration_invalid',
-            'GitHub-Testadapter ist nicht sicher konfiguriert.'
-        );
-    }
-
-    if ($publishTarget === 'production' && $githubTokenFile !== null) {
-        throw new CarmajaBootstrapException(
-            'production_github_token_forbidden',
-            'Produktionskonfiguration darf keinen Legacy-GitHub-Token referenzieren.'
+            'GitHub-Adapter ist nicht sicher konfiguriert.'
         );
     }
 

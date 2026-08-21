@@ -64,7 +64,11 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsa
   assert.match(runtime, /'productPrivateDir'\s*=>\s*'\/home\/www\/carmaja-private-production'/);
   assert.match(runtime, /'productionApiWebroot'\s*=>\s*'\/home\/www\/carmaja-production-api'/);
   assert.match(runtime, /'productionWebsiteWebroot'\s*=>\s*'\/home\/www\/carmaja'/);
-  assert.doesNotMatch(runtime, /carmaja-shop-api|carmaja-site|carmaja-private-test|githubTokenFile/);
+  assert.doesNotMatch(runtime, /carmaja-shop-api|carmaja-site|carmaja-private-test/);
+  assert.match(runtime, /'githubAdapterEnabled'\s*=>\s*false/);
+  assert.match(runtime, /'productionPublishEnabled'\s*=>\s*false/);
+  assert.match(runtime, /'githubBranch'\s*=>\s*'main'/);
+  assert.match(runtime, /'githubTokenFile'\s*=>\s*null/);
   assert.match(runtime, /'commerceRestoreRequireTls'\s*=>\s*true/);
   assert.match(runtime, /'backupDirectory'\s*=>\s*'\/home\/www\/carmaja-private-shop\/backups'/);
   assert.match(runtime, /'backupOffsiteTarget'\s*=>\s*'onedrive-pull:\/\/carmaja-production\/Carmaja-Perlen\/Backups'/);
