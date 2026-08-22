@@ -155,21 +155,34 @@ final class CarmajaBrevoClient
             return null;
         }
 
-        $greeting = $customerName !== '' ? '<p>Hallo ' . $customerName . ',</p>' : '';
+        $minBusinessDays = $shipping['minBusinessDays'] ?? null;
+        $maxBusinessDays = $shipping['maxBusinessDays'] ?? null;
+        $deliveryTime = is_int($minBusinessDays) && is_int($maxBusinessDays)
+            && $minBusinessDays > 0 && $maxBusinessDays >= $minBusinessDays
+            ? '<p><strong>Voraussichtliche Lieferzeit:</strong> '
+                . $minBusinessDays . ' bis ' . $maxBusinessDays . ' Werktage</p>'
+            : '';
+        $greeting = $customerName !== ''
+            ? '<p>Hallo ' . $customerName . ',</p>'
+            : '<p>Guten Tag,</p>';
         return [
-            'subject' => 'Bestellbestätigung ' . $orderNumber,
+            'subject' => 'Ihre Bestellung bei Carmaja-Perlen – ' . $orderNumber,
             'htmlContent' => $greeting
-                . '<p>vielen Dank für Ihre Bestellung. Ihre Zahlung wurde bestätigt und wir haben Ihre Bestellung angenommen.</p>'
-                . '<h2>Bestellübersicht</h2>'
-                . '<p>Bestellnummer: <strong>' . $orderNumber . '</strong></p>'
-                . '<ul><li>Produkt: <strong>' . $productName . '</strong> (' . $productId . ')</li>'
+                . '<h1>Vielen Dank für Ihre Bestellung</h1>'
+                . '<p>Ihre Zahlung ist bestätigt. Wir bereiten Ihr Armband jetzt sorgfältig für den Versand vor.</p>'
+                . '<h2>Ihre Bestellung</h2>'
+                . '<p><strong>Bestellnummer:</strong> ' . $orderNumber . '</p>'
+                . '<ul><li>Armband: <strong>' . $productName . '</strong></li>'
                 . '<li>Menge: 1</li><li>Produktpreis: ' . $price . '</li>'
                 . '<li>Versand: ' . $shippingName . ' – ' . $shippingPrice . '</li>'
                 . '<li>Gesamtbetrag: <strong>' . $total . '</strong></li></ul>'
-                . '<h2>Vertragsunterlagen</h2>'
-                . '<p>Die für diese Bestellung geltenden Shopbedingungen, Datenschutz-, Widerrufs- sowie Versand- und Zahlungsinformationen finden Sie in der dauerhaft zugeordneten, unveränderlichen Fassung:</p>'
-                . '<p><a href="' . $this->escape($legalUrl) . '">Vertragsunterlagen dieser Bestellung öffnen</a></p>'
-                . '<p>Bitte bewahren Sie diese E-Mail für Ihre Unterlagen auf.</p>',
+                . $deliveryTime
+                . '<h2>Ihre Vertragsunterlagen</h2>'
+                . '<p>Die für Ihre Bestellung gültigen Shopbedingungen und Hinweise zu Datenschutz, Widerruf, Versand und Zahlung können Sie jederzeit über den folgenden Link aufrufen.</p>'
+                . '<p><a href="' . $this->escape($legalUrl) . '">Ihre Vertragsunterlagen ansehen</a></p>'
+                . '<p>Bitte bewahren Sie diese E-Mail für Ihre Unterlagen auf.</p>'
+                . '<p>Wir wünschen Ihnen viel Freude mit Ihrem Armband.</p>'
+                . '<p>Herzliche Grüße<br>Ihr Carmaja-Perlen Team</p>',
         ];
     }
 
