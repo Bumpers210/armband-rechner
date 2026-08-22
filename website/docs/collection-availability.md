@@ -1,7 +1,7 @@
 # Kollektionen und Verfügbarkeit
 
-Stand: 2026-08-16  
-Status: Testabnahme und Legal-Freigabe abgeschlossen; Produktionsaktivierung ausstehend
+Stand: 2026-08-22
+Status: Kollektionen-Modell für Ares produktiv aktiviert
 
 Dieses Dokument ersetzt für neue Shopstände die bisherige Annahme „Unikatbestand 1“. Historische Abnahmeprotokolle bleiben unverändert, damit frühere Entscheidungen nachvollziehbar bleiben.
 
@@ -28,7 +28,19 @@ Reservierungen bleiben zur Zuordnung und Wiederholungsvermeidung bestehen, trage
 
 ## Aktivierungsgrenzen
 
-Die Testabnahme einschließlich Veröffentlichen, parallelem Kaufen, Archivieren und Wiederherstellen ist abgeschlossen. Legal Bundle v5 ist freigegeben. Die Schalter `productApiV4WritesEnabled` und `collectionCommerceEnabled` bleiben bis zum kontrollierten Produktionsfenster auf `false`. Danach werden Schreibzugriffe älterer Apps verständlich abgewiesen; lesender Zugriff auf alte Produktmodelle bleibt möglich.
+Die Testabnahme einschließlich Veröffentlichen, parallelem Kaufen, Archivieren
+und Wiederherstellen ist abgeschlossen. Legal Bundle v5 ist freigegeben. Für
+Ares ist `collectionCommerceEnabled` seit dem 22. August 2026 dauerhaft auf
+`true`; `productApiV4WritesEnabled`, Publisher- und Deploy-Schalter bleiben auf
+`false`. Schreibzugriffe älterer Apps werden bei einem späteren kontrollierten
+Schreibfenster verständlich abgewiesen; lesender Zugriff auf alte Produktmodelle
+bleibt möglich.
+
+Der Shopstart wurde ohne Testbestellung geprüft: Ares ist als Kollektion der
+Version 4 für 20,00 EUR verfügbar, Shop-API und Kaufbutton sind betriebsbereit,
+Worker und Warteschlangen sind unauffällig. Bei einem Fehler wird ausschließlich
+der Kaufweg wieder geschlossen; Bestellungen und Commerce-Daten bleiben
+unverändert.
 
 Der Produktionspublisher akzeptiert ausschließlich das Repository
 `Bumpers210/armband-rechner` und den Branch `main`. Eine schreibende

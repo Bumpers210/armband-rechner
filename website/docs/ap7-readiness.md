@@ -20,7 +20,7 @@ AP7.3e-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
 AP7.3g-Testbetriebsnachweis: IONOS-Testumgebung, abgeschlossen und bereinigt am
 2026-08-08
 
-Aktueller `main`-Stand: `768c64e49ca1c48ef92a7b809e2c2fe46330bd17`
+Aktueller `main`-Stand: `53552652cb71f84304b0d8d395393366d7604fc3`
 
 Aktuell bereitgestellter Produktionswebsite-Stand:
 `768c64e49ca1c48ef92a7b809e2c2fe46330bd17`
@@ -39,15 +39,16 @@ Aktuell bereitgestellter Produktionswebsite-Stand:
   ist hashgeprüft gesichert. Eine Prüfung mit künstlichen Daten und lokalem
   Transport bestätigte den neuen Inhalt ohne echten Mailversand.
 - Der Kaufweg wurde nach der Erstbestellung wieder geschlossen. Die öffentliche
-  Shop-API antwortet fail-closed mit `collection_commerce_not_enabled`.
+  Shop-API antwortete in diesem Zwischenstand fail-closed mit
+  `collection_commerce_not_enabled`.
 - Website- und API-Deploy-Schalter stehen wieder auf `false`. Runtime,
   Produkte, Bestand, Zahlungen und Publisher wurden durch die Nachbesserung
   nicht verändert.
 - Die rein lesende Nachprüfung bestätigte Bestellung, Klarna-Live-Zahlung,
   genau einen Ares-Artikel, zwei gesendete Mails, gesendete Stripe-Metadaten,
   aktuelle fehlerfreie Worker, leere Rückstände und Ares als unverändert
-  verfügbare Kollektion der Version 4. Der öffentliche Kaufweg bleibt durch
-  den Laufzeitschalter geschlossen.
+  verfügbare Kollektion der Version 4. Der öffentliche Kaufweg war während
+  dieses Beobachtungsfensters durch den Laufzeitschalter geschlossen.
 - Das Webhook-Teilgate ist bestanden. Nach dem kontrollierten Abgleich des
   Signaturschlüssels wurden zwei manuelle Wiederholungen desselben echten
   `checkout.session.completed`-Ereignisses jeweils mit HTTP 204 angenommen.
@@ -55,6 +56,15 @@ Aktuell bereitgestellter Produktionswebsite-Stand:
   verarbeitete ihn einmal fehlerfrei. Bestellung und beide bestehenden Mails
   blieben jeweils einmalig, alle Rückstände und Prüffälle stehen auf null und
   Stripe meldet keine offene Zustellung.
+- Der dauerhafte Kollektionen-Kaufweg für Ares wurde am 22. August 2026
+  geöffnet. Nach Sicherung und Hashprüfung der Laufzeitdatei wurde ausschließlich
+  `collectionCommerceEnabled=true` atomar gesetzt; Modus `0600` und alle
+  übrigen Laufzeitwerte blieben unverändert. Publisher-, Schreib- und
+  Deploy-Schalter stehen weiterhin auf `false`.
+- Die anschließende Prüfung ohne Testbestellung bestätigte Ares, 20,00 EUR,
+  Version 4, die erfolgreiche Shop-API-Antwort und einen sichtbaren, aktivierten
+  Kaufbutton. Worker, Warteschlangen und Prüffälle sind unauffällig; es entstand
+  kein neuer Checkout, keine Zahlung, keine Bestellung und keine Mail.
 
 ## Aktualisierung 18. August 2026
 
@@ -342,15 +352,15 @@ fail-closed.
 - Keine dieser Maßnahmen aktivierte ein Produkt, änderte Commerce-Bestand,
   öffnete Checkout oder Publisher oder startete den Shop.
 
-## Verbleibende Produktionsgates
+## Verbleibende Aufgaben im laufenden Betrieb
 
-1. Den dauerhaften Shopstart separat freigeben. Dabei ausschließlich den
-   Kollektionen-Kaufweg für Ares öffnen, anschließend öffentliche Seite,
-   Checkoutbereitschaft, Worker und Monitoring prüfen.
-2. Nach dem Shopstart den laufenden Betrieb beobachten. Bei jedem Widerspruch
-   werden neue Checkouts geschlossen; Bestellungen und Commerce-Daten werden
-   nicht zurückgesetzt.
+1. Öffentliche Seite, Shop-API, Worker, Warteschlangen und Backups regelmäßig
+   beobachten.
+2. Die bestehende Bestellung im normalen Betriebsablauf bearbeiten.
+3. Publisher, Produktpflege und weitere Kollektionen weiterhin getrennt
+   freigeben.
 
 Jede Abweichung bei Produktidentität, Hash, Preis, Verfügbarkeit, Migration,
-Zahlungszuordnung, Backup, Worker oder Monitoring stoppt neue Checkouts. Ein
-Website-Rollback verändert keine Commerce-Daten.
+Zahlungszuordnung, Backup, Worker oder Monitoring stoppt neue Checkouts über
+`collectionCommerceEnabled=false`. Ein Website-Rollback verändert keine
+Commerce-Daten.
