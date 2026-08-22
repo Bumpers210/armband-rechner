@@ -1,6 +1,6 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
-Stand: 2026-08-21
+Stand: 2026-08-22
 Änderungsvermerk: AP1, AP2, AP2a, AP3, AP4 und AP5 sind abgeschlossen und
 abgenommen. AP3b ist für `card`, `paypal`, `klarna` und `sepa_debit` technisch
 vollständig abgenommen; die AP6-Gesamtregression wurde danach erfolgreich
@@ -43,8 +43,9 @@ der Browser-Login durch die Betreiberin erfolgreich bestätigt. Google Pay und
 SEPA-Lastschrift sind im Stripe-Liveprofil aktiv. PayPal bleibt auf
 Betreiberwunsch deaktiviert und wird als spätere Erweiterung nicht mehr von der
 V1-Checkout-Allowlist angefordert. Der abschließende Live-Webhook- und
-Checkoutnachweis bleibt offen. AP7-Cutover und jede weitere fachliche
-Produktionsmutation bleiben nicht freigegeben.
+Checkoutnachweis war zu diesem Zeitpunkt noch offen. Cutover, Veröffentlichung,
+Erstbestellung und dauerhafter Shopstart wurden danach jeweils einzeln
+freigegeben, ausgeführt und geprüft.
 AP1-Abschlusscommit: `21da119db1c57be095764f8f75bb0c9863ec1759`
 AP2-Abschlusscommit: `b874baa410b54894ca462326f402ead859370ab6`
 AP5-Abschlusscommit: `4a0b7e6a937a4bc0174eb40687b270437f7f2ccf`
@@ -64,15 +65,16 @@ OneDrive übertragen, serverseitig quittiert und in einer isolierten
 Restore-Datenbank vollständig wiederhergestellt und verglichen.
 
 Der Produktionskandidat verwendet App-Version `1.3.0` mit Versionscode `5`,
-Produkt-API v4 und Shop-API v2. Bis zum kontrollierten Produktionsfenster
-bleiben `productionPublishEnabled`, `productApiV4WritesEnabled` und
-`collectionCommerceEnabled` auf `false`. Ares wurde am 21. August 2026 mit der
+Produkt-API v4 und Shop-API v2. `productionPublishEnabled` und
+`productApiV4WritesEnabled` bleiben auf `false`. Ares wurde am 21. August 2026 mit der
 Produktions-App als Modell 3 gespeichert und an Produktversion 4, den
 serverseitigen Quellhash sowie eine dauerhafte Vorgangskennung gebunden. Das
 Cutovermanifest ist nach der menschlichen Prüfung sowie dem bestandenen
-Backup- und Restore-Nachweis auf `approved_for_cutover` gesetzt. Es wird
-zunächst ausschließlich der finale wirkungslose Planlauf ausgeführt. Ein
-echter Cutover bleibt ohne gesonderten Auftrag fachlich gesperrt.
+Backup- und Restore-Nachweis auf `approved_for_cutover` gesetzt. Cutover,
+Veröffentlichung, echte Erstbestellung und Beobachtungsfenster sind
+abgeschlossen. Am 22. August 2026 wurde ausschließlich
+`collectionCommerceEnabled` dauerhaft auf `true` gesetzt und der Shop damit
+für Ares geöffnet.
 
 ## Aktueller AP7-Produktionsstand
 
@@ -83,10 +85,10 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Bereich | Stand | Freigabewirkung |
 | --- | --- | --- |
 | AP1 bis AP6 | vollständig abgenommen | abgeschlossen |
-| Integrationsstand `main` | `768c64e49ca1c48ef92a7b809e2c2fe46330bd17` | produktive Deployments bleiben einzeln gegatet |
-| Produktions-V4-/Shop-API | kombinierter Einstieg bereitgestellt und per realer Erstbestellung geprüft | Kaufweg nach der Prüfung wieder geschlossen |
+| Integrationsstand `main` | `53552652cb71f84304b0d8d395393366d7604fc3` | produktive Deployments bleiben einzeln gegatet |
+| Produktions-V4-/Shop-API | kombinierter Einstieg bereitgestellt und per realer Erstbestellung geprüft | Kollektionen-Kaufweg für Ares dauerhaft geöffnet |
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
-| Reales Startprodukt | Ares, Modell 3, Produktversion 4, 2000 Cent, EUR; private Quelle gebunden | als aktive Kollektion veröffentlicht; aktuell kein neuer Checkout |
+| Reales Startprodukt | Ares, Modell 3, Produktversion 4, 2000 Cent, EUR; private Quelle gebunden | als aktive, kaufbare Kollektion veröffentlicht |
 | Historisches Produktfeld | früheres `stock=1` nur als unveränderter Nachweis erhalten | wird im Kollektionen-Modell weder gelesen noch importiert |
 | Cutovermanifest | an Ares-Version 4, Quellhash und dauerhafte Vorgangskennung gebunden | Cutover ohne Bestand kontrolliert abgeschlossen |
 | Verschlüsseltes Backup | Abschlussbackup `20260821T173214Z-14e01e5f5813`, OneDrive-Abruf, Quittierung und Restore-Dry-Run nachgewiesen | Backup- und Restore-Nachweis bestanden |
@@ -98,7 +100,7 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Shop-Worker und `*/5`-Cron | privates Artefakt, Direktlauf, Lock/Lease/Runlog und zwei echte Cronläufe bestanden | technisch bereit, ohne fällige Fachaktion |
 | Shop-Admin | genau ein aktives Konto, Argon2id, erfolgreicher produktiver Browser-Login; unauthentifizierte API antwortet `401` und `no-store` | Betreiberzugang bereit |
 | Produktionswebsite | SHA-gepinnt aus `768c64e49…` bereitgestellt; Workflow `32590810414`, Smoke-Test und `mark_verified` bestanden | neue Bestätigungsseite live |
-| Publisher und Verkauf | Ares veröffentlicht; Publisher und Kaufweg anschließend wieder deaktiviert | dauerhafter Shopstart bleibt gesperrt |
+| Publisher und Verkauf | Ares veröffentlicht; Publisher weiterhin deaktiviert | dauerhafter Shopstart am 22. August 2026 abgeschlossen |
 
 ```mermaid
 flowchart LR
@@ -108,21 +110,22 @@ flowchart LR
     D --> E["Kollektionen-Cutover\nabgeschlossen"]
     E --> F["Ares veröffentlicht"]
     F --> G["Erstbestellung\nerfolgreich"]
-    G --> H["Kaufweg geschlossen\nShopstart ausstehend"]
+    G --> H["Kollektionen-Kaufweg\ndauerhaft geöffnet"]
 ```
 
-### Nächste strikt sequenzielle Schritte
+### Nächste Schritte im laufenden Betrieb
 
-1. Den dauerhaften Shopstart separat freigeben und ausschließlich den
-   Kollektionen-Kaufweg für Ares öffnen.
-2. Website, Checkoutbereitschaft, Worker und Monitoring unmittelbar prüfen.
-3. Bei einem Widerspruch neue Checkouts wieder schließen; keine Bestellung
-   oder Commerce-Daten zurücksetzen.
+1. Öffentliche Erreichbarkeit, Worker, Warteschlangen und Backups regelmäßig
+   beobachten.
+2. Die bestehende Bestellung `CMJ-00000001` im normalen Betriebsablauf
+   bearbeiten und versenden.
+3. Produktpflege, Publisher und weitere Kollektionen weiterhin getrennt und
+   kontrolliert freigeben.
 
-**Aktuelles Stopkriterium:** Der Kaufweg ist nach der erfolgreichen
-Erstbestellung weiterhin geschlossen. Die Webhook-Korrektur und der
-Duplikatschutz sowie das anschließende Beobachtungsfenster sind nachgewiesen;
-ein dauerhafter Shopstart benötigt weiterhin eine neue ausdrückliche Freigabe.
+**Aktuelles Stopkriterium:** Bei einem Widerspruch zwischen Ares,
+Shop-API, Kaufbutton, Worker oder Warteschlangen werden neue Checkouts durch
+`collectionCommerceEnabled=false` geschlossen. Bestellungen und Commerce-Daten
+werden nicht zurückgesetzt.
 
 ## 1. Status und Leitplanken
 
@@ -139,14 +142,15 @@ vollständig bestanden. Die aktuelle Rechts-, Datenschutz- und Versandfreigabe
 liegt für die versionierten Fassungen vom 2026-08-11 vor. AP6 ist vollständig
 abgenommen. AP7.2b, AP7.3b, AP7.3d, AP7.3e und AP7.3g sind technisch
 geschlossen.
-AP7 bleibt nicht freigegeben. Das verifizierte AP7.3d-Testdeployment war auf
-die getrennte IONOS-Testwebsite begrenzt. Es gibt keinen produktiven Cutover,
-kein Produktionsdeployment, keinen Merge nach `main` und keinen Zugriff auf
-Produktionsdaten.
+Die AP7-Produktionsschritte wurden anschließend einzeln freigegeben und
+abgeschlossen. Der Kollektionen-Cutover, die Veröffentlichung von Ares, die
+echte Erstbestellung und der dauerhafte Shopstart sind nachgewiesen. Publisher,
+Produkt-API-v4-Schreiben und Deploy-Schalter bleiben deaktiviert.
 
-V1 bleibt ein direkter Einzelkauf ohne Warenkorb, Kundenkonto oder parallele
-Marktplätze. Ein Checkout enthält genau ein Unikat mit Menge `1`. Nach dem
-Produktionsstart ist der eigene Shop der einzige Verkaufskanal.
+Der Shop bleibt ein direkter Einzelkauf ohne Warenkorb, Kundenkonto oder
+parallele Marktplätze. Ein Checkout enthält genau ein Armband mit Menge `1`.
+Die Kollektion bleibt bis zur Archivierung verfügbar; Käufe verändern keinen
+Bestand. Der eigene Shop ist der einzige Verkaufskanal.
 
 ## 2. Autoritative Modelle
 

@@ -2,7 +2,7 @@
 
 Stand: 2026-08-22
 
-Status: **kontrollierte Erstbestellung abgeschlossen; Kaufweg wieder geschlossen**
+Status: **dauerhafter Kollektionen-Shopstart für Ares abgeschlossen**
 
 Diese Checkliste ist in der angegebenen Reihenfolge abzuarbeiten. Jeder
 Fehler stoppt den Produktionsstart. Kein Schritt darf durch eine Annahme oder
@@ -26,7 +26,7 @@ einen Testwert ersetzt werden.
   `768c64e49ca1c48ef92a7b809e2c2fe46330bd17` im Workflowlauf
   `32590810414` bereitstellen und den Deploy-Schalter wieder auf `false`
   setzen.
-- [ ] Produktionsfreigabe mit Zeitfenster, Betreiberin und Stop-Verantwortung
+- [x] Produktionsfreigabe mit Zeitfenster, Betreiberin und Stop-Verantwortung
   schriftlich dokumentieren.
 
 **Aktueller Testnachweis:** Die Betreiberin bestätigte die Installation der
@@ -148,7 +148,8 @@ v4 ist in Produktionsdatenbank und Runtime aktiv und die öffentlichen
 Legal-Seiten sind aus dem aktuellen `main`-SHA live verifiziert. Link ist im
 Dashboard grundsätzlich verfügbar, wird vom verbindlichen Sessionvertrag aber
 mit `wallet_options.link.display=never` unterdrückt. Produktaktivierung,
-Cutover, Checkout und Shopstart bleiben bis zu den übrigen Gates gesperrt.
+Cutover, Checkout und Shopstart waren bis zu den übrigen Gates gesperrt und
+wurden später jeweils getrennt freigegeben.
 
 ## 7. Brevo Live
 
@@ -337,6 +338,18 @@ nicht zurückschreiben.
   Stripe-Zustellung, fehlerfreie Worker, leere Warteschlangen und Ares als
   unveränderte Kollektion der Version 4. Der öffentliche Kaufweg blieb mit
   `collection_commerce_not_enabled` geschlossen.
+- [x] Dauerhaften Kollektionen-Kaufweg am 22. August 2026 öffnen. Vorherige
+  Laufzeitdatei hashgeprüft sichern, ausschließlich
+  `collectionCommerceEnabled=true` atomar setzen und Modus `0600` beibehalten.
+  Alle Publisher-, Schreib- und Deploy-Schalter blieben auf `false`.
+- [x] Den geöffneten Shop ohne Testbestellung prüfen. Ares ist als Kollektion
+  der Version 4 für 20,00 EUR verfügbar, die öffentliche Shop-API antwortet
+  erfolgreich und der sichtbare Kaufbutton ist nach dem Laden aktiviert.
+  Worker, Warteschlangen und Prüffälle sind unauffällig. Seit der Aktivierung
+  entstanden kein neuer Checkout, keine Zahlung, keine Bestellung und keine
+  Mail.
 
 **Stop:** falscher Preis/Versand, fehlende Zustimmung, doppelte Bestellung,
 unklare Zahlung, geänderte Verfügbarkeit, fehlende Mail oder Worker-/Webhookfehler.
+In diesem Fall `collectionCommerceEnabled` wieder auf `false` setzen; bestehende
+Bestellungen und Commerce-Daten nicht verändern.
