@@ -123,16 +123,22 @@ $tests['Brevo rendert fachliche Outboxdaten erst beim Versand'] = static functio
     ]);
     $assert($result['outcome'] === 'sent', 'Fachliche Bestellmail wurde nicht versendet.');
     $assert(str_contains((string) ($requests[0]['subject'] ?? ''), 'TEST-2026-000001'), 'Bestellnummer fehlt im Betreff.');
-    $assert(str_contains((string) ($requests[0]['htmlContent'] ?? ''), 'TEST-2026-000001'), 'Bestellnummer fehlt im Inhalt.');
-    $assert(str_contains((string) $requests[0]['htmlContent'], 'Carmaja Testarmband'), 'Produkt fehlt in der Bestellmail.');
-    $assert(str_contains((string) $requests[0]['htmlContent'], '42,00 €'), 'Produktpreis fehlt in der Bestellmail.');
-    $assert(str_contains((string) $requests[0]['htmlContent'], '4,90 €'), 'Versandpreis fehlt in der Bestellmail.');
-    $assert(str_contains((string) $requests[0]['htmlContent'], '46,90 €'), 'Gesamtbetrag fehlt in der Bestellmail.');
+    $assert(str_contains((string) ($requests[0]['subject'] ?? ''), 'Ihre Bestellung bei Carmaja-Perlen'), 'Neuer Betreff fehlt.');
+    $customerHtml = (string) ($requests[0]['htmlContent'] ?? '');
+    $assert(str_contains($customerHtml, 'TEST-2026-000001'), 'Bestellnummer fehlt im Inhalt.');
+    $assert(str_contains($customerHtml, 'Vielen Dank für Ihre Bestellung'), 'Freundliche Bestätigung fehlt.');
+    $assert(str_contains($customerHtml, 'Carmaja Testarmband'), 'Produkt fehlt in der Bestellmail.');
+    $assert(!str_contains($customerHtml, 'CP-2026-0006'), 'Interne Produkt-ID ist in der Kundenmail sichtbar.');
+    $assert(str_contains($customerHtml, '42,00 €'), 'Produktpreis fehlt in der Bestellmail.');
+    $assert(str_contains($customerHtml, '4,90 €'), 'Versandpreis fehlt in der Bestellmail.');
+    $assert(str_contains($customerHtml, '46,90 €'), 'Gesamtbetrag fehlt in der Bestellmail.');
+    $assert(str_contains($customerHtml, '2 bis 4 Werktage'), 'Lieferzeit fehlt in der Bestellmail.');
+    $assert(str_contains($customerHtml, 'Ihre Vertragsunterlagen ansehen'), 'Verständlicher Vertragslink fehlt.');
     $assert(str_contains(
-        (string) $requests[0]['htmlContent'],
+        $customerHtml,
         'https://test.carmaja-perlen.de/legal-archive/test/cmj-test-legal-2026-08-06-v2/'
     ), 'Unveränderlicher Rechtstext-Link fehlt in der Bestellmail.');
-    $assert(str_contains((string) $requests[0]['htmlContent'], 'Kundin &amp; Test'), 'Kundenname wurde nicht sicher maskiert.');
+    $assert(str_contains($customerHtml, 'Kundin &amp; Test'), 'Kundenname wurde nicht sicher maskiert.');
 
     $operatorPayload = carmaja_commerce_operator_order_mail_payload($orderPayload);
     $operator = $client->send([
