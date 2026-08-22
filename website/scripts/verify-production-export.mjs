@@ -58,7 +58,11 @@ export async function verifyProductionExport({
   );
 
   const sourceProducts = loadPublicProductsV2(verifiedSourceProductsPath, imageRoot);
-  assert.equal(sourceProducts.version, 2, "Produktquelldatei hat keine unterstuetzte Version.");
+  assert.equal(
+    [2, 3].includes(sourceProducts.version),
+    true,
+    "Produktquelldatei hat keine unterstuetzte Version.",
+  );
 
   const files = await collectFiles(verifiedOutputDirectory);
   assert.equal(
