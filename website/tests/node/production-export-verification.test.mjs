@@ -43,12 +43,11 @@ test("Produktionsverifikation blockiert Test- und Abnahmetexte", async () => {
 
   try {
     const sourceText = await readFile(current.sourceProductsPath, "utf8");
+    const source = JSON.parse(sourceText);
+    source.note = "Testprodukt nur fuer die Abnahme";
     await writeFile(
       current.sourceProductsPath,
-      sourceText.replace(
-        '"version": 2',
-        '"version": 2,\n  "note": "Testprodukt nur fuer die Abnahme"',
-      ),
+      `${JSON.stringify(source, null, 2)}\n`,
       "utf8",
     );
     await assert.rejects(

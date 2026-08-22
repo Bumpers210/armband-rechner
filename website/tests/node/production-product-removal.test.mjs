@@ -9,7 +9,7 @@ test("der entfernte Alt-Produktdatensatz und seine Bilder sind nicht mehr vorhan
   const productsPath = path.join(websiteDirectory, "content", "products.json");
   const products = JSON.parse(await readFile(productsPath, "utf8"));
 
-  assert.equal(products.version, 2);
+  assert.equal(products.version, 3);
   assert.equal(Array.isArray(products.products), true);
   assert.equal(JSON.stringify(products).includes("CP-2026-0001"), false);
 
