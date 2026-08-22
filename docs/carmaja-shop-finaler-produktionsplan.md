@@ -83,53 +83,46 @@ ersetzen diese aktuelle Gate-Sicht nicht.
 | Bereich | Stand | Freigabewirkung |
 | --- | --- | --- |
 | AP1 bis AP6 | vollständig abgenommen | abgeschlossen |
-| Integrationsstand `main` | `c6111a8781d6af6df0ff33e6ed4e20c52594c298` | produktive Deployments bleiben einzeln gegatet |
-| Produktions-V2-/Shop-API | kombinierter Einstieg fail-closed bereitgestellt und per Smoke-Test geprüft | kein Checkout, kein Publisher, kein Shopstart |
+| Integrationsstand `main` | `768c64e49ca1c48ef92a7b809e2c2fe46330bd17` | produktive Deployments bleiben einzeln gegatet |
+| Produktions-V4-/Shop-API | kombinierter Einstieg bereitgestellt und per realer Erstbestellung geprüft | Kaufweg nach der Prüfung wieder geschlossen |
 | Produktmodellmigration | kontrolliert angewendet | kein Commerce-Bestand importiert |
-| Reales Startprodukt | Ares, Modell 3, Produktversion 4, 2000 Cent, EUR; private Quelle gebunden | öffentliche Projektion und Commerce bleiben nicht kaufbar |
+| Reales Startprodukt | Ares, Modell 3, Produktversion 4, 2000 Cent, EUR; private Quelle gebunden | als aktive Kollektion veröffentlicht; aktuell kein neuer Checkout |
 | Historisches Produktfeld | früheres `stock=1` nur als unveränderter Nachweis erhalten | wird im Kollektionen-Modell weder gelesen noch importiert |
-| Cutovermanifest | an Ares-Version 4, Quellhash und dauerhafte Vorgangskennung gebunden | Status `approved_for_cutover`; finaler Planlauf erlaubt, noch kein Cutover beauftragt |
+| Cutovermanifest | an Ares-Version 4, Quellhash und dauerhafte Vorgangskennung gebunden | Cutover ohne Bestand kontrolliert abgeschlossen |
 | Verschlüsseltes Backup | Abschlussbackup `20260821T173214Z-14e01e5f5813`, OneDrive-Abruf, Quittierung und Restore-Dry-Run nachgewiesen | Backup- und Restore-Nachweis bestanden |
 | Backup-Cron und Offsite-Pull | `17 * * * *` sowie Windows-Pull im 30-Minuten-Takt aktiv; Status nicht überfällig | Alarm-/Langzeitbeobachtung bleibt laufender Betrieb |
 | Externe Verkaufsangebote | nach Betreiberbestätigung vollständig entfernt; Live-Website ohne Marktplatzverweise | Verkaufskanalgrenze bestanden |
-| Stripe Live | Konto/SDK/API lesend bestätigt; Terms-URL gespeichert; Karte, Apple Pay, Google Pay, Klarna und SEPA aktiv | PayPal bewusst auf eine spätere Erweiterung verschoben; Live-Webhook-/Checkoutnachweis offen |
-| Brevo Live | API und aktiv konfigurierter Absender lesend bestätigt | bereit; echter Versand erst mit kontrollierter Erstbestellung |
-| Commerce-Schema und Legal Bundle | Kollektionen-Migration und Legal Bundle v5 aktiv; Geschäfts- und Bestandsobjekte leer | Checkout bleibt bis zur getrennten Aktivierung gesperrt |
+| Stripe Live | kontrollierte echte Gastzahlung und Webhook-Verarbeitung erfolgreich abgeschlossen | Bestellung `CMJ-00000001`; doppelte manuelle Zustellung sicher zu genau einem Inbox-Eintrag zusammengeführt |
+| Brevo Live | Kundenmail der Erstbestellung empfangen; neuer Text ohne interne Produkt-ID aktiv | kein Testmailversand bei der Nachprüfung |
+| Commerce-Schema und Legal Bundle | Kollektionen-Migration und Legal Bundle v5 aktiv; erste Bestellung vorhanden | kein Bestand und keine Inventory-Mutation |
 | Shop-Worker und `*/5`-Cron | privates Artefakt, Direktlauf, Lock/Lease/Runlog und zwei echte Cronläufe bestanden | technisch bereit, ohne fällige Fachaktion |
 | Shop-Admin | genau ein aktives Konto, Argon2id, erfolgreicher produktiver Browser-Login; unauthentifizierte API antwortet `401` und `no-store` | Betreiberzugang bereit |
-| Produktionswebsite | SHA-gepinnt aus `2cd1c5a2…` bereitgestellt, Smoke-Test und `mark_verified` bestanden | statische Website und Legal-Seiten live; kein Produkt, kein Checkout |
-| Publisher und Verkauf | deaktiviert beziehungsweise fail-closed | `salesEnabled=true`, Produktprojektion und Cutover gesperrt |
+| Produktionswebsite | SHA-gepinnt aus `768c64e49…` bereitgestellt; Workflow `32590810414`, Smoke-Test und `mark_verified` bestanden | neue Bestätigungsseite live |
+| Publisher und Verkauf | Ares veröffentlicht; Publisher und Kaufweg anschließend wieder deaktiviert | dauerhafter Shopstart bleibt gesperrt |
 
 ```mermaid
 flowchart LR
     A["AP1–AP6\nabgenommen"] --> B["V2-API und\nProduktmigration"]
     B --> C["Ares Modell 3\nVersion 4 gebunden"]
     C --> D["Backup und Restore\nbestanden"]
-    D --> E["Finaler wirkungsloser\nPlanlauf"]
-    E --> F["Getrennte Freigabe vor\nechtem Cutover"]
-    F --> G["Kollektionen-Cutover\nweiterhin gesperrt"]
-    G --> H["Kontrollierter\nShopstart"]
+    D --> E["Kollektionen-Cutover\nabgeschlossen"]
+    E --> F["Ares veröffentlicht"]
+    F --> G["Erstbestellung\nerfolgreich"]
+    G --> H["Kaufweg geschlossen\nShopstart ausstehend"]
 ```
 
 ### Nächste strikt sequenzielle Schritte
 
-1. Manifeststatus `approved_for_cutover` per Pull Request prüfen und
-   übernehmen.
-2. Den finalen wirkungslosen Planlauf ausführen. Er muss
-   `readyForPlan=true`, `readyForApply=true` und `inventoryMutation=false`
-   melden.
-3. Danach stoppen. Der echte Cutover benötigt einen neuen ausdrücklichen
-   Auftrag; Produktversion, Quellhash, geschlossene Laufzeitschalter und leere
-   Commerce-Tabellen werden unmittelbar davor erneut geprüft.
-4. Den Kollektionen-Cutover ohne Bestandsimport kontrolliert ausführen.
-5. Publisher und Website erst anschließend getrennt freigeben.
-6. Checkout, Zahlungen und Shopstart erst in einem weiteren beobachteten
-   Freigabeschritt aktivieren.
+1. Den dauerhaften Shopstart separat freigeben und ausschließlich den
+   Kollektionen-Kaufweg für Ares öffnen.
+2. Website, Checkoutbereitschaft, Worker und Monitoring unmittelbar prüfen.
+3. Bei einem Widerspruch neue Checkouts wieder schließen; keine Bestellung
+   oder Commerce-Daten zurücksetzen.
 
-**Aktuelles Stopkriterium:** Nach dem bestandenen reinen Planlauf wird
-gestoppt. Ares bleibt öffentlich nicht kaufbar; Publisher, Checkout,
-Zahlungen und Shopstart bleiben deaktiviert. Der erste fachlich irreversible
-Punkt bleibt der erste erfolgreiche Commerce-Checkout.
+**Aktuelles Stopkriterium:** Der Kaufweg ist nach der erfolgreichen
+Erstbestellung weiterhin geschlossen. Die Webhook-Korrektur und der
+Duplikatschutz sowie das anschließende Beobachtungsfenster sind nachgewiesen;
+ein dauerhafter Shopstart benötigt weiterhin eine neue ausdrückliche Freigabe.
 
 ## 1. Status und Leitplanken
 
