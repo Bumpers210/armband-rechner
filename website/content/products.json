@@ -1,15 +1,15 @@
 {
-    "version": 2,
+    "version": 3,
     "products": [
         {
-            "productModelVersion": 2,
+            "productModelVersion": 3,
             "productId": "3da76a24-3213-4e8f-b9aa-336ea95e4aa3",
-            "productVersion": 1,
-            "sourceHash": "d0d55718315229e3d214af780e9b18d4a651a1eefe3364537f1d6ef140cefd33",
+            "productVersion": 4,
+            "sourceHash": "04460e81f96a578813b165d37bcd231bbf10e3e6ceb4759aa64702dad28afe97",
             "sku": "CP-2026-0002",
             "slug": "cp-2026-0002-ares",
             "title": "Ares",
-            "description": "Ares\n\nWarm, erdig und ausdrucksstark.\n\nAres verbindet die charakteristische Zeichnung des Tigerauges mit roségold galvanisierten Lavasteinperlen. Die warmen Braun-, Rot- und Goldtöne verleihen dem Armband einen kraftvollen, zugleich natürlichen Charakter.\n\n Tigerauge und seine Symbolik\n\nDem Tigerauge werden traditionell Kraft, Mut, Klarheit und Erdung zugeschrieben. Seine warme Farbgebung und der charakteristische Schimmereffekt machen den Stein zugleich zu einem markanten Schmuckstein.",
+            "description": "Warm, erdig und ausdrucksstark.\n\nAres verbindet die charakteristische Zeichnung des Tigerauges mit roségold galvanisierten Lavasteinperlen. Die warmen Braun-, Rot- und Goldtöne verleihen dem Armband einen kraftvollen, zugleich natürlichen Charakter.\n\nTigerauge und seine Symbolik\n\nDem Tigerauge werden traditionell Kraft, Mut, Klarheit und Erdung zugeschrieben. Seine warme Farbgebung und der charakteristische Schimmereffekt machen den Stein zugleich zu einem markanten Schmuckstein.",
             "materials": [
                 "Tigerauge",
                 "Rosegold galvanisierte Lavaperlen"
@@ -19,7 +19,7 @@
             "pearlSizeMm": 8,
             "priceMinor": 2000,
             "currency": "eur",
-            "salesEnabled": false,
+            "salesEnabled": true,
             "images": [
                 {
                     "imageId": "ba1182af-29b6-458d-a355-241696b3f212",
@@ -49,7 +49,60 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-08-15T13:29:57+00:00"
+            "updatedAt": "2026-08-21T17:07:36+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Warm, erdig und ausdrucksstark.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Ares verbindet die charakteristische Zeichnung des Tigerauges mit roségold galvanisierten Lavasteinperlen. Die warmen Braun-, Rot- und Goldtöne verleihen dem Armband einen kraftvollen, zugleich natürlichen Charakter.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Tigerauge und seine Symbolik",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Dem Tigerauge werden traditionell Kraft, Mut, Klarheit und Erdung zugeschrieben. Seine warme Farbgebung und der charakteristische Schimmereffekt machen den Stein zugleich zu einem markanten Schmuckstein.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     ]
 }
