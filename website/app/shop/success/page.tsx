@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckoutStatusPanel } from "@/components/checkout-status";
+import { CheckoutQueryCleanup } from "@/components/checkout-query-cleanup";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -11,16 +11,11 @@ export default function ShopSuccessPage() {
       <main id="main-content" className="checkout-confirmation-main">
         <div className="content-shell checkout-confirmation-shell">
           <section className="checkout-confirmation-card">
+            <CheckoutQueryCleanup />
             <header className="checkout-confirmation-heading">
               <p className="v2-eyebrow">Ihre Bestellung</p>
               <h1>Vielen Dank</h1>
-              <p>
-                Wir prüfen gerade die Rückmeldung zu Ihrer Zahlung und zeigen
-                Ihnen hier den aktuellen Stand.
-              </p>
             </header>
-
-            <CheckoutStatusPanel />
 
             <section className="checkout-next-steps" aria-labelledby="next-steps-heading">
               <h2 id="next-steps-heading">Wie geht es weiter?</h2>

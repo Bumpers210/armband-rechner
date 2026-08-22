@@ -77,18 +77,15 @@ test("Erfolgs-, Abbruch- und Fehlerseite existieren", async () => {
   }
 });
 
-test("AP3b-Erfolgsseite zeigt asynchrone SEPA-Bearbeitung ohne verfrühte Bestellung", async () => {
+test("Erfolgsseite bleibt verständlich und entfernt den technischen Statusbereich", async () => {
   const page = await source("app/shop/success/page.tsx");
-  const status = await source("components/checkout-status.tsx");
-  assert.match(page, /CheckoutStatusPanel/);
+  const cleanup = await source("components/checkout-query-cleanup.tsx");
+  assert.match(page, /CheckoutQueryCleanup/);
   assert.match(page, /SiteHeader/);
   assert.match(page, /SiteFooter/);
   assert.match(page, /Wie geht es weiter/);
   assert.match(page, /2 bis 4 Werktage/);
-  assert.match(status, /payment_status === "processing"/);
-  assert.match(status, /SEPA-Lastschrift/);
-  assert.match(status, /erst nach der Zahlungsbestätigung/);
-  assert.match(status, /cache: "no-store"/);
-  assert.match(status, /history\.replaceState/);
-  assert.doesNotMatch(status, /Stripe hat den Checkout zurückgemeldet/);
+  assert.doesNotMatch(page, /Wir prüfen gerade die Rückmeldung/);
+  assert.doesNotMatch(page, /Bestätigung per E-Mail<\/h2>/);
+  assert.match(cleanup, /history\.replaceState/);
 });
