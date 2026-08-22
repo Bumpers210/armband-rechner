@@ -1,8 +1,8 @@
 # AP7 – endgültige Produktions-Preflight-Checkliste
 
-Stand: 2026-08-13
+Stand: 2026-08-22
 
-Status: **nicht zur Ausführung freigegeben**
+Status: **kontrollierte Erstbestellung abgeschlossen; Kaufweg wieder geschlossen**
 
 Diese Checkliste ist in der angegebenen Reihenfolge abzuarbeiten. Jeder
 Fehler stoppt den Produktionsstart. Kein Schritt darf durch eine Annahme oder
@@ -22,6 +22,10 @@ einen Testwert ersetzt werden.
   `01e86d61c4eb6b620e013ccb64522dc6b90adf1c` SHA-gepinnt bereitstellen,
   vollständig live prüfen und `CARMAJA_PRODUCTION_DEPLOY_ENABLED` danach
   wieder auf `false` setzen.
+- [x] Die nach der Erstbestellung abgenommene Bestätigungsseite aus
+  `768c64e49ca1c48ef92a7b809e2c2fe46330bd17` im Workflowlauf
+  `32590810414` bereitstellen und den Deploy-Schalter wieder auf `false`
+  setzen.
 - [ ] Produktionsfreigabe mit Zeitfenster, Betreiberin und Stop-Verantwortung
   schriftlich dokumentieren.
 
@@ -73,11 +77,11 @@ irgendein Feldkonflikt oder nicht freigegebenes Legal Bundle v5.
 
 ## 3. Öffentliche Produktprojektion
 
-- [ ] Öffentliche Produktseite, Produktprojektion, Hosting und Suchindex auf
+- [x] Öffentliche Produktseite, Produktprojektion, Hosting und Suchindex auf
   unerwünschte externe Kauflinks prüfen.
-- [ ] Belegen, dass App und Publisher Verfügbarkeit nur durch
+- [x] Belegen, dass App und Publisher Verfügbarkeit nur durch
   Veröffentlichen, Archivieren und Wiederherstellen ändern.
-- [ ] Belegen, dass Archivieren zuerst neue Checkouts sperrt und danach Seite,
+- [x] Belegen, dass Archivieren zuerst neue Checkouts sperrt und danach Seite,
   Sitemap und öffentliche Bilder entfernt.
 
 **Stop:** abweichende Produktprojektion oder ein Checkout trotz Archivierung.
@@ -303,15 +307,36 @@ nicht zurückschreiben.
 - [x] Danach `CARMAJA_PRODUCTION_DEPLOY_ENABLED` wieder auf `false` setzen.
 - [x] Öffentliche Legal-Seiten, Footer, fehlende interne Bundle-Metadaten,
   fehlende PayPal-/Testmarker und erfolgreiche Antworten live prüfen.
-- [ ] Ares als aktive Kollektion projizieren; Testprodukte bleiben getrennt.
-- [ ] Live-Preis, EUR, Verfügbarkeit, Versand, Legal Consent, Datenschutz- und
+- [x] Ares als aktive Kollektion projizieren; Testprodukte bleiben getrennt.
+- [x] Live-Preis, EUR, Verfügbarkeit, Versand, Legal Consent, Datenschutz- und
   Widerrufsseiten prüfen.
-- [ ] Eine echte Erstbestellung als Gast mit Menge 1 kontrolliert durchführen.
-- [ ] Nicht blockierende Zuordnung, Stripe-Zustand, Webhook-Inbox, Worker,
-  atomare Bestellung, Bestellnummer, unveränderte Verfügbarkeit, Brevo-Mail,
-  Admin und Versandfreigabe prüfen.
-- [ ] Beobachtungsfenster ohne weitere Produktfreigabe abschließen; bei jedem
-  Widerspruch neue Checkouts deaktivieren.
+- [x] Eine echte Erstbestellung als Gast mit Menge 1 kontrolliert durchführen.
+- [x] Erfolgreiche Zahlung, genau eine Bestellung `CMJ-00000001`, Betrag
+  22,70 EUR und den Empfang der Brevo-Bestellbestätigung bestätigen.
+- [x] Kaufweg nach der Erstbestellung wieder schließen. Die öffentliche
+  Shop-API antwortete am 22. August 2026 fail-closed mit
+  `collection_commerce_not_enabled`.
+- [x] Abgenommene Bestätigungsseite und den überarbeiteten Kundenmailtext aus
+  Commit `768c64e49ca1c48ef92a7b809e2c2fe46330bd17` bereitstellen. Die
+  Mailvorlage wurde auf dem Produktionsserver mit künstlichen Daten und einem
+  lokalen Transport ohne tatsächlichen Versand geprüft; die vorherige Datei
+  bleibt hashgeprüft gesichert.
+- [x] Stripe-Zustand, Webhook-Inbox, Worker, Warteschlangen, Mailstatus, Admin
+  und unveränderte Kollektionen-Verfügbarkeit abschließend lesend prüfen.
+  Lesestand vom 22. August 2026: Bestellung, Live-Zahlung, zwei Mails,
+  Metadatenwarteschlange, beide Worker, Ares-Version 4 und alle globalen
+  Warteschlangen sind unauffällig. Nach dem kontrollierten Abgleich des
+  Signaturschlüssels akzeptierte der einzige aktive Live-Webhook beide
+  manuellen Wiederholungen mit HTTP 204. Der Duplikatschutz erzeugte daraus
+  genau einen verarbeiteten Inbox-Eintrag mit einem Verarbeitungsversuch,
+  keine weitere Bestellung und keine weitere Mail. Stripe meldet keine offene
+  Zustellung; Schlüsselwerte wurden weder ausgegeben noch dokumentiert.
+- [x] Beobachtungsfenster ohne weitere Produktfreigabe abschließen. Die
+  abschließende Lesekontrolle bestätigte erneut genau eine Bestellung, zwei
+  einmalig gesendete Mails, einen einmal verarbeiteten Webhook, keine offene
+  Stripe-Zustellung, fehlerfreie Worker, leere Warteschlangen und Ares als
+  unveränderte Kollektion der Version 4. Der öffentliche Kaufweg blieb mit
+  `collection_commerce_not_enabled` geschlossen.
 
 **Stop:** falscher Preis/Versand, fehlende Zustimmung, doppelte Bestellung,
 unklare Zahlung, geänderte Verfügbarkeit, fehlende Mail oder Worker-/Webhookfehler.

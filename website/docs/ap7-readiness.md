@@ -1,6 +1,6 @@
 # AP7.0 – lokale Produktionsbereitschaft
 
-Stand: 2026-08-13
+Stand: 2026-08-22
 
 Basis: AP6-Commit `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`
 
@@ -20,10 +20,41 @@ AP7.3e-Integrationsstand: `G:\BS-Stein-Hart-ap7-integration`, Branch
 AP7.3g-Testbetriebsnachweis: IONOS-Testumgebung, abgeschlossen und bereinigt am
 2026-08-08
 
-Aktueller `main`-Stand: `b55d457fb0dfa1886a6ba00612882024023c4488`
+Aktueller `main`-Stand: `768c64e49ca1c48ef92a7b809e2c2fe46330bd17`
 
 Aktuell bereitgestellter Produktionswebsite-Stand:
-`01e86d61c4eb6b620e013ccb64522dc6b90adf1c`
+`768c64e49ca1c48ef92a7b809e2c2fe46330bd17`
+
+## Aktualisierung 22. August 2026
+
+- Ares wurde als aktive Kollektion ohne Bestand projiziert und veröffentlicht.
+- Eine kontrollierte echte Gastbestellung wurde erfolgreich bezahlt. Die
+  Bestellung `CMJ-00000001` über 22,70 EUR wurde genau einmal angelegt; die
+  Betreiberin bestätigte den Empfang der Kundenmail.
+- Die Rückkehrseite und der Kundenmailtext wurden anschließend verbessert,
+  auf der Testwebsite abgenommen und aus Commit `768c64e49…` kontrolliert in
+  Produktion bereitgestellt. Workflowlauf `32590810414` bestand Build,
+  Deployment, Live-Smoke-Test und `mark_verified`.
+- Das aktive Mailprogramm besitzt weiterhin Modus `0640`; die Vorgängerversion
+  ist hashgeprüft gesichert. Eine Prüfung mit künstlichen Daten und lokalem
+  Transport bestätigte den neuen Inhalt ohne echten Mailversand.
+- Der Kaufweg wurde nach der Erstbestellung wieder geschlossen. Die öffentliche
+  Shop-API antwortet fail-closed mit `collection_commerce_not_enabled`.
+- Website- und API-Deploy-Schalter stehen wieder auf `false`. Runtime,
+  Produkte, Bestand, Zahlungen und Publisher wurden durch die Nachbesserung
+  nicht verändert.
+- Die rein lesende Nachprüfung bestätigte Bestellung, Klarna-Live-Zahlung,
+  genau einen Ares-Artikel, zwei gesendete Mails, gesendete Stripe-Metadaten,
+  aktuelle fehlerfreie Worker, leere Rückstände und Ares als unverändert
+  verfügbare Kollektion der Version 4. Der öffentliche Kaufweg bleibt durch
+  den Laufzeitschalter geschlossen.
+- Das Webhook-Teilgate ist bestanden. Nach dem kontrollierten Abgleich des
+  Signaturschlüssels wurden zwei manuelle Wiederholungen desselben echten
+  `checkout.session.completed`-Ereignisses jeweils mit HTTP 204 angenommen.
+  Der Duplikatschutz erzeugte genau einen Inbox-Eintrag; der reguläre Cronworker
+  verarbeitete ihn einmal fehlerfrei. Bestellung und beide bestehenden Mails
+  blieben jeweils einmalig, alle Rückstände und Prüffälle stehen auf null und
+  Stripe meldet keine offene Zustellung.
 
 ## Aktualisierung 18. August 2026
 
@@ -39,7 +70,7 @@ Aktuell bereitgestellter Produktionswebsite-Stand:
 - Produkt-API-v4-Schreiben, Kollektionen-Checkout und Publisher bleiben bis zu
   den jeweiligen kontrollierten Schritten ausgeschaltet.
 
-## Urteil
+## Historisches Urteil vom 18. August 2026
 
 Der Android-Versions- und Draft-Synchronisierungsblocker ist in AP7.2b
 geschlossen. AP7.3b hat anschließend die vollständige V2-Kette von App und
@@ -313,31 +344,12 @@ fail-closed.
 
 ## Verbleibende Produktionsgates
 
-1. Das ohne Zahlung technisch auf der getrennten Testumgebung bereitgestellte
-   Bestell-, Betreiber-, Versand- und Widerrufsmail-Paket inhaltlich durch die
-   Betreiberin abnehmen. Die Betreiber-Mail bleibt auf Bestellnummer,
-   Produktname/-ID und Gesamtbetrag begrenzt. Eine spätere Aktivierung echter
-   Brevo-Zugänge ist ein eigenes Produktionsgate.
-2. Die vollständige Webhook-Inbox-, Wiederholungs- und Abgleichkette später
-   mit einem kontrollierten echten Stripe-Ereignis nachweisen. Erst danach ist
-   eine echte Bestellung zulässig.
-3. Das Startprodukt unmittelbar vor dem Wartungsfenster erneut lesend prüfen.
-   Produktidentität, Preis, Bilder, Version, Hash und unveränderten
-   Manifeststatus dokumentieren; jede Abweichung stoppt den Ablauf.
-4. Unmittelbar vor dem Cutover ein neues verschlüsseltes Produkt- und
-   Commerce-Backup erzeugen, den Offsite-Abruf bestätigen und den
-   Restore-Dry-Run erneut bestehen.
-5. In einem kontrollierten Wartungsfenster die v4-Produkt- und
-   `/shop/v2`-Schalter aktivieren und Ares mit einer dauerhaften Vorgangskennung
-   als aktive Kollektion projizieren. Es wird kein Bestand importiert.
-6. Das Kollektionen-Manifest nach Vier-Augen-Prüfung und Freigabe von Legal
-   Bundle v5 separat freigeben, den Cutover zuerst im Planmodus prüfen und erst
-   nach ausdrücklicher Apply-Freigabe `commerce_products.sales_model=collection`
-   und `sales_enabled=1` setzen. Eine Inventory-Zeile wird nicht erzeugt.
-7. Publisher und Produktprojektion in der festgelegten Reihenfolge separat
-   freigeben, die bereits bereitgestellte Produktionswebsite prüfen, genau eine
-   echte Gastbestellung durchführen und das Beobachtungsfenster ohne weitere
-   Produktfreigabe abschließen.
+1. Den dauerhaften Shopstart separat freigeben. Dabei ausschließlich den
+   Kollektionen-Kaufweg für Ares öffnen, anschließend öffentliche Seite,
+   Checkoutbereitschaft, Worker und Monitoring prüfen.
+2. Nach dem Shopstart den laufenden Betrieb beobachten. Bei jedem Widerspruch
+   werden neue Checkouts geschlossen; Bestellungen und Commerce-Daten werden
+   nicht zurückgesetzt.
 
 Jede Abweichung bei Produktidentität, Hash, Preis, Verfügbarkeit, Migration,
 Zahlungszuordnung, Backup, Worker oder Monitoring stoppt neue Checkouts. Ein
