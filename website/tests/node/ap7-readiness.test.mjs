@@ -72,11 +72,11 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsa
   assert.match(runtime, /'commerceRestoreRequireTls'\s*=>\s*true/);
   assert.match(runtime, /'backupDirectory'\s*=>\s*'\/home\/www\/carmaja-private-shop\/backups'/);
   assert.match(runtime, /'backupOffsiteTarget'\s*=>\s*'onedrive-pull:\/\/carmaja-production\/Carmaja-Perlen\/Backups'/);
-  assert.equal(deployment.guards.publisherEnabled, false);
+  assert.equal(deployment.guards.publisherEnabled, true);
   assert.equal(deployment.guards.automaticApiDeployment, false);
-  assert.equal(deployment.guards.automaticWebsiteDeployment, false);
-  assert.equal(deployment.guards.productApiV4WritesEnabled, false);
-  assert.equal(deployment.guards.collectionCommerceEnabled, false);
+  assert.equal(deployment.guards.automaticWebsiteDeployment, true);
+  assert.equal(deployment.guards.productApiV4WritesEnabled, true);
+  assert.equal(deployment.guards.collectionCommerceEnabled, true);
   assert.match(runtime, /'productApiV4WritesEnabled'\s*=>\s*false/);
   assert.match(runtime, /'collectionCommerceEnabled'\s*=>\s*false/);
   assert.equal(deployment.runtime.cron, "*/5 * * * *");

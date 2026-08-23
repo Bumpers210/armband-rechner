@@ -1780,6 +1780,7 @@ carmaja_api_test(
         $result = carmaja_api_github_publish_adapter($publicProduct, [
             'operationId' => 'production-collection-publish-ares-0001',
             'requestHash' => hash('sha256', 'production-collection-publish-ares-0001'),
+            'lifecycleAction' => 'publish',
         ]);
 
         carmaja_api_test_same($commitSha, $result['commitSha'] ?? null, 'Produktions-Commit fehlt.');
@@ -1792,6 +1793,23 @@ carmaja_api_test(
                 true
             ),
             'Publisher darf keinen Website-Workflow starten.'
+        );
+        $commitRequest = null;
+        foreach ($calls as $call) {
+            if (($call[0] ?? null) === 'POST'
+                && str_ends_with((string) ($call[1] ?? ''), '/git/commits')) {
+                $commitRequest = $call[2] ?? null;
+                break;
+            }
+        }
+        $expectedRequestHash = hash('sha256', 'production-collection-publish-ares-0001');
+        carmaja_api_test_same(
+            "Carmaja collection publish CP-2026-0002\n\n"
+                . "Carmaja-Publisher: collection-v4\n"
+                . "Carmaja-Operation: production-collection-publish-ares-0001\n"
+                . "Carmaja-Request-SHA256: " . $expectedRequestHash,
+            $commitRequest['message'] ?? null,
+            'Collection-v4-Commit besitzt keine sichere automatische Kennzeichnung.'
         );
         $productsEntry = null;
         foreach (($treeBody['tree'] ?? []) as $entry) {
@@ -3098,6 +3116,11 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
         array $publicProduct,
         array $operation
     ) use (&$archivePublishAttempts): array {
+        carmaja_api_test_same(
+            'archive',
+            $operation['lifecycleAction'] ?? null,
+            'v4-Archivierung muss die Publisher-Aktion eindeutig binden.'
+        );
         $archivePublishAttempts++;
         if ($archivePublishAttempts === 1) {
             throw new CarmajaApiException(

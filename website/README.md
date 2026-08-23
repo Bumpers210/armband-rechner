@@ -21,6 +21,15 @@ außerhalb von Webroot, Export, Manifest und Deploymentworkspace.
 
 Der Produktionsworkflow baut auf `release/production-product-management` und `main`, darf aber ausschliesslich von `main` aus deployen. `CARMAJA_PRODUCTION_DEPLOY_ENABLED` ist als Repository-Variable standardmaessig `false`. Ein freigegebener Lauf setzt sie nur kurz auf exakt `true`; der Workflow setzt sie am Ende unabhaengig vom Ergebnis wieder auf `false`.
 
+Eine eng begrenzte Ausnahme gilt für den dauerhaft aktivierten
+Collection-v4-Publisher: Ein direkter, nicht erzwungener Folgecommit auf
+`main` wird ohne erneute manuelle Freigabe bereitgestellt, wenn er die feste
+Publisherkennzeichnung trägt und ausschließlich `products.json` sowie bis zu
+fünf nummerierte Bilder genau einer SKU ändert. Der Workflow prüft Akteur,
+Vorgänger, Committext, Produktmodell und Pfade vor jedem Serverzugriff. Für
+Code- oder allgemeine Websiteänderungen bleibt der manuelle Deployweg
+unverändert.
+
 Das Paket enthaelt nur den geprueften statischen Export, ein SHA-256-gebundenes Manifest und die Archivpruefsumme. `website/hosting/**`, PHP-Dateien und geschuetzte Serverbereiche werden nicht paketiert. Beim ersten Produktivlauf verweigert der Aktivierer jede Kollision mit einer nicht bereits im serverseitigen Baseline-Manifest verwalteten Datei. Dieses Manifest ist vor der ersten Aktivierung nach einer manuellen Bestandsaufnahme zu erstellen und freizugeben.
 
 ## Oeffentliche Produktdaten
