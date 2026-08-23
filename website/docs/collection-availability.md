@@ -31,10 +31,13 @@ Reservierungen bleiben zur Zuordnung und Wiederholungsvermeidung bestehen, trage
 Die Testabnahme einschließlich Veröffentlichen, parallelem Kaufen, Archivieren
 und Wiederherstellen ist abgeschlossen. Legal Bundle v5 ist freigegeben. Für
 Ares ist `collectionCommerceEnabled` seit dem 22. August 2026 dauerhaft auf
-`true`; `productApiV4WritesEnabled`, Publisher- und Deploy-Schalter bleiben auf
-`false`. Schreibzugriffe älterer Apps werden bei einem späteren kontrollierten
-Schreibfenster verständlich abgewiesen; lesender Zugriff auf alte Produktmodelle
-bleibt möglich.
+`true`. Nach der Abnahme der Produktions-App 1.3.1 werden außerdem
+`productApiV4WritesEnabled`, `githubAdapterEnabled` und
+`productionPublishEnabled` dauerhaft aktiviert. Dadurch kann die angemeldete
+Produktions-App Entwürfe speichern sowie eine ausdrücklich bestätigte
+Veröffentlichung, Archivierung oder Wiederherstellung ohne weiteres
+administratives Freigabefenster vollständig ausführen. Lesender Zugriff auf
+alte Produktmodelle bleibt möglich; veraltete Apps dürfen nicht schreiben.
 
 Der Shopstart wurde ohne Testbestellung geprüft: Ares ist als Kollektion der
 Version 4 für 20,00 EUR verfügbar, Shop-API und Kaufbutton sind betriebsbereit,
@@ -43,14 +46,21 @@ der Kaufweg wieder geschlossen; Bestellungen und Commerce-Daten bleiben
 unverändert.
 
 Der Produktionspublisher akzeptiert ausschließlich das Repository
-`Bumpers210/armband-rechner` und den Branch `main`. Eine schreibende
-Veröffentlichung ist nur möglich, wenn `githubAdapterEnabled` und
-`productionPublishEnabled` gleichzeitig aktiviert sind und die Token-Datei
-innerhalb des privaten Shop- oder Produktbereichs liegt. Nach einem
-kontrollierten Publish werden beide Schalter wieder deaktiviert. Ein
-Produktcommit startet keinen Website-Deploy; der geschützte
-Produktionsworkflow erstellt auf `main` lediglich den prüfbaren Buildstand,
-solange kein gesonderter manueller Deploymentauftrag vorliegt.
+`Bumpers210/armband-rechner` und den Branch `main`. Die private Token-Datei
+bleibt an den privaten Shop- oder Produktbereich gebunden. Jeder v4-Vorgang
+erzeugt genau einen nicht erzwungenen Folgecommit mit Vorgangskennung und
+Quellhash. Der Produktionsworkflow stellt diesen Commit automatisch bereit,
+aber nur wenn Akteur, Vorgänger, Commitkennzeichnung und sämtliche geänderten
+Pfade dem Collection-v4-Vertrag entsprechen. Zulässig sind ausschließlich
+`website/content/products.json` und höchstens fünf nummerierte JPEGs derselben
+SKU. Normale Code-, Website- und manuelle Git-Änderungen behalten ihre
+separate Deploymentfreigabe.
+
+„Speichern“ und „Synchronisieren“ veröffentlichen nichts. Erst die bestätigte
+Aktion „Jetzt veröffentlichen“ projiziert die Kollektion in Commerce, schreibt
+den öffentlichen Produktcommit und startet die atomare Websitebereitstellung
+mit Smoke-Test und automatischem Rollback. Archivieren und Wiederherstellen
+verwenden denselben begrenzten Weg.
 
 ### Auflösung von „test 3“ am 17. August 2026
 

@@ -350,6 +350,7 @@ function carmaja_api_v4_transition_product(
     $publishResult = carmaja_api_run_publish_adapter_v3($prepared['public'], [
         'operationId' => $operationId,
         'requestHash' => $requestHash,
+        'lifecycleAction' => $action,
     ]);
     carmaja_api_audit_best_effort('product_v4_' . $action, [
         'productId' => $productId,

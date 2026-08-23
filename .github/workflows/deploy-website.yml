@@ -8,6 +8,7 @@ on:
       - ".github/workflows/deploy-website.yml"
       - "website/content/products.json"
       - "website/public/images/products/**"
+      - "website/scripts/validate-production-publisher-push.mjs"
   pull_request:
     branches:
       - main
@@ -22,6 +23,7 @@ on:
       - "website/lib/**"
       - "website/public/**"
       - "website/scripts/prepare-production-deploy.mjs"
+      - "website/scripts/validate-production-publisher-push.mjs"
       - "website/scripts/bootstrap-production-first-deploy.sh"
       - "website/scripts/production-first-deploy-inventory.v1"
       - "website/scripts/deploy-production-site.sh"
@@ -214,11 +216,39 @@ jobs:
           test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
           test "$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"
 
+  validate-automatic-collection-publish:
+    if: ${{ github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check out publisher commit with its direct parent
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Set up pinned Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.16.0"
+
+      - name: Validate exact Collection-v4 publisher provenance
+        env:
+          CARMAJA_PUBLISH_BEFORE_SHA: ${{ github.event.before }}
+          CARMAJA_PUBLISH_ACTOR: ${{ github.actor }}
+          CARMAJA_PUBLISH_FORCED: ${{ github.event.forced }}
+          CARMAJA_PUBLISH_DELETED: ${{ github.event.deleted }}
+        run: node website/scripts/validate-production-publisher-push.mjs
+
   deploy-production-site:
     needs:
       - build-production-site
       - validate-manual-production-deploy
-    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_name == 'main' && inputs.expected_commit_sha == github.sha && inputs.deployment_confirmation == 'DEPLOY-CARMAJA-PRODUCTION' && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' && needs.validate-manual-production-deploy.result == 'success' }}
+      - validate-automatic-collection-publish
+    if: ${{ always() && needs.build-production-site.result == 'success' && ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.ref_name == 'main' && inputs.expected_commit_sha == github.sha && inputs.deployment_confirmation == 'DEPLOY-CARMAJA-PRODUCTION' && vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true' && needs.validate-manual-production-deploy.result == 'success') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.ref_name == 'main' && needs.validate-automatic-collection-publish.result == 'success')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -228,9 +258,10 @@ jobs:
       run:
         working-directory: website
     env:
-      CARMAJA_PRODUCTION_DEPLOY_ENABLED: ${{ vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED }}
-      CARMAJA_EXPECTED_COMMIT_SHA: ${{ inputs.expected_commit_sha }}
-      CARMAJA_DEPLOYMENT_CONFIRMATION: ${{ inputs.deployment_confirmation }}
+      CARMAJA_PRODUCTION_DEPLOY_ENABLED: ${{ github.event_name == 'push' && 'true' || vars.CARMAJA_PRODUCTION_DEPLOY_ENABLED }}
+      CARMAJA_EXPECTED_COMMIT_SHA: ${{ github.event_name == 'push' && github.sha || inputs.expected_commit_sha }}
+      CARMAJA_DEPLOYMENT_CONFIRMATION: ${{ github.event_name == 'push' && 'AUTO-DEPLOY-CARMAJA-COLLECTION' || inputs.deployment_confirmation }}
+      CARMAJA_AUTOMATIC_COLLECTION_PUBLISH: ${{ github.event_name == 'push' && 'true' || 'false' }}
       CARMAJA_PRODUCTION_SSH_HOST: ${{ secrets.CARMAJA_PRODUCTION_SSH_HOST }}
       CARMAJA_PRODUCTION_SSH_USER: ${{ secrets.CARMAJA_PRODUCTION_SSH_USER }}
       CARMAJA_PRODUCTION_SSH_PORT: ${{ secrets.CARMAJA_PRODUCTION_SSH_PORT }}
@@ -258,11 +289,9 @@ jobs:
         run: |
           set -Eeuo pipefail
           test "$GITHUB_REPOSITORY" = "Bumpers210/armband-rechner"
-          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
           test "$GITHUB_REF" = "refs/heads/main"
           test "$GITHUB_REF_NAME" = "main"
           test "$CARMAJA_EXPECTED_COMMIT_SHA" = "$GITHUB_SHA"
-          test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY-CARMAJA-PRODUCTION"
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$CARMAJA_SITE_TARGET" = "production"
           test "$CARMAJA_SITE_DOMAIN" = "www.carmaja-perlen.de"
@@ -270,6 +299,17 @@ jobs:
           test "$CARMAJA_PRODUCTION_DEPLOY_WORKSPACE" = "/home/www/carmaja-production-deploy"
           test "$CARMAJA_PRODUCTION_PUBLISH_ENABLED" = "false"
           test "$CARMAJA_PRODUCTION_DEPLOY_ENABLED" = "true"
+          case "$GITHUB_EVENT_NAME" in
+            workflow_dispatch)
+              test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY-CARMAJA-PRODUCTION"
+              test "$CARMAJA_AUTOMATIC_COLLECTION_PUBLISH" = "false"
+              ;;
+            push)
+              test "$CARMAJA_DEPLOYMENT_CONFIRMATION" = "AUTO-DEPLOY-CARMAJA-COLLECTION"
+              test "$CARMAJA_AUTOMATIC_COLLECTION_PUBLISH" = "true"
+              ;;
+            *) exit 1 ;;
+          esac
           test "$CARMAJA_RELEASE_ID" = "${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           test "${#CARMAJA_ARCHIVE_SHA256}" -eq 64
           printf '%s\n' 'DEPLOY_GUARD_OK=identity'

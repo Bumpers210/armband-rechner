@@ -18,8 +18,8 @@ test("Produktionsbackup ist privat, verschlüsselt und fail-closed", async () =>
   assert.equal(deployment.runtime.backupServerRetentionDays, 7);
   assert.equal(deployment.runtime.backupOffsiteTarget, "onedrive-pull://carmaja-production/Carmaja-Perlen/Backups");
   assert.equal(deployment.guards.automaticApiDeployment, false);
-  assert.equal(deployment.guards.automaticWebsiteDeployment, false);
-  assert.equal(deployment.guards.publisherEnabled, false);
+  assert.equal(deployment.guards.automaticWebsiteDeployment, true);
+  assert.equal(deployment.guards.publisherEnabled, true);
   assert.match(runtime, /'backupEncryptionKeyFile'\s*=>\s*'\/home\/www\/carmaja-private-shop\/config\/backup-key\.php'/);
   assert.match(runtime, /'backupEncryptionKey'\s*=>\s*null/);
   assert.doesNotMatch(runtime, /[A-Za-z0-9+/]{43}=/);

@@ -2731,6 +2731,17 @@ function carmaja_api_commit_public_product(
             'github_product_sku_invalid'
         );
     }
+    $lifecycleAction = $operation['lifecycleAction'] ?? null;
+    if ($lifecycleAction !== null
+        && (!is_string($lifecycleAction)
+            || !in_array($lifecycleAction, ['publish', 'archive', 'restore'], true))) {
+        throw new CarmajaApiException(
+            500,
+            'Collection-v4-Aktion für GitHub ist ungültig.',
+            [],
+            'github_lifecycle_action_invalid'
+        );
+    }
 
     $preparedCommitSha = is_string($adapterState['preparedCommitSha'] ?? null)
         ? $adapterState['preparedCommitSha']
@@ -2930,10 +2941,17 @@ function carmaja_api_commit_public_product(
         );
     }
 
-    $commit = carmaja_api_github_request('POST', $repoPathPrefix . '/git/commits', [
-        'message' => 'Publish product ' . $publicProduct['sku']
+    $commitMessage = $lifecycleAction === null
+        ? 'Publish product ' . $publicProduct['sku']
             . "\n\nCarmaja-Operation: " . $operationId
-            . "\nCarmaja-Request-SHA256: " . $requestHash,
+            . "\nCarmaja-Request-SHA256: " . $requestHash
+        : 'Carmaja collection ' . $lifecycleAction . ' ' . $publicProduct['sku']
+            . "\n\nCarmaja-Publisher: collection-v4"
+            . "\nCarmaja-Operation: " . $operationId
+            . "\nCarmaja-Request-SHA256: " . $requestHash;
+
+    $commit = carmaja_api_github_request('POST', $repoPathPrefix . '/git/commits', [
+        'message' => $commitMessage,
         'tree' => (string) $newTree['sha'],
         'parents' => [$headSha],
     ]);

@@ -60,10 +60,10 @@
     "copyCredentials": false,
     "automaticActivation": false,
     "productionDataAccess": false,
-    "publisherEnabled": false,
+    "publisherEnabled": true,
     "automaticApiDeployment": false,
-    "automaticWebsiteDeployment": false,
-    "productApiV4WritesEnabled": false,
-    "collectionCommerceEnabled": false
+    "automaticWebsiteDeployment": true,
+    "productApiV4WritesEnabled": true,
+    "collectionCommerceEnabled": true
   }
 }

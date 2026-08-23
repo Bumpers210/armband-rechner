@@ -65,10 +65,12 @@ Migrationsbericht liegt ausschliesslich im privaten Auditbereich.
 
 ## Publisher
 
-Die Vorlage setzt `productionPublishEnabled` und `githubAdapterEnabled` auf
-`false`. Erst eine private Runtime-Konfiguration mit beiden explizit auf `true`
-und einem Token im privaten Datenbereich kann den Adapter aktivieren. Das Ziel
-ist fest auf Repository `Bumpers210/armband-rechner` und Branch `main` begrenzt.
+Die Vorlage setzt `productionPublishEnabled` und `githubAdapterEnabled` für
+Neuinstallationen weiterhin sicher auf `false`. In der abgenommenen
+Produktionslaufzeit können beide Werte zusammen mit
+`productApiV4WritesEnabled` dauerhaft auf `true` gesetzt werden. Ein Token im
+privaten Datenbereich bleibt zwingend. Das Ziel ist fest auf Repository
+`Bumpers210/armband-rechner` und Branch `main` begrenzt.
 
 Der v2-Publisher akzeptiert ausschließlich den vollständigen öffentlichen
 Produktvertrag der Modellversion 2. Er darf nur `website/content/products.json`
@@ -76,3 +78,9 @@ und die nummerierten JPEGs im eigenen SKU-Verzeichnis ändern. Eine abweichende
 Dokumentversion, fremde SKU/Slug-Belegung, zusätzliche Felder oder Bildpfade
 außerhalb des privaten Produktuploads blockieren die Veröffentlichung vor dem
 GitHub-Schreibvorgang.
+
+V4-Veröffentlichen, -Archivieren und -Wiederherstellen kennzeichnen ihren
+GitHub-Commit zusätzlich mit `Carmaja-Publisher: collection-v4`, Aktion,
+Vorgangskennung und Request-Hash. Nur diese Commitform darf den automatischen
+Produktionswebsite-Deploy auslösen; ältere und allgemeine Publisher-Commits
+bleiben reine Buildkandidaten.
