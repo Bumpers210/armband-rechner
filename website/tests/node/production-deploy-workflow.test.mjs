@@ -99,7 +99,7 @@ test("Manuelle Produktionsdeploys werden vor dem Serverzugriff strikt validiert 
   assert.match(deploy, /test "\$CARMAJA_DEPLOYMENT_CONFIRMATION" = "DEPLOY-CARMAJA-PRODUCTION"/);
   assert.match(deploy, /AUTO-DEPLOY-CARMAJA-COLLECTION/);
   assert.match(deploy, /case "\$GITHUB_EVENT_NAME" in/);
-  assert.match(automatic, /if: \$\{\{ github\.event_name == 'push' \}\}/);
+  assert.match(automatic, /if: \$\{\{ github\.event_name == 'push' && startsWith\(github\.event\.head_commit\.message, 'Carmaja collection '\) \}\}/);
   assert.match(automatic, /fetch-depth: 2/);
   assert.match(automatic, /CARMAJA_PUBLISH_BEFORE_SHA: \$\{\{ github\.event\.before \}\}/);
   assert.match(automatic, /CARMAJA_PUBLISH_ACTOR: \$\{\{ github\.actor \}\}/);
@@ -170,7 +170,7 @@ test("Pull Requests bauen nur, während ausschließlich validierte Publisher-Pus
   assert.match(build, /GITHUB_REF_NAME="\$CARMAJA_MANIFEST_SOURCE_BRANCH" npm run prepare:production-deploy/);
   assert.doesNotMatch(build, /secrets\.|environment:|\bssh\b|\bscp\b|github-script/i);
   assert.match(validation, /if: \$\{\{ github\.event_name == 'workflow_dispatch' \}\}/);
-  assert.match(automatic, /if: \$\{\{ github\.event_name == 'push' \}\}/);
+  assert.match(automatic, /if: \$\{\{ github\.event_name == 'push' && startsWith\(github\.event\.head_commit\.message, 'Carmaja collection '\) \}\}/);
   assert.match(automatic, /validate-production-publisher-push\.mjs/);
   assert.doesNotMatch(automatic, /secrets\.|environment:|\bssh\b|\bscp\b|github-script/i);
   assert.match(deploy, /always\(\)/);
