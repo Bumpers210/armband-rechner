@@ -1,5 +1,6 @@
 package de.carmajaperlen.armbandrechner
 
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
@@ -12,6 +13,9 @@ data class ProductServerImage(
     val imageId: String,
     val fileName: String,
     val isMain: Boolean,
+    val alt: String = "",
+    val width: Int = 0,
+    val height: Int = 0,
 )
 
 data class ProductServerUpdate(
@@ -130,6 +134,77 @@ open class ProductApiClient {
             body = null,
         )
         return response.getJSONObject("product").toServerUpdate()
+    }
+
+    open fun listProducts(baseUrl: String, token: String): List<ProductServerUpdate> {
+        return requestJson(
+            baseUrl = baseUrl,
+            path = "v4/products",
+            method = "GET",
+            token = token,
+            body = null,
+        ).toServerUpdates()
+    }
+
+    open fun downloadImage(
+        baseUrl: String,
+        token: String,
+        productId: String,
+        imageId: String,
+    ): ByteArray {
+        require(PRODUCT_ID_PATTERN.matches(productId)) { "Produkt-ID ist ungültig." }
+        require(IMAGE_ID_PATTERN.matches(imageId)) { "Bild-ID ist ungültig." }
+        val connection = openConnection(
+            baseUrl = baseUrl,
+            path = "v4/products/$productId/images/$imageId",
+            method = "GET",
+            token = token,
+        ).apply {
+            setRequestProperty("Accept", "image/jpeg")
+        }
+        val statusCode = connection.responseCode
+        if (statusCode !in 200..299) {
+            readResponse(connection)
+            throw ProductApiException(statusCode, "http_error", message = "Produktbild fehlt.")
+        }
+
+        try {
+            val contentType = connection.contentType.orEmpty().substringBefore(';').trim().lowercase()
+            val declaredLength = connection.contentLengthLong
+            if (contentType != "image/jpeg"
+                || declaredLength == 0L
+                || declaredLength > MAX_IMAGE_DOWNLOAD_BYTES) {
+                throw ProductApiException(
+                    0,
+                    "invalid_image_response",
+                    message = "Produktserver liefert kein gültiges Produktbild.",
+                )
+            }
+            val output = ByteArrayOutputStream()
+            connection.inputStream.use { input ->
+                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                while (true) {
+                    val count = input.read(buffer)
+                    if (count < 0) break
+                    if (output.size() + count > MAX_IMAGE_DOWNLOAD_BYTES) {
+                        throw ProductApiException(
+                            0,
+                            "image_too_large",
+                            message = "Produktbild ist zu groß.",
+                        )
+                    }
+                    output.write(buffer, 0, count)
+                }
+            }
+            return output.toByteArray().takeIf { it.isNotEmpty() }
+                ?: throw ProductApiException(
+                    0,
+                    "invalid_image_response",
+                    message = "Produktserver liefert ein leeres Produktbild.",
+                )
+        } finally {
+            connection.disconnect()
+        }
     }
 
     open fun uploadImage(
@@ -403,6 +478,12 @@ private const val TEST_PRODUCT_API_HOST = "test-api.carmaja-perlen.de"
 private const val PRODUCTION_PRODUCT_API_HOST = "api.carmaja-perlen.de"
 private val PRODUCT_API_HOSTS = setOf(TEST_PRODUCT_API_HOST, PRODUCTION_PRODUCT_API_HOST)
 private val PRODUCT_PUBLISH_TARGETS = setOf("test", "production")
+private val PRODUCT_ID_PATTERN = Regex("^[0-9a-fA-F-]{36}$|^[0-9A-HJKMNP-TV-Z]{26}$")
+private val IMAGE_ID_PATTERN = Regex(
+    "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-" +
+        "[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
+)
+private const val MAX_IMAGE_DOWNLOAD_BYTES = 1_048_576
 
 internal fun ProductDraft.toSaveJson(): JSONObject {
     val imagesV2 = images.mapIndexed { index, image ->
@@ -450,7 +531,27 @@ private fun CalculationSnapshot.toJson(): JSONObject {
         .put("createdAtMillis", createdAtMillis)
 }
 
-private fun JSONObject.toServerUpdate(): ProductServerUpdate {
+internal fun JSONObject.toServerUpdates(): List<ProductServerUpdate> {
+    val products = optJSONArray("products")
+        ?: throw ProductApiException(
+            0,
+            "invalid_api_response",
+            message = "Produktserver liefert keine Kollektionen.",
+        )
+    return buildList {
+        for (index in 0 until products.length()) {
+            val product = products.optJSONObject(index)
+                ?: throw ProductApiException(
+                    0,
+                    "invalid_api_response",
+                    message = "Produktserver liefert eine ungültige Kollektion.",
+                )
+            add(product.toServerUpdate())
+        }
+    }
+}
+
+internal fun JSONObject.toServerUpdate(): ProductServerUpdate {
     val serverImages = optJSONArray("images")?.let { array ->
         buildList {
             for (index in 0 until array.length()) {
@@ -462,6 +563,9 @@ private fun JSONObject.toServerUpdate(): ProductServerUpdate {
                         imageId = imageId,
                         fileName = fileName,
                         isMain = image.optBoolean("isMain", index == 0),
+                        alt = image.optString("alt"),
+                        width = image.optInt("width", 0),
+                        height = image.optInt("height", 0),
                     ),
                 )
             }

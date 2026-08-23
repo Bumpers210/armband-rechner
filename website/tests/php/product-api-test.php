@@ -3015,6 +3015,41 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
         unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS']);
     }
     $uploaded = carmaja_api_v4_product_response_from_draft($uploadedDraft);
+    carmaja_api_test_same(
+        'Dauerhafte Kollektion',
+        $uploaded['images'][0]['alt'] ?? null,
+        'v4-Bildantwort enthält keinen Alternativtext.'
+    );
+    carmaja_api_test_same(120, $uploaded['images'][0]['width'] ?? null, 'v4-Bildbreite fehlt.');
+    carmaja_api_test_same(80, $uploaded['images'][0]['height'] ?? null, 'v4-Bildhöhe fehlt.');
+    $downloadableImage = carmaja_api_v4_product_image_file($productId, $imageId);
+    carmaja_api_test_same(
+        realpath($uploadedDraft['images'][0]['path']),
+        $downloadableImage['path'],
+        'Geschützter Bildabruf verwendet nicht das bestätigte Produktbild.'
+    );
+    carmaja_api_test_same(
+        filesize($uploadedDraft['images'][0]['path']),
+        $downloadableImage['size'],
+        'Geschützter Bildabruf meldet eine falsche Größe.'
+    );
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_product_image_file(
+            $productId,
+            '00000000-0000-4000-8000-000000000000'
+        ),
+        404,
+        'image_not_found'
+    );
+    $tamperedDraft = $uploadedDraft;
+    $tamperedDraft['images'][0]['path'] = $source;
+    carmaja_api_save_draft($tamperedDraft);
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_product_image_file($productId, $imageId),
+        404,
+        'image_not_found'
+    );
+    carmaja_api_save_draft($uploadedDraft);
     $projectionCalls = [];
     $projectionAttempts = [];
     $failProjectionAction = null;

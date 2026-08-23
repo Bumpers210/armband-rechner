@@ -670,6 +670,26 @@ function carmaja_bootstrap_send(int $statusCode, array $payload): never
     exit;
 }
 
+function carmaja_bootstrap_send_product_image(array $image): never
+{
+    $path = $image['path'] ?? null;
+    $size = $image['size'] ?? null;
+    if (!is_string($path) || !is_int($size) || !is_file($path) || $size < 1) {
+        throw new CarmajaApiException(404, 'Produktbild wurde nicht gefunden.', [], 'image_not_found');
+    }
+
+    http_response_code(200);
+    header('Cache-Control: private, no-store, max-age=0');
+    header('Content-Type: image/jpeg');
+    header('Content-Length: ' . $size);
+    header('Content-Disposition: inline; filename="' . (string) ($image['fileName'] ?? 'image.jpg') . '"');
+    header('X-Content-Type-Options: nosniff');
+    if (readfile($path) === false) {
+        throw new CarmajaApiException(500, 'Produktbild konnte nicht gelesen werden.', [], 'image_read_failed');
+    }
+    exit;
+}
+
 function carmaja_bootstrap_send_unavailable(): never
 {
     carmaja_bootstrap_send(503, [
@@ -1120,14 +1140,20 @@ function carmaja_bootstrap_route_request(): never
                 if (($draft['productModelVersion'] ?? null) === CARMAJA_PRODUCT_MODEL_V3) {
                     $product = carmaja_api_v4_product_response_from_draft($draft);
                 } elseif (($draft['productModelVersion'] ?? null) === CARMAJA_PRODUCT_MODEL_V2) {
-                    $product = carmaja_api_v2_product_response_from_draft($draft);
-                    $product['available'] = ($draft['status'] ?? null) === 'published';
-                    $product['status'] = (string) ($draft['status'] ?? 'draft');
-                    unset($product['salesEnabled'], $product['stock']);
+                    $product = carmaja_api_v4_legacy_product_response_from_draft($draft);
                 } else {
                     throw new CarmajaApiException(409, 'Produktmodell muss aktualisiert werden.', [], 'product_model_migration_required');
                 }
                 carmaja_bootstrap_send(200, carmaja_api_v4_success_response(['product' => $product]));
+            }
+
+            if ($method === 'GET'
+                && ($segments[2] ?? null) === 'images'
+                && isset($segments[3])
+                && count($segments) === 4) {
+                carmaja_bootstrap_send_product_image(
+                    carmaja_api_v4_product_image_file($productId, (string) $segments[3])
+                );
             }
 
             if ($method !== 'GET') {

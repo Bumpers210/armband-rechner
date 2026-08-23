@@ -70,6 +70,7 @@ data class ProductUiActions(
     val onRememberSessionChange: (Boolean) -> Unit = {},
     val onLogin: () -> Unit = {},
     val onLogout: () -> Unit = {},
+    val onRefreshProducts: () -> Unit = {},
     val onEdit: () -> Unit = {},
     val onArchive: () -> Unit = {},
     val onRestore: () -> Unit = {},
@@ -270,6 +271,16 @@ internal fun ProductManagementSection(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Produkt aus Kalkulation erstellen")
+        }
+
+        OutlinedButton(
+            onClick = actions.onRefreshProducts,
+            enabled = !state.busy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("refresh-server-products"),
+        ) {
+            Text(if (state.busy) "Kollektionen werden geladen …" else "Kollektionen vom Server laden")
         }
 
         if (state.drafts.isEmpty()) {

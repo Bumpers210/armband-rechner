@@ -261,7 +261,8 @@ absoluten Pfade und keine Konfigurationswerte enthalten.
 
 ## Produktmodell 3 und Kollektionen in der Testumgebung
 
-Die Beta-App 1.3.0-beta.1 (Code 7) verwendet ausschließlich die
+Die Beta-App 1.3.1-beta.1 (Code 8) und die Produktions-App 1.3.1 (Code 6)
+verwenden ausschließlich die
 Produktwege unter `/v4`. Formatierte Beschreibungen werden weiterhin als
 strukturierte Absätze und Textbereiche gespeichert; die API erzeugt die
 zusätzliche reine Beschreibung selbst. Modell-2-Produkte bleiben über die
@@ -274,7 +275,11 @@ Vorgangs „test 3“, erfolgreicher Migration und gesonderter Testfreigabe werd
 sie gemeinsam kontrolliert aktiviert. Dann sind schreibende `/v2`- und
 `/v3`-Aufrufe gesperrt und erhalten HTTP 426, damit eine ältere App weder
 Formatierung noch Verfügbarkeit überschreiben kann. Anmeldung und lesende
-Abfragen bleiben möglich.
+Abfragen bleiben möglich. Nach der Anmeldung lädt die App noch nicht lokal
+vorhandene Kollektionen einschließlich ihrer Bilder über einen geschützten
+Leseweg. Der Abruf kann in der Produktverwaltung mit „Kollektionen vom Server
+laden“ wiederholt werden. Bereits lokal gespeicherte Entwürfe werden
+dabei nicht überschrieben.
 
 Veröffentlichen aktiviert eine Kollektion automatisch. Archivieren sperrt
 neue Checkouts und entfernt die öffentliche Projektion; Wiederherstellen nutzt
