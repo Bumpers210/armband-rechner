@@ -100,6 +100,7 @@ class MainActivity : ComponentActivity() {
                     onRememberSessionChange = productViewModel::updateRememberSession,
                     onLogin = productViewModel::login,
                     onLogout = productViewModel::logout,
+                    onRefreshProducts = productViewModel::refreshServerProducts,
                     onEdit = productViewModel::beginEditingSelected,
                     onArchive = productViewModel::archiveSelected,
                     onRestore = productViewModel::restoreSelected,

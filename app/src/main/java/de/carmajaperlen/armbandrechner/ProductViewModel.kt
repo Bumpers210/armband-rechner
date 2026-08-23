@@ -84,6 +84,9 @@ class ProductViewModel(
                 sessionChecked = true,
                 authenticated = apiToken != null,
             )
+            if (apiToken != null) {
+                refreshServerProducts()
+            }
         }
     }
 
@@ -248,7 +251,28 @@ class ProductViewModel(
             _uiState.value = _uiState.value.copy(
                 authenticated = true,
                 loginEditor = editor.copy(password = TextFieldValue()),
-                message = "Anmeldung erfolgreich.",
+            )
+            val imported = importMissingServerProducts()
+            _uiState.value = _uiState.value.copy(
+                authenticated = true,
+                message = if (imported == 0) {
+                    "Anmeldung erfolgreich. Alle Server-Kollektionen sind auf diesem Gerät vorhanden."
+                } else {
+                    "Anmeldung erfolgreich. $imported Kollektion(en) vom Server geladen."
+                },
+            )
+        }
+    }
+
+    fun refreshServerProducts() {
+        runBusy {
+            val imported = importMissingServerProducts()
+            _uiState.value = _uiState.value.copy(
+                message = if (imported == 0) {
+                    "Alle Server-Kollektionen sind bereits auf diesem Gerät vorhanden."
+                } else {
+                    "$imported Kollektion(en) vom Server geladen."
+                },
             )
         }
     }
@@ -459,6 +483,34 @@ class ProductViewModel(
                 saveAndReplace(candidate)
             },
         ).synchronize(draft)
+    }
+
+    private suspend fun importMissingServerProducts(): Int {
+        val baseUrl = requireBaseUrl()
+        val token = requireToken()
+        val knownDraftIds = _uiState.value.drafts.map(ProductDraft::draftId).toMutableSet()
+        val products = withContext(Dispatchers.IO) {
+            apiClient.listProducts(baseUrl, token)
+        }
+        var imported = 0
+        for (product in products) {
+            if (!knownDraftIds.add(product.draftId)) continue
+            val images = withContext(Dispatchers.IO) {
+                product.images.associate { image ->
+                    image.imageId to apiClient.downloadImage(
+                        baseUrl = baseUrl,
+                        token = token,
+                        productId = product.draftId,
+                        imageId = image.imageId,
+                    )
+                }
+            }
+            val draft = repository.importServerDraft(product, images)
+            draftSession.markSaved(draft)
+            replaceDraft(draft, refreshEditor = true)
+            imported++
+        }
+        return imported
     }
 
     private suspend fun saveAndReplace(draft: ProductDraft): ProductDraft {

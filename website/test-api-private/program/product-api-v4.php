@@ -50,9 +50,106 @@ function carmaja_api_v4_allowed_put_fields(): array
 function carmaja_api_v4_product_response_from_draft(array $draft): array
 {
     $response = carmaja_api_v3_product_response_from_draft($draft);
+    $response['images'] = carmaja_api_v4_uploaded_images_with_metadata($draft, $response['images']);
     $response['available'] = ($draft['status'] ?? null) === 'published';
     unset($response['salesEnabled']);
     return $response;
+}
+
+function carmaja_api_v4_legacy_product_response_from_draft(array $draft): array
+{
+    $response = carmaja_api_v2_product_response_from_draft($draft);
+    $response['images'] = carmaja_api_v4_uploaded_images_with_metadata($draft, $response['images']);
+    $response['available'] = ($draft['status'] ?? null) === 'published';
+    $response['status'] = (string) ($draft['status'] ?? 'draft');
+    unset($response['salesEnabled'], $response['stock']);
+    return $response;
+}
+
+function carmaja_api_v4_uploaded_images_with_metadata(array $draft, array $uploaded): array
+{
+    $metadataById = [];
+    foreach (array_values($draft['imageManifest'] ?? $draft['images'] ?? []) as $image) {
+        if (!is_array($image) || !is_string($image['imageId'] ?? null)) {
+            continue;
+        }
+        $metadataById[strtolower($image['imageId'])] = $image;
+    }
+
+    return array_values(array_map(
+        static function (array $image) use ($metadataById): array {
+            $metadata = $metadataById[strtolower((string) ($image['imageId'] ?? ''))] ?? [];
+            return [
+                ...$image,
+                'alt' => (string) ($metadata['alt'] ?? ''),
+                'width' => (int) ($metadata['width'] ?? 0),
+                'height' => (int) ($metadata['height'] ?? 0),
+            ];
+        },
+        $uploaded
+    ));
+}
+
+function carmaja_api_v4_product_image_file(string $productId, string $imageId): array
+{
+    carmaja_api_validate_draft_id($productId);
+    $normalizedImageId = strtolower(trim($imageId));
+    if (preg_match(CARMAJA_IMAGE_PATTERN, $normalizedImageId) !== 1) {
+        throw new CarmajaApiException(404, 'Produktbild wurde nicht gefunden.', [], 'image_not_found');
+    }
+
+    $draft = carmaja_api_load_draft($productId);
+    if (!is_array($draft)) {
+        throw new CarmajaApiException(404, 'Kollektion wurde nicht gefunden.', [], 'product_not_found');
+    }
+
+    $matched = null;
+    foreach (array_values($draft['images'] ?? []) as $image) {
+        if (is_array($image)
+            && is_string($image['imageId'] ?? null)
+            && strtolower($image['imageId']) === $normalizedImageId) {
+            $matched = $image;
+            break;
+        }
+    }
+    if (!is_array($matched)
+        || !is_string($matched['path'] ?? null)
+        || !is_string($matched['fileName'] ?? null)
+        || preg_match('/^0[1-5]\.jpg$/', $matched['fileName']) !== 1) {
+        throw new CarmajaApiException(404, 'Produktbild wurde nicht gefunden.', [], 'image_not_found');
+    }
+
+    $uploadDirectory = realpath(carmaja_api_path('uploads/' . $productId));
+    $path = realpath($matched['path']);
+    if (!is_string($uploadDirectory)
+        || !is_string($path)
+        || !is_dir($uploadDirectory)
+        || !is_file($path)
+        || !is_readable($path)
+        || !carmaja_api_path_is_inside($path, $uploadDirectory)
+        || basename($path) !== $matched['fileName']) {
+        throw new CarmajaApiException(404, 'Produktbild wurde nicht gefunden.', [], 'image_not_found');
+    }
+
+    $size = filesize($path);
+    $imageInfo = @getimagesize($path);
+    if (!is_int($size)
+        || $size < 1
+        || $size > CARMAJA_MAX_IMAGE_BYTES
+        || !is_array($imageInfo)
+        || ($imageInfo[2] ?? null) !== IMAGETYPE_JPEG
+        || (int) ($imageInfo[0] ?? 0) < 1
+        || (int) ($imageInfo[1] ?? 0) < 1
+        || (int) $imageInfo[0] > CARMAJA_MAX_IMAGE_EDGE
+        || (int) $imageInfo[1] > CARMAJA_MAX_IMAGE_EDGE) {
+        throw new CarmajaApiException(404, 'Produktbild wurde nicht gefunden.', [], 'image_not_found');
+    }
+
+    return [
+        'path' => $path,
+        'fileName' => $matched['fileName'],
+        'size' => $size,
+    ];
 }
 
 function carmaja_api_v4_put_product(
@@ -106,11 +203,7 @@ function carmaja_api_v4_list_products(): array
         if (($draft['productModelVersion'] ?? null) === CARMAJA_PRODUCT_MODEL_V3) {
             $products[] = carmaja_api_v4_product_response_from_draft($draft);
         } elseif (($draft['productModelVersion'] ?? null) === CARMAJA_PRODUCT_MODEL_V2) {
-            $legacy = carmaja_api_v2_product_from_draft($draft);
-            $legacy['available'] = ($draft['status'] ?? null) === 'published';
-            $legacy['status'] = (string) ($draft['status'] ?? 'draft');
-            unset($legacy['salesEnabled'], $legacy['stock']);
-            $products[] = $legacy;
+            $products[] = carmaja_api_v4_legacy_product_response_from_draft($draft);
         }
     }
     usort(

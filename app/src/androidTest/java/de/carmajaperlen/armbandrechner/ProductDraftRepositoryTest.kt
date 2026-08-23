@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.test.core.app.ApplicationProvider
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.runBlocking
@@ -145,6 +146,66 @@ class ProductDraftRepositoryTest {
         assertFalse(persisted.has("stock"))
         assertFalse(persisted.has("vintedUrl"))
         assertEquals(2, persisted.getInt("modelVersion"))
+    }
+
+    @Test
+    fun serverCollectionAndImagesAreImportedWithoutOverwritingLocalDraft() = runBlocking {
+        val imageId = UUID.randomUUID().toString()
+        val bitmap = Bitmap.createBitmap(24, 16, Bitmap.Config.ARGB_8888)
+        val jpeg = try {
+            ByteArrayOutputStream().use { output ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)
+                output.toByteArray()
+            }
+        } finally {
+            bitmap.recycle()
+        }
+        val update = ProductServerUpdate(
+            draftId = draftId,
+            version = 7,
+            productVersion = 4,
+            sourceHash = "a".repeat(64),
+            sku = "CP-2026-0001",
+            slug = "cp-2026-0001-ares",
+            status = ProductStatus.Published,
+            updatedAt = "2026-08-23T10:00:00Z",
+            name = "Ares",
+            materials = listOf("Tigerauge"),
+            metalElements = listOf("Edelstahl"),
+            braceletSizeCm = "18",
+            pearlSizeMm = "8",
+            shortDescription = "Dauerhaft verfügbar.",
+            descriptionDocument = DescriptionDocument.fromPlainText("Dauerhaft verfügbar."),
+            careInstructions = emptyList(),
+            priceMinor = 2000,
+            currency = "eur",
+            available = true,
+            images = listOf(
+                ProductServerImage(
+                    imageId = imageId,
+                    fileName = "01.jpg",
+                    isMain = true,
+                    alt = "Ares Armband",
+                    width = 24,
+                    height = 16,
+                ),
+            ),
+        )
+
+        val imported = repository.importServerDraft(update, mapOf(imageId to jpeg))
+        val existing = repository.importServerDraft(
+            update.copy(name = "Darf lokalen Stand nicht überschreiben"),
+            mapOf(imageId to jpeg),
+        )
+        val reloaded = repository.loadDrafts().single()
+
+        assertEquals("Ares", imported.name)
+        assertEquals("Ares", existing.name)
+        assertEquals("Ares", reloaded.name)
+        assertEquals(ProductStatus.Published, reloaded.status)
+        assertEquals("CP-2026-0001", reloaded.sku)
+        assertEquals(imageId, reloaded.images.single().serverImageId)
+        assertTrue(File(reloaded.images.single().localPath).isFile)
     }
 
     private fun testDraft(): ProductDraft {

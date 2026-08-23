@@ -205,6 +205,25 @@ class ProductAuthenticationAndActionsTest {
     }
 
     @Test
+    fun productManagementOffersManualServerRefresh() {
+        val refreshed = AtomicBoolean(false)
+        composeRule.setContent {
+            MaterialTheme {
+                ProductManagementSection(
+                    state = ProductUiState(authenticated = true),
+                    actions = ProductUiActions(
+                        onRefreshProducts = { refreshed.set(true) },
+                    ),
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag("refresh-server-products").performClick()
+
+        assertTrue(refreshed.get())
+    }
+
+    @Test
     fun editActionCanOpenEditorWithControlledRepublishAndWithoutCareInput() {
         composeRule.setContent {
             var editing by remember { mutableStateOf(false) }

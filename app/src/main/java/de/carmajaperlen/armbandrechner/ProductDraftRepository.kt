@@ -9,6 +9,7 @@ import android.media.ExifInterface
 import android.net.Uri
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.math.BigDecimal
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,6 +41,138 @@ class ProductDraftRepository(
         val updated = promoteTemporaryImages(draft).copy(updatedAtMillis = currentTimeMillis())
         draftFile(updated.draftId).writeText(encodeDraft(updated).toString(2))
         updated
+    }
+
+    suspend fun importServerDraft(
+        update: ProductServerUpdate,
+        imagePayloads: Map<String, ByteArray>,
+    ): ProductDraft = withContext(Dispatchers.IO) {
+        draftsDirectory.mkdirs()
+        imagesDirectory.mkdirs()
+        val existingDraftFile = draftFile(update.draftId)
+        if (existingDraftFile.isFile) {
+            return@withContext decodeDraft(JSONObject(existingDraftFile.readText()))
+        }
+
+        require(update.images.size <= MAX_IMAGES) { "Der Server liefert zu viele Produktbilder." }
+        require(update.images.map(ProductServerImage::imageId).distinct().size == update.images.size) {
+            "Der Server liefert doppelte Produktbilder."
+        }
+        require(
+            update.images.isEmpty() || update.images.withIndex().all { (index, image) ->
+                image.isMain == (index == 0)
+            },
+        ) { "Der Server liefert kein eindeutiges Hauptbild." }
+        require(imagePayloads.keys == update.images.map(ProductServerImage::imageId).toSet()) {
+            "Der heruntergeladene Bildsatz ist unvollständig."
+        }
+
+        val stagingDirectory = File(imagesDirectory, ".${update.draftId}-${UUID.randomUUID()}")
+        val targetDirectory = File(imagesDirectory, update.draftId)
+        val temporaryDraftFile = File(
+            draftsDirectory,
+            ".${update.draftId}-${UUID.randomUUID()}.json",
+        )
+        var promotedImages = false
+        try {
+            require(!targetDirectory.exists()) {
+                "Für diese Kollektion sind bereits lokale Bilddaten vorhanden."
+            }
+            if (update.images.isNotEmpty()) stagingDirectory.mkdirs()
+            val images = update.images.mapIndexed { index, image ->
+                val expectedFileName = "%02d.jpg".format(index + 1)
+                require(image.fileName == expectedFileName) {
+                    "Der Server liefert eine ungültige Bildreihenfolge."
+                }
+                val bytes = requireNotNull(imagePayloads[image.imageId]) {
+                    "Produktbild fehlt."
+                }
+                require(bytes.isNotEmpty() && bytes.size <= MAX_IMAGE_BYTES) {
+                    "Produktbild ist leer oder zu groß."
+                }
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                require(
+                    bounds.outMimeType == "image/jpeg" &&
+                        bounds.outWidth in 1..MAX_IMAGE_EDGE &&
+                        bounds.outHeight in 1..MAX_IMAGE_EDGE,
+                ) { "Produktbild ist kein gültiges JPEG." }
+                val staged = File(stagingDirectory, expectedFileName)
+                staged.writeBytes(bytes)
+                ProductImage(
+                    localPath = File(targetDirectory, expectedFileName).absolutePath,
+                    width = bounds.outWidth,
+                    height = bounds.outHeight,
+                    alt = image.alt.ifBlank { update.name },
+                    isMain = image.isMain,
+                    imageId = image.imageId,
+                    serverImageId = image.imageId,
+                    serverFileName = image.fileName,
+                    serverIsMain = image.isMain,
+                    uploadedAtVersion = update.version,
+                )
+            }
+            if (update.images.isNotEmpty()) {
+                check(stagingDirectory.renameTo(targetDirectory)) {
+                    "Produktbilder konnten nicht atomar übernommen werden."
+                }
+                promotedImages = true
+            }
+
+            val now = currentTimeMillis()
+            val descriptionDocument = update.descriptionDocument
+                ?: DescriptionDocument.fromPlainText(update.shortDescription)
+            val imported = ProductDraft(
+                draftId = update.draftId,
+                sku = update.sku,
+                slug = update.slug,
+                version = update.version,
+                productVersion = update.productVersion,
+                sourceHash = update.sourceHash,
+                status = update.status,
+                name = update.name,
+                materials = update.materials,
+                metalElements = update.metalElements,
+                modelVersion = PRODUCT_MODEL_VERSION,
+                braceletSizeCm = update.braceletSizeCm,
+                pearlSizeMm = update.pearlSizeMm,
+                shortDescription = update.shortDescription,
+                descriptionDocument = descriptionDocument,
+                careInstructions = update.careInstructions,
+                priceMinor = update.priceMinor,
+                currency = update.currency.lowercase(),
+                salesEnabled = update.available,
+                internalCalculation = CalculationSnapshot(
+                    quantities = emptyMap(),
+                    workMinutes = "0",
+                    hourlyRate = "0",
+                    otherCosts = "0",
+                    markupPercent = "0",
+                    materialCosts = "0.00",
+                    laborCosts = "0.00",
+                    totalCosts = "0.00",
+                    recommendedSalePrice = BigDecimal(update.priceMinor)
+                        .movePointLeft(2)
+                        .setScale(2)
+                        .toPlainString(),
+                    createdAtMillis = now,
+                ),
+                images = images,
+                createdAtMillis = now,
+                updatedAtMillis = now,
+                serverUpdatedAt = update.updatedAt,
+            )
+            temporaryDraftFile.writeText(encodeDraft(imported).toString(2))
+            check(temporaryDraftFile.renameTo(existingDraftFile)) {
+                "Kollektion konnte nicht atomar gespeichert werden."
+            }
+            imported
+        } catch (error: Throwable) {
+            temporaryDraftFile.delete()
+            stagingDirectory.deleteRecursively()
+            if (promotedImages) targetDirectory.deleteRecursively()
+            throw error
+        }
     }
 
     suspend fun storeTemporaryImages(draft: ProductDraft, uris: List<Uri>): ProductDraft =
