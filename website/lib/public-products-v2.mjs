@@ -31,6 +31,7 @@ const SKU_PATTERN = /^CP-\d{4}-\d{4}$/;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PRODUCT_ID_PATTERN = /^(?:[0-9a-fA-F]{8}-[0-9a-fA-F-]{27}|[0-9A-HJKMNP-TV-Z]{26})$/;
 const HASH_PATTERN = /^[0-9a-f]{64}$/;
+const DESCRIPTION_MAX_CHARACTERS = 2_000;
 
 function fail(location, message) {
   throw new Error(`${location}: ${message}`);
@@ -58,12 +59,15 @@ function requireExactKeys(value, allowedKeys, requiredKeys, location) {
   }
 }
 
-function requireString(value, location, maximumLength) {
+function requireString(value, location, maximumLength, countUnicodeCharacters = false) {
+  const characterLength = typeof value === "string"
+    ? (countUnicodeCharacters ? Array.from(value).length : value.length)
+    : 0;
   if (
     typeof value !== "string" ||
     value.trim() === "" ||
     value !== value.trim() ||
-    value.length > maximumLength
+    characterLength > maximumLength
   ) {
     fail(location, `Nichtleere Zeichenkette bis ${maximumLength} Zeichen erwartet.`);
   }
@@ -143,7 +147,7 @@ function validateDescriptionDocument(value, expectedPlainText, location) {
   if (spanCount > 100) {
     fail(location, "Höchstens 100 Formatbereiche erlaubt.");
   }
-  if (Buffer.byteLength(JSON.stringify(document), "utf8") > 16 * 1024) {
+  if (Buffer.byteLength(JSON.stringify(document), "utf8") > 32 * 1024) {
     fail(location, "Formatierte Beschreibung ist zu groß.");
   }
   const plainText = blocks
@@ -269,7 +273,12 @@ function validateProduct(value, index, imageRoot) {
     fail(`${location}.images`, "Ein bis fünf Bilder erwartet.");
   }
 
-  const description = requireString(product.description, `${location}.description`, 500);
+  const description = requireString(
+    product.description,
+    `${location}.description`,
+    DESCRIPTION_MAX_CHARACTERS,
+    true,
+  );
   const descriptionDocument = product.productModelVersion === 3
     ? validateDescriptionDocument(
         product.descriptionDocument,

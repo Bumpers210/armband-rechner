@@ -12,10 +12,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 const val DESCRIPTION_DOCUMENT_VERSION = 1
-const val DESCRIPTION_MAX_CHARACTERS = 500
+const val DESCRIPTION_MAX_CHARACTERS = 2_000
 const val DESCRIPTION_MAX_PARAGRAPHS = 25
 const val DESCRIPTION_MAX_SPANS = 100
-const val DESCRIPTION_MAX_SERIALIZED_BYTES = 16 * 1024
+const val DESCRIPTION_MAX_SERIALIZED_BYTES = 32 * 1024
+
+fun String.descriptionCharacterCount(): Int = codePointCount(0, length)
 
 enum class DescriptionFont(val wireName: String) {
     Standard("standard"),
@@ -107,7 +109,9 @@ data class DescriptionDocument(
         require(blocks.all { it.spans.isNotEmpty() }) { "Leere Absätze sind nicht erlaubt." }
         require(blocks.sumOf { it.spans.size } <= DESCRIPTION_MAX_SPANS) { "Zu viele Formatbereiche." }
         require(plainText().isNotBlank()) { "Beschreibung ist erforderlich." }
-        require(plainText().length <= DESCRIPTION_MAX_CHARACTERS) { "Beschreibung ist zu lang." }
+        require(plainText().descriptionCharacterCount() <= DESCRIPTION_MAX_CHARACTERS) {
+            "Beschreibung ist zu lang."
+        }
         require(toJson().toString().toByteArray(Charsets.UTF_8).size <= DESCRIPTION_MAX_SERIALIZED_BYTES) {
             "Formatierte Beschreibung ist zu groß."
         }
@@ -205,10 +209,10 @@ data class RichDescriptionEditorState(
     val value: TextFieldValue,
     val typingStyle: DescriptionTextStyle = DescriptionTextStyle(),
 ) {
-    val characterCount: Int get() = value.text.length
+    val characterCount: Int get() = value.text.descriptionCharacterCount()
 
     fun update(next: TextFieldValue): RichDescriptionEditorState {
-        if (next.text.length > DESCRIPTION_MAX_CHARACTERS) return this
+        if (next.text.descriptionCharacterCount() > DESCRIPTION_MAX_CHARACTERS) return this
         if (next.text == value.text) return copy(value = next.copy(annotatedString = value.annotatedString))
 
         val oldText = value.text

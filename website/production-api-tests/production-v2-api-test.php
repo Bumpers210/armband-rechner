@@ -123,6 +123,25 @@ function production_v2_actor(): array
 $fixture = production_v2_fixture();
 
 try {
+    $maximumDescription = production_v2_payload();
+    $maximumDescription['description'] = str_repeat(
+        'x',
+        CARMAJA_PRODUCT_DESCRIPTION_MAX_CHARACTERS
+    );
+    $maximumValidated = carmaja_api_v2_validate_put_payload($maximumDescription);
+    production_v2_assert(
+        mb_strlen($maximumValidated['description'])
+            === CARMAJA_PRODUCT_DESCRIPTION_MAX_CHARACTERS,
+        'Eine Beschreibung mit 2000 Zeichen wurde abgelehnt.'
+    );
+    $tooLongDescription = $maximumDescription;
+    $tooLongDescription['description'] .= 'x';
+    production_v2_expect(422, 'validation_failed', static function () use (
+        $tooLongDescription
+    ): void {
+        carmaja_api_v2_validate_put_payload($tooLongDescription);
+    });
+
     production_v2_assert(
         carmaja_api_validate_client_version_code(4) === 4,
         'Freigegebene V2-App-Version wurde abgelehnt.'

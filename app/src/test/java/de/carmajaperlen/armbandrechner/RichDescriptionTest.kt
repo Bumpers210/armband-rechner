@@ -120,17 +120,19 @@ class RichDescriptionTest {
     }
 
     @Test
-    fun editorRejectsTextBeyondFiveHundredCharacters() {
-        val editor = RichDescriptionEditorState.fromPlainText("a".repeat(DESCRIPTION_MAX_CHARACTERS))
+    fun editorAcceptsTwoThousandAndRejectsTheNextCharacter() {
+        assertEquals(2_000, DESCRIPTION_MAX_CHARACTERS)
+        val editor = RichDescriptionEditorState.fromPlainText("😀".repeat(DESCRIPTION_MAX_CHARACTERS))
 
         val rejected = editor.update(
             TextFieldValue(
-                text = "a".repeat(DESCRIPTION_MAX_CHARACTERS) + "b",
-                selection = TextRange(DESCRIPTION_MAX_CHARACTERS + 1),
+                text = "😀".repeat(DESCRIPTION_MAX_CHARACTERS) + "b",
+                selection = TextRange(DESCRIPTION_MAX_CHARACTERS * 2 + 1),
             ),
         )
 
         assertEquals(DESCRIPTION_MAX_CHARACTERS, rejected.characterCount)
+        assertEquals(DESCRIPTION_MAX_CHARACTERS * 2, rejected.value.text.length)
     }
 
     @Test

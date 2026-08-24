@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 const CARMAJA_PRODUCT_MODEL_V2 = 2;
 const CARMAJA_MINIMUM_APP_VERSION_CODE = 2;
+const CARMAJA_PRODUCT_DESCRIPTION_MAX_CHARACTERS = 2000;
 const CARMAJA_INVENTORY_ADJUSTMENT_REASONS = [
     'activate_new_unique',
     'shop_sale',
@@ -391,7 +392,7 @@ function carmaja_api_v2_validate_put_payload(array $payload): array
         'description' => carmaja_api_validate_string(
             $payload['description'],
             'description',
-            500,
+            CARMAJA_PRODUCT_DESCRIPTION_MAX_CHARACTERS,
             true
         ),
         'materials' => carmaja_api_normalize_string_list($payload['materials'], 'materials'),

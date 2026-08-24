@@ -2840,11 +2840,29 @@ carmaja_api_test('V3 prüft Formatwerte, Grenzen, unbekannte Felder und Versions
         'validation_failed'
     );
 
+    $maximumLength = $payload;
+    $maximumLength['descriptionDocument']['blocks'] = [[
+        'type' => 'paragraph',
+        'spans' => [[
+            'text' => str_repeat('😀', CARMAJA_PRODUCT_DESCRIPTION_MAX_CHARACTERS),
+            'bold' => false,
+            'italic' => false,
+            'font' => 'standard',
+            'size' => 'normal',
+        ]],
+    ]];
+    $maximumValidated = carmaja_api_v3_validate_put_payload($maximumLength);
+    carmaja_api_test_same(
+        CARMAJA_PRODUCT_DESCRIPTION_MAX_CHARACTERS,
+        mb_strlen($maximumValidated['description']),
+        'Eine Beschreibung mit 2000 Zeichen wurde abgelehnt.'
+    );
+
     $tooLong = $payload;
     $tooLong['descriptionDocument']['blocks'] = [[
         'type' => 'paragraph',
         'spans' => [[
-            'text' => str_repeat('x', 501),
+            'text' => str_repeat('x', CARMAJA_PRODUCT_DESCRIPTION_MAX_CHARACTERS + 1),
             'bold' => false,
             'italic' => false,
             'font' => 'standard',

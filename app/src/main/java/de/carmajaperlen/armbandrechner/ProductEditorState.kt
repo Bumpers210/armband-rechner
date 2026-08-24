@@ -53,7 +53,10 @@ data class ProductDraftEditorState(
             if (parsePriceMinor(price.text) == null) put("priceMinor", "Preis mit höchstens zwei Nachkommastellen, mindestens 0,50 €.")
             if (shortDescription.value.text.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
             if (shortDescription.characterCount > DESCRIPTION_MAX_CHARACTERS) {
-                put("shortDescription", "Kurzbeschreibung darf höchstens 500 Zeichen enthalten.")
+                put(
+                    "shortDescription",
+                    "Kurzbeschreibung darf höchstens $DESCRIPTION_MAX_CHARACTERS Zeichen enthalten.",
+                )
             }
             runCatching { shortDescription.toDocument() }
                 .exceptionOrNull()

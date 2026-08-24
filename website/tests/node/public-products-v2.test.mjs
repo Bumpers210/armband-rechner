@@ -86,6 +86,39 @@ test("öffentlicher v2-Vertrag akzeptiert Preis, Währung und Verkaufsfreigabe",
   }
 });
 
+test("öffentlicher Produktvertrag akzeptiert 2000 und verwirft 2001 Beschreibungszeichen", async () => {
+  const formattedProduct = (length) => {
+    const description = "😀".repeat(length);
+    return product({
+      productModelVersion: 3,
+      description,
+      descriptionDocument: {
+        version: 1,
+        blocks: [{
+          type: "paragraph",
+          spans: [{
+            text: description,
+            bold: false,
+            italic: false,
+            font: "standard",
+            size: "normal",
+          }],
+        }],
+      },
+    });
+  };
+  const maximum = await fixture(formattedProduct(2_000), 3);
+  const tooLong = await fixture(formattedProduct(2_001), 3);
+
+  try {
+    assert.equal(Array.from(maximum.load().products[0].description).length, 2_000);
+    assert.throws(tooLong.load, /bis 2000 Zeichen/);
+  } finally {
+    await rm(maximum.root, { recursive: true, force: true });
+    await rm(tooLong.root, { recursive: true, force: true });
+  }
+});
+
 test("öffentlicher v2-Vertrag lehnt stock und Vinted ab", async () => {
   for (const field of ["stock", "vintedUrl"]) {
     const current = await fixture(product({ [field]: field === "stock" ? 1 : "https://www.vinted.de/items/1" }));

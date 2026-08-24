@@ -261,11 +261,13 @@ absoluten Pfade und keine Konfigurationswerte enthalten.
 
 ## Produktmodell 3 und Kollektionen in der Testumgebung
 
-Die Beta-App 1.3.1-beta.1 (Code 8) und die Produktions-App 1.3.1 (Code 6)
+Die Beta-App 1.3.2-beta.1 (Code 9) und die Produktions-App 1.3.2 (Code 7)
 verwenden ausschließlich die
 Produktwege unter `/v4`. Formatierte Beschreibungen werden weiterhin als
 strukturierte Absätze und Textbereiche gespeichert; die API erzeugt die
-zusätzliche reine Beschreibung selbst. Modell-2-Produkte bleiben über die
+zusätzliche reine Beschreibung selbst. Beschreibungen dürfen höchstens 2000
+Textzeichen und einschließlich ihrer Formatdaten höchstens 32 KB enthalten.
+Modell-2-Produkte bleiben über die
 lesenden `/v2`, `/v3`- und `/v4`-Wege verfügbar und werden erst beim Speichern mit
 der neuen App auf Modell 3 angehoben.
 

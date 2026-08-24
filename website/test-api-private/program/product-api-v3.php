@@ -6,7 +6,7 @@ const CARMAJA_PRODUCT_MODEL_V3 = 3;
 const CARMAJA_DESCRIPTION_DOCUMENT_VERSION = 1;
 const CARMAJA_DESCRIPTION_MAX_PARAGRAPHS = 25;
 const CARMAJA_DESCRIPTION_MAX_SPANS = 100;
-const CARMAJA_DESCRIPTION_MAX_BYTES = 16384;
+const CARMAJA_DESCRIPTION_MAX_BYTES = 32768;
 
 function carmaja_api_v3_success_response(array $data): array
 {
@@ -89,7 +89,7 @@ function carmaja_api_v3_validate_description_document(mixed $value): array
         throw new CarmajaApiException(
             422,
             'Formatierte Beschreibung ist ungültig.',
-            ['descriptionDocument' => 'Version 1 mit höchstens 25 Absätzen und 16 KB erwartet.'],
+            ['descriptionDocument' => 'Version 1 mit höchstens 25 Absätzen und 32 KB erwartet.'],
             'validation_failed'
         );
     }
@@ -185,7 +185,12 @@ function carmaja_api_v3_validate_description_document(mixed $value): array
             'validation_failed'
         );
     }
-    $plainText = carmaja_api_validate_string($plainText, 'description', 500, true);
+    $plainText = carmaja_api_validate_string(
+        $plainText,
+        'description',
+        CARMAJA_PRODUCT_DESCRIPTION_MAX_CHARACTERS,
+        true
+    );
     return [
         'document' => [
             'version' => CARMAJA_DESCRIPTION_DOCUMENT_VERSION,
