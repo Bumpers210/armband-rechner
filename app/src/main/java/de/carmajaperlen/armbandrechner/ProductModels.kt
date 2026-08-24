@@ -91,8 +91,11 @@ data class ProductDraft(
             if (braceletSizeCm.isBlank()) put("braceletSizeCm", "Armbandgröße ist erforderlich.")
             if (pearlSizeMm.isBlank()) put("pearlSizeMm", "Perlengröße ist erforderlich.")
             if (shortDescription.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
-            if (shortDescription.length > DESCRIPTION_MAX_CHARACTERS) {
-                put("shortDescription", "Kurzbeschreibung darf höchstens 500 Zeichen enthalten.")
+            if (shortDescription.descriptionCharacterCount() > DESCRIPTION_MAX_CHARACTERS) {
+                put(
+                    "shortDescription",
+                    "Kurzbeschreibung darf höchstens $DESCRIPTION_MAX_CHARACTERS Zeichen enthalten.",
+                )
             }
             runCatching {
                 if (modelVersion >= PRODUCT_MODEL_VERSION) {

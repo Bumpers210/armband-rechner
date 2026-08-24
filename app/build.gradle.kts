@@ -6,10 +6,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val productionVersionCode = 6
-val productionVersionName = "1.3.1"
-val betaVersionCode = 8
-val betaVersionName = "1.3.1-beta.1"
+val productionVersionCode = 7
+val productionVersionName = "1.3.2"
+val betaVersionCode = 9
+val betaVersionName = "1.3.2-beta.1"
 val betaApplicationId = "de.steinhart.armbandrechner.test"
 val productionProductApiBaseUrl = "https://api.carmaja-perlen.de/"
 val testProductApiBaseUrl = "https://test-api.carmaja-perlen.de/"
