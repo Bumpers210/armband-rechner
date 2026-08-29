@@ -103,6 +103,134 @@
                     }
                 ]
             }
+        },
+        {
+            "productModelVersion": 3,
+            "productId": "9299c3cc-1fdd-4d60-a6be-015d1578e0d2",
+            "productVersion": 2,
+            "sourceHash": "87abfa5376dd3499a0d238577da227754c325341a44b0430d097d4b177bd6d3d",
+            "sku": "CP-2026-0003",
+            "slug": "cp-2026-0003-persephone",
+            "title": "Persephone",
+            "description": "Persephone \n\nWachstum, Lebensfreude, Erneuerung \n\nDie individuelle Zeichnungen des afrikanischen Türkis zusammen mit den gold galvanisierten Lavasteinen als Eye-Catcher verleihen Persephone einen unvergleichlichen Charme. Mit seinen Grün-, Blau- und Brauntönen wirkt es natürlich und unaufdringlich.\n\nAfrikanischer Türkis gilt als \"Stein der Evolution\". Er soll die persönliche Entwicklung fördern, beim Annehmen von Veränderungen und beim Ablegen alter Gewohnheiten helfen.\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+            "materials": [
+                "Afrikanischer Türkis"
+            ],
+            "metalElements": [
+                "keine Edelstahl"
+            ],
+            "braceletSizeCm": 18,
+            "pearlSizeMm": 6,
+            "priceMinor": 1950,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "0163b4c0-a958-4163-95e7-1b2f8090b1d1",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0003/01.jpg",
+                    "alt": "Persephone",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "imageId": "4d4b1c49-3b69-454d-9043-74bb5cf5440e",
+                    "fileName": "02.jpg",
+                    "src": "/images/products/CP-2026-0003/02.jpg",
+                    "alt": "Persephone",
+                    "width": 1200,
+                    "height": 1600,
+                    "isMain": false
+                },
+                {
+                    "imageId": "3260aa8f-29bb-4d43-bdb2-c3f9cace31ed",
+                    "fileName": "03.jpg",
+                    "src": "/images/products/CP-2026-0003/03.jpg",
+                    "alt": "Persephone",
+                    "width": 1600,
+                    "height": 1200,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-08-29T04:41:20+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Persephone ",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Wachstum, Lebensfreude, Erneuerung ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Die individuelle Zeichnungen des afrikanischen Türkis zusammen mit den gold galvanisierten Lavasteinen als Eye-Catcher verleihen Persephone einen unvergleichlichen Charme. Mit seinen Grün-, Blau- und Brauntönen wirkt es natürlich und unaufdringlich.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Afrikanischer Türkis gilt als \"Stein der Evolution\". Er soll die persönliche Entwicklung fördern, beim Annehmen von Veränderungen und beim Ablegen alter Gewohnheiten helfen.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     ]
 }
