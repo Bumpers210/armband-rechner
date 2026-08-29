@@ -107,8 +107,8 @@
         {
             "productModelVersion": 3,
             "productId": "9299c3cc-1fdd-4d60-a6be-015d1578e0d2",
-            "productVersion": 2,
-            "sourceHash": "87abfa5376dd3499a0d238577da227754c325341a44b0430d097d4b177bd6d3d",
+            "productVersion": 3,
+            "sourceHash": "e86f6b090dbe8b3c74db51ec247481c7a2d0b8455f179c5c90082dc76f092cde",
             "sku": "CP-2026-0003",
             "slug": "cp-2026-0003-persephone",
             "title": "Persephone",
@@ -153,7 +153,7 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-08-29T04:41:20+00:00",
+            "updatedAt": "2026-08-29T07:51:03+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
