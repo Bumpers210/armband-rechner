@@ -231,6 +231,132 @@
                     }
                 ]
             }
+        },
+        {
+            "productModelVersion": 3,
+            "productId": "15289192-a35c-43f1-8407-a9e387ae08ac",
+            "productVersion": 2,
+            "sourceHash": "23470833fdfdf6ec33ffd50009d988126b5447bb581a2aa13d9f64834274130a",
+            "sku": "CP-2026-0004",
+            "slug": "cp-2026-0004-artemis",
+            "title": "Artemis",
+            "description": "Artemis \n\nFreiheit, Selbstbestimmung, Harmonie \n\nDieses Armband aus gefrosteten Amazonitperlen wirkt durch die natürliche Farbgebung des Steines, die über Blau-, Grau-, Grün- bis hin zu Gelb- und Rottönen reicht besonders natürlich, leicht und erinnert an einen Sommertag am Strand. \n\nDer Amazonit soll beruhigend, ausgleichend und krampflösend wirken, er soll von innere Unruhe, Nervosität und Sorgen befreien. Er gilt als „Stein der Kommunikation“, der die ehrliche und freie Meinungsäußerung stärkt und somit die Selbstbestimmung unterstützt. Außerdem soll er helfen, bei Trauer oder Zerrissenheit wieder innere Balance (Harmonie) zu finden.\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+            "materials": [
+                "Amazonit"
+            ],
+            "metalElements": [],
+            "braceletSizeCm": 18,
+            "pearlSizeMm": 8,
+            "priceMinor": 1750,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "e8a278b8-d6e8-4383-b6a3-33645b745fd8",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0004/01.jpg",
+                    "alt": "Artemis",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "imageId": "06af3ab5-d495-4df5-bcc0-c99c59036887",
+                    "fileName": "02.jpg",
+                    "src": "/images/products/CP-2026-0004/02.jpg",
+                    "alt": "Artemis",
+                    "width": 1600,
+                    "height": 900,
+                    "isMain": false
+                },
+                {
+                    "imageId": "7d080514-4c45-4502-8f28-d9cadea5ffd1",
+                    "fileName": "03.jpg",
+                    "src": "/images/products/CP-2026-0004/03.jpg",
+                    "alt": "Artemis",
+                    "width": 1600,
+                    "height": 1200,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-08-30T05:42:57+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Artemis ",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Freiheit, Selbstbestimmung, Harmonie ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Dieses Armband aus gefrosteten Amazonitperlen wirkt durch die natürliche Farbgebung des Steines, die über Blau-, Grau-, Grün- bis hin zu Gelb- und Rottönen reicht besonders natürlich, leicht und erinnert an einen Sommertag am Strand. ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Der Amazonit soll beruhigend, ausgleichend und krampflösend wirken, er soll von innere Unruhe, Nervosität und Sorgen befreien. Er gilt als „Stein der Kommunikation“, der die ehrliche und freie Meinungsäußerung stärkt und somit die Selbstbestimmung unterstützt. Außerdem soll er helfen, bei Trauer oder Zerrissenheit wieder innere Balance (Harmonie) zu finden.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     ]
 }
