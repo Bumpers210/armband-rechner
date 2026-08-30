@@ -357,6 +357,126 @@
                     }
                 ]
             }
+        },
+        {
+            "productModelVersion": 3,
+            "productId": "827962bf-8d04-4761-975c-9828758df708",
+            "productVersion": 4,
+            "sourceHash": "33f8625eed991d1b1a3e795009613fe471868f9023f2c47d2f53e2ffd0481c43",
+            "sku": "CP-2026-0005",
+            "slug": "cp-2026-0005-asklepios",
+            "title": "Asklepios",
+            "description": "Asklepios \n\nHeilung, Klarheit, Balance \n\nDas\"Glamour-Highligt\" der Kollektion. Durch die gecrackten Bergkristall-Perlen, in denen sich das glitzernd das Licht bricht und die funkelnden Strasselemente wird dieses Armband zu einem funkelnden Hingucker und glamourösen Begleiter. Die silber galvanisierten Lavaperlen runden den eleganten Look gekonnt ab. \n\nBergkristall gilt als der Heilstein schlechthin und soll emotionale Unruhe beruhigen sowie innere Balance, Ausgeglichenheit und Klarheit unterstützen. Außerdem wird er mit Vitalität und Regeneration verbunden. Lavasteine stehen traditionell für Erdung, Schutz und Neubeginn.\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+            "materials": [
+                "Bergkristall",
+                "Lavaperlen"
+            ],
+            "metalElements": [
+                "Strasspacer Edelstahl"
+            ],
+            "braceletSizeCm": 18,
+            "pearlSizeMm": 6,
+            "priceMinor": 2450,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "28b1d7b9-5bba-4d5c-a68d-a0f093864c8a",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0005/01.jpg",
+                    "alt": "Asklepios",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "imageId": "1f9cbe5d-588a-406d-8ea4-e4297d6bbb97",
+                    "fileName": "02.jpg",
+                    "src": "/images/products/CP-2026-0005/02.jpg",
+                    "alt": "Asklepios",
+                    "width": 1600,
+                    "height": 900,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-08-30T05:45:42+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Asklepios ",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Heilung, Klarheit, Balance ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das\"Glamour-Highligt\" der Kollektion. Durch die gecrackten Bergkristall-Perlen, in denen sich das glitzernd das Licht bricht und die funkelnden Strasselemente wird dieses Armband zu einem funkelnden Hingucker und glamourösen Begleiter. Die silber galvanisierten Lavaperlen runden den eleganten Look gekonnt ab. ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bergkristall gilt als der Heilstein schlechthin und soll emotionale Unruhe beruhigen sowie innere Balance, Ausgeglichenheit und Klarheit unterstützen. Außerdem wird er mit Vitalität und Regeneration verbunden. Lavasteine stehen traditionell für Erdung, Schutz und Neubeginn.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     ]
 }
