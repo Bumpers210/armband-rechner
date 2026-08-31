@@ -477,6 +477,125 @@
                     }
                 ]
             }
+        },
+        {
+            "productModelVersion": 3,
+            "productId": "425f83ba-90c6-4b70-931a-b3575020b836",
+            "productVersion": 2,
+            "sourceHash": "f2c11b7ed236f54fca99d92defa3ce5b1c41ebbeb96a32646ee52f14dff55a99",
+            "sku": "CP-2026-0006",
+            "slug": "cp-2026-0006-athena",
+            "title": "Athena",
+            "description": "Athena\n\nKlarheit, Schutz und innere Stärke \n\nDie verschiedenen Blautöne, die je nach Lichteinfall in ihrer Stärke variieren kombiniert mit den glitzerenden Effekten der Strassspacer machen dieses Armband zu einem außergewöhnlich schönen und gleichzeitig eleganten Blickfang. \n\nDas Falkenauge gilt zudem als  Schutzstein. Er soll vor negativen Energien, Intrigen, Neid und dem „bösen Blick\" schützen. Er soll außerdem zu einem besseren Überblick verhelfen,  Entscheidungshilfe sein und Selbsterkenntnis sowie innere Ruhe fördern. \n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+            "materials": [
+                "blaues Tigerauge (Falkenauge)"
+            ],
+            "metalElements": [
+                "Strasspacer Edelstahl"
+            ],
+            "braceletSizeCm": 18,
+            "pearlSizeMm": 8,
+            "priceMinor": 2150,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "38a50bb6-8abf-4813-8c1a-ccd4b7e86168",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0006/01.jpg",
+                    "alt": "Athena",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "imageId": "53e9e0ea-6d54-4b13-b34f-0c6c8016f5fb",
+                    "fileName": "02.jpg",
+                    "src": "/images/products/CP-2026-0006/02.jpg",
+                    "alt": "Athena",
+                    "width": 1600,
+                    "height": 900,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-08-31T17:28:50+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Athena",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Klarheit, Schutz und innere Stärke ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Die verschiedenen Blautöne, die je nach Lichteinfall in ihrer Stärke variieren kombiniert mit den glitzerenden Effekten der Strassspacer machen dieses Armband zu einem außergewöhnlich schönen und gleichzeitig eleganten Blickfang. ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das Falkenauge gilt zudem als  Schutzstein. Er soll vor negativen Energien, Intrigen, Neid und dem „bösen Blick\" schützen. Er soll außerdem zu einem besseren Überblick verhelfen,  Entscheidungshilfe sein und Selbsterkenntnis sowie innere Ruhe fördern. ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     ]
 }
