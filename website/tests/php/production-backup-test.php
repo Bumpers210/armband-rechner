@@ -268,6 +268,21 @@ $tests['unsafe publisher combinations remain rejected'] = static function () use
     );
 };
 
+$tests['mysql clients use utf8mb4'] = static function () use ($root, $key): void {
+    $backup = new CarmajaProductionBackup(backup_test_config($root, $key), PHP_BINARY, PHP_BINARY, PHP_BINARY);
+    $method = new ReflectionMethod($backup, 'writeClientOptions');
+    $optionsPath = $method->invoke($backup, $root, false);
+    try {
+        $options = file_get_contents($optionsPath);
+        backup_test_assert(
+            is_string($options) && str_contains($options, "default-character-set=utf8mb4\n"),
+            'MySQL-CLI-Zeichensatz ist nicht auf utf8mb4 festgelegt.'
+        );
+    } finally {
+        @unlink($optionsPath);
+    }
+};
+
 $passed = 0;
 try {
     foreach ($tests as $name => $test) {

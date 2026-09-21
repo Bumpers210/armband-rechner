@@ -1038,6 +1038,7 @@ final class CarmajaProductionBackup
         $dsn = $this->parseDsn($this->config[$prefix . 'Dsn']);
         $lines = [
             '[client]',
+            'default-character-set=utf8mb4',
             'host=' . $this->optionValue($dsn['host']),
             'port=' . $dsn['port'],
             'user=' . $this->optionValue($this->config[$prefix . 'User']),

@@ -30,6 +30,7 @@ test("Produktionsbackup ist privat, verschlüsselt und fail-closed", async () =>
   assert.match(service, /--single-transaction/);
   assert.match(service, /--events/);
   assert.match(service, /--tz-utc/);
+  assert.match(service, /default-character-set=utf8mb4/);
   assert.match(service, /--no-tablespaces/);
   assert.match(service, /--init-command=SET @@SESSION\.FOREIGN_KEY_CHECKS=0, @@SESSION\.time_zone='\+00:00'/);
   assert.match(service, /assertClientTls/);
