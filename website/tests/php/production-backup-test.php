@@ -237,6 +237,37 @@ $tests['initial auto increment fingerprint normalization'] = static function () 
     backup_test_assert($ordinary === [['AUTO_INCREMENT' => null]], 'Tabelle ohne AUTO_INCREMENT wurde verändert.');
 };
 
+$tests['active production publisher remains backup safe'] = static function () use ($root, $key): void {
+    $config = backup_test_config($root, $key);
+    $config['productionPublishEnabled'] = true;
+    $config['githubAdapterEnabled'] = true;
+
+    $backup = new CarmajaProductionBackup($config, PHP_BINARY, PHP_BINARY, PHP_BINARY);
+    backup_test_assert($backup instanceof CarmajaProductionBackup, 'Aktiver Produktionspublisher sperrt das Backup.');
+};
+
+$tests['unsafe publisher combinations remain rejected'] = static function () use ($root, $key): void {
+    $productionConfig = backup_test_config($root, $key);
+    $productionConfig['productionPublishEnabled'] = true;
+    backup_test_throws(
+        static fn () => new CarmajaProductionBackup($productionConfig, PHP_BINARY, PHP_BINARY, PHP_BINARY),
+        'backup_config_unsafe'
+    );
+
+    $testConfig = backup_test_config($root, $key);
+    $testConfig['environment'] = 'test';
+    $testConfig['publishTarget'] = 'test';
+    $testConfig['backupTestMode'] = true;
+    $testConfig['privateDir'] = '/home/www/carmaja-private-test/ap77-backup-e2e';
+    $testConfig['backupOffsiteTarget'] = 'test-sink://ap7-backup-e2e';
+    $testConfig['productionPublishEnabled'] = true;
+    $testConfig['githubAdapterEnabled'] = true;
+    backup_test_throws(
+        static fn () => new CarmajaProductionBackup($testConfig, PHP_BINARY, PHP_BINARY, PHP_BINARY),
+        'backup_config_unsafe'
+    );
+};
+
 $passed = 0;
 try {
     foreach ($tests as $name => $test) {
