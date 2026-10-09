@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { siteContent } from "@/content/site-content";
+import { ShopCartLink } from "@/components/shop-cart";
 
 export function SiteHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -79,6 +80,7 @@ export function SiteHeader() {
           data-open={isMenuOpen}
         >
           <ul className="v2-navigation">
+            <li><ShopCartLink /></li>
             {siteContent.navigation.map((item) => {
               const isActive = item.href === "/armbaender/"
                 ? pathname.startsWith("/armbaender/")

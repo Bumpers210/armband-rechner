@@ -28,6 +28,11 @@ const PRODUCT_KEYS_V2 = [
   "updatedAt",
 ];
 const PRODUCT_KEYS_V3 = [...PRODUCT_KEYS_V2, "descriptionDocument"];
+const PRODUCT_KEYS_V4 = [...PRODUCT_KEYS_V3, "noticePolicyId", "notices"];
+const PRODUCT_NOTICES = [
+  "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+  "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.",
+];
 const DESCRIPTION_DOCUMENT_KEYS = ["blocks", "version"];
 const DESCRIPTION_BLOCK_KEYS = ["spans", "type"];
 const DESCRIPTION_SPAN_KEYS = ["bold", "font", "italic", "size", "text"];
@@ -73,12 +78,12 @@ function requireExactKeys(value, allowedKeys, requiredKeys, location) {
   }
 }
 
-function requireString(value, location, maximumLength) {
+function requireString(value, location, maximumLength, unicode = false) {
   if (
     typeof value !== "string" ||
     value.trim() === "" ||
     value !== value.trim() ||
-    value.length > maximumLength
+    (unicode ? Array.from(value).length : value.length) > maximumLength
   ) {
     fail(
       location,
@@ -123,7 +128,7 @@ function requirePositiveNumber(value, location) {
   return value;
 }
 
-function validateDescriptionDocument(value, expectedPlainText, location) {
+function validateDescriptionDocument(value, expectedPlainText, location, maximumBytes = 16 * 1024) {
   const document = requireObject(value, location);
   requireExactKeys(document, DESCRIPTION_DOCUMENT_KEYS, DESCRIPTION_DOCUMENT_KEYS, location);
   if (document.version !== 1 || !Array.isArray(document.blocks)) {
@@ -172,7 +177,7 @@ function validateDescriptionDocument(value, expectedPlainText, location) {
   if (spanCount > 100) {
     fail(location, "Höchstens 100 Formatbereiche erlaubt.");
   }
-  if (Buffer.byteLength(JSON.stringify(document), "utf8") > 16 * 1024) {
+  if (Buffer.byteLength(JSON.stringify(document), "utf8") > maximumBytes) {
     fail(location, "Formatierte Beschreibung ist zu groß.");
   }
   const plainText = blocks
@@ -249,11 +254,19 @@ function validateImage(value, product, index, imageCount, imageRoot) {
 function validateProduct(value, index, imageRoot) {
   const location = `products[${index}]`;
   const product = requireObject(value, location);
-  if (![2, 3].includes(product.productModelVersion)) {
-    fail(location, "Produktmodell 2 oder 3 erwartet.");
+  if (![2, 3, 4].includes(product.productModelVersion)) {
+    fail(location, "Produktmodell 2, 3 oder 4 erwartet.");
   }
-  const productKeys = product.productModelVersion === 3 ? PRODUCT_KEYS_V3 : PRODUCT_KEYS_V2;
+  const productKeys = product.productModelVersion === 4 ? PRODUCT_KEYS_V4
+    : product.productModelVersion === 3 ? PRODUCT_KEYS_V3 : PRODUCT_KEYS_V2;
   requireExactKeys(product, productKeys, productKeys, location);
+  if (product.productModelVersion === 4) {
+    const expected = product.noticePolicyId === "natural-stones-v1" ? PRODUCT_NOTICES : [];
+    if (![null, "natural-stones-v1"].includes(product.noticePolicyId)
+      || JSON.stringify(product.notices) !== JSON.stringify(expected)) {
+      fail(location, "Unveränderbare Hinweiszuordnung stimmt nicht überein.");
+    }
+  }
   const productId = requireString(product.productId, `${location}.productId`, 40);
   const sku = requireString(product.sku, `${location}.sku`, 20);
   const slug = requireString(product.slug, `${location}.slug`, 180);
@@ -274,8 +287,10 @@ function validateProduct(value, index, imageRoot) {
     fail(location, "Positive Produktversion erwartet.");
   }
 
-  if (!Number.isInteger(product.priceMinor) || product.priceMinor < 50) {
-    fail(`${location}.priceMinor`, "Ganzzahl von mindestens 50 Cent erwartet.");
+  if (!Number.isInteger(product.priceMinor) || product.priceMinor < (product.productModelVersion === 4 ? 1 : 50)) {
+    fail(`${location}.priceMinor`, product.productModelVersion === 4
+      ? "Positive ganzzahlige Cent-Angabe erwartet."
+      : "Ganzzahl von mindestens 50 Cent erwartet.");
   }
 
   if (product.currency !== "eur") {
@@ -314,12 +329,13 @@ function validateProduct(value, index, imageRoot) {
     fail(`${location}.images`, "Ein bis fünf Bilder erwartet.");
   }
 
-  const description = requireString(product.description, `${location}.description`, 500);
-  const descriptionDocument = product.productModelVersion === 3
+  const description = requireString(product.description, `${location}.description`, product.productModelVersion === 4 ? 2000 : 500, product.productModelVersion === 4);
+  const descriptionDocument = product.productModelVersion >= 3
     ? validateDescriptionDocument(
         product.descriptionDocument,
         description,
         `${location}.descriptionDocument`,
+        product.productModelVersion === 4 ? 32 * 1024 : 16 * 1024,
       )
     : null;
 
@@ -333,6 +349,8 @@ function validateProduct(value, index, imageRoot) {
     publicTitle,
     description,
     descriptionDocument,
+    noticePolicyId: product.noticePolicyId ?? null,
+    notices: product.notices ?? [],
     materials: requireStringList(product.materials, `${location}.materials`, {
       allowEmpty: false,
     }),
@@ -384,11 +402,14 @@ export function loadPublicProductsV2(productsFile, imageRoot) {
   const root = requireObject(decoded, "root");
   requireExactKeys(root, ROOT_KEYS, ROOT_KEYS, "root");
 
-  if (![2, 3].includes(root.version) || !Array.isArray(root.products)) {
-    fail("root", "Version 2 oder 3 mit Produktliste erwartet.");
+  if (![2, 3, 4].includes(root.version) || !Array.isArray(root.products)) {
+    fail("root", "Version 2, 3 oder 4 mit Produktliste erwartet.");
   }
   if (root.version === 2 && root.products.some((product) => product?.productModelVersion !== 2)) {
     fail("root", "Version 2 darf nur Produkte des Modells 2 enthalten.");
+  }
+  if (root.products.some((product) => product?.productModelVersion > root.version)) {
+    fail("root", "Produktmodell darf die Projektionsversion nicht überschreiten.");
   }
 
   const products = root.products.map((product, index) =>

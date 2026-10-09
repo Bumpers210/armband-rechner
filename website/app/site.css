@@ -1016,6 +1016,32 @@
   color: var(--v2-muted);
 }
 
+.v2-page .cart-main {
+  padding-block: 4rem;
+  min-height: 55vh;
+}
+
+.v2-page .shop-cart {
+  max-width: 48rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.v2-page .shop-cart article {
+  padding: 1.5rem;
+  border: 1px solid var(--v2-line);
+  border-radius: 7px;
+  background: var(--v2-surface);
+}
+
+.v2-page .shop-cart input,
+.v2-page .shop-buy-now input {
+  width: 6rem;
+  margin-inline: 0.5rem;
+  padding: 0.5rem;
+  font: inherit;
+}
+
 .v2-page .shop-buy-button {
   display: inline-flex;
   width: 100%;

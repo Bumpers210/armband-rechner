@@ -61,6 +61,16 @@ fi
 MOCK_SSH
 chmod 0700 "$MOCK_BIN/ssh"
 
+# Product-path generation is exercised by the real Node/export tests; keep
+# this orchestration mock independent of the host's Node installation.
+cat > "$MOCK_BIN/node" <<'MOCK_NODE'
+#!/usr/bin/env bash
+set -eu
+[ "$1" = '--input-type=module' ]
+printf '%s\n' 'armbaender/mock-product/' 'images/products/CP-2026-0001/01.jpg'
+MOCK_NODE
+chmod 0700 "$MOCK_BIN/node"
+
 cat > "$MOCK_BIN/curl" <<'MOCK_CURL'
 #!/usr/bin/env bash
 set -eu
@@ -206,6 +216,20 @@ case "$url|$auth" in
         code='200'
         case "$CARMAJA_MOCK_SCENARIO" in
             image_status|rollback_failure) code='404' ;;
+        esac
+        ;;
+    'https://test.carmaja-perlen.de/warenkorb/|none')
+        code='401'
+        if [ "$CARMAJA_MOCK_SCENARIO" = 'cart_unauth_not_401' ]; then code='200'; fi
+        ;;
+    https://test.carmaja-perlen.de/*'|correct')
+        code='200'
+        body='<a href="/warenkorb/">Warenkorb</a>'
+        case "$url|$CARMAJA_MOCK_SCENARIO" in
+            *'/warenkorb/|cart_page_missing') code='404' ;;
+            *'/widerruf/|withdrawal_page_missing') code='404' ;;
+            *'/warenkorb/|cart_link_missing') body='old-site' ;;
+            *'/armbaender/'*'|product_page_missing') code='404' ;;
         esac
         ;;
 esac
@@ -430,6 +454,11 @@ run_case 'bracelets_auth_status' 'failure' 'bracelets_page_status'
 run_case 'image_status' 'failure' 'static_image_status'
 run_case 'mark_failure' 'failure' 'mark_verified'
 run_case 'rollback_failure' 'failure' 'static_image_status'
+run_case 'cart_unauth_not_401' 'failure' 'cart_unauthenticated_status'
+run_case 'cart_page_missing' 'failure' 'page_warenkorb'
+run_case 'withdrawal_page_missing' 'failure' 'page_widerruf'
+run_case 'cart_link_missing' 'failure' 'page_warenkorb_cart_link'
+run_case 'product_page_missing' 'failure' 'preserved_product_page_or_image'
 
 [ "$SCENARIO_COUNT" -ge 25 ]
 printf 'Smoke-Orchestrierungs-Test erfolgreich: %s Szenarien.\n' "$SCENARIO_COUNT"

@@ -7,6 +7,45 @@ import test from "node:test";
 import { loadPublicProductsV2 } from "../../lib/public-products-v2.mjs";
 
 const projectRoot = process.cwd();
+const fixedNotices = [
+  "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+  "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.",
+];
+
+function model4(overrides = {}) {
+  const description = overrides.description ?? "Neues künstliches Produkt";
+  return product({productModelVersion: 4, description,
+    descriptionDocument: {version: 1, blocks: [{type: "paragraph", spans: [{text: description, bold: false, italic: false, font: "standard", size: "normal"}]}]},
+    noticePolicyId: "natural-stones-v1", notices: fixedNotices, ...overrides});
+}
+
+test("Modell 4 akzeptiert nur die festen serverseitigen Hinweise", async () => {
+  for (const [value, valid] of [
+    [model4(), true], [model4({noticePolicyId: null, notices: []}), true],
+    [model4({notices: []}), false], [model4({notices: [...fixedNotices, fixedNotices[0]]}), false],
+    [model4({stock: 3}), false], [model4({vintedUrl: "https://example.invalid"}), false],
+  ]) {
+    const current = await fixture(value, 4);
+    try {
+      if (valid) assert.deepEqual(current.load().products[0].notices, value.notices);
+      else assert.throws(current.load);
+    } finally { await rm(current.root, {recursive: true, force: true}); }
+  }
+});
+
+test("Modell 4 zählt Unicodezeichen; ältere Produkte erhalten keine Hinweise", async () => {
+  const current = await fixture(model4({description: "🪨".repeat(1100), priceMinor: 1}), 4);
+  const legacy = await fixture(product());
+  const mismatch = await fixture(model4(), 3);
+  try {
+    assert.equal(current.load().products[0].description, "🪨".repeat(1100));
+    assert.deepEqual(legacy.load().products[0].notices, []);
+    assert.equal(legacy.load().products[0].noticePolicyId, null);
+    assert.throws(mismatch.load);
+  } finally {
+    for (const value of [current, legacy, mismatch]) await rm(value.root, {recursive: true, force: true});
+  }
+});
 const sourceImage = path.join(
   projectRoot,
   "public",

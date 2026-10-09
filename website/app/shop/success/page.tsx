@@ -34,7 +34,7 @@ export default function ShopSuccessPage() {
                   <span aria-hidden="true">2</span>
                   <div>
                     <strong>Sorgfältig verpackt</strong>
-                    <p>Wir bereiten Ihr Armband persönlich für den Versand vor.</p>
+                    <p>Nach Zahlungsbestätigung bereiten wir Ihre Armbänder gemeinsam für den Versand vor.</p>
                   </div>
                 </li>
                 <li>

@@ -357,8 +357,32 @@ if (productionLegalBundleV4.contentHash !== PRODUCTION_LEGAL_BUNDLE_V4_CONTENT_S
   throw new Error("Freigegebenes Produktions-Legal-Bundle v4 stimmt nicht mit dem Inhalts-Hash überein.");
 }
 
+const cartTestTexts: LegalBundleTexts = {
+  terms: [{ heading: "Technischer Warenkorbtest – keine Rechtsfreigabe", paragraphs: [
+    "Nur künstliche Testdaten. Mehrere Armbänder und Mengen werden gemeinsam über den Warenkorb bestellt. Die Preise und Verfügbarkeit werden vor dem Checkout serverseitig erneut geprüft.",
+    "Der Warenkorb reserviert keinen Bestand. Eine Bestellung wird erst nach endgültig bestätigtem Zahlungserfolg angelegt. Laufende SEPA-Zahlungen halten die angefragten Mengen reserviert.",
+    "Karte einschließlich verfügbarer Apple-/Google-Pay-Wallets, Klarna und SEPA-Lastschrift; kein PayPal, kein Kundenkonto und keine Gutscheine.",
+  ] }],
+  privacy: [{ heading: "Technische Testfassung", paragraphs: [
+    "Die anonyme Shopsitzung bindet den serverseitigen Warenkorb für 24 Stunden. Es werden ausschließlich künstliche Testdaten verwendet. Der endgültige Datenfluss muss erneut freigegeben werden.",
+  ] }],
+  withdrawal: [{ heading: "Positionsbezogener technischer Widerrufstest", paragraphs: [
+    "Zuerst Bestellung identifizieren und Positionen sowie Mengen auswählen, anschließend ausdrücklich Widerruf bestätigen. Nicht eindeutig zuordenbare oder überhöhte Mengen bleiben bestätigbare Erklärungen zur manuellen Prüfung.",
+    "Die elektronische Eingangsbestätigung enthält die erklärte Auswahl. Widerruf und Erstattung erhöhen keinen Bestand; nur eingegangene, geprüfte Rückgaben werden ausdrücklich wiedereingelagert.",
+  ] }],
+  shipping: [{ heading: "Technischer Versand- und Zahlungstest", paragraphs: [
+    "Versand innerhalb Deutschlands als eine gemeinsame Sendung per Maxibrief; einmalig 2,70 € je Bestellung, unabhängig von der Warenkorbmenge. Keine Teillieferungen oder zusätzlichen Versandarten.",
+    "Versand erst nach bestätigtem Zahlungserfolg. Laufende SEPA-Zahlungen werden nicht allein wegen des Sessionablaufs freigegeben. Klarna bei Versand ohne Sendungsverfolgung bleibt ein gesondertes Nachweisrisiko.",
+  ] }],
+};
+
+export const cartTestLegalBundle: LegalBundle = createLegalBundle({
+  id: "cmj-test-legal-2026-10-06-v3", environment: "test", version: "v3", status: "test_only",
+  archiveUrl: "/legal-archive/test/cmj-test-legal-2026-10-06-v3/", createdAt: "2026-10-06T00:00:00.000Z", texts: cartTestTexts,
+});
+
 export const legalBundlesByTarget = {
-  test: [testLegalBundle],
+  test: [cartTestLegalBundle, testLegalBundle],
   production: [productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle],
 } as const;
 

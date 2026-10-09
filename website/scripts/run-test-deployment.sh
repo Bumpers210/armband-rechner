@@ -559,6 +559,64 @@ run_smoke_tests()
         return 1
     fi
     smoke_check_ok 'static_image_status' '200'
+
+    # Check the new public pages before mark_verified; failures restore the
+    # previous manifest-managed website, never API or product data.
+    smoke_check_start 'cart_unauthenticated_status'
+    if ! code=$(curl_public -o /dev/null -w '%{http_code}' "${HTTPS_ROOT}warenkorb/"); then
+        smoke_check_failed 'cart_unauthenticated_status' '401' 'curl_error'
+        return 1
+    fi
+    if [ "$code" != '401' ]; then
+        smoke_check_failed 'cart_unauthenticated_status' '401' "$(safe_status "$code")"
+        return 1
+    fi
+    smoke_check_ok 'cart_unauthenticated_status' '401'
+
+    local page
+    for page in warenkorb impressum datenschutz shopbedingungen widerruf versand-und-zahlung shop/success shop/cancel shop/error; do
+        smoke_check_start "page_${page//\//_}"
+        if ! code=$(curl_authenticated -o "$smoke_directory/page.html" -w '%{http_code}' "${HTTPS_ROOT}${page}/"); then
+            smoke_check_failed "page_${page//\//_}" '200' 'curl_error'
+            return 1
+        fi
+        if [ "$code" != '200' ]; then
+            smoke_check_failed "page_${page//\//_}" '200' "$(safe_status "$code")"
+            return 1
+        fi
+        if ! grep -Fq 'href="/warenkorb/"' "$smoke_directory/page.html"; then
+            smoke_check_failed "page_${page//\//_}_cart_link" 'present' 'missing'
+            return 1
+        fi
+        smoke_check_ok "page_${page//\//_}" '200'
+    done
+
+    if ! node --input-type=module -e '
+      import {readFileSync} from "node:fs";
+      const source = JSON.parse(readFileSync("content/products.json", "utf8"));
+      for (const product of source.products) {
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(product.slug)) throw new Error("invalid_slug");
+        console.log("armbaender/" + product.slug + "/");
+        for (const image of product.images) {
+          if (!/^\/images\/products\/CP-\d{4}-\d{4}\/\d{2}\.jpg$/.test(image.src)) throw new Error("invalid_image");
+          console.log(image.src.slice(1));
+        }
+      }
+    ' > "$smoke_directory/product-paths"; then
+        smoke_check_failed 'product_smoke_paths' 'valid' 'invalid'
+        return 1
+    fi
+    while IFS= read -r page; do
+        if ! code=$(curl_authenticated -o /dev/null -w '%{http_code}' "${HTTPS_ROOT}${page}"); then
+            smoke_check_failed 'preserved_product_page_or_image' '200' 'curl_error'
+            return 1
+        fi
+        if [ "$code" != '200' ]; then
+            smoke_check_failed 'preserved_product_page_or_image' '200' "$(safe_status "$code")"
+            return 1
+        fi
+        smoke_check_ok 'preserved_product_page_or_image' '200'
+    done < "$smoke_directory/product-paths"
 }
 
 perform_rollback()

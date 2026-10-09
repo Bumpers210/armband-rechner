@@ -100,13 +100,16 @@ test("Testziel bleibt ohne Produktionstracking und fest an die Test-API gebunden
   const layout = await source("app/layout.tsx");
   const nextConfig = await source("next.config.ts");
   const buyNow = await source("components/shop-buy-now.tsx");
+  const cartClient = await source("lib/cart-client.ts");
   const withdrawal = await source("components/withdrawal-form.tsx");
 
   assert.doesNotMatch(layout, /PageViewTracker/);
   assert.match(layout, /persistent-bracelet-flag/);
   assert.match(nextConfig, /https:\/\/test-api\.carmaja-perlen\.de/);
   assert.match(nextConfig, /configuredShopApiOrigin !== expectedShopApiOrigin/);
-  assert.match(buyNow, /CARMAJA_SITE_TARGET === "test"/);
+  assert.match(buyNow, /shopApiOrigin/);
+  assert.match(cartClient, /CARMAJA_SITE_TARGET === "test"/);
+  assert.match(cartClient, /https:\/\/test-api\.carmaja-perlen\.de/);
   assert.match(withdrawal, /CARMAJA_SITE_TARGET === "test"/);
 });
 
