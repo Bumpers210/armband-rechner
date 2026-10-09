@@ -24,6 +24,27 @@ class ProductApiPayloadTest {
         for (field in listOf("stock", "salesEnabled", "vintedUrl", "productVersion", "sourceHash")) {
             assertFalse(payload.has(field))
         }
+        assertFalse(payload.has("notices"))
+        assertFalse(payload.has("noticePolicyId"))
+        assertFalse(payload.has("pendingInitialOnHand"))
+        assertFalse(payload.has("pendingInitialInventoryOperationId"))
+    }
+
+    @Test
+    fun modelFourKeepsNoticesAndPendingInventoryOutOfProductWrite() {
+        val draft = productDraft().copy(
+            modelVersion = 4,
+            notices = listOf("Serverseitiger unveränderbarer Hinweis"),
+            pendingInitialOnHand = 7,
+            pendingInitialInventoryOperationId = "operation-initial-0001",
+        )
+        val payload = draft.toSaveJson()
+        assertEquals(4, PRODUCT_MODEL_VERSION)
+        assertEquals(2490, payload.getInt("priceMinor"))
+        assertFalse(payload.has("notices"))
+        assertFalse(payload.has("stock"))
+        assertFalse(payload.has("targetOnHand"))
+        assertEquals(7, draft.pendingInitialOnHand)
     }
 
     private fun productDraft(): ProductDraft {

@@ -138,6 +138,7 @@ class ProductDraftRepository(
                 pearlSizeMm = update.pearlSizeMm,
                 shortDescription = update.shortDescription,
                 descriptionDocument = descriptionDocument,
+                notices = update.notices,
                 careInstructions = update.careInstructions,
                 priceMinor = update.priceMinor,
                 currency = update.currency.lowercase(),
@@ -297,6 +298,9 @@ class ProductDraftRepository(
             .put("pearlSizeMm", draft.pearlSizeMm)
             .put("shortDescription", draft.shortDescription)
             .put("descriptionDocument", draft.descriptionDocument?.toJson())
+            .put("notices", JSONArray(draft.notices))
+            .put("pendingInitialInventoryOperationId", draft.pendingInitialInventoryOperationId)
+            .put("pendingInitialOnHand", draft.pendingInitialOnHand)
             .put("careInstructions", JSONArray(draft.careInstructions))
             .put("priceMinor", draft.priceMinor)
             .put("currency", draft.currency)
@@ -331,6 +335,9 @@ class ProductDraftRepository(
             shortDescription = json.optString("shortDescription"),
             descriptionDocument = json.optJSONObject("descriptionDocument")
                 ?.let(DescriptionDocument::fromJson),
+            notices = json.optStringList("notices"),
+            pendingInitialInventoryOperationId = json.optStringOrNull("pendingInitialInventoryOperationId"),
+            pendingInitialOnHand = if (json.has("pendingInitialOnHand") && !json.isNull("pendingInitialOnHand")) json.getInt("pendingInitialOnHand") else null,
             careInstructions = json.optStringList("careInstructions"),
             priceMinor = if (json.has("priceMinor")) {
                 json.optInt("priceMinor", 0)

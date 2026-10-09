@@ -200,7 +200,7 @@ function carmaja_api_v3_validate_description_document(mixed $value): array
     ];
 }
 
-function carmaja_api_v3_validate_put_payload(array $payload): array
+function carmaja_api_v3_validate_put_payload(array $payload, int $minimumPriceMinor = 50): array
 {
     carmaja_api_v2_reject_client_managed_fields($payload);
     carmaja_api_reject_unknown_fields($payload, carmaja_api_v3_allowed_put_fields());
@@ -218,7 +218,7 @@ function carmaja_api_v3_validate_put_payload(array $payload): array
     $v2Payload = $payload;
     unset($v2Payload['descriptionDocument']);
     $v2Payload['description'] = $description['plainText'];
-    $normalized = carmaja_api_v2_validate_put_payload($v2Payload);
+    $normalized = carmaja_api_v2_validate_put_payload($v2Payload, $minimumPriceMinor);
     $normalized['descriptionDocument'] = $description['document'];
     return $normalized;
 }
@@ -226,8 +226,12 @@ function carmaja_api_v3_validate_put_payload(array $payload): array
 function carmaja_api_v3_canonical_product(array $product): array
 {
     $canonical = carmaja_api_v2_canonical_product($product);
-    $canonical['productModelVersion'] = CARMAJA_PRODUCT_MODEL_V3;
+    $canonical['productModelVersion'] = (int) ($product['productModelVersion'] ?? CARMAJA_PRODUCT_MODEL_V3);
     $canonical['descriptionDocument'] = $product['descriptionDocument'] ?? null;
+    if ($canonical['productModelVersion'] === 4) {
+        $canonical['noticePolicyId'] = $product['noticePolicyId'] ?? null;
+        $canonical['notices'] = $product['notices'] ?? [];
+    }
     return $canonical;
 }
 
@@ -244,7 +248,7 @@ function carmaja_api_v3_source_hash(array $product): string
 
 function carmaja_api_v3_product_from_draft(array $draft): array
 {
-    if (($draft['productModelVersion'] ?? null) !== CARMAJA_PRODUCT_MODEL_V3
+    if (!in_array($draft['productModelVersion'] ?? null, [3, 4], true)
         || !is_array($draft['descriptionDocument'] ?? null)) {
         throw new CarmajaApiException(
             409,
@@ -254,8 +258,12 @@ function carmaja_api_v3_product_from_draft(array $draft): array
         );
     }
     $product = carmaja_api_v2_product_from_draft($draft);
-    $product['productModelVersion'] = CARMAJA_PRODUCT_MODEL_V3;
+    $product['productModelVersion'] = $draft['productModelVersion'];
     $product['descriptionDocument'] = $draft['descriptionDocument'];
+    if ($product['productModelVersion'] === 4) {
+        $product['noticePolicyId'] = $draft['noticePolicyId'] ?? null;
+        $product['notices'] = $product['noticePolicyId'] === 'natural-stones-v1' ? CARMAJA_PRODUCT_NOTICES : [];
+    }
     $product['sourceHash'] = carmaja_api_v3_source_hash($product);
     return $product;
 }
@@ -281,7 +289,8 @@ function carmaja_api_v3_put_product(
     array $body,
     array $actor,
     mixed $idempotencyKey,
-    bool $serverManagedAvailability = false
+    bool $serverManagedAvailability = false,
+    bool $stockedModel = false
 ): array {
     carmaja_api_validate_draft_id($productId);
     $idempotencyKey = carmaja_api_v2_validate_idempotency_key($idempotencyKey);
@@ -292,7 +301,8 @@ function carmaja_api_v3_put_product(
         $actor,
         $idempotencyKey,
         $requestHash,
-        $serverManagedAvailability
+        $serverManagedAvailability,
+        $stockedModel
     ): array {
         $idempotencyPath = carmaja_api_v3_idempotency_path($idempotencyKey);
         $stored = is_file($idempotencyPath)
@@ -313,7 +323,7 @@ function carmaja_api_v3_put_product(
             }
         }
 
-        $normalized = carmaja_api_v3_validate_put_payload($body);
+        $normalized = carmaja_api_v3_validate_put_payload($body, $stockedModel ? 1 : 50);
         $existing = carmaja_api_load_draft($productId);
         if ($serverManagedAvailability) {
             $normalized['salesEnabled'] = is_array($existing)
@@ -362,7 +372,10 @@ function carmaja_api_v3_put_product(
             }
         }
 
-        $draft['productModelVersion'] = CARMAJA_PRODUCT_MODEL_V3;
+        $draft['productModelVersion'] = $stockedModel ? 4 : CARMAJA_PRODUCT_MODEL_V3;
+        if ($stockedModel) {
+            $draft['noticePolicyId'] = $existing === null ? 'natural-stones-v1' : ($existing['noticePolicyId'] ?? null);
+        }
         $draft['productVersion'] = $nextProductVersion;
         $draft['name'] = $normalized['name'];
         $draft['shortDescription'] = $normalized['description'];
@@ -430,9 +443,13 @@ function carmaja_api_v3_public_product_with_blobs(array $draft): array
 {
     $product = carmaja_api_v3_product_from_draft($draft);
     $public = carmaja_api_v2_public_product_from_draft($draft);
-    $public['productModelVersion'] = CARMAJA_PRODUCT_MODEL_V3;
+    $public['productModelVersion'] = $product['productModelVersion'];
     $public['sourceHash'] = $product['sourceHash'];
     $public['descriptionDocument'] = $product['descriptionDocument'];
+    if ($product['productModelVersion'] === 4) {
+        $public['noticePolicyId'] = $product['noticePolicyId'];
+        $public['notices'] = $product['notices'];
+    }
     $uploadedById = [];
     foreach ($draft['images'] ?? [] as $uploadedImage) {
         if (is_array($uploadedImage) && is_string($uploadedImage['imageId'] ?? null)) {
@@ -620,7 +637,7 @@ function carmaja_api_local_publish_adapter_v3(array $publicProduct, array $opera
             }
             carmaja_api_write_json_atomic(
                 $path,
-                ['version' => CARMAJA_PRODUCT_MODEL_V3, 'products' => array_values($products)]
+                ['version' => max(3, (int) ($document['version'] ?? 3), (int) ($publicForJson['productModelVersion'] ?? 3)), 'products' => array_values($products)]
             );
             $result = ['commitSha' => null, 'deploymentStatus' => 'not_started'];
             carmaja_api_write_json_atomic(

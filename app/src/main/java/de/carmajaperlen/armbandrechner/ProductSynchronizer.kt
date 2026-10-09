@@ -200,6 +200,7 @@ internal fun applyServerUpdate(
         version = update.version,
         productVersion = update.productVersion,
         sourceHash = update.sourceHash,
+        notices = update.notices,
         sku = update.sku ?: draft.sku,
         slug = update.slug ?: draft.slug,
         status = update.status,

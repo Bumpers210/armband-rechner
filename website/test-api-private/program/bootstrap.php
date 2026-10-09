@@ -142,6 +142,8 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'publishTarget',
         'productionPublishEnabled',
         'productApiV4WritesEnabled',
+        'productApiV5WritesEnabled',
+        'inventoryCartEnabled',
         'collectionCommerceEnabled',
         'privateDir',
         'productPrivateDir',
@@ -211,12 +213,17 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $productionPublishEnabled = $config['productionPublishEnabled'] ?? null;
     $productApiV4WritesEnabled = $config['productApiV4WritesEnabled'] ?? false;
     $collectionCommerceEnabled = $config['collectionCommerceEnabled'] ?? false;
+    $productApiV5WritesEnabled = $config['productApiV5WritesEnabled'] ?? false;
+    $inventoryCartEnabled = $config['inventoryCartEnabled'] ?? false;
 
     if (!in_array($publishTarget, ['test', 'production'], true)
         || $environment !== $publishTarget
         || !is_bool($productionPublishEnabled)
         || !is_bool($productApiV4WritesEnabled)
         || !is_bool($collectionCommerceEnabled)
+        || !is_bool($productApiV5WritesEnabled)
+        || !is_bool($inventoryCartEnabled)
+        || ($productApiV5WritesEnabled && !$inventoryCartEnabled)
         || ($publishTarget === 'test' && $productionPublishEnabled)) {
         throw new CarmajaBootstrapException(
             'config_environment_invalid',
@@ -475,6 +482,8 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'publishTarget' => $publishTarget,
         'productionPublishEnabled' => $productionPublishEnabled,
         'productApiV4WritesEnabled' => $productApiV4WritesEnabled,
+        'productApiV5WritesEnabled' => $productApiV5WritesEnabled,
+        'inventoryCartEnabled' => $inventoryCartEnabled,
         'collectionCommerceEnabled' => $collectionCommerceEnabled,
         'privateDir' => $privateDir,
         'productPrivateDir' => $productPrivateDir,
@@ -624,6 +633,7 @@ function carmaja_bootstrap_prepare(?string $configPath = null): array
     require_once __DIR__ . '/product-api-v2.php';
     require_once __DIR__ . '/product-api-v3.php';
     require_once __DIR__ . '/product-api-v4.php';
+    require_once __DIR__ . '/product-api-v5.php';
     require_once __DIR__ . '/commerce-bootstrap.php';
     require_once __DIR__ . '/shop-checkout.php';
     require_once __DIR__ . '/shop-public.php';
@@ -730,6 +740,18 @@ function carmaja_bootstrap_route_request(): never
     }
 
     $shopApiVersion = (string) ($segments[1] ?? '');
+    if (($segments[0] ?? '') === 'v5') {
+        carmaja_api_v5_route($method, array_slice($segments, 1));
+    }
+    if (($segments[0] ?? '') === 'shop' && $shopApiVersion === 'v3') {
+        carmaja_cart_route($method, array_slice($segments, 2));
+    }
+    if ((carmaja_bootstrap_load_config()['productApiV5WritesEnabled'] ?? false) === true
+        && !in_array($method, ['GET','OPTIONS'], true)
+        && ((in_array($segments[0] ?? '', ['v2','v3','v4'], true) && ($segments[1] ?? '') === 'products')
+            || in_array($segments[0] ?? '', ['products','drafts'], true))) {
+        throw new CarmajaApiException(426, 'Bitte die App aktualisieren.', [], 'client_update_required');
+    }
     $isShopRoute = ($segments[0] ?? null) === 'shop'
         && in_array($shopApiVersion, ['v1', 'v2'], true);
     $isAdminRoute = ($segments[0] ?? null) === 'admin' && ($segments[1] ?? null) === 'v1';
@@ -784,6 +806,26 @@ function carmaja_bootstrap_route_request(): never
         $csrfRequired = static function () use ($session): void {
             carmaja_shop_admin_require_csrf($session, (string) ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? ''));
         };
+        if ($commerce instanceof CarmajaCartCommerce && $method === 'GET' && $adminSegments === ['inventory']) {
+            carmaja_bootstrap_send(200, ['ok' => true, 'inventory' => $commerce->listInventories()]);
+        }
+        if ($commerce instanceof CarmajaCartCommerce && count($adminSegments) === 2 && $adminSegments[0] === 'inventory') {
+            $productId = (string) $adminSegments[1];
+            carmaja_commerce_assert_id($productId, 'productId');
+            if ($method === 'GET') { carmaja_bootstrap_send(200, ['ok' => true, 'inventory' => $commerce->loadInventoryForManagement($productId)]); }
+            if ($method === 'POST') {
+                $csrfRequired();
+                $body = carmaja_shop_admin_request_json();
+                carmaja_bootstrap_send(200, ['ok' => true, 'inventory' => $commerce->adjustInventory([...$body,
+                    'productId' => $productId, 'idempotencyKey' => carmaja_shop_require_header('Idempotency-Key')], (string) $session['admin_id'])]);
+            }
+        }
+        if ($commerce instanceof CarmajaCartCommerce && $method === 'POST' && count($adminSegments) === 3
+            && $adminSegments[0] === 'orders' && $adminSegments[2] === 'restock-position') {
+            $csrfRequired();
+            carmaja_bootstrap_send(200, ['ok' => true, 'inventory' => $commerce->restockPosition((string) $adminSegments[1],
+                carmaja_shop_admin_request_json(), (string) $session['admin_id'], carmaja_shop_require_header('Idempotency-Key'))]);
+        }
         if ($method === 'GET' && $adminSegments === ['orders']) {
             carmaja_bootstrap_send(200, ['ok' => true, 'orders' => $commerce->listAdminOrders()]);
         }
@@ -867,6 +909,10 @@ function carmaja_bootstrap_route_request(): never
     }
     if ($isShopRoute) {
         $shopConfig = carmaja_bootstrap_load_config();
+        if (($shopConfig['inventoryCartEnabled'] ?? false) === true
+            && $method === 'POST' && ($segments[2] ?? '') === 'checkouts') {
+            throw new CarmajaCommerceException('shop_client_update_required', 'Bitte den Warenkorb verwenden.', 426);
+        }
         if ($shopApiVersion === 'v2' && $shopConfig['collectionCommerceEnabled'] !== true) {
             throw new CarmajaCommerceException(
                 'collection_commerce_not_enabled',

@@ -75,6 +75,19 @@ test("akzeptiert Archivieren nur bei entfernter öffentlicher Kollektion", () =>
   assert.equal(result.action, "archive");
 });
 
+test("Projektion 4 bindet serverseitige Version, Hash und unveränderbare Hinweise", () => {
+  const product = {...publishedProduct(), productModelVersion: 4, productVersion: 1,
+    sourceHash: "a".repeat(64), priceMinor: 2800, currency: "eur", noticePolicyId: "natural-stones-v1", notices: [
+      "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+      "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.",
+    ]};
+  assert.equal(validatePublisherPush(fixture({productsDocument: {version: 4, products: [product]}})).action, "publish");
+  for (const changed of [{...product, notices: []}, {...product, stock: 5}, {...product, sourceHash: "invalid"}]) {
+    assert.throws(() => validatePublisherPush(fixture({productsDocument: {version: 4, products: [changed]}})), /Publisher-Push abgelehnt/);
+  }
+  assert.equal(validatePublisherPush(fixture({productsDocument: {version: 4, products: [{...product, noticePolicyId: null, notices: []}]}})).action, "publish");
+});
+
 for (const [name, overrides] of [
   ["falscher Akteur", { actor: "someone-else" }],
   ["Force-Push", { forced: "true" }],

@@ -186,6 +186,12 @@ export default async function ProductDetailPage({
               <p className="product-status product-status--sold">Nicht verfügbar</p>
             ) : null}
             <ProductDescription product={product} />
+            {product.notices.length > 0 ? (
+              <section aria-label="Produkthinweise">
+                <h2>Hinweise zu Natursteinen</h2>
+                {product.notices.map((notice) => <p key={notice}>{notice}</p>)}
+              </section>
+            ) : null}
 
             <dl className="product-detail-facts">
               <div>

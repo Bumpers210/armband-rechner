@@ -88,6 +88,9 @@ data class ProductUiActions(
     val onImagesPicked: (List<Uri>) -> Unit = {},
     val onSave: () -> Unit = {},
     val onSync: () -> Unit = {},
+    val onLoadInventory: () -> Unit = {},
+    val onAdjustInventory: (Int, String) -> Unit = { _, _ -> },
+    val onStageInitialInventory: (Int) -> Unit = {},
     val onRequestPublicationPreview: () -> Unit = {},
     val onCancelPublicationPreview: () -> Unit = {},
     val onPublish: () -> Unit = {},
@@ -303,6 +306,31 @@ internal fun ProductManagementSection(
         val draft = state.selectedDraft
         val editor = state.selectedEditor
         if (draft != null && editor != null) {
+            key("inventory-" + draft.draftId) {
+                var target by remember { mutableStateOf("") }
+                Text("Bestand (separat von Produktdaten)", fontWeight = FontWeight.Bold)
+                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Gezählte Stückzahl") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                val quantity = target.toIntOrNull()?.takeIf { it >= 0 }
+                OutlinedButton(onClick = actions.onLoadInventory, enabled = !state.busy) { Text("Bestand neu laden") }
+                val inventory = state.inventory?.takeIf { state.inventoryProductId == draft.draftId }
+                inventory?.let { Text("Vorhanden: ${it.onHand} · reserviert: ${it.reserved} · verfügbar: ${it.available}") }
+                if (draft.status != ProductStatus.Published) {
+                    OutlinedButton(onClick = { quantity?.let(actions.onStageInitialInventory) }, enabled = !state.busy && quantity != null) {
+                        Text("Anfangsbestand einmalig vormerken")
+                    }
+                }
+                if (inventory != null) {
+                    listOf("initial_count" to "Erstzählung bestätigen", "receive_stock" to "Neue fertige Armbänder",
+                        "mark_unsellable" to "Beschädigt / nicht verfügbar", "correction" to "Zählkorrektur").forEach { (reason, label) ->
+                        OutlinedButton(onClick = { quantity?.let { actions.onAdjustInventory(it, reason) } }, enabled = !state.busy && quantity != null) { Text(label) }
+                    }
+                }
+                val notices = if (draft.productVersion == 0 && draft.version == 0) listOf(
+                    "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+                    "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.") else draft.notices
+                notices.forEach { Text(it) }
+            }
             key(draft.draftId) {
                 when {
                     draft.status == ProductStatus.Published &&
@@ -914,6 +942,7 @@ internal fun ProductPublicationPreviewScreen(
                 document = description,
                 modifier = Modifier.testTag("publication-preview-description"),
             )
+            draft.notices.forEach { Text(it, modifier = Modifier.testTag("publication-preview-notice")) }
 
             ProductPreviewFact("Materialien", draft.materials.joinToString(", "))
             ProductPreviewFact(

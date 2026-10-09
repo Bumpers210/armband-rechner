@@ -58,16 +58,32 @@ final class CarmajaCommerceBackup
     {
         $this->validateTargets($config);
         $this->assertPrivateTempPath($dumpPath);
-        $sourceOptions = $this->writeOptions($config['source']);
-        $restoreOptions = $this->writeOptions($config['restore']);
+        $sourceOptions = $restoreOptions = null;
 
         try {
+            $sourceOptions = $this->writeOptions($config['source']);
+            $restoreOptions = $this->writeOptions($config['restore']);
+            foreach (['source' => $sourceOptions, 'restore' => $restoreOptions] as $label => $options) {
+                if (($config[$label]['requireTls'] ?? false) === true) {
+                    $tls = $this->run([$this->restoreBinary, '--defaults-file=' . $options,
+                        '--batch', '--skip-column-names',
+                        "--execute=SHOW SESSION STATUS WHERE Variable_name IN ('Ssl_cipher','Ssl_version')",
+                        $config[$label]['database']]);
+                    if (preg_match('/^Ssl_cipher\s+\S+/m', $tls) !== 1
+                        || preg_match('/^Ssl_version\s+\S+/m', $tls) !== 1) {
+                        throw new CarmajaCommerceBackupException('backup_cli_tls_inactive');
+                    }
+                }
+            }
             $this->run([
                 $this->dumpBinary,
-                '--defaults-extra-file=' . $sourceOptions,
+                '--defaults-file=' . $sourceOptions,
                 '--single-transaction',
                 '--routines',
                 '--triggers',
+                '--no-tablespaces',
+                '--set-gtid-purged=OFF',
+                '--hex-blob',
                 '--result-file=' . $dumpPath,
                 $config['source']['database'],
             ]);
@@ -78,7 +94,7 @@ final class CarmajaCommerceBackup
 
             $this->run([
                 $this->restoreBinary,
-                '--defaults-extra-file=' . $restoreOptions,
+                '--defaults-file=' . $restoreOptions,
                 $config['restore']['database'],
             ], $dumpPath);
 
@@ -89,8 +105,8 @@ final class CarmajaCommerceBackup
                 'restoreDatabaseDifferent' => true,
             ];
         } finally {
-            @unlink($sourceOptions);
-            @unlink($restoreOptions);
+            if (is_string($sourceOptions)) { @unlink($sourceOptions); }
+            if (is_string($restoreOptions)) { @unlink($restoreOptions); }
         }
     }
 
@@ -106,6 +122,12 @@ final class CarmajaCommerceBackup
             . 'port=' . (int) $target['port'] . "\n"
             . 'user=' . $this->optionValue($target['user']) . "\n"
             . 'password=' . $this->optionValue($target['password']) . "\n";
+        $content .= "protocol=TCP\ndefault-character-set=utf8mb4\n";
+        if (($target['requireTls'] ?? false) === true) {
+            $ca = $target['tlsCaPath'] ?? '';
+            $content .= 'ssl-mode=' . ($ca !== '' ? 'VERIFY_IDENTITY' : 'REQUIRED') . "\n";
+            if ($ca !== '') { $content .= 'ssl-ca=' . $this->optionValue($ca) . "\n"; }
+        }
         if (file_put_contents($path, $content, LOCK_EX) === false) {
             @unlink($path);
             throw new CarmajaCommerceBackupException('tempfile_write_failed');
@@ -116,10 +138,10 @@ final class CarmajaCommerceBackup
 
     private function optionValue(mixed $value): string
     {
-        if (!is_string($value) || $value === '' || str_contains($value, "\n")) {
+        if (!is_string($value) || $value === '' || strpbrk($value, "\r\n\0") !== false) {
             throw new CarmajaCommerceBackupException('credential_value_invalid');
         }
-        return $value;
+        return '"' . str_replace(['\\', '"'], ['\\\\', '\\"'], $value) . '"';
     }
 
     private function assertPrivateTempPath(string $path): void
@@ -131,7 +153,7 @@ final class CarmajaCommerceBackup
         }
     }
 
-    private function run(array $command, ?string $stdin = null): void
+    private function run(array $command, ?string $stdin = null): string
     {
         $spec = [
             0 => ['pipe', 'r'],
@@ -143,7 +165,10 @@ final class CarmajaCommerceBackup
             throw new CarmajaCommerceBackupException('command_start_failed');
         }
         if ($stdin !== null) {
-            fwrite($pipes[0], $stdin);
+            $input = fopen($stdin, 'rb');
+            if ($input === false) { proc_terminate($process); throw new CarmajaCommerceBackupException('restore_input_unavailable'); }
+            try { stream_copy_to_stream($input, $pipes[0]); }
+            finally { fclose($input); }
         }
         fclose($pipes[0]);
         $stdout = stream_get_contents($pipes[1]);
@@ -155,5 +180,6 @@ final class CarmajaCommerceBackup
             unset($stdout, $stderr);
             throw new CarmajaCommerceBackupException('backup_command_failed');
         }
+        return $stdout;
     }
 }

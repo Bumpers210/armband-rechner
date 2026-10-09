@@ -6,6 +6,7 @@ require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api.php';
 require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v2.php';
 require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v3.php';
 require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v4.php';
+require_once dirname(__DIR__, 2) . '/test-api-private/program/product-api-v5.php';
 
 final class CarmajaApiTestFailure extends RuntimeException
 {
@@ -3273,6 +3274,50 @@ carmaja_api_test('V2 kann ein auf V3 angehobenes Produkt nicht überschreiben', 
         409,
         'product_model_upgrade_required'
     );
+});
+
+carmaja_api_test('V5 vergibt Hinweise nur für neue Anlagen und schützt serverseitige Felder', static function (): void {
+    carmaja_api_test_fixture();
+    $id = '99999999-9999-4999-8999-999999999991';
+    $document = ['version' => 1, 'blocks' => [['type' => 'paragraph', 'spans' => [
+        ['text' => 'Künstlicher Warenkorbtest', 'bold' => false, 'italic' => false, 'font' => 'standard', 'size' => 'normal']
+    ]]]];
+    $payload = ['expectedProductVersion' => 0, 'name' => 'Künstliches Mengenprodukt', 'descriptionDocument' => $document,
+        'materials' => ['Naturstein'], 'metalElements' => [], 'braceletSizeCm' => 18, 'pearlSizeMm' => 8,
+        'careInstructions' => [], 'images' => [], 'priceMinor' => 2800, 'currency' => 'eur'];
+    $saved = carmaja_api_v5_put($id, $payload, carmaja_api_test_actor(), 'v5-test-create-0001');
+    carmaja_api_test_same(4, $saved['productModelVersion'], 'Produktmodell 4 fehlt.');
+    carmaja_api_test_same(CARMAJA_PRODUCT_NOTICES, $saved['notices'], 'Feste Hinweise fehlen.');
+    carmaja_api_test_same($saved, carmaja_api_v5_put($id, $payload, carmaja_api_test_actor(), 'v5-test-create-0001'), 'PUT-Retry verändert Hinweise oder Version.');
+    $updated = carmaja_api_v5_put($id, [...$payload, 'expectedProductVersion' => 1], carmaja_api_test_actor(), 'v5-test-update-0001');
+    carmaja_api_test_same(2, $updated['productVersion'], 'Version muss serverseitig steigen.');
+    carmaja_api_test_same(CARMAJA_PRODUCT_NOTICES, $updated['notices'], 'Hinweise wurden dupliziert.');
+    carmaja_api_test_same($updated['sourceHash'], carmaja_api_v3_source_hash($updated), 'Kanonischer Serverhash stimmt nicht.');
+    carmaja_api_test_assert($updated['sourceHash'] !== carmaja_api_v3_source_hash([...$updated, 'notices' => []]), 'Hinweise müssen zum Quellhash gehören.');
+    foreach (['notices' => [], 'noticePolicyId' => null, 'productVersion' => 9, 'sourceHash' => str_repeat('f',64)] as $field => $value) {
+        carmaja_api_test_exception(fn () => carmaja_api_v5_put($id, [...$payload, $field => $value], carmaja_api_test_actor(), 'v5-test-forbidden-' . $field), 422, 'client_managed_field_forbidden');
+    }
+    carmaja_api_test_exception(fn () => carmaja_api_v5_put($id, [...$payload, 'stock' => 3], carmaja_api_test_actor(), 'v5-test-forbidden-stock'), 422, 'stock_write_disabled');
+    carmaja_api_test_exception(fn () => carmaja_api_v5_put($id, array_diff_key($payload, ['pearlSizeMm' => true]), carmaja_api_test_actor(), 'v5-test-missing-field'), 422, 'validation_failed');
+    carmaja_api_test_exception(fn () => carmaja_api_v5_put($id, [...$payload, 'expectedProductVersion' => 1], carmaja_api_test_actor(), 'v5-test-stale-version'), 409, 'product_version_conflict');
+});
+
+carmaja_api_test('V5 bewahrt bestehende Entwürfe ohne Hinweise bei Modellupgrade', static function (): void {
+    carmaja_api_test_fixture();
+    $id = '99999999-9999-4999-8999-999999999992';
+    $document = ['version' => 1, 'blocks' => [['type' => 'paragraph', 'spans' => [
+        ['text' => 'Bereits registrierter Entwurf', 'bold' => false, 'italic' => false, 'font' => 'standard', 'size' => 'normal']
+    ]]]];
+    $payload = ['expectedProductVersion' => 0, 'name' => 'Bestehender Entwurf', 'descriptionDocument' => $document,
+        'materials' => ['Naturstein'], 'metalElements' => [], 'braceletSizeCm' => 17, 'pearlSizeMm' => 8,
+        'careInstructions' => [], 'images' => [], 'priceMinor' => 2800, 'currency' => 'eur', 'salesEnabled' => false];
+    $old = carmaja_api_v3_put_product($id, $payload, carmaja_api_test_actor(), 'v5-test-existing-0001');
+    $body = array_diff_key([...$payload, 'expectedProductVersion' => 1], ['salesEnabled' => true]);
+    $saved = carmaja_api_v5_put($id, $body, carmaja_api_test_actor(), 'v5-test-upgrade-0001');
+    carmaja_api_test_same([], $saved['notices'], 'Bestehender Entwurf darf keine Hinweise erhalten.');
+    carmaja_api_test_same(null, $saved['noticePolicyId'], 'Kein nachträgliches Hinweis-Bundle.');
+    carmaja_api_test_same($old['braceletSizeCm'], $saved['braceletSizeCm'], 'Armbandumfang verloren.');
+    carmaja_api_test_same($old['pearlSizeMm'], $saved['pearlSizeMm'], 'Perlengröße verloren.');
 });
 
 $failures = 0;

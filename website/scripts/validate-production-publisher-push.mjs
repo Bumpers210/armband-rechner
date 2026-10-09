@@ -62,8 +62,8 @@ function validateChangedFiles(changedFiles, sku) {
 }
 
 function validateProductProjection(productsDocument, action, sku) {
-  if (!productsDocument || productsDocument.version !== 3 || !Array.isArray(productsDocument.products)) {
-    fail("Öffentliche Produktdatei muss dem Produktmodell 3 entsprechen.");
+  if (!productsDocument || ![3, 4].includes(productsDocument.version) || !Array.isArray(productsDocument.products)) {
+    fail("Öffentliche Produktdatei muss Projektion 3 oder 4 verwenden.");
   }
   const matches = productsDocument.products.filter((product) => product?.sku === sku);
   if (action === "archive") {
@@ -74,6 +74,21 @@ function validateProductProjection(productsDocument, action, sku) {
   }
   if (matches.length !== 1 || matches[0]?.salesEnabled !== true) {
     fail("Veröffentlichte Kollektion fehlt oder ist nicht verfügbar.");
+  }
+  if (productsDocument.version === 4) {
+    const product = matches[0];
+    const notices = product.noticePolicyId === "natural-stones-v1" ? [
+      "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+      "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.",
+    ] : [];
+    if (product.productModelVersion !== 4 || ![null, "natural-stones-v1"].includes(product.noticePolicyId)
+      || JSON.stringify(product.notices) !== JSON.stringify(notices)
+      || !Number.isSafeInteger(product.productVersion) || product.productVersion < 1
+      || !REQUEST_HASH_PATTERN.test(product.sourceHash ?? "")
+      || !Number.isSafeInteger(product.priceMinor) || product.priceMinor < 1 || product.currency !== "eur"
+      || Object.hasOwn(product, "stock") || Object.hasOwn(product, "vintedUrl")) {
+      fail("Mengenprodukt besitzt keinen gültigen Modell-4-Vertrag.");
+    }
   }
   const images = matches[0]?.images;
   if (!Array.isArray(images) || images.length < 1 || images.length > 5) {

@@ -2767,7 +2767,7 @@ function carmaja_api_commit_public_product(
         $repoPathPrefix . '/contents/website/content/products.json?ref=' . rawurlencode($branch)
     );
     $productModelVersion = $publicProduct['productModelVersion'] ?? null;
-    $isVersionedProduct = in_array($productModelVersion, [2, 3], true);
+    $isVersionedProduct = in_array($productModelVersion, [2, 3, 4], true);
     $targetDocumentVersion = $isVersionedProduct ? (int) $productModelVersion : 1;
     $currentProducts = ['version' => $targetDocumentVersion, 'products' => []];
 
@@ -2782,13 +2782,13 @@ function carmaja_api_commit_public_product(
         ? $currentProducts['products']
         : [];
     $currentDocumentVersion = $currentProducts['version'] ?? null;
-    $isSafeV3Upgrade = $targetDocumentVersion === 3
-        && $currentDocumentVersion === 2
+    $isSafeV3Upgrade = in_array($targetDocumentVersion, [3,4], true)
+        && in_array($currentDocumentVersion, [2,3,4], true)
         && array_reduce(
             $products,
             static fn (bool $safe, mixed $product): bool => $safe
                 && is_array($product)
-                && ($product['productModelVersion'] ?? null) === 2,
+                && in_array($product['productModelVersion'] ?? null, [2,3,4], true),
             true
         );
     if ($currentDocumentVersion !== $targetDocumentVersion
@@ -2801,6 +2801,7 @@ function carmaja_api_commit_public_product(
             'public_product_model_conflict'
         );
     }
+    if ($isSafeV3Upgrade) { $targetDocumentVersion = max($targetDocumentVersion, $currentDocumentVersion); }
     $publicProductForJson = array_diff_key($publicProduct, [
         '_imageBlobs' => true,
         '_removePublic' => true,

@@ -1,5 +1,146 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Neue Erweiterung vom 6. Oktober 2026: Mengenbestand und Warenkorb
+
+Der folgende Entwicklungsauftrag ersetzt für den neuen, noch **nicht freigegebenen**
+Kaufweg die ältere Beschränkung auf einen Einzelkauf ohne Mengenbestand.
+Der darunter dokumentierte Produktionsbetrieb und alle historischen Abnahmen
+bleiben unverändert; sie sind keine Abnahme dieser Erweiterung.
+
+Verbindliches Ziel: alleinige Mengenbestandsquelle `commerce_inventory`,
+serverseitiger Warenkorb an der anonymen 24-Stunden-Sitzung, höchstens 100
+unterschiedliche Positionen, einmalig 2,70 € Versand je Bestellung,
+Karte/Apple-/Google-Pay-Wallets, Klarna und SEPA ohne PayPal, Teilwiderruf und
+Teilrefund-Synchronisierung sowie ausschließlich geprüfte Wiedereinlagerung.
+Automatische unveränderbare Stein-Hinweise gelten ausschließlich für neue
+serverseitige Produkt-/Entwurfsanlagen und sind Teil des Produkthashes und der
+eingefrorenen Positions-Snapshots. Bestehende registrierte Produkte/Entwürfe und
+alte Bestell-/Rechtsnachweise werden nicht nachträglich umgeschrieben.
+
+Neue Verträge: Produktmodell 4, Produkt-API `/v5`, öffentliche Projektion 4,
+Shop-API `/shop/v3`; Produktion-App 1.4.0 / Code 8, Beta 1.4.0-beta.1 / Code 10.
+Bestand ist ein separater authentifizierter Vorgang mit `targetOnHand`,
+`expectedInventoryVersion`, Grund, Korrelations-ID und Idempotenzschlüssel.
+Nicht gezählte Mengen bleiben nicht kaufbar. Produktspeichern und Veröffentlichen
+verändern keinen Bestand, außer einer getrennt und einmalig vorgemerkten Erstinitialisierung.
+
+Alle Warenkorbpositionen werden gemeinsam reserviert beziehungsweise gemeinsam
+finalisiert, mit stabiler Produkt-ID-Sperrreihenfolge. Keine Netzwerkaufrufe in
+laufenden Transaktionen oder bei gehaltenen Row-Locks. SEPA-processing bleibt
+blockierend; keine Bestellung/Versandfreigabe vor Zahlungserfolg. Bei sicher
+nicht erstellter Stripe-Session Checkout `failed` und alle Reservierungen
+`released` atomar; bei unklarem Ausgang Bestand halten und abgleichen/manuell prüfen.
+
+Umsetzung ausschließlich im isolierten Worktree `G:\BS-Stein-Hart-shop-cart`
+auf `codex/shop-inventory-cart`. Am 9. Oktober 2026 ist ausschliesslich ein
+Entwicklungscheckpoint, dessen Branch-Push und ein manueller GitHub-Beta-Build
+beauftragt. Kein Merge, Deployment oder Aktivieren des neuen Kaufwegs.
+Standardgates `inventoryCartEnabled=false`
+und `productApiV5WritesEnabled=false`. Aktueller Status: lokale Implementierung
+und Regression, **keine vollständige Abnahme und keine Deploymentfreigabe**.
+Stand 7. Oktober 2026: Die abgegrenzte praktische MySQL-Funktionsreihe mit
+Mengeninventar, gemeinsamen Reservierungen, zehn parallelen Clients,
+SEPA-Halten, atomarer Finalisierung, Teilrefund, gepruefter Rueckgabe und
+Backup-/Restore-Struktur-/Inhaltsvergleich ist dreimal bestanden. Beide
+isolierten Testdatenbanken sind wieder leer; temporaere Programme, Clientpakete
+und Transferdateien sind entfernt. Gezielt behoben wurden offene
+Migrationscursor und wiederholbare Deadlocks; maximal vier vollstaendig
+zurueckgerollte Transaktionsversuche, keine Provideraufrufe in Transaktionen.
+Zusaetzliche gezielte SIGKILL-, Row-Lock-Timeout-, Deadlock- und
+Worker-Lease-Wiederanlauffaelle sind am 7. Oktober 2026 mit kuenstlichen Daten
+bestanden; danach erneut beide Testziele leer und alle Pruefartefakte entfernt.
+Ein injizierter Stripe-Transporttimeout ueber den Warenkorbstart haelt alle
+Mengen ohne Netzwerkaufruf unter Row-Locks. Dieser simulierte Fall ersetzt
+keine echte Testzahlung. Altbestellungs-, Provider-/HTTP-/E2E-Nachweise und
+signierte Beta fehlen weiterhin. Keine fremden Secrets werden gesucht.
+Nachtrag 7. Oktober 2026: Die neue private Stripe-Konfiguration ist mit 0600, gueltigem
+Sandboxschluessel und echter lesender Stripe-Verbindung geprueft. Ein isolierter
+HTTP-Warenkorbstart mit zwei Positionen/Mengen 2 und 1, 77,70 EUR Gesamt und
+einmalig 2,70 EUR Versand sowie CORS-/CSRF-/Versions-/Replay-Grenzen ist
+bestanden. Ein eigener temporaerer Sandbox-Webhook ist gepinnt bereitgestellt.
+Die reale Sandbox-Kartenzahlung ist bestaetigt: echter signierter Webhook,
+Workerfinalisierung, genau eine Bestellung mit zwei Positionen/Mengen 2 und 1,
+Bestand 30 auf 28 beziehungsweise 29 und nicht mehr blockierende Reservierungen.
+Doppelte Persistierung und Event-Replay bleiben ohne weitere Abbuchung oder
+Bestellung. Der Worker liest die aktuelle Stripe-Versandadresse aus
+`collected_information.shipping_details`, mit historischem Feldfallback;
+gezielte Mapping- und binaere Fingerprinttests bestanden. Der dabei entstandene
+kuenstliche Reviewcase wurde nach erfolgreichem Abgleich auditiert geschlossen.
+Auch Klarna ist mit echtem signiertem Webhook, AGB-/Zahlungspruefung,
+atomarer Zwei-Positions-Bestellung und unveraendertem Replay-Fingerprint
+bestanden: Bestand 28 auf 26 beziehungsweise 29 auf 28, Reservierungen
+konvertiert. SEPA ist mit echtem signiertem Abschluss-Webhook in
+`processing/verified` nachgewiesen: PaymentIntent processing, Session complete
+aber unpaid, Mengen 2 und 1 gehalten, Bestand unveraendert und keine Bestellung.
+Der folgende echte asynchrone SEPA-Erfolg ist ebenfalls bestanden: erst
+danach eine Bestellung mit Mengen 2 und 1, Bestand 26 auf 24 beziehungsweise
+28 auf 27 und konvertierte Reservierungen. Doppelte beziehungsweise nach
+Erfolg verspätete Abschluss-/Async-Ereignisse bleiben ohne weitere Mutation.
+Auch der getrennte SEPA-Fehlerfall ist praktisch bestanden: echter
+Processing-Zwischenstand ohne Bestellung/Bestandsabzug, danach signierter
+Async-Fehler, Payment failed/verified und beide Mengen gemeinsam freigegeben.
+Stripe-Zahlungsart nach fehlgeschlagener Lastschrift wird ausschliesslich
+bei fehlender aktueller Methode aus der Fehlerevidenz gelesen; 20 gezielte
+Mapping-/Routingassertionen bestanden. Verspaetete Abschlussereignisse folgen
+dem aktuellen finalen Fehlerzustand, doppelte Fehlerverarbeitung veraendert
+keinen Freigabezeitpunkt. Replay und Inbox-Deduplizierung bleiben ohne Mutation;
+der eigene kuenstliche Mapping-Reviewcase wurde auditiert geschlossen.
+Alle vier bisherigen echten Sandbox-Faelle (Karte, Klarna, SEPA-Erfolg und
+SEPA-Fehler) sind danach erneut einschliesslich Replay bestanden. Der
+Testbericht beruecksichtigt den kumulierten Bestand aller Testbestellungen.
+19 PHP-Testreihen und 177 Node-Tests bestanden; keine offenen eigenen
+Reviewcases, Restore-Testziel leer und bestehender Test-API-Einstieg unveraendert.
+Die echte Dashboard-Teilerstattung ueber 28,00 EUR ist ebenfalls bestanden:
+signierte charge.refunded-/refund.updated-Ereignisse, genau ein Refundnachweis,
+Aggregation partial, Bestellung bestaetigt, Adminbetraege korrekt und keine
+automatische Wiedereinlagerung. Doppelte Erstattungsereignisse bleiben ohne Mutation.
+Positionsbezogener zweistufiger HTTP-Widerruf ist mit einer kuenstlichen
+Position/Menge 1 bestanden; Bestandsaenderung erst durch die separat
+ausdruecklich gepruefte kuenstliche Rueckgabe (24 auf 25, anderes Produkt 27).
+Uebermengen-Erklaerung gespeichert und auditiert geprueft, Replay und veraltete
+Bestandsversionen abgesichert. Danach Zahlungs-/Refund-Replays erneut bestanden.
+Stand 8. Oktober 2026: private Brevo-Testkonfiguration mit 0600 geprueft.
+Sechs ausschliesslich an die bestaetigte eigene Testadresse gerichtete Mails
+von Brevo angenommen. Dedup, injizierter Retry/Unklarfall und auditierter
+manueller Neuversand bestanden; keine Bestandsaenderung. Die fruehere
+kuenstliche Legal-ID wird vom Mailrenderer korrekt abgelehnt. Historische
+Snapshots bleiben unveraendert; separate gueltige Rendering-Fixtures ersetzen
+nicht den noch offenen originalen Zahlung-bis-Bestellmail-E2E-Nachweis.
+Vertragsgueltige Test-Legal-ID fuer zukuenftige Stages korrigiert.
+21 PHP-Suites und 178 Node-Tests bestanden. Empfang der sechs Testmails am
+8. Oktober 2026 durch die Betreiberin bestaetigt, ohne vertrauliche Inhalte.
+Echtes Cron-E2E, Ablauf waehrend SEPA-processing und weitere Gesamt-E2E-Gates
+bleiben offen. Vorhandener Beta-Keystore auf Suchauftrag gefunden und
+zertifikatsgebunden bytegleich in den geschuetzten Git-ignorierten Ordner des
+isolierten Worktrees kopiert. Am 8. Oktober 2026 die bekannte private AP6-Beta-
+Konfiguration intern am Keystore verifiziert und ohne Passwortausgabe verwendet.
+Lokaler Beta-Build 1.4.0-beta.1 / Code 10 bestanden; festes Beta-Zertifikat,
+Testpaket und ausschliessliche Test-API am APK geprueft. 55 Android-Unit-Tests,
+Lint ohne Error/Fatal und 179 Node-Vertragstests bestanden. Temporaere
+Keystore-Kopie und DPAPI-Eingabe entfernt, Originale unveraendert erhalten.
+Geraete-Roundtrip und Gesamt-E2E bleiben offen; keine Gesamtabnahme.
+Eigener Testwebhook, oeffentlicher Unterordner, private Stage und alle drei
+Eingabekonfigurationen entfernt; beide Testdatenbanken wieder leer.
+Bestehender API-Einstieg hashgleich. Keine Gesamtabnahme oder Produktionsfreigabe.
+Bestehende API-Runtime, Testwebsite und reale Produkte bleiben unveraendert.
+Die erneut freizugebende Produktions-Rechtstextfassung v6 bleibt Entwurf;
+genehmigte alte Legal Bundles werden unverändert erhalten.
+
+Vor Produktion separat erforderlich: Backupkorrekturen integrieren, aktuelles
+verschlüsseltes Backup und Restore bestehen, neue Checkouts schließen, alle
+alten offenen Zahlungsvorgänge bis zum bestätigten Endzustand abarbeiten,
+Vorwärtsmigration prüfen, reale Stückzahlen zählen/versionsgebunden bestätigen,
+neuen Kaufweg kontrolliert aktivieren und Erstbestellung prüfen. Fehlerbetrieb:
+neue Checkouts schließen, laufende Zahlungen/Bestellungen weiterbearbeiten.
+Nach dem ersten bestandswirksamen Checkout kein Rückwechsel zum unbegrenzten
+Kollektionenverkauf. Keine Kundenkonten, Gutscheine, Marktplätze, Teillieferungen
+oder zusätzlichen Versandarten.
+
+Ausführlicher Vertrag, Testergebnisse, offene Nachweise und Cleanup:
+[Entwicklungsabnahme Mengenbestand/Warenkorb](../website/docs/shop-cart-acceptance.md).
+
+## Historischer freigegebener Produktionsplan
+
 Stand: 2026-08-22
 Änderungsvermerk: AP1, AP2, AP2a, AP3, AP4 und AP5 sind abgeschlossen und
 abgenommen. AP3b ist für `card`, `paypal`, `klarna` und `sepa_debit` technisch

@@ -1,124 +1,46 @@
 "use client";
-
+import Link from "next/link";
 import { useEffect, useState } from "react";
-
-type LiveProduct = {
-  productId: string;
-  priceMinor: number;
-  currency: string;
-  available: boolean;
-};
-
-const apiOrigin =
-  process.env.CARMAJA_SHOP_API_ORIGIN ??
-  (process.env.CARMAJA_SITE_TARGET === "test"
-    ? "https://test-api.carmaja-perlen.de"
-    : "https://api.carmaja-perlen.de");
-
-function formatPrice(product: LiveProduct): string {
-  return new Intl.NumberFormat("de-DE", {
-    style: "currency",
-    currency: product.currency.toUpperCase(),
-  }).format(product.priceMinor / 100);
-}
-
-function requestId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
+import { money, readCart, replaceCart, shopApiOrigin, shopContext } from "@/lib/cart-client";
 
 export function ShopBuyNow({ productId }: { productId: string }) {
-  const [live, setLive] = useState<LiveProduct | null>(null);
-  const [state, setState] = useState<"loading" | "ready" | "error" | "starting">("loading");
-  const [message, setMessage] = useState("Verfügbarkeit wird geprüft …");
-
+  const [product, setProduct] = useState<{priceMinor: number; available: boolean; availableQuantity: number} | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+  const [message, setMessage] = useState("Live-Verfügbarkeit wird geprüft …");
   useEffect(() => {
-    let cancelled = false;
-    async function load(): Promise<void> {
+    let active = true;
+    void (async () => {
       try {
-        const context = await fetch(`${apiOrigin}/shop/v2/context`, {
-          credentials: "include",
-          cache: "no-store",
-        });
-        if (!context.ok) throw new Error("context");
-        const contextJson = await context.json();
-        const product = await fetch(
-          `${apiOrigin}/shop/v2/products/${encodeURIComponent(productId)}`,
-          { credentials: "include", cache: "no-store" },
-        );
-        if (!product.ok) throw new Error("product");
-        const productJson = await product.json();
-        if (cancelled) return;
-        const liveProduct = productJson.product as LiveProduct;
-        if (!liveProduct || contextJson.context?.csrfToken === undefined) {
-          throw new Error("response");
-        }
-        setLive(liveProduct);
-        setState(liveProduct.available ? "ready" : "error");
-        setMessage(liveProduct.available ? "" : "Vorübergehend nicht verfügbar");
-      } catch {
-        if (!cancelled) {
-          setState("error");
-          setMessage("Live-Verfügbarkeit ist momentan nicht erreichbar.");
-        }
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
+        await shopContext();
+        const response = await fetch(`${shopApiOrigin}/shop/v3/products/${encodeURIComponent(productId)}`, { credentials: "include", cache: "no-store" });
+        const data = await response.json();
+        if (!response.ok || typeof data.product?.available !== "boolean") throw new Error();
+        if (active) { setProduct(data.product); setMessage(data.product.available ? "" : "Vorübergehend nicht verfügbar"); }
+      } catch { if (active) setMessage("Live-Verfügbarkeit ist momentan nicht erreichbar."); }
+    })();
+    return () => { active = false; };
   }, [productId]);
-
-  async function startCheckout(): Promise<void> {
-    setState("starting");
-    setMessage("Checkout wird vorbereitet …");
+  async function add(): Promise<void> {
+    setBusy(true);
     try {
-      const contextResponse = await fetch(`${apiOrigin}/shop/v2/context`, {
-        credentials: "include",
-        cache: "no-store",
-      });
-      const contextJson = await contextResponse.json();
-      if (!contextResponse.ok) throw new Error("context");
-      const response = await fetch(`${apiOrigin}/shop/v2/checkouts`, {
-        method: "POST",
-        credentials: "include",
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": contextJson.context.csrfToken,
-          "X-Live-Context": contextJson.context.liveContextToken,
-          "Idempotency-Key": requestId(),
-        },
-        body: JSON.stringify({ productId }),
-      });
-      const payload = await response.json();
-      if (!response.ok || typeof payload.checkout?.url !== "string") {
-        throw new Error(payload.error?.code ?? "checkout");
-      }
-      if (typeof payload.checkout?.checkoutId === "string") {
-        window.sessionStorage.setItem("carmajaCheckoutId", payload.checkout.checkoutId);
-      }
-      window.location.assign(payload.checkout.url);
-    } catch {
-      setState("error");
-      setMessage("Checkout konnte nicht sicher gestartet werden. Bitte erneut versuchen.");
-    }
+      const cart = await readCart();
+      const items = cart.items.map(({productId, quantity}) => ({productId, quantity}));
+      const existing = items.find((item) => item.productId === productId);
+      if (existing) existing.quantity += quantity;
+      else items.push({productId, quantity});
+      await replaceCart(cart, items);
+      setMessage("Im Warenkorb. Die Menge wird erst beim Checkout reserviert.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Bitte erneut versuchen."); }
+    finally { setBusy(false); }
   }
-
-  return (
-    <section className="shop-buy-now" aria-live="polite">
-      {live ? <p className="shop-price">{formatPrice(live)}</p> : null}
-      {message ? <p className="shop-message">{message}</p> : null}
-      <button
-        className="shop-buy-button"
-        type="button"
-        disabled={state !== "ready"}
-        onClick={() => void startCheckout()}
-      >
-        {state === "starting" ? "Wird vorbereitet …" : "Jetzt kaufen"}
-      </button>
-    </section>
-  );
+  return <section className="shop-buy-now" aria-live="polite">
+    {product ? <p className="shop-price">{money(product.priceMinor)}</p> : null}
+    <label>Menge <input type="number" min={1} step={1} max={product?.availableQuantity || 1} value={quantity}
+      onChange={(event) => setQuantity(Number(event.target.value))} /></label>
+    {message ? <p>{message}</p> : null}
+    <button className="shop-buy-button" type="button" disabled={busy || !product?.available || !Number.isInteger(quantity) || quantity < 1 || quantity > product.availableQuantity}
+      onClick={() => void add()}>{busy ? "Wird hinzugefügt …" : "In den Warenkorb"}</button>
+    <p><Link href="/warenkorb/">Warenkorb ansehen</Link></p>
+  </section>;
 }

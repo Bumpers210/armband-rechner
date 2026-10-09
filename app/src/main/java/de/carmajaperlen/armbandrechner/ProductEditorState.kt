@@ -50,7 +50,7 @@ data class ProductDraftEditorState(
         return buildMap {
             if (normalizeMeasurement(braceletSizeCm.text) == null) put("braceletSizeCm", "Armbandgröße muss größer als null sein.")
             if (normalizeMeasurement(pearlSizeMm.text) == null) put("pearlSizeMm", "Perlengröße muss größer als null sein.")
-            if (parsePriceMinor(price.text) == null) put("priceMinor", "Preis mit höchstens zwei Nachkommastellen, mindestens 0,50 €.")
+            if (parsePriceMinor(price.text, 1) == null) put("priceMinor", "Positiver Preis mit höchstens zwei Nachkommastellen erforderlich.")
             if (shortDescription.value.text.isBlank()) put("shortDescription", "Kurzbeschreibung ist erforderlich.")
             if (shortDescription.characterCount > DESCRIPTION_MAX_CHARACTERS) {
                 put(
@@ -68,7 +68,7 @@ data class ProductDraftEditorState(
         require(draft.draftId == draftId) { "Editor und Entwurf stimmen nicht ueberein." }
         val braceletSizeCm = requireNotNull(normalizeMeasurement(braceletSizeCm.text)) { "Armbandgröße muss größer als null sein." }
         val pearlSizeMm = requireNotNull(normalizeMeasurement(pearlSizeMm.text)) { "Perlengröße muss größer als null sein." }
-        val priceMinor = requireNotNull(parsePriceMinor(price.text)) { "Verkaufspreis ist ungültig." }
+        val priceMinor = requireNotNull(parsePriceMinor(price.text, 1)) { "Verkaufspreis ist ungültig." }
 
         val descriptionDocument = shortDescription.value.text
             .takeIf { it.isNotBlank() }

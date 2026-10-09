@@ -35,6 +35,7 @@ data class ProductServerUpdate(
     val pearlSizeMm: String,
     val shortDescription: String,
     val descriptionDocument: DescriptionDocument? = null,
+    val notices: List<String> = emptyList(),
     val careInstructions: List<String>,
     val priceMinor: Int,
     val currency: String,
@@ -90,7 +91,7 @@ open class ProductApiClient {
     ): ProductLoginResult {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v4/login",
+            path = "v5/login",
             method = "POST",
             token = null,
             body = JSONObject()
@@ -109,11 +110,11 @@ open class ProductApiClient {
 
     open fun saveDraft(baseUrl: String, token: String, draft: ProductDraft): ProductServerUpdate {
         val idempotencyKey = requireNotNull(draft.pendingV2SaveOperationId) {
-            "V4-Speichern benötigt eine persistierte Idempotenz-ID."
+            "V5-Speichern benötigt eine persistierte Idempotenz-ID."
         }
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v4/products/${draft.draftId}",
+            path = "v5/products/${draft.draftId}",
             method = "PUT",
             token = token,
             body = draft.toSaveJson(),
@@ -128,7 +129,7 @@ open class ProductApiClient {
     open fun getDraft(baseUrl: String, token: String, draftId: String): ProductServerUpdate {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v4/products/$draftId",
+            path = "v5/products/$draftId",
             method = "GET",
             token = token,
             body = null,
@@ -139,7 +140,7 @@ open class ProductApiClient {
     open fun listProducts(baseUrl: String, token: String): List<ProductServerUpdate> {
         return requestJson(
             baseUrl = baseUrl,
-            path = "v4/products",
+            path = "v5/products",
             method = "GET",
             token = token,
             body = null,
@@ -156,7 +157,7 @@ open class ProductApiClient {
         require(IMAGE_ID_PATTERN.matches(imageId)) { "Bild-ID ist ungültig." }
         val connection = openConnection(
             baseUrl = baseUrl,
-            path = "v4/products/$productId/images/$imageId",
+            path = "v5/products/$productId/images/$imageId",
             method = "GET",
             token = token,
         ).apply {
@@ -217,7 +218,7 @@ open class ProductApiClient {
         val boundary = "CarmajaBoundary${UUID.randomUUID()}"
         val connection = openConnection(
             baseUrl = baseUrl,
-            path = "v4/products/${draft.draftId}/images",
+            path = "v5/products/${draft.draftId}/images",
             method = "POST",
             token = token,
             headers = mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString()),
@@ -281,7 +282,7 @@ open class ProductApiClient {
             )
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v4/products/${draft.draftId}/$action",
+            path = "v5/products/${draft.draftId}/$action",
             method = "POST",
             token = token,
             body = JSONObject()
@@ -325,6 +326,27 @@ open class ProductApiClient {
             }
         }
         return readResponse(connection)
+    }
+
+    fun inventory(baseUrl: String, token: String, id: String): ProductInventory {
+        val data = requestJson(baseUrl, "v5/products/$id/inventory", "GET", token, null).getJSONObject("inventory")
+        return ProductInventory(data.getInt("onHand"), data.getInt("reserved"), data.getInt("available"), data.getLong("inventoryVersion"))
+    }
+
+    fun adjustInventory(baseUrl: String, token: String, id: String, target: Int, version: Long, reason: String, operationId: String): ProductInventory {
+        require(target >= 0)
+        val data = requestJson(baseUrl, "v5/products/$id/inventory", "POST", token,
+            JSONObject().put("targetOnHand", target).put("expectedInventoryVersion", version)
+                .put("reason", reason).put("correlationId", operationId),
+            mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString(), "Idempotency-Key" to operationId)).getJSONObject("inventory")
+        return ProductInventory(data.getInt("onHand"), data.getInt("reserved"), data.getInt("available"), data.getLong("inventoryVersion"))
+    }
+
+    fun stageInitialInventory(baseUrl: String, token: String, id: String, target: Int, operationId: String) {
+        require(target >= 0)
+        requestJson(baseUrl, "v5/products/$id/initial-inventory", "POST", token,
+            JSONObject().put("targetOnHand", target),
+            mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString(), "Idempotency-Key" to operationId))
     }
 
     private fun openConnection(
@@ -590,6 +612,7 @@ internal fun JSONObject.toServerUpdate(): ProductServerUpdate {
         shortDescription = optString("description").ifBlank { optString("shortDescription") },
         descriptionDocument = optJSONObject("descriptionDocument")
             ?.let(DescriptionDocument::fromJson),
+        notices = optStringList("notices"),
         careInstructions = optStringList("careInstructions"),
         priceMinor = getInt("priceMinor"),
         currency = getString("currency"),
@@ -597,6 +620,8 @@ internal fun JSONObject.toServerUpdate(): ProductServerUpdate {
         images = serverImages,
     )
 }
+
+data class ProductInventory(val onHand: Int, val reserved: Int, val available: Int, val version: Long)
 
 private fun JSONObject.optStringList(name: String): List<String> {
     val values = optJSONArray(name) ?: return emptyList()

@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import { InventoryAdmin, OrderPositionsAdmin } from '@/components/inventory-admin';
 
 const apiOrigin =
   process.env.CARMAJA_SHOP_API_ORIGIN ??
@@ -182,6 +183,7 @@ export function AdminConsole() {
         <button type="submit">Anmelden</button>
       </form>
       <p role="status">{message}</p>
+      {csrf !== '' ? <InventoryAdmin csrf={csrf} /> : null}
       {csrf !== '' && (
         <section aria-label="Bestellungen">
           <h2>Bestellungen</h2>
@@ -191,6 +193,7 @@ export function AdminConsole() {
                 <li key={order.order_id}>
                   <strong>{order.order_number}</strong> – {order.payment_method_type ?? 'unbekannt'} / {order.payment_status} / {order.shipment_status ?? 'not_ready'}
                   {order.refund_status !== 'none' ? ` – Erstattung: ${order.refund_status}` : ''}
+                  <OrderPositionsAdmin orderId={order.order_id} csrf={csrf} />
                   {order.shipment_status === 'ready' && (
                     <button type="button" onClick={() => void markShipped(order.order_id)}>Als versandt markieren</button>
                   )}

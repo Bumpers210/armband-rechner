@@ -10,6 +10,9 @@ return [
     'productApiV4WritesEnabled' => false,
     // Aktiviert /shop/v2 erst nach Migration und Testabnahme.
     'collectionCommerceEnabled' => false,
+    // Erst nach Mengenmigration, Abnahme und separater Freigabe aktivieren.
+    'inventoryCartEnabled' => false,
+    'productApiV5WritesEnabled' => false,
     'privateDir' => '/home/www/carmaja-private-test',
     'testPrivateDir' => '/home/www/carmaja-private-test',
     'testApiWebroot' => '/home/www/carmaja-test-api',

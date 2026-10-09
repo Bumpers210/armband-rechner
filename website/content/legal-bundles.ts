@@ -357,8 +357,59 @@ if (productionLegalBundleV4.contentHash !== PRODUCTION_LEGAL_BUNDLE_V4_CONTENT_S
   throw new Error("Freigegebenes Produktions-Legal-Bundle v4 stimmt nicht mit dem Inhalts-Hash überein.");
 }
 
+const cartTestTexts: LegalBundleTexts = {
+  terms: [{ heading: "Technischer Warenkorbtest – keine Rechtsfreigabe", paragraphs: [
+    "Nur künstliche Testdaten. Mehrere Armbänder und Mengen werden gemeinsam über den Warenkorb bestellt. Die Preise und Verfügbarkeit werden vor dem Checkout serverseitig erneut geprüft.",
+    "Der Warenkorb reserviert keinen Bestand. Eine Bestellung wird erst nach endgültig bestätigtem Zahlungserfolg angelegt. Laufende SEPA-Zahlungen halten die angefragten Mengen reserviert.",
+    "Karte einschließlich verfügbarer Apple-/Google-Pay-Wallets, Klarna und SEPA-Lastschrift; kein PayPal, kein Kundenkonto und keine Gutscheine.",
+  ] }],
+  privacy: [{ heading: "Technische Testfassung", paragraphs: [
+    "Die anonyme Shopsitzung bindet den serverseitigen Warenkorb für 24 Stunden. Es werden ausschließlich künstliche Testdaten verwendet. Der endgültige Datenfluss muss erneut freigegeben werden.",
+  ] }],
+  withdrawal: [{ heading: "Positionsbezogener technischer Widerrufstest", paragraphs: [
+    "Zuerst Bestellung identifizieren und Positionen sowie Mengen auswählen, anschließend ausdrücklich Widerruf bestätigen. Nicht eindeutig zuordenbare oder überhöhte Mengen bleiben bestätigbare Erklärungen zur manuellen Prüfung.",
+    "Die elektronische Eingangsbestätigung enthält die erklärte Auswahl. Widerruf und Erstattung erhöhen keinen Bestand; nur eingegangene, geprüfte Rückgaben werden ausdrücklich wiedereingelagert.",
+  ] }],
+  shipping: [{ heading: "Technischer Versand- und Zahlungstest", paragraphs: [
+    "Versand innerhalb Deutschlands als eine gemeinsame Sendung per Maxibrief; einmalig 2,70 € je Bestellung, unabhängig von der Warenkorbmenge. Keine Teillieferungen oder zusätzlichen Versandarten.",
+    "Versand erst nach bestätigtem Zahlungserfolg. Laufende SEPA-Zahlungen werden nicht allein wegen des Sessionablaufs freigegeben. Klarna bei Versand ohne Sendungsverfolgung bleibt ein gesondertes Nachweisrisiko.",
+  ] }],
+};
+
+export const cartTestLegalBundle: LegalBundle = createLegalBundle({
+  id: "cmj-test-legal-2026-10-06-v3", environment: "test", version: "v3", status: "test_only",
+  archiveUrl: "/legal-archive/test/cmj-test-legal-2026-10-06-v3/", createdAt: "2026-10-06T00:00:00.000Z", texts: cartTestTexts,
+});
+
+// Historical approved bundles remain byte-for-byte unchanged. This new draft is
+// intentionally not selected by a production build or marked approved.
+export const cartProductionLegalDraft: LegalBundle = createLegalBundle({
+  id: "cmj-production-legal-2026-10-06-v6", environment: "production", version: "v6", status: "awaiting_external_approval",
+  archiveUrl: "/legal-archive/production/cmj-production-legal-2026-10-06-v6/", createdAt: "2026-10-06T00:00:00.000Z",
+  texts: {
+    terms: productionApprovedTextsV5.terms.map((section) => section.heading === "1. Geltungsbereich"
+      ? { ...section, paragraphs: ["Diese Shopbedingungen gelten für Bestellungen von Verbrauchern über den Online-Shop von Carmaja-Perlen. Im Warenkorb können mehrere Armbänder und Mengen gemeinsam bestellt werden. Kein Kundenkonto und keine Gutscheine."] }
+      : section.heading === "2. Vertragspartner und Vertragsschluss"
+        ? { ...section, paragraphs: section.paragraphs.map((text) => text.replace("Über „Jetzt kaufen“ gelangen Sie zum Stripe Checkout.", "Über „In den Warenkorb“ stellen Sie Ihre Bestellung zusammen; „Weiter zur Zahlung“ öffnet Stripe Checkout.")) }
+        : section),
+    privacy: [...productionApprovedTextsV5.privacy, { heading: "Serverseitiger Warenkorb", paragraphs: [
+      "Eine anonyme Shopsitzung ordnet den Warenkorb für 24 Stunden zu. Gespeichert werden Produktkennungen, Mengen, Warenkorbversion und die zur sicheren Bearbeitung erforderlichen Vorgangskennungen. Kein Kundenkonto und keine geräteübergreifende Synchronisierung.",
+    ] }],
+    withdrawal: [...productionApprovedTextsV5.withdrawal, { heading: "Widerruf einzelner Positionen und Mengen – zur Prüfung", paragraphs: [
+      "Sie können die Bestellung insgesamt oder einzelne Bestellpositionen und Mengen widerrufen. Die elektronische Funktion zeigt nach der Identifikation die Positionen an und verlangt anschließend Ihre ausdrückliche Bestätigung. Ungeklärte Angaben werden als Erklärung zur manuellen Prüfung gespeichert und elektronisch bestätigt.",
+    ] }],
+    shipping: productionApprovedTextsV5.shipping.map((section) => section.heading === "Versand"
+      ? { ...section, paragraphs: [productionApprovedTextsV4.shipping[0].paragraphs[0], productionApprovedTextsV4.shipping[0].paragraphs[1],
+        "Versand einmalig 2,70 € je Bestellung, unabhängig von der Warenkorbmenge, als gemeinsame Sendung ohne Teillieferungen."] }
+      : section.heading === "Zahlung"
+        ? { ...section, paragraphs: [productionApprovedTextsV4.shipping[1].paragraphs[0], productionApprovedTextsV4.shipping[1].paragraphs[1],
+          "Bei laufender SEPA-Zahlung bleiben die bestellten Mengen reserviert. Bestellung und Versandfreigabe entstehen erst nach endgültig bestätigtem Zahlungserfolg. Eine Erstattung oder ein Widerruf ist keine automatische Wiedereinlagerung."] }
+        : section),
+  },
+});
+
 export const legalBundlesByTarget = {
-  test: [testLegalBundle],
+  test: [cartTestLegalBundle, testLegalBundle],
   production: [productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle],
 } as const;
 

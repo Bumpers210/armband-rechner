@@ -278,7 +278,7 @@ function carmaja_api_v4_transition_product(
     ): array {
         $draft = carmaja_api_load_draft($productId);
         if (!is_array($draft)
-            || ($draft['productModelVersion'] ?? null) !== CARMAJA_PRODUCT_MODEL_V3) {
+            || !in_array($draft['productModelVersion'] ?? null, [3, 4], true)) {
             throw new CarmajaApiException(
                 409,
                 'Produkt muss zuerst mit der aktuellen App gespeichert werden.',
@@ -326,6 +326,10 @@ function carmaja_api_v4_transition_product(
             }
             $draft['updatedAt'] = carmaja_api_now();
             $draft['version'] = (int) ($draft['version'] ?? 0) + 1;
+            if (($draft['productModelVersion'] ?? 0) === 4) {
+                $draft['productVersion'] = (int) $draft['productVersion'] + 1;
+                $draft['sourceHash'] = carmaja_api_v3_product_from_draft($draft)['sourceHash'];
+            }
             $draft[$operationField] = $operationId;
             $draft['lastV4LifecycleOperationId'] = $operationId;
             $draft['lastV4LifecycleAction'] = $action;

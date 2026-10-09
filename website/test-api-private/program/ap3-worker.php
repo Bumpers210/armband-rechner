@@ -21,6 +21,7 @@ final class CarmajaAp3Worker
     {
         $worker = new CarmajaCommerceWorker($this->commerce, 'commerce-v1');
         return $worker->run(function (): int {
+            if ($this->commerce instanceof CarmajaCartCommerce) { $this->commerce->cleanupExpiredCarts(); }
             $processed = $this->processWebhookInbox();
             $processed += $this->processMetadataOutbox();
             $processed += $this->reconcileOpenSessions();
@@ -74,6 +75,12 @@ final class CarmajaAp3Worker
             if (($currentSession['payment_status'] ?? null) === 'paid') {
                 $eventData['paymentStatus'] = 'succeeded';
                 $this->commerce->finalizePayment($eventData['checkoutId'], $eventData);
+            } elseif (($currentSession['status'] ?? null) === 'complete'
+                && in_array($eventData['paymentIntentStatus'], ['requires_payment_method', 'canceled'], true)) {
+                // A late completed event must follow the current, final failure,
+                // not put a failed delayed payment back into processing.
+                $eventData['paymentStatus'] = 'failed';
+                $this->commerce->failAsyncPayment($eventData['checkoutId'], $eventData);
             } else {
                 $eventData['paymentStatus'] = 'processing';
                 $this->commerce->markPaymentProcessing($eventData['checkoutId'], $eventData);
@@ -102,6 +109,22 @@ final class CarmajaAp3Worker
         }
 
         if (in_array($type, ['charge.refunded', 'refund.updated'], true)) {
+            if ($this->commerce instanceof CarmajaCartCommerce) {
+                // Reconcile current refund objects outside any Commerce transaction.
+                // A charge's original amount must never be mistaken for its partial refund.
+                $refunds = $type === 'charge.refunded'
+                    ? $this->stripe->listChargeRefunds((string) $object['id'])
+                    : [$this->stripe->retrieveRefund((string) $object['id'])];
+                foreach ($refunds as $refund) {
+                    $payment = $this->commerce->findPaymentByStripeObject((string) ($refund['payment_intent'] ?? ''));
+                    if ($payment === null || ($refund['currency'] ?? '') !== 'eur') {
+                        throw new CarmajaStripeException('refund_binding_invalid', 'Erstattungszuordnung muss geprüft werden.', 409);
+                    }
+                    $this->commerce->applyRefund($payment['payment_id'], (string) $refund['id'],
+                        (string) ($refund['status'] ?? 'manual_review'), (int) ($refund['amount'] ?? 0));
+                }
+                return;
+            }
             $paymentIntent = $object['payment_intent'] ?? $object['id'] ?? null;
             $payment = is_string($paymentIntent) ? $this->commerce->findPaymentByStripeObject($paymentIntent) : null;
             if (!is_array($payment)) {
@@ -224,12 +247,24 @@ final class CarmajaAp3Worker
             ? $intent['id']
             : (is_string($paymentIntent) ? $paymentIntent : '');
         $paymentMethod = $intent['payment_method'] ?? null;
+        // Stripe clears the current method after a failed debit. Only a failed
+        // intent with no current method may use Stripe's last error evidence.
+        // Never mask malformed current evidence or use this for success/processing.
+        if ($paymentMethod === null && ($intent['status'] ?? null) === 'requires_payment_method') {
+            $paymentMethod = $intent['last_payment_error']['payment_method'] ?? null;
+        }
         $paymentMethodType = is_array($paymentMethod) && is_string($paymentMethod['type'] ?? null)
             ? $paymentMethod['type']
             : null;
+        // Pinned modern sessions use collected_information. Preserve legacy
+        // snapshots, but never substitute billing for a missing shipping address.
+        $shipping = $session['collected_information']['shipping_details']
+            ?? $session['shipping_details'] ?? [];
 
         return [
             'checkoutId' => (string) ($metadata['checkoutId'] ?? $fallbackCheckoutId ?? ''),
+            'metadata' => $metadata,
+            'stripeCheckoutSessionId' => (string) ($session['id'] ?? ''),
             'paymentIntentStatus' => $intent['status'] ?? null,
             'paymentMethodType' => $paymentMethodType,
             'amountMinor' => (int) ($session['amount_total'] ?? 0),
@@ -239,7 +274,7 @@ final class CarmajaAp3Worker
             'termsAccepted' => ($session['consent']['terms_of_service'] ?? null) === 'accepted',
             'customerEmail' => $session['customer_details']['email'] ?? null,
             'customerName' => $session['customer_details']['name'] ?? null,
-            'shippingAddress' => $session['shipping_details']['address'] ?? [],
+            'shippingAddress' => $shipping['address'] ?? [],
             'billingAddress' => $session['customer_details']['address'] ?? null,
             'stripePaymentIntentId' => $paymentIntentId,
         ];

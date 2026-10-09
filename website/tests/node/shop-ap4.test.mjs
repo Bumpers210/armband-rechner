@@ -30,19 +30,19 @@ test("AP4-Bootstrap interpretiert MySQL-DATETIME verbindlich als UTC", async () 
   assert.match(bootstrap, /timezone_configuration_failed/);
 });
 
-test("Shop-v2-Checkout verwendet nur Live-Verfügbarkeit und keine Bestandsmenge", async () => {
+test("Shop-v3-Warenkorb verwendet nur Live-Verfügbarkeit und serverseitige Mengen", async () => {
   const page = await source("app/armbaender/[slug]/page.tsx");
   const buyNow = await source("components/shop-buy-now.tsx");
   const styles = await source("app/site.css");
   assert.match(page, /ShopBuyNow/);
   assert.doesNotMatch(page, /product\.stock/);
   assert.match(buyNow, /cache: "no-store"/);
-  assert.match(buyNow, /shop\/v2\/products/);
-  assert.match(buyNow, /liveProduct\.available/);
-  assert.doesNotMatch(buyNow, /availableQuantity|buyable/);
-  assert.match(buyNow, /Jetzt kaufen/);
+  assert.match(buyNow, /shop\/v3\/products/);
+  assert.match(buyNow, /product\?\.available/);
+  assert.match(buyNow, /availableQuantity/);
+  assert.match(buyNow, /In den Warenkorb/);
   assert.doesNotMatch(buyNow, /Jetzt sicher kaufen/);
-  assert.match(buyNow, /message \? <p className="shop-message">/);
+  assert.match(buyNow, /message \? <p>/);
   assert.match(styles, /\.shop-price[\s\S]*font-size: clamp\(2\.15rem, 8vw, 2\.8rem\)/);
   assert.match(styles, /\.shop-buy-button[\s\S]*min-height: 4\.35rem/);
 });

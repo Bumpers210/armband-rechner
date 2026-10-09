@@ -33,6 +33,8 @@ data class ProductUiState(
     val fieldErrors: Map<String, String> = emptyMap(),
     val conflict: ProductSyncConflictState? = null,
     val publicationPreview: ProductDraft? = null,
+    val inventory: ProductInventory? = null,
+    val inventoryProductId: String? = null,
 ) {
     val selectedDraft: ProductDraft?
         get() = drafts.firstOrNull { it.draftId == selectedDraftId }
@@ -310,6 +312,45 @@ class ProductViewModel(
                 fieldErrors = emptyMap(),
                 conflict = null,
             )
+        }
+    }
+
+    fun loadSelectedInventory() {
+        val draft = _uiState.value.selectedDraft ?: return
+        runBusy {
+            val inventory = withContext(Dispatchers.IO) { apiClient.inventory(requireBaseUrl(), requireToken(), draft.draftId) }
+            _uiState.value = _uiState.value.copy(inventory = inventory, inventoryProductId = draft.draftId)
+        }
+    }
+
+    fun adjustSelectedInventory(target: Int, reason: String) {
+        val draft = _uiState.value.selectedDraft ?: return
+        val inventory = _uiState.value.inventory?.takeIf { _uiState.value.inventoryProductId == draft.draftId } ?: return
+        if (target < 0) return
+        runBusy {
+            try {
+                val updated = withContext(Dispatchers.IO) {
+                    apiClient.adjustInventory(requireBaseUrl(), requireToken(), draft.draftId, target, inventory.version, reason, UUID.randomUUID().toString())
+                }
+                _uiState.value = _uiState.value.copy(inventory = updated, message = "Bestand gespeichert.")
+            } catch (error: Exception) {
+                val fresh = withContext(Dispatchers.IO) { runCatching { apiClient.inventory(requireBaseUrl(), requireToken(), draft.draftId) }.getOrNull() }
+                _uiState.value = _uiState.value.copy(inventory = fresh)
+                throw error
+            }
+        }
+    }
+
+    fun stageSelectedInitialInventory(target: Int) {
+        if (target < 0) return
+        val draft = selectedDraftSnapshot() ?: return
+        runBusy {
+            val current = syncDraft(draft)
+            val operation = current.pendingInitialInventoryOperationId ?: UUID.randomUUID().toString()
+            val quantity = current.pendingInitialOnHand ?: target
+            val pending = saveAndReplace(current.copy(pendingInitialInventoryOperationId = operation, pendingInitialOnHand = quantity))
+            withContext(Dispatchers.IO) { apiClient.stageInitialInventory(requireBaseUrl(), requireToken(), pending.draftId, quantity, operation) }
+            _uiState.value = _uiState.value.copy(message = "Anfangsbestand vorgemerkt; wird bei Veröffentlichung genau einmal übernommen.")
         }
     }
 

@@ -137,6 +137,7 @@ final class CarmajaBrevoClient
     /** @return null|array{subject:string,htmlContent:string} */
     private function renderOrderConfirmation(array $payload): ?array
     {
+        if (isset($payload['items'])) { return $this->renderCartOrder($payload, false); }
         $orderNumber = $this->escape($payload['orderNumber'] ?? null);
         $customerName = $this->escape($payload['customerName'] ?? null);
         $product = is_array($payload['product'] ?? null) ? $payload['product'] : [];
@@ -189,6 +190,7 @@ final class CarmajaBrevoClient
     /** @return null|array{subject:string,htmlContent:string} */
     private function renderOperatorOrderNotification(array $payload): ?array
     {
+        if (isset($payload['items'])) { return $this->renderCartOrder($payload, true); }
         $orderNumber = $this->escape($payload['orderNumber'] ?? null);
         $product = is_array($payload['product'] ?? null) ? $payload['product'] : [];
         $productName = $this->escape($product['name'] ?? null);
@@ -219,6 +221,9 @@ final class CarmajaBrevoClient
             return null;
         }
         $product = $productName !== '' ? '<p>Produkt: <strong>' . $productName . '</strong></p>' : '';
+        foreach ($payload['items'] ?? [] as $item) {
+            $product .= '<p>' . (int) ($item['quantity'] ?? 0) . ' × ' . $this->escape($item['name'] ?? '') . '</p>';
+        }
         $shipping = $shippingName !== '' ? '<p>Versandart: ' . $shippingName . '</p>' : '';
         $tracking = $trackingNumber !== ''
             ? '<p>Sendungsreferenz: <strong>' . $trackingNumber . '</strong></p>'
@@ -246,15 +251,46 @@ final class CarmajaBrevoClient
             return null;
         }
 
+        $selection = '';
+        foreach ($content['items'] ?? [] as $item) {
+            $selection .= '<li>Position ' . (int) ($item['positionNo'] ?? 0) . ': ' . (int) ($item['quantity'] ?? 0) . ' Stück</li>';
+        }
+        $details = $this->escape($content['details'] ?? '');
         return [
             'subject' => 'Eingangsbestätigung Ihres Widerrufs',
             'htmlContent' => '<p>Ihr Widerruf ist bei uns eingegangen.</p>'
                 . '<h2>Inhalt Ihrer Erklärung</h2>'
-                . '<p>Sie haben den Vertrag zur Bestellung <strong>' . $orderNumber . '</strong> widerrufen.</p>'
+                . '<p>Ihre Widerrufserklärung bezieht sich auf die Bestellung <strong>' . $orderNumber . '</strong>.</p>'
+                . ($selection !== '' ? '<ul>' . $selection . '</ul>' : '')
+                . ($details !== '' ? '<p>Ergänzende Erklärung: ' . $details . '</p>' : '')
                 . '<ul><li>Name: ' . $name . '</li><li>E-Mail: ' . $email . '</li></ul>'
                 . '<p>Vorgang: <strong>' . $withdrawalId . '</strong><br>Datum und Uhrzeit des Eingangs: ' . $receivedAt . '</p>'
                 . '<p>Diese Bestätigung löst nicht automatisch eine Erstattung, Wiedereinlagerung oder Versandänderung aus.</p>',
         ];
+    }
+
+    private function renderCartOrder(array $payload, bool $operator): ?array
+    {
+        $number = $this->escape($payload['orderNumber'] ?? null);
+        $total = $this->money($payload['totalMinor'] ?? null, 'eur');
+        $shipping = $this->money($payload['shipping']['amountMinor'] ?? null, 'eur');
+        $legalUrl = $this->legalArchiveUrl($payload['legal'] ?? []);
+        if ($number === '' || $total === null || $shipping === null || $legalUrl === null
+            || !is_array($payload['items'] ?? null) || $payload['items'] === []) { return null; }
+        $html = '<h1>Bestellung ' . $number . '</h1><p>Die Zahlung ist bestätigt.</p><ul>';
+        foreach ($payload['items'] as $item) {
+            $name = $this->escape($item['name'] ?? null);
+            $quantity = $item['quantity'] ?? null;
+            $price = $this->money($item['priceMinor'] ?? null, $item['currency'] ?? null);
+            if ($name === '' || !is_int($quantity) || $quantity < 1 || $price === null) { return null; }
+            $html .= '<li>' . $name . ': ' . $quantity . ' × ' . $price;
+            foreach ($item['notices'] ?? [] as $notice) { $html .= '<p>' . $this->escape($notice) . '</p>'; }
+            $html .= '</li>';
+        }
+        $html .= '</ul><p>Versand einmalig: ' . $shipping . '</p><p>Gesamt: ' . $total . '</p>';
+        $html .= $operator ? '<p>Bearbeitung ausschließlich im geschützten Adminbereich.</p>'
+            : '<p><a href="' . $this->escape($legalUrl) . '">Ihre Vertragsunterlagen</a></p>';
+        return ['subject' => ($operator ? 'Neue Bestellung ' : 'Ihre Bestellung ') . $number, 'htmlContent' => $html];
     }
 
     private function legalArchiveUrl(array $legal): ?string
