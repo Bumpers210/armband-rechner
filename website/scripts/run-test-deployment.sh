@@ -573,7 +573,7 @@ run_smoke_tests()
     fi
     smoke_check_ok 'cart_unauthenticated_status' '401'
 
-    local page
+    local page expected_link link_check
     for page in warenkorb impressum datenschutz shopbedingungen widerruf versand-und-zahlung shop/success shop/cancel shop/error; do
         smoke_check_start "page_${page//\//_}"
         if ! code=$(curl_authenticated -o "$smoke_directory/page.html" -w '%{http_code}' "${HTTPS_ROOT}${page}/"); then
@@ -584,8 +584,18 @@ run_smoke_tests()
             smoke_check_failed "page_${page//\//_}" '200' "$(safe_status "$code")"
             return 1
         fi
-        if ! grep -Fq 'href="/warenkorb/"' "$smoke_directory/page.html"; then
-            smoke_check_failed "page_${page//\//_}_cart_link" 'present' 'missing'
+        case "$page" in
+            shop/cancel|shop/error)
+                expected_link='href="/armbaender/"'
+                link_check="page_${page//\//_}_return_link"
+                ;;
+            *)
+                expected_link='href="/warenkorb/"'
+                link_check="page_${page//\//_}_cart_link"
+                ;;
+        esac
+        if ! grep -Fq "$expected_link" "$smoke_directory/page.html"; then
+            smoke_check_failed "$link_check" 'present' 'missing'
             return 1
         fi
         smoke_check_ok "page_${page//\//_}" '200'

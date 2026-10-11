@@ -225,10 +225,14 @@ case "$url|$auth" in
     https://test.carmaja-perlen.de/*'|correct')
         code='200'
         body='<a href="/warenkorb/">Warenkorb</a>'
+        case "$url" in
+            */shop/cancel/|*/shop/error/) body='<a href="/armbaender/">Zurück zu den Armbändern</a>' ;;
+        esac
         case "$url|$CARMAJA_MOCK_SCENARIO" in
             *'/warenkorb/|cart_page_missing') code='404' ;;
             *'/widerruf/|withdrawal_page_missing') code='404' ;;
             *'/warenkorb/|cart_link_missing') body='old-site' ;;
+            *'/shop/cancel/|return_link_missing') body='missing-return-link' ;;
             *'/armbaender/'*'|product_page_missing') code='404' ;;
         esac
         ;;
@@ -458,6 +462,7 @@ run_case 'cart_unauth_not_401' 'failure' 'cart_unauthenticated_status'
 run_case 'cart_page_missing' 'failure' 'page_warenkorb'
 run_case 'withdrawal_page_missing' 'failure' 'page_widerruf'
 run_case 'cart_link_missing' 'failure' 'page_warenkorb_cart_link'
+run_case 'return_link_missing' 'failure' 'page_shop_cancel_return_link'
 run_case 'product_page_missing' 'failure' 'preserved_product_page_or_image'
 
 [ "$SCENARIO_COUNT" -ge 25 ]

@@ -1,6 +1,6 @@
 # Warenkorb – isolierte Testwebsite-Übernahme
 
-Stand: 9. Oktober 2026. Umfang: ausschließlich öffentliche Testwebsite.
+Stand: 11. Oktober 2026. Umfang: ausschließlich öffentliche Testwebsite.
 
 ## Quellen und Sicherheitsgrenze
 
@@ -29,7 +29,7 @@ Stand: 9. Oktober 2026. Umfang: ausschließlich öffentliche Testwebsite.
 
 - `npm ci`, `npm run lint:test`, `npm test`, `npm run build:test`.
 - 96 Node-Tests bestanden, einschließlich der Modell-4- und Cart-Client-Verträge.
-- 33 Linux-Shell-Szenarien für erfolgreiche Bereitstellung, Authschutz,
+- 34 Linux-Shell-Szenarien für erfolgreiche Bereitstellung, Authschutz,
   fehlende Seiten, Fehlerbereinigung und Rollback bestanden.
 - Exportprüfung: ausschließlich Test-API, keine Produktionsressourcen, keine
   privaten Produktfelder oder Laufzeitkonfiguration im Artefakt.
@@ -46,6 +46,12 @@ wieder `false`. Das Artefakt bleibt an Commit, Run-ID und Versuch gebunden.
 Vor `mark_verified` werden Authschutz, Sicherheitsheader, Warenkorb, Legal-
 und Rückkehrseiten sowie alle erhaltenen Produktseiten/Bilder live geprüft.
 Jeder Fehler führt zum manifestgebundenen Website-Rollback.
+
+Die vorhandenen reduzierten Abbruch-/Fehlerseiten behalten ihren Rücklink zu
+`/armbaender/`; dort wird kein Header oder Warenkorbmenü vorausgesetzt. Der
+Liveversuch vom 11. Oktober bestätigte den automatischen Rollback bei einer
+zu strengen Menüprüfung. Die korrigierte Prüfung unterscheidet Warenkorb- und
+Rücklink und besitzt einen eigenen Negativfall; die Seiten bleiben unverändert.
 
 ## Bewusst noch offen
 
