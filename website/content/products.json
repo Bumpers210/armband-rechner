@@ -596,6 +596,133 @@
                     }
                 ]
             }
+        },
+        {
+            "productModelVersion": 3,
+            "productId": "5a3c86ea-a1e8-4391-bcc0-22f28cb197ef",
+            "productVersion": 2,
+            "sourceHash": "2519765455427ab1f366fb6372146a87d2dd0185f357dac9aed20da00cb87d0a",
+            "sku": "CP-2026-0007",
+            "slug": "cp-2026-0007-helios",
+            "title": "Helios",
+            "description": "Helios \n\nLebensfreude, Zuversicht, innere Stärke \n\nMit den verschiedenen Facetten des Sonnensteins und den roségold galvanisierten Lavaperlen wirkt dieses Armband warm und \"cosy\". Genau das, was den Sonnenstein ausmacht.\n\nDenn Sonnenstein gilt als Stein der Lebensfreude. Er soll negative Gedanken, Melancholie und Ängste vertreiben sowie neuen Optimismus schenken.bDer Stein wird oft als „Stein der Führung“ bezeichnet und soll die Eigeninitiative sowie das Selbstbewusstsein stärken. Außerdem soll er helfen, emotionale Blockaden zu lösen und Leichtigkeit und Zuversicht in den Alltag zu bringen. \nLavasteine stehen traditionell für Erdung, Schutz und Neubeginn.\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+            "materials": [
+                "Sonnenstein",
+                "Lavaperlen"
+            ],
+            "metalElements": [],
+            "braceletSizeCm": 18,
+            "pearlSizeMm": 6,
+            "priceMinor": 2350,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "e4265476-836a-4546-94fc-b8ab313a9129",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0007/01.jpg",
+                    "alt": "Hekios",
+                    "width": 900,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "imageId": "1463d425-7280-4e25-b9fe-d328190e395b",
+                    "fileName": "02.jpg",
+                    "src": "/images/products/CP-2026-0007/02.jpg",
+                    "alt": "Hekios",
+                    "width": 1600,
+                    "height": 900,
+                    "isMain": false
+                },
+                {
+                    "imageId": "9b34c663-0aba-46d8-a8f7-0f590b25095f",
+                    "fileName": "03.jpg",
+                    "src": "/images/products/CP-2026-0007/03.jpg",
+                    "alt": "Hekios",
+                    "width": 1600,
+                    "height": 1200,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-10-13T13:13:21+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Helios ",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Lebensfreude, Zuversicht, innere Stärke ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Mit den verschiedenen Facetten des Sonnensteins und den roségold galvanisierten Lavaperlen wirkt dieses Armband warm und \"cosy\". Genau das, was den Sonnenstein ausmacht.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Denn Sonnenstein gilt als Stein der Lebensfreude. Er soll negative Gedanken, Melancholie und Ängste vertreiben sowie neuen Optimismus schenken.bDer Stein wird oft als „Stein der Führung“ bezeichnet und soll die Eigeninitiative sowie das Selbstbewusstsein stärken. Außerdem soll er helfen, emotionale Blockaden zu lösen und Leichtigkeit und Zuversicht in den Alltag zu bringen. \nLavasteine stehen traditionell für Erdung, Schutz und Neubeginn.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            }
         }
     ]
 }
