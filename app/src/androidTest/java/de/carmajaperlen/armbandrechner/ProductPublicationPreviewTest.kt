@@ -3,8 +3,10 @@ package de.carmajaperlen.armbandrechner
 import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -107,6 +109,93 @@ class ProductPublicationPreviewTest {
 
         composeRule.onNodeWithTag("publication-preview-image-1").performClick()
         composeRule.onNodeWithText("Bild 2 von 2").assertIsDisplayed()
+    }
+
+    @Test
+    fun publishingShowsProgressAndDisablesBothActions() {
+        val publishCalls = AtomicInteger(0)
+        composeRule.setContent {
+            MaterialTheme {
+                ProductPublicationPreviewScreen(
+                    draft = draftWithFormattedDescription(),
+                    environmentLabel = "TESTUMGEBUNG",
+                    busy = true,
+                    onBack = {},
+                    onPublish = { publishCalls.incrementAndGet() },
+                )
+            }
+        }
+        composeRule.onNodeWithTag("publication-preview-publish").performScrollTo().assertIsNotEnabled()
+        composeRule.onNodeWithTag("publication-preview-progress", useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Veröffentlichung läuft …").assertIsDisplayed()
+        composeRule.onNodeWithTag("publication-preview-back").assertIsNotEnabled()
+        composeRule.onNodeWithTag("publication-feedback").assertDoesNotExist()
+        assertEquals(0, publishCalls.get())
+    }
+
+    @Test
+    fun failedPublicationIsVisibleUntilAcknowledgedAndDoesNotPublishAgain() {
+        val error = mutableStateOf<String?>(null)
+        val busy = mutableStateOf(true)
+        val publishCalls = AtomicInteger(0)
+        composeRule.setContent {
+            MaterialTheme {
+                ProductPublicationPreviewScreen(
+                    draft = draftWithFormattedDescription(),
+                    environmentLabel = "TESTUMGEBUNG",
+                    busy = busy.value,
+                    error = error.value,
+                    onDismissError = { error.value = null },
+                    onBack = {},
+                    onPublish = { publishCalls.incrementAndGet() },
+                )
+            }
+        }
+        composeRule.runOnIdle {
+            error.value = "Testzugang abgelaufen."
+            busy.value = false
+        }
+        composeRule.onNodeWithTag("publication-feedback").assertIsDisplayed()
+        composeRule.onNodeWithText("Veröffentlichung nicht bestätigt").assertIsDisplayed()
+        composeRule.onNodeWithText("Testzugang abgelaufen.", substring = true).assertIsDisplayed()
+        composeRule.mainClock.advanceTimeBy(10_000)
+        composeRule.onNodeWithTag("publication-feedback").assertIsDisplayed()
+        composeRule.onNodeWithTag("publication-feedback-confirm").performClick()
+        composeRule.onNodeWithTag("publication-feedback").assertDoesNotExist()
+        assertEquals(0, publishCalls.get())
+    }
+
+    @Test
+    fun confirmedPublicationWaitsForDoneInsteadOfNavigatingSilently() {
+        val confirmation = mutableStateOf<String?>(null)
+        val busy = mutableStateOf(true)
+        val backCalls = AtomicInteger(0)
+        val publishCalls = AtomicInteger(0)
+        composeRule.setContent {
+            MaterialTheme {
+                ProductPublicationPreviewScreen(
+                    draft = draftWithFormattedDescription(),
+                    environmentLabel = "TESTUMGEBUNG",
+                    busy = busy.value,
+                    confirmation = confirmation.value,
+                    onBack = { backCalls.incrementAndGet() },
+                    onPublish = { publishCalls.incrementAndGet() },
+                )
+            }
+        }
+        composeRule.runOnIdle {
+            confirmation.value = "Die Produktverwaltung hat die Veröffentlichung bestätigt."
+            busy.value = false
+        }
+        composeRule.onNodeWithTag("publication-feedback").assertIsDisplayed()
+        composeRule.onNodeWithText("Die Produktverwaltung hat die Veröffentlichung bestätigt.").assertIsDisplayed()
+        composeRule.mainClock.advanceTimeBy(10_000)
+        composeRule.onNodeWithTag("publication-feedback").assertIsDisplayed()
+        assertEquals(0, backCalls.get())
+        assertEquals(0, publishCalls.get())
+        composeRule.onNodeWithTag("publication-feedback-confirm").performClick()
+        assertEquals(1, backCalls.get())
+        assertEquals(0, publishCalls.get())
     }
 
     private fun createPreviewImage(

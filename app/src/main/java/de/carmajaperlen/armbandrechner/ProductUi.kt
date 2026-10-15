@@ -889,6 +889,9 @@ internal fun ProductPublicationPreviewScreen(
     onBack: () -> Unit,
     onPublish: () -> Unit,
     modifier: Modifier = Modifier,
+    confirmation: String? = null,
+    error: String? = null,
+    onDismissError: () -> Unit = {},
 ) {
     BackHandler(enabled = !busy, onBack = onBack)
     val description = draft.descriptionDocument
@@ -916,7 +919,11 @@ internal fun ProductPublicationPreviewScreen(
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(
-                        text = "VORSCHAU · NOCH NICHT VERÖFFENTLICHT",
+                        text = if (confirmation == null) {
+                            "VORSCHAU · NOCH NICHT VERÖFFENTLICHT"
+                        } else {
+                            "VERÖFFENTLICHUNG BESTÄTIGT"
+                        },
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.testTag("publication-preview-label"),
@@ -968,11 +975,11 @@ internal fun ProductPublicationPreviewScreen(
                 border = BorderStroke(1.dp, WebsitePreviewLine),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = WebsitePreviewMoss),
             ) {
-                Text("Zurück zum Bearbeiten")
+                Text(if (confirmation == null) "Zurück zum Bearbeiten" else "Zurück zur Produktverwaltung")
             }
             Button(
                 onClick = onPublish,
-                enabled = !busy,
+                enabled = !busy && confirmation == null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -982,9 +989,41 @@ internal fun ProductPublicationPreviewScreen(
                     contentColor = WebsitePreviewSurface,
                 ),
             ) {
-                Text(if (busy) "Veröffentlichung läuft …" else "Jetzt veröffentlichen")
+                if (busy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp).testTag("publication-preview-progress"),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(10.dp))
+                }
+                Text(when {
+                    busy -> "Veröffentlichung läuft …"
+                    confirmation != null -> "Veröffentlichung bestätigt"
+                    else -> "Jetzt veröffentlichen"
+                })
             }
         }
+    }
+
+    // The preview replaces the calculator Scaffold, so its SnackbarHost is
+    // not available here. Keep the outcome visible until explicitly acknowledged.
+    if (!busy && (confirmation != null || error != null)) {
+        val acknowledge = if (confirmation != null) onBack else onDismissError
+        AlertDialog(
+            onDismissRequest = acknowledge,
+            modifier = Modifier.testTag("publication-feedback"),
+            title = {
+                Text(if (confirmation != null) "Veröffentlichung bestätigt" else "Veröffentlichung nicht bestätigt")
+            },
+            text = {
+                Text(confirmation ?: "$error\n\nDer Ausgang ist nicht bestätigt. Bitte prüfe die Verbindung oder den Serverstand, bevor du es erneut versuchst.")
+            },
+            confirmButton = {
+                TextButton(onClick = acknowledge, modifier = Modifier.testTag("publication-feedback-confirm")) {
+                    Text(if (confirmation != null) "Fertig" else "Verstanden")
+                }
+            },
+        )
     }
 }
 

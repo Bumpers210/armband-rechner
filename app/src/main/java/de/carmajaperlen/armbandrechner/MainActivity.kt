@@ -158,6 +158,9 @@ class MainActivity : ComponentActivity() {
                             environmentLabel = productState.apiEndpoint?.environmentLabel
                                 ?: "Produktverwaltung",
                             busy = productState.busy,
+                            confirmation = productState.publicationConfirmation,
+                            error = productState.error,
+                            onDismissError = productActions.onMessageShown,
                             onBack = productActions.onCancelPublicationPreview,
                             onPublish = productActions.onPublish,
                         )

@@ -33,6 +33,7 @@ data class ProductUiState(
     val fieldErrors: Map<String, String> = emptyMap(),
     val conflict: ProductSyncConflictState? = null,
     val publicationPreview: ProductDraft? = null,
+    val publicationConfirmation: String? = null,
     val inventory: ProductInventory? = null,
     val inventoryProductId: String? = null,
 ) {
@@ -44,7 +45,19 @@ data class ProductUiState(
 
     val selectedHasUnsavedChanges: Boolean
         get() = selectedDraftId in unsavedDraftIds
+
+    val canPublishPreview: Boolean
+        get() = publicationPreview != null && !busy && publicationConfirmation == null
 }
+
+internal fun publicationConfirmation(result: PublishResult): String =
+    if (result.commitSha == null) {
+        "Das Produkt wurde in der Produktverwaltung veröffentlicht. " +
+            "Die Website wird dadurch nicht automatisch aktualisiert."
+    } else {
+        "Die Veröffentlichung wurde angenommen. " +
+            "Die Aktualisierung der Website läuft separat und kann noch etwas dauern."
+    }
 
 class ProductViewModel(
     private val repository: ProductDraftRepository,
@@ -364,14 +377,21 @@ class ProductViewModel(
 
         _uiState.value = _uiState.value.copy(
             publicationPreview = draft,
+            publicationConfirmation = null,
             fieldErrors = emptyMap(),
+            message = null,
             error = null,
         )
     }
 
     fun cancelPublicationPreview() {
         if (_uiState.value.busy) return
-        _uiState.value = _uiState.value.copy(publicationPreview = null)
+        _uiState.value = _uiState.value.copy(
+            publicationPreview = null,
+            publicationConfirmation = null,
+            message = null,
+            error = null,
+        )
     }
 
     fun publishSelected() {
@@ -382,6 +402,7 @@ class ProductViewModel(
             )
             return
         }
+        if (!_uiState.value.canPublishPreview) return
 
         runBusy {
             var current = saveAndReplace(draft)
@@ -405,14 +426,9 @@ class ProductViewModel(
                 ),
             )
             _uiState.value = _uiState.value.copy(
-                message = if (result.commitSha == null) {
-                    "Für Testwebsite bereitgestellt (${result.deploymentStatus})."
-                } else {
-                    "Veröffentlichung gestartet: ${result.commitSha.take(7)} (${result.deploymentStatus})."
-                },
+                publicationConfirmation = publicationConfirmation(result),
                 fieldErrors = emptyMap(),
                 editingDraftId = null,
-                publicationPreview = null,
             )
         }
     }
@@ -581,6 +597,11 @@ class ProductViewModel(
             selectedDraftId = draft.draftId,
             editors = editors,
             unsavedDraftIds = draftSession.unsavedDraftIds,
+            // Keep the persisted operation/version after a partial publish failure.
+            // A retry from the still-open preview must not reuse its stale snapshot.
+            publicationPreview = _uiState.value.publicationPreview?.let { preview ->
+                if (preview.draftId == draft.draftId) draft else preview
+            },
         )
     }
 
