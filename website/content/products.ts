@@ -1,4 +1,5 @@
 import path from "node:path";
+import { withProductPreviews } from "@/lib/product-image-previews.mjs";
 
 import {
   loadPublicProductsV2,
@@ -6,8 +7,8 @@ import {
   type PublicProductV2,
 } from "@/lib/public-products-v2.mjs";
 
-export type ProductImage = ProductImageV2;
-export type PublicProduct = PublicProductV2;
+export type ProductImage = ProductImageV2 & { previews?: Record<number, string> };
+export type PublicProduct = Omit<PublicProductV2, "images"> & { images: ProductImage[] };
 
 const fixtureMode = process.env.CARMAJA_TEST_FIXTURES === "true";
 const configuredProductsFile = process.env.CARMAJA_PRODUCTS_FILE;
@@ -31,7 +32,9 @@ const imagesDirectory = configuredImagesDirectory
   : path.join(projectRoot, "public", "images", "products");
 const productsData = loadPublicProductsV2(productsFile, imagesDirectory);
 
-export const publicProducts = productsData.products;
+export const publicProducts = productsData.products.map((product) =>
+  withProductPreviews(product, process.env.CARMAJA_SITE_TARGET),
+);
 
 const includeUnavailableTestProducts =
   process.env.CARMAJA_SITE_TARGET === "test";

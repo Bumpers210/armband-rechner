@@ -8,8 +8,8 @@ plugins {
 
 val productionVersionCode = 8
 val productionVersionName = "1.4.0"
-val betaVersionCode = 10
-val betaVersionName = "1.4.0-beta.1"
+val betaVersionCode = 11
+val betaVersionName = "1.4.0-beta.2"
 val betaApplicationId = "de.steinhart.armbandrechner.test"
 val productionProductApiBaseUrl = "https://api.carmaja-perlen.de/"
 val testProductApiBaseUrl = "https://test-api.carmaja-perlen.de/"

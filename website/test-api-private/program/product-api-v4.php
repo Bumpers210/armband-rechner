@@ -133,15 +133,16 @@ function carmaja_api_v4_product_image_file(string $productId, string $imageId): 
 
     $size = filesize($path);
     $imageInfo = @getimagesize($path);
+    $limits = carmaja_api_image_limits();
     if (!is_int($size)
         || $size < 1
-        || $size > CARMAJA_MAX_IMAGE_BYTES
+        || $size > $limits['bytes']
         || !is_array($imageInfo)
         || ($imageInfo[2] ?? null) !== IMAGETYPE_JPEG
         || (int) ($imageInfo[0] ?? 0) < 1
         || (int) ($imageInfo[1] ?? 0) < 1
-        || (int) $imageInfo[0] > CARMAJA_MAX_IMAGE_EDGE
-        || (int) $imageInfo[1] > CARMAJA_MAX_IMAGE_EDGE) {
+        || (int) $imageInfo[0] > $limits['edge']
+        || (int) $imageInfo[1] > $limits['edge']) {
         throw new CarmajaApiException(404, 'Produktbild wurde nicht gefunden.', [], 'image_not_found');
     }
 

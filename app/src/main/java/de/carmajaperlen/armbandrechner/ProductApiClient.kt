@@ -505,7 +505,8 @@ private val IMAGE_ID_PATTERN = Regex(
     "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-" +
         "[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
 )
-private const val MAX_IMAGE_DOWNLOAD_BYTES = 1_048_576
+private val MAX_IMAGE_DOWNLOAD_BYTES =
+    ProductImagePolicy.forTarget(BuildConfig.PRODUCT_PUBLISH_TARGET).maxBytes
 
 internal fun ProductDraft.toSaveJson(): JSONObject {
     val imagesV2 = images.mapIndexed { index, image ->

@@ -1,5 +1,7 @@
 import { access, cp, mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
+import { loadPublicProductsV2 } from "../lib/public-products-v2.mjs";
+import { generateProductPreviews } from "./generate-product-previews.mjs";
 
 const projectRoot = process.cwd();
 const siteTarget = process.env.CARMAJA_SITE_TARGET ?? "production";
@@ -55,6 +57,11 @@ if (isTest) {
       },
     );
   }
+  const productsFile = process.env.CARMAJA_PRODUCTS_FILE
+    ?? path.join(projectRoot, "content", "products.json");
+  const imageRoot = fixtureImages ?? path.join(projectRoot, "public", "images", "products");
+  const { products } = loadPublicProductsV2(productsFile, imageRoot);
+  console.log(`${await generateProductPreviews(products, outputDirectory)} kleine Produktvorschaubilder erzeugt.`);
 }
 
 await rm(path.join(outputDirectory, "armbaender", "__empty"), {

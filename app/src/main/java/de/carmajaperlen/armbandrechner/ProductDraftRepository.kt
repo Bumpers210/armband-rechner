@@ -498,10 +498,10 @@ class ProductDraftRepository(
     }
 
     private fun Bitmap.scaleToMax(maxEdge: Int): Bitmap {
-        val largest = maxOf(width, height)
-        if (largest <= maxEdge) return this
-        val ratio = maxEdge.toFloat() / largest.toFloat()
-        return Bitmap.createScaledBitmap(this, (width * ratio).toInt(), (height * ratio).toInt(), true)
+        val (targetWidth, targetHeight) = ProductImagePolicy(maxEdge, MAX_IMAGE_BYTES)
+            .scaledDimensions(width, height)
+        if (targetWidth == width && targetHeight == height) return this
+        return Bitmap.createScaledBitmap(this, targetWidth, targetHeight, true)
     }
 
     private fun compressToLimit(bitmap: Bitmap): ByteArray {
@@ -530,8 +530,9 @@ class ProductDraftRepository(
 
     companion object {
         private const val MAX_IMAGES = 5
-        private const val MAX_IMAGE_EDGE = 1600
-        private const val MAX_IMAGE_BYTES = 1_048_576
+        private val imagePolicy = ProductImagePolicy.forTarget(BuildConfig.PRODUCT_PUBLISH_TARGET)
+        private val MAX_IMAGE_EDGE = imagePolicy.maxEdge
+        private val MAX_IMAGE_BYTES = imagePolicy.maxBytes
     }
 }
 

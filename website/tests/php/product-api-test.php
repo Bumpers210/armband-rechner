@@ -1117,7 +1117,7 @@ carmaja_api_test('Zu große Datei und zu große Kante werden abgelehnt', static 
     $largeFile = $fixture['root'] . '/large.jpg';
     $largeEdge = $fixture['root'] . '/edge.jpg';
     $target = $fixture['root'] . '/target.jpg';
-    file_put_contents($largeFile, str_repeat('x', CARMAJA_MAX_IMAGE_BYTES + 1));
+    file_put_contents($largeFile, str_repeat('x', carmaja_api_image_limits()['bytes'] + 1));
 
     carmaja_api_test_exception(
         static fn (): array => carmaja_api_process_jpeg(
@@ -1131,7 +1131,7 @@ carmaja_api_test('Zu große Datei und zu große Kante werden abgelehnt', static 
         'image_too_large'
     );
 
-    carmaja_api_test_create_jpeg($largeEdge, CARMAJA_MAX_IMAGE_EDGE + 1, 2);
+    carmaja_api_test_create_jpeg($largeEdge, carmaja_api_image_limits()['edge'] + 1, 2);
     carmaja_api_test_exception(
         static fn (): array => carmaja_api_process_jpeg(
             $largeEdge,
@@ -3318,6 +3318,33 @@ carmaja_api_test('V5 bewahrt bestehende Entwürfe ohne Hinweise bei Modellupgrad
     carmaja_api_test_same(null, $saved['noticePolicyId'], 'Kein nachträgliches Hinweis-Bundle.');
     carmaja_api_test_same($old['braceletSizeCm'], $saved['braceletSizeCm'], 'Armbandumfang verloren.');
     carmaja_api_test_same($old['pearlSizeMm'], $saved['pearlSizeMm'], 'Perlengröße verloren.');
+});
+
+carmaja_api_test('3200px Testbilder, Download und unveränderte Produktionsgrenzen', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    $source = $fixture['root'] . '/zoom.jpg';
+    $target = $fixture['root'] . '/zoom-clean.jpg';
+    carmaja_api_test_same(['edge' => 3200, 'bytes' => 5242880], carmaja_api_image_limits(), 'Testgrenzen falsch.');
+    carmaja_api_test_create_jpeg($source, 3200, 2400);
+    // The input exceeds the old byte limit. Re-encoding discards trailing data.
+    file_put_contents($source, str_repeat('x', 1048576), FILE_APPEND);
+    clearstatcache(true, $source);
+    $result = carmaja_api_process_jpeg($source, '01.jpg', filesize($source), $target, false);
+    carmaja_api_test_same(3200, $result['width'], 'Großbild wurde verkleinert.');
+    carmaja_api_test_same(2400, $result['height'], 'Seitenverhältnis verändert.');
+    carmaja_api_test_assert($result['size'] < filesize($source), 'Angehängte Daten nicht entfernt.');
+    $draft = carmaja_api_test_ready_draft('78787878-7878-4878-8878-787878787879');
+    $stored = $draft['images'][0]['path'];
+    copy($target, $stored); clearstatcache(true, $stored);
+    $draft['images'][0]['imageId'] = '78787878-7878-4878-8878-787878787878';
+    $draft['images'][0]['fileName'] = '01.jpg';
+    carmaja_api_write_json_atomic(carmaja_api_path('drafts/' . $draft['draftId'] . '.json'), $draft);
+    $download = carmaja_api_v4_product_image_file($draft['draftId'], $draft['images'][0]['imageId']);
+    carmaja_api_test_same(filesize($stored), $download['size'], 'Großbild-Download gesperrt.');
+    carmaja_api_test_use_target($fixture, 'production');
+    carmaja_api_test_same(['edge' => 1600, 'bytes' => 1048576], carmaja_api_image_limits(), 'Produktionsgrenzen verändert.');
+    carmaja_api_test_exception(fn () => carmaja_api_process_jpeg($target, '01.jpg', filesize($target),
+        $fixture['root'] . '/forbidden.jpg', false), 422, 'image_dimensions_invalid');
 });
 
 $failures = 0;
