@@ -85,6 +85,7 @@ data class ProductUiActions(
     val onDescriptionFontChange: (DescriptionFont) -> Unit = {},
     val onDescriptionSizeChange: (DescriptionSize) -> Unit = {},
     val onPriceChange: (TextFieldValue) -> Unit = {},
+    val onSalesEnabledChange: (Boolean) -> Unit = {},
     val onImagesPicked: (List<Uri>) -> Unit = {},
     val onSave: () -> Unit = {},
     val onSync: () -> Unit = {},
@@ -429,7 +430,8 @@ internal fun PublishedProductView(
             )
             Text("Bilder: ${draft.images.size}/5")
             Text(
-                text = "Verfügbar, bis die Kollektion in der App gelöscht wird.",
+                text = if (draft.salesEnabled) "Verkaufsfreigabe an · Kauf nur mit verfügbarem Bestand."
+                    else "Verkaufsfreigabe aus · Nicht kaufbar.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -666,8 +668,17 @@ internal fun ProductDraftForm(
                 busy = busy,
                 keyboardType = KeyboardType.Decimal,
             )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = editor.salesEnabled,
+                    onCheckedChange = actions.onSalesEnabledChange,
+                    enabled = !busy,
+                    modifier = Modifier.testTag("product-sales-enabled"),
+                )
+                Text("Verkaufsfreigabe")
+            }
             Text(
-                text = "Währung: EUR · Verfügbarkeit wird beim Veröffentlichen automatisch aktiviert",
+                text = "Währung: EUR · Kauf nur mit Verkaufsfreigabe und verfügbarem Bestand. Veröffentlichen ändert die Freigabe nicht.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -941,7 +952,8 @@ internal fun ProductPublicationPreviewScreen(
                 modifier = Modifier.testTag("publication-preview-title"),
             )
             Text(
-                text = "Verfügbar",
+                text = if (draft.salesEnabled) "Verkaufsfreigabe an · Bestand wird im Shop geprüft"
+                    else "Verkaufsfreigabe aus",
                 style = MaterialTheme.typography.labelLarge,
                 color = WebsitePreviewMoss,
             )

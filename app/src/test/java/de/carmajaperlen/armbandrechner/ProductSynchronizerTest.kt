@@ -9,6 +9,16 @@ import org.junit.Test
 
 class ProductSynchronizerTest {
     @Test
+    fun serverPermissionDoesNotFollowPublishedStatusOrAvailability() {
+        val draft = productDraft(imageCount = 0).copy(salesEnabled = true)
+        val server = draft.toServerUpdate(version = 3).copy(
+            status = ProductStatus.Published, available = true, salesEnabled = false,
+        )
+        assertFalse(applyServerUpdate(draft, server).salesEnabled)
+        assertTrue(applyServerUpdate(draft, server.copy(available = false, salesEnabled = true)).salesEnabled)
+    }
+
+    @Test
     fun existingDraftMeasurementsSurviveEditSaveSynchronizationAndReload() = runTest {
         val existing = productDraft(imageCount = 0).copy(
             braceletSizeCm = "17.5",
@@ -368,6 +378,7 @@ private fun ProductDraft.toServerUpdate(
         priceMinor = priceMinor,
         currency = currency,
         available = salesEnabled,
+        salesEnabled = salesEnabled,
         images = images,
     )
 }

@@ -318,7 +318,11 @@ function carmaja_api_v4_transition_product(
                     . '-' . carmaja_api_slugify((string) $draft['name']);
             }
             $draft['status'] = $action === 'archive' ? 'disabled' : 'published';
-            $draft['salesEnabled'] = $action !== 'archive';
+            // Preserve the explicit sales permission in the stocked model.
+            // Archiving always closes sales; restoring never grants permission.
+            $draft['salesEnabled'] = $action !== 'archive'
+                && (($draft['productModelVersion'] ?? 0) === 4
+                    ? ($draft['salesEnabled'] ?? false) === true : true);
             $draft['publishedAt'] = $draft['publishedAt'] ?? carmaja_api_now();
             if ($action === 'archive') {
                 $draft['archivedAt'] = carmaja_api_now();
@@ -365,6 +369,11 @@ function carmaja_api_v4_transition_product(
         'result' => 'success',
     ]);
     $responseProduct = carmaja_api_v4_product_response_from_draft($prepared['draft']);
+    if (($prepared['draft']['productModelVersion'] ?? 0) === 4) {
+        $responseProduct['salesEnabled'] = $prepared['draft']['salesEnabled'];
+        $responseProduct['available'] = $responseProduct['status'] === 'published'
+            && $responseProduct['salesEnabled'];
+    }
     return [
         'publication' => [
             'productId' => $productId,

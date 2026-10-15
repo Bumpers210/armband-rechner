@@ -33,6 +33,7 @@ data class ProductDraftEditorState(
     val pearlSizeMm: TextFieldValue,
     val shortDescription: RichDescriptionEditorState,
     val price: TextFieldValue,
+    val salesEnabled: Boolean = false,
 ) {
     fun update(field: ProductEditorField, value: TextFieldValue): ProductDraftEditorState {
         return when (field) {
@@ -85,6 +86,7 @@ data class ProductDraftEditorState(
             shortDescription = descriptionDocument?.plainText().orEmpty(),
             descriptionDocument = descriptionDocument,
             priceMinor = priceMinor,
+            salesEnabled = salesEnabled,
         )
     }
 
@@ -102,6 +104,7 @@ data class ProductDraftEditorState(
                         ?: DescriptionDocument.fromPlainText(draft.shortDescription),
                 ),
                 price = editorValue(displayPriceMinor(draft.priceMinor)),
+                salesEnabled = draft.salesEnabled,
             )
         }
     }

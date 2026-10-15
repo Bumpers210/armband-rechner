@@ -82,6 +82,12 @@ test("Projektion 4 bindet serverseitige Version, Hash und unveränderbare Hinwei
       "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.",
     ]};
   assert.equal(validatePublisherPush(fixture({productsDocument: {version: 4, products: [product]}})).action, "publish");
+  // Model 4 may be visible but deliberately not for sale. Legacy model 3
+  // retains its existing publication/availability contract.
+  assert.equal(validatePublisherPush(fixture({productsDocument: {version: 4, products: [{...product, salesEnabled: false}]}})).action, "publish");
+  for (const salesEnabled of [undefined, null, 0, 1, "false"]) {
+    assert.throws(() => validatePublisherPush(fixture({productsDocument: {version: 4, products: [{...product, salesEnabled}]}})), /Publisher-Push abgelehnt/);
+  }
   for (const changed of [{...product, notices: []}, {...product, stock: 5}, {...product, sourceHash: "invalid"}]) {
     assert.throws(() => validatePublisherPush(fixture({productsDocument: {version: 4, products: [changed]}})), /Publisher-Push abgelehnt/);
   }

@@ -14,6 +14,18 @@ test("Mengenmigration erhält historische Snapshots und bestätigt keinen unbeka
   assert.doesNotMatch(sql, /UPDATE\s+(?:orders|order_items|commerce_inventory)|DROP TABLE/i);
 });
 
+test("V5 trennt ausdrueckliche Verkaufsfreigabe von Veroeffentlichung und Bestand", async () => {
+  const api = await source("test-api-private/program/product-api-v5.php");
+  assert.match(api, /carmaja_api_v3_allowed_put_fields\(\)/);
+  assert.match(api, /carmaja_api_v5_product_response_from_draft/);
+  assert.doesNotMatch(api, /unset\(\$saved\['salesEnabled'\]\)|\$body\['salesEnabled'\] = false/);
+  const core = await source("test-api-private/program/commerce-core.php");
+  assert.equal((core.match(/carmaja_commerce_projection_sales_enabled\(\$product, \$action\)/g) ?? []).length, 2);
+  assert.match(core, /is_bool\(\$product\['salesEnabled'\]/);
+  const cart = await source("test-api-private/program/cart-commerce.php");
+  assert.match(cart, /\(int\) \$product\['sales_enabled'\] === 1.*\$inventory\['available'\] > 0/);
+});
+
 test("Warenkorb bleibt fail-closed, sitzungsgebunden und prüft Mengen atomar", async () => {
   const router = await source("test-api-private/program/cart-public.php");
   const core = await source("test-api-private/program/cart-commerce.php");

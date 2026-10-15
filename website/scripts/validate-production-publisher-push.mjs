@@ -72,7 +72,7 @@ function validateProductProjection(productsDocument, action, sku) {
     }
     return;
   }
-  if (matches.length !== 1 || matches[0]?.salesEnabled !== true) {
+  if (matches.length !== 1 || (productsDocument.version === 3 && matches[0]?.salesEnabled !== true)) {
     fail("Veröffentlichte Kollektion fehlt oder ist nicht verfügbar.");
   }
   if (productsDocument.version === 4) {
@@ -81,7 +81,8 @@ function validateProductProjection(productsDocument, action, sku) {
       "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
       "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.",
     ] : [];
-    if (product.productModelVersion !== 4 || ![null, "natural-stones-v1"].includes(product.noticePolicyId)
+    if (product.productModelVersion !== 4 || typeof product.salesEnabled !== "boolean"
+      || ![null, "natural-stones-v1"].includes(product.noticePolicyId)
       || JSON.stringify(product.notices) !== JSON.stringify(notices)
       || !Number.isSafeInteger(product.productVersion) || product.productVersion < 1
       || !REQUEST_HASH_PATTERN.test(product.sourceHash ?? "")

@@ -13,6 +13,17 @@ declare(strict_types=1);
 
 const CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR = 50;
 const CARMAJA_COMMERCE_CURRENCY = 'eur';
+
+function carmaja_commerce_projection_sales_enabled(array $product, string $action): bool
+{
+    if (($product['productModelVersion'] ?? 0) === 4) {
+        if (!is_bool($product['salesEnabled'] ?? null)) {
+            throw new CarmajaCommerceException('projection_product_invalid', 'Verkaufsfreigabe fehlt.', 422);
+        }
+        return $action !== 'archive' && $product['salesEnabled'];
+    }
+    return $action !== 'archive';
+}
 const CARMAJA_COMMERCE_INVENTORY_REASONS = [
     'activate_new_unique',
     'shop_sale',
@@ -306,7 +317,7 @@ final class CarmajaCommerceMemory
             throw new CarmajaCommerceException('projection_action_invalid', 'Projektionsaktion ist ungültig.', 422);
         }
         $productId = (string) ($product['productId'] ?? '');
-        $salesEnabled = $action !== 'archive';
+        $salesEnabled = carmaja_commerce_projection_sales_enabled($product, $action);
         $this->products[$productId] = [
             'productId' => $productId,
             'productVersion' => (int) ($product['productVersion'] ?? 0),
@@ -1166,7 +1177,7 @@ class CarmajaCommercePdo
                 return is_array($result) ? $result : [];
             }
 
-            $salesEnabled = $action === 'archive' ? 0 : 1;
+            $salesEnabled = (int) carmaja_commerce_projection_sales_enabled($product, $action);
             $upsert = $pdo->prepare(
                 'INSERT INTO commerce_products
                     (product_id, product_version, source_hash, name, description,

@@ -41,6 +41,7 @@ data class ProductServerUpdate(
     val currency: String,
     val available: Boolean,
     val images: List<ProductServerImage>,
+    val salesEnabled: Boolean = false,
 )
 
 data class PublishResult(
@@ -54,6 +55,7 @@ data class PublishResult(
     val productVersion: Int,
     val sourceHash: String,
     val available: Boolean,
+    val salesEnabled: Boolean = false,
 )
 
 data class ProductLoginResult(
@@ -304,6 +306,7 @@ open class ProductApiClient {
             productVersion = product.productVersion,
             sourceHash = product.sourceHash,
             available = product.available,
+            salesEnabled = product.salesEnabled,
         )
     }
 
@@ -534,10 +537,8 @@ internal fun ProductDraft.toSaveJson(): JSONObject {
         images = imagesV2,
         priceMinor = priceMinor,
         currency = currency,
-        salesEnabled = false,
-    ).toJson().apply {
-        remove("salesEnabled")
-    }
+        salesEnabled = salesEnabled,
+    ).toJson()
 }
 
 private fun CalculationSnapshot.toJson(): JSONObject {
@@ -618,6 +619,15 @@ internal fun JSONObject.toServerUpdate(): ProductServerUpdate {
         priceMinor = getInt("priceMinor"),
         currency = getString("currency"),
         available = optBoolean("available", optString("status", "draft") == "published"),
+        salesEnabled = if (optInt("productModelVersion", 2) >= 4) {
+            val permission = opt("salesEnabled")
+            if (permission !is Boolean) {
+                throw ProductApiException(0, "invalid_api_response", message = "Verkaufsfreigabe fehlt in der Serverantwort.")
+            }
+            permission
+        } else {
+            optBoolean("salesEnabled", optBoolean("available", false))
+        },
         images = serverImages,
     )
 }

@@ -139,6 +139,7 @@ class MainActivity : ComponentActivity() {
                         productViewModel.updateSelectedEditor(ProductEditorField.Price, value)
                     },
                     onImagesPicked = productViewModel::addImages,
+                    onSalesEnabledChange = productViewModel::updateSalesEnabled,
                     onSave = productViewModel::saveSelected,
                     onSync = productViewModel::syncSelected,
                     onLoadInventory = productViewModel::loadSelectedInventory,

@@ -181,6 +181,16 @@ class ProductViewModel(
 
     fun toggleDescriptionBold() = updateDescriptionEditor(RichDescriptionEditorState::toggleBold)
 
+    fun updateSalesEnabled(value: Boolean) {
+        val editor = _uiState.value.selectedEditor ?: return
+        draftSession.markChanged(editor.draftId)
+        _uiState.value = _uiState.value.copy(
+            editors = _uiState.value.editors + (editor.draftId to editor.copy(salesEnabled = value)),
+            unsavedDraftIds = draftSession.unsavedDraftIds,
+            publicationPreview = null,
+        )
+    }
+
     fun toggleDescriptionItalic() = updateDescriptionEditor(RichDescriptionEditorState::toggleItalic)
 
     fun setDescriptionFont(font: DescriptionFont) = updateDescriptionEditor { it.setFont(font) }
@@ -421,7 +431,7 @@ class ProductViewModel(
                     status = result.status,
                     productVersion = result.productVersion,
                     sourceHash = result.sourceHash,
-                    salesEnabled = result.available,
+                    salesEnabled = result.salesEnabled,
                     pendingPublishOperationId = null,
                 ),
             )
@@ -494,7 +504,7 @@ class ProductViewModel(
                     status = result.status,
                     productVersion = result.productVersion,
                     sourceHash = result.sourceHash,
-                    salesEnabled = result.available,
+                    salesEnabled = result.salesEnabled,
                     pendingArchiveOperationId = null,
                     pendingRestoreOperationId = null,
                 ),

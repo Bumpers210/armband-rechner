@@ -29,15 +29,24 @@ function carmaja_api_v5_put(string $id, array $body, array $actor, mixed $key): 
     if (array_intersect(array_keys($body), ['productVersion','sourceHash','noticePolicyId','notices']) !== []) {
         throw new CarmajaApiException(422, 'Serverfelder dürfen nicht gesetzt werden.', [], 'client_managed_field_forbidden');
     }
-    carmaja_api_reject_unknown_fields($body, carmaja_api_v4_allowed_put_fields());
-    foreach (carmaja_api_v4_allowed_put_fields() as $field) {
+    carmaja_api_reject_unknown_fields($body, carmaja_api_v3_allowed_put_fields());
+    foreach (carmaja_api_v3_allowed_put_fields() as $field) {
         if (!array_key_exists($field, $body)) { throw new CarmajaApiException(422, 'Vollständiges Produkt erforderlich.', [$field => 'Pflichtfeld'], 'validation_failed'); }
     }
-    $body['salesEnabled'] = false;
-    $saved = carmaja_api_v3_put_product($id, $body, $actor, 'v5-' . hash('sha256', carmaja_api_v2_validate_idempotency_key($key)), true, true);
-    $saved['available'] = $saved['status'] === 'published';
-    unset($saved['salesEnabled']);
+    $saved = carmaja_api_v3_put_product($id, $body, $actor, 'v5-' . hash('sha256', carmaja_api_v2_validate_idempotency_key($key)), false, true);
+    $saved['available'] = $saved['status'] === 'published' && $saved['salesEnabled'];
     return $saved;
+}
+
+function carmaja_api_v5_product_response_from_draft(array $draft): array
+{
+    $response = in_array($draft['productModelVersion'] ?? null, [3,4], true)
+        ? carmaja_api_v4_product_response_from_draft($draft)
+        : carmaja_api_v4_legacy_product_response_from_draft($draft);
+    // Publication, sales permission and counted inventory are separate gates.
+    $response['salesEnabled'] = ($draft['salesEnabled'] ?? false) === true;
+    $response['available'] = $response['status'] === 'published' && $response['salesEnabled'];
+    return $response;
 }
 
 function carmaja_api_v5_route(string $method, array $segments): never
@@ -51,8 +60,7 @@ function carmaja_api_v5_route(string $method, array $segments): never
         $products = [];
         foreach (glob(carmaja_api_path('drafts/*.json')) ?: [] as $path) {
             $draft = carmaja_api_read_target_json($path, [], 'Produkt');
-            $products[] = in_array($draft['productModelVersion'] ?? null, [3,4], true)
-                ? carmaja_api_v4_product_response_from_draft($draft) : carmaja_api_v4_legacy_product_response_from_draft($draft);
+            $products[] = carmaja_api_v5_product_response_from_draft($draft);
         }
         usort($products, static fn ($a, $b) => strcmp($a['productId'], $b['productId']));
         carmaja_bootstrap_send(200, carmaja_api_v5_response(['products' => $products]));
@@ -68,14 +76,13 @@ function carmaja_api_v5_route(string $method, array $segments): never
     }
     if ($draft === null) { throw new CarmajaApiException(404, 'Produkt fehlt.', [], 'product_not_found'); }
     if ($method === 'GET' && count($segments) === 2) {
-        $product = in_array($draft['productModelVersion'] ?? null, [3,4], true)
-            ? carmaja_api_v4_product_response_from_draft($draft) : carmaja_api_v4_legacy_product_response_from_draft($draft);
+        $product = carmaja_api_v5_product_response_from_draft($draft);
         carmaja_bootstrap_send(200, carmaja_api_v5_response(['product' => $product]));
     }
     if (($segments[2] ?? '') === 'images') {
         if ($method === 'GET' && count($segments) === 4) { carmaja_bootstrap_send_product_image(carmaja_api_v4_product_image_file($id, $segments[3])); }
         if ($method === 'POST' && count($segments) === 3) {
-            carmaja_bootstrap_send(200, carmaja_api_v5_response(['product' => carmaja_api_v4_product_response_from_draft(carmaja_api_upload_images($id, $_POST, $actor))]));
+            carmaja_bootstrap_send(200, carmaja_api_v5_response(['product' => carmaja_api_v5_product_response_from_draft(carmaja_api_upload_images($id, $_POST, $actor))]));
         }
     }
     $commerce = carmaja_bootstrap_commerce(carmaja_bootstrap_load_config());

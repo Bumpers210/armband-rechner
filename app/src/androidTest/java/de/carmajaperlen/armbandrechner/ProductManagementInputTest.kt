@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -33,6 +35,15 @@ import org.junit.Test
 class ProductManagementInputTest {
     @get:Rule
     val composeRule = createComposeRule()
+
+    @Test
+    fun salesPermissionRequiresExplicitToggleAndSurvivesRecomposition() {
+        setEditorContent()
+        val permission = composeRule.onNodeWithTag("product-sales-enabled")
+        permission.performScrollTo().assertIsOff().performClick().assertIsOn()
+        composeRule.onNodeWithTag("force-product-recomposition").performScrollTo().performClick()
+        permission.performScrollTo().assertIsOn().performClick().assertIsOff()
+    }
 
     @Test
     fun productTextsKeepSpacesUmlautsAndHyphensAcrossFieldChanges() {
@@ -150,6 +161,9 @@ class ProductManagementInputTest {
                         busy = false,
                         actions = ProductUiActions(
                             onNameChange = { update(ProductEditorField.Name, it) },
+                            onSalesEnabledChange = { value ->
+                                editors = editors + (selectedDraftId to editor.copy(salesEnabled = value))
+                            },
                             onMaterialsChange = { update(ProductEditorField.Materials, it) },
                             onMetalElementsChange = {
                                 update(ProductEditorField.MetalElements, it)

@@ -3284,7 +3284,7 @@ carmaja_api_test('V5 vergibt Hinweise nur für neue Anlagen und schützt servers
     ]]]];
     $payload = ['expectedProductVersion' => 0, 'name' => 'Künstliches Mengenprodukt', 'descriptionDocument' => $document,
         'materials' => ['Naturstein'], 'metalElements' => [], 'braceletSizeCm' => 18, 'pearlSizeMm' => 8,
-        'careInstructions' => [], 'images' => [], 'priceMinor' => 2800, 'currency' => 'eur'];
+        'careInstructions' => [], 'images' => [], 'priceMinor' => 2800, 'currency' => 'eur', 'salesEnabled' => false];
     $saved = carmaja_api_v5_put($id, $payload, carmaja_api_test_actor(), 'v5-test-create-0001');
     carmaja_api_test_same(4, $saved['productModelVersion'], 'Produktmodell 4 fehlt.');
     carmaja_api_test_same(CARMAJA_PRODUCT_NOTICES, $saved['notices'], 'Feste Hinweise fehlen.');
@@ -3312,7 +3312,7 @@ carmaja_api_test('V5 bewahrt bestehende Entwürfe ohne Hinweise bei Modellupgrad
         'materials' => ['Naturstein'], 'metalElements' => [], 'braceletSizeCm' => 17, 'pearlSizeMm' => 8,
         'careInstructions' => [], 'images' => [], 'priceMinor' => 2800, 'currency' => 'eur', 'salesEnabled' => false];
     $old = carmaja_api_v3_put_product($id, $payload, carmaja_api_test_actor(), 'v5-test-existing-0001');
-    $body = array_diff_key([...$payload, 'expectedProductVersion' => 1], ['salesEnabled' => true]);
+    $body = [...$payload, 'expectedProductVersion' => 1];
     $saved = carmaja_api_v5_put($id, $body, carmaja_api_test_actor(), 'v5-test-upgrade-0001');
     carmaja_api_test_same([], $saved['notices'], 'Bestehender Entwurf darf keine Hinweise erhalten.');
     carmaja_api_test_same(null, $saved['noticePolicyId'], 'Kein nachträgliches Hinweis-Bundle.');
@@ -3345,6 +3345,71 @@ carmaja_api_test('3200px Testbilder, Download und unveränderte Produktionsgrenz
     carmaja_api_test_same(['edge' => 1600, 'bytes' => 1048576], carmaja_api_image_limits(), 'Produktionsgrenzen verändert.');
     carmaja_api_test_exception(fn () => carmaja_api_process_jpeg($target, '01.jpg', filesize($target),
         $fixture['root'] . '/forbidden.jpg', false), 422, 'image_dimensions_invalid');
+});
+
+carmaja_api_test('V5 bewahrt Verkaufsfreigabe bei Speichern, Upload, Publish, Replay und Restore', static function (): void {
+    carmaja_api_test_fixture();
+    $id = '88888888-8888-4888-8888-888888888881';
+    $imageId = '88888888-8888-4888-8888-888888888882';
+    $body = ['expectedProductVersion' => 0, 'name' => 'Kuenstliches gesperrtes Produkt',
+        'descriptionDocument' => ['version' => 1, 'blocks' => [['type' => 'paragraph', 'spans' => [[
+            'text' => 'Nur Testdaten.', 'bold' => false, 'italic' => false, 'font' => 'standard', 'size' => 'normal']]]]],
+        'materials' => ['Teststein'], 'metalElements' => [], 'braceletSizeCm' => 18, 'pearlSizeMm' => 8,
+        'careInstructions' => [], 'images' => [['imageId' => $imageId, 'fileName' => '01.jpg', 'alt' => 'Testbild',
+            'width' => 120, 'height' => 80, 'isMain' => true]], 'priceMinor' => 2800, 'currency' => 'eur', 'salesEnabled' => false];
+    foreach ([null, 0, 1, 'false'] as $invalid) {
+        carmaja_api_test_exception(fn () => carmaja_api_v5_put($id, [...$body, 'salesEnabled' => $invalid],
+            carmaja_api_test_actor(), 'v5-permission-invalid'), 422, 'validation_failed');
+    }
+    carmaja_api_test_exception(fn () => carmaja_api_v5_put($id, array_diff_key($body, ['salesEnabled' => true]),
+        carmaja_api_test_actor(), 'v5-permission-missing'), 422, 'validation_failed');
+    carmaja_api_test_same(null, carmaja_api_load_draft($id), 'Ungueltige Freigabe darf kein Produkt erstellen.');
+    $saved = carmaja_api_v5_put($id, $body, carmaja_api_test_actor(), 'v5-permission-create');
+    carmaja_api_test_same(false, $saved['salesEnabled'], 'PUT aktivierte Verkauf.');
+    $source = carmaja_api_path('permission-source.jpg');
+    carmaja_api_test_create_jpeg($source);
+    carmaja_api_test_prepare_image_upload($saved['version'], $imageId, [$imageId], $source, 'Testbild');
+    $GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS'] = true;
+    try { $draft = carmaja_api_upload_images($id, $_POST, carmaja_api_test_actor()); }
+    finally { unset($GLOBALS['CARMAJA_API_ALLOW_LOCAL_UPLOADS_FOR_TESTS']); }
+    $uploaded = carmaja_api_v5_product_response_from_draft($draft);
+    carmaja_api_test_same(false, $uploaded['salesEnabled'], 'Upload aktivierte Verkauf.');
+    carmaja_api_test_same(120, $uploaded['images'][0]['width'], 'Bildmetadaten verloren.');
+    $projected = [];
+    $GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4'] = static function ($product) use (&$projected): array {
+        $projected[] = $product; return [];
+    };
+    $transition = static fn ($p, $action, $key) => carmaja_api_v4_transition_product($id,
+        ['expectedProductVersion' => $p['productVersion'], 'expectedSourceHash' => $p['sourceHash'], 'operationId' => $key],
+        carmaja_api_test_actor(), $action);
+    try {
+        $published = $transition($uploaded, 'publish', 'v5-permission-publish');
+        carmaja_api_test_same(false, $published['product']['salesEnabled'], 'Publish aktivierte Verkauf.');
+        carmaja_api_test_same(false, $published['product']['available'], 'Publish behauptet Kaufbarkeit.');
+        carmaja_api_test_same($published, $transition($uploaded, 'publish', 'v5-permission-publish'), 'Replay ist nicht idempotent.');
+        $public = carmaja_api_read_json(carmaja_api_path('products/public-products-v2.json'), []);
+        carmaja_api_test_same(false, $public['products'][0]['salesEnabled'], 'Oeffentliche Projektion aktivierte Verkauf.');
+        carmaja_api_test_same(false, $projected[0]['salesEnabled'], 'Commerce-Projektion erhielt falsche Freigabe.');
+        $disabled = carmaja_api_v5_put($id, [...$body, 'expectedProductVersion' => $published['product']['productVersion']],
+            carmaja_api_test_actor(), 'v5-permission-save-published');
+        carmaja_api_test_same(false, $disabled['salesEnabled'], 'Speichern eines publizierten Produkts aktivierte Verkauf.');
+        $enabled = carmaja_api_v5_put($id, [...$body, 'expectedProductVersion' => $disabled['productVersion'], 'salesEnabled' => true],
+            carmaja_api_test_actor(), 'v5-permission-enable');
+        carmaja_api_test_assert($disabled['sourceHash'] !== $enabled['sourceHash'], 'Freigabe nicht hashgebunden.');
+        carmaja_api_test_same(true, $enabled['salesEnabled'], 'Explizite Freigabe ging verloren.');
+        carmaja_api_test_exception(fn () => carmaja_api_v5_put($id,
+            [...$body, 'expectedProductVersion' => $disabled['productVersion']], carmaja_api_test_actor(), 'v5-permission-enable'),
+            409, 'idempotency_key_reused');
+        $enabledPublish = $transition($enabled, 'publish', 'v5-permission-enabled-publish');
+        carmaja_api_test_same(true, $enabledPublish['product']['salesEnabled'], 'Explizite Freigabe beim Publish verloren.');
+        $archived = $transition($enabledPublish['product'], 'archive', 'v5-permission-archive');
+        carmaja_api_test_same(false, $archived['product']['salesEnabled'], 'Archivierung sperrt Verkauf nicht.');
+        $restored = $transition($archived['product'], 'restore', 'v5-permission-restore');
+        carmaja_api_test_same(false, $restored['product']['salesEnabled'], 'Restore erteilte eine neue Freigabe.');
+        $get = carmaja_api_v5_product_response_from_draft(carmaja_api_load_draft($id));
+        carmaja_api_test_same(false, $get['salesEnabled'], 'Erneutes Laden verliert Freigabe.');
+        carmaja_api_test_same($get['sourceHash'], carmaja_api_v3_source_hash($get), 'Hash nach Lebenszyklus ungueltig.');
+    } finally { unset($GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4']); }
 });
 
 $failures = 0;

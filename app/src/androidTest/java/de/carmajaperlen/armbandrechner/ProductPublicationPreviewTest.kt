@@ -42,7 +42,7 @@ class ProductPublicationPreviewTest {
         composeRule.onNodeWithTag("publication-preview-label").assertIsDisplayed()
         composeRule.onNodeWithText("TESTUMGEBUNG").assertIsDisplayed()
         composeRule.onNodeWithText("Rosenquarz Armband").assertIsDisplayed()
-        composeRule.onNodeWithText("Verfügbar").assertIsDisplayed()
+        composeRule.onNodeWithText("Verkaufsfreigabe aus").assertIsDisplayed()
         composeRule.onNodeWithTag("publication-preview-description").assertExists()
         composeRule.onNodeWithText("MATERIALIEN").assertExists()
         composeRule.onNodeWithText("Rosenquarz").assertExists()

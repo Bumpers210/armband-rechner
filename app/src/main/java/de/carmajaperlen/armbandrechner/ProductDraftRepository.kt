@@ -142,7 +142,7 @@ class ProductDraftRepository(
                 careInstructions = update.careInstructions,
                 priceMinor = update.priceMinor,
                 currency = update.currency.lowercase(),
-                salesEnabled = update.available,
+                salesEnabled = update.salesEnabled,
                 internalCalculation = CalculationSnapshot(
                     quantities = emptyMap(),
                     workMinutes = "0",

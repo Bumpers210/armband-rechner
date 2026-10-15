@@ -8,6 +8,23 @@ import org.junit.Test
 
 class ProductEditorStateTest {
     @Test
+    fun salesPermissionSurvivesEditorRoundTripIndependentlyOfPublication() {
+        val draft = testDraft().copy(
+            status = ProductStatus.Published,
+            shortDescription = "Testbeschreibung",
+            descriptionDocument = DescriptionDocument.fromPlainText("Testbeschreibung"),
+            salesEnabled = false,
+        )
+        val editor = ProductDraftEditorState.fromDraft(draft)
+        assertEquals(false, editor.salesEnabled)
+        val enabled = editor.copy(salesEnabled = true).applyTo(draft)
+        assertEquals(true, enabled.salesEnabled)
+        assertEquals(true, ProductDraftEditorState.fromDraft(enabled).salesEnabled)
+        assertEquals(false, ProductDraftEditorState.fromDraft(enabled).copy(salesEnabled = false).applyTo(enabled).salesEnabled)
+        assertEquals(draft.pendingInitialOnHand, enabled.pendingInitialOnHand)
+    }
+
+    @Test
     fun editorUpdatePreservesTextAndSelectionWithoutNormalizing() {
         val editor = ProductDraftEditorState.fromDraft(testDraft())
         val input = TextFieldValue(
