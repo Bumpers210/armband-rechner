@@ -2,6 +2,17 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 const source = (path) => readFile(new URL(`../../${path}`, import.meta.url), "utf8");
+import { cartPaymentMessage } from "../../lib/cart-payment-message.mjs";
+
+test("Warenkorb-Rueckkehr unterscheidet Ablauf, Fehler und SEPA-processing ohne falsche Bestellbestaetigung", () => {
+  assert.match(cartPaymentMessage({payment_status: "canceled", state: "expired"}), /beendet oder abgelaufen/);
+  assert.match(cartPaymentMessage({payment_status: "pending", state: "expired"}), /beendet oder abgelaufen/);
+  assert.match(cartPaymentMessage({payment_status: "processing", state: "expired"}), /SEPA-Zahlung wird bearbeitet/);
+  assert.match(cartPaymentMessage({payment_status: "manual_review", state: "expired"}), /Bitte nicht erneut bestellen/);
+  assert.match(cartPaymentMessage({payment_status: "failed"}), /keine Bestellung bestätigt/);
+  assert.match(cartPaymentMessage({payment_status: "succeeded", order_number: "TEST-0001"}), /TEST-0001/);
+  assert.match(cartPaymentMessage(undefined), /noch nicht bestätigt/);
+});
 
 test("Mengenmigration erhält historische Snapshots und bestätigt keinen unbekannten Bestand", async () => {
   const sql = await source("database/migrations/commerce-v3-cart-inventory.sql");
@@ -45,6 +56,15 @@ test("Testfassungen bleiben getrennt von historischen und neu freizugebenden Rec
   const legal = await source("content/legal-bundles.ts");
   assert.match(legal, /cmj-test-legal-2026-10-06-v3/);
   assert.match(legal, /cartProductionLegalDraft[\s\S]*awaiting_external_approval/);
-  assert.match(legal, /test: \[cartTestLegalBundle, testLegalBundle\]/);
+  assert.match(legal, /test: \[cartTestLegalBundle, cartTestLegalBundleV3, testLegalBundle\]/);
   assert.doesNotMatch(legal, /production: \[[^\]]*cartProductionLegalDraft/);
+});
+
+test("Fehlgeschlagene Warenkorbaenderung sperrt den alten Checkoutkontext bis zum Neuladen", async () => {
+  const ui = await source("components/shop-cart.tsx");
+  assert.match(ui, /canCheckout: false, checkoutContextToken: undefined/);
+  assert.match(ui, /disabled=\{busy \|\| !cart\.canCheckout \|\| quantityLimitExceeded\}/);
+  const router = await source("test-api-private/program/cart-public.php");
+  assert.match(router, /cart-csrf-v3\|/);
+  assert.match(router, /carmaja_cart_verify_csrf\(carmaja_shop_require_header/);
 });

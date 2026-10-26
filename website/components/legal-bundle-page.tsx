@@ -4,6 +4,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { getActiveLegalBundle } from "@/content/legal-bundles";
 import type { LegalBundle, LegalSection } from "@/lib/legal-bundles.mjs";
+import { CelestialOrnament } from "@/components/celestial-ornament";
 
 type LegalSectionKey = keyof LegalBundle["texts"];
 
@@ -61,6 +62,7 @@ export function LegalBundlePage({ sectionKey, title, children }: LegalBundlePage
       <SiteHeader />
       <main className="legal-main" id="main-content">
         <div className="content-shell legal-content">
+          <CelestialOrnament />
           <h1>{title}</h1>
           {notice ? (
             <aside className={notice.className} role="note">
@@ -101,6 +103,7 @@ export function LegalBundleArchive({ bundle }: { bundle: LegalBundle }) {
       <SiteHeader />
       <main className="legal-main" id="main-content">
         <div className="content-shell legal-content">
+          <CelestialOrnament />
           <h1>Archivierte Rechtstextfassung</h1>
           <p>
             Diese unveränderliche Fassung ist dem Legal-Bundle {bundle.id}

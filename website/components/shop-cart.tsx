@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Cart, money, readCart, replaceCart, shopApiOrigin, shopContext } from "@/lib/cart-client";
+import { Cart, CART_MAX_QUANTITY, CART_QUANTITY_MESSAGE, cartQuantity, money, readCart, replaceCart, shopApiOrigin, shopContext } from "@/lib/cart-client";
 
 export function ShopCartLink() {
   const [count, setCount] = useState<number | null>(null);
@@ -29,7 +29,7 @@ export function ShopCart() {
       await shopContext();
       const next = await readCart();
       setCart(next); checkoutKey.current = null;
-      setMessage(next.items.length ? "Bitte aktuelle Preise und Mengen prüfen. Erst der Checkout reserviert." : "Ihr Warenkorb ist leer.");
+      setMessage(cartQuantity(next.items) > CART_MAX_QUANTITY || next.quantityLimitExceeded ? CART_QUANTITY_MESSAGE : next.items.length ? "Bitte aktuelle Preise und Mengen prüfen. Erst der Checkout reserviert." : "Ihr Warenkorb ist leer.");
     } catch { setCart(null); setMessage("Warenkorb ist momentan nicht erreichbar. Es wurde nichts reserviert."); }
   }, []);
   useEffect(() => {
@@ -38,16 +38,25 @@ export function ShopCart() {
   }, [refresh]);
   async function change(id: string, quantity: number) {
     if (!cart || !Number.isInteger(quantity) || quantity < 0) return;
+    await save(cart.items.filter((item) => item.productId !== id || quantity > 0)
+      .map((item) => ({productId: item.productId, quantity: item.productId === id ? quantity : item.quantity})));
+  }
+  async function save(items: Array<{productId: string; quantity: number}>) {
+    if (!cart) return;
     setBusy(true);
     try {
-      await replaceCart(cart, cart.items.filter((item) => item.productId !== id || quantity > 0)
-        .map((item) => ({productId: item.productId, quantity: item.productId === id ? quantity : item.quantity})));
+      await replaceCart(cart, items);
       await refresh();
-    } catch (error) { setMessage(error instanceof Error ? error.message : "Bitte neu laden."); }
+    } catch (error) {
+      // Never start a checkout from the stale quote after a failed mutation.
+      setCart((previous) => previous ? {...previous, canCheckout: false, checkoutContextToken: undefined} : null);
+      setMessage(error instanceof Error ? error.message : "Bitte neu laden.");
+    }
     finally { setBusy(false); }
   }
+  const quantityLimitExceeded = !!cart && (cartQuantity(cart.items) > CART_MAX_QUANTITY || !!cart.quantityLimitExceeded);
   async function checkout() {
-    if (!cart?.canCheckout || !cart.checkoutContextToken) return;
+    if (!cart?.canCheckout || !cart.checkoutContextToken || quantityLimitExceeded) return;
     setBusy(true);
     try {
       const context = await shopContext();
@@ -63,20 +72,22 @@ export function ShopCart() {
     } catch (error) { setMessage(error instanceof Error ? error.message : "Zahlung wird geprüft. Nicht erneut bestellen."); }
     finally { setBusy(false); }
   }
-  return <section aria-live="polite"><p>{message}</p>
+  return <section className="shop-cart" aria-live="polite"><p>{message}</p>
+    <p>Maximal {CART_MAX_QUANTITY} Armbänder insgesamt je Bestellung. Versand einmalig 2,70 €.</p>
     <button type="button" onClick={() => void refresh()} disabled={busy}>Neu laden</button>
     {cart?.items.map((item) => <article key={item.productId}>
       <h2>{item.name ?? "Nicht mehr verfügbares Produkt"}</h2>
       <p>{item.priceMinor !== undefined ? money(item.priceMinor) : "Preis nicht verfügbar"}</p>
       {item.priceChanged && typeof item.previousPriceMinor === "number" ? <p role="alert">Preis geändert: vorher {money(item.previousPriceMinor)}, jetzt {money(item.priceMinor!)}. Bitte vor der Zahlung prüfen.</p> : null}
-      <label>Menge <input aria-label={`Menge ${item.name ?? item.productId}`} type="number" min={1} step={1} value={item.quantity} disabled={busy}
+      <label>Menge <input aria-label={`Menge ${item.name ?? item.productId}`} type="number" min={1} max={Math.max(1, CART_MAX_QUANTITY - cartQuantity(cart.items) + item.quantity)} step={1} value={item.quantity} disabled={busy}
         onChange={(event) => void change(item.productId, Number(event.target.value))} /></label>
       {!item.buyable ? <p role="alert">Gewünschte Menge momentan nicht verfügbar. Bitte bewusst ändern oder entfernen.</p> : null}
       <button type="button" disabled={busy} onClick={() => void change(item.productId, 0)}>Entfernen</button>
     </article>)}
     {cart && cart.items.length > 0 ? <><p>Versand einmalig: {money(cart.shippingMinor)}</p>
       <p>Gesamt: {cart.totalMinor === null ? "nicht verfügbar" : money(cart.totalMinor)}</p>
-      <button className="shop-buy-button" type="button" disabled={busy || !cart.canCheckout} onClick={() => void checkout()}>
+      <button type="button" disabled={busy} onClick={() => void save([])}>Warenkorb leeren</button>
+      <button className="shop-buy-button" type="button" disabled={busy || !cart.canCheckout || quantityLimitExceeded} onClick={() => void checkout()}>
         {busy ? "Wird verarbeitet …" : "Weiter zur Zahlung"}</button></> : null}
     <p><Link href="/armbaender/">Weiter einkaufen</Link></p>
   </section>;

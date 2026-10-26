@@ -3,6 +3,7 @@ import { CheckoutQueryCleanup } from "@/components/checkout-query-cleanup";
 import { CartPaymentStatus } from "@/components/cart-payment-status";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { CelestialOrnament } from "@/components/celestial-ornament";
 
 export default function ShopSuccessPage() {
   return (
@@ -12,6 +13,7 @@ export default function ShopSuccessPage() {
       <main id="main-content" className="checkout-confirmation-main">
         <div className="content-shell checkout-confirmation-shell">
           <section className="checkout-confirmation-card">
+            <CelestialOrnament />
             <CheckoutQueryCleanup />
             <CartPaymentStatus />
             <header className="checkout-confirmation-heading">

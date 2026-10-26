@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { shopApiOrigin } from "@/lib/cart-client";
+import { cartPaymentMessage } from "@/lib/cart-payment-message.mjs";
 
 export function CartPaymentStatus() {
   const [message, setMessage] = useState("Zahlungsstatus wird geprüft. Eine Rückkehrseite bestätigt noch keine Bestellung.");
@@ -14,12 +15,7 @@ export function CartPaymentStatus() {
         const data = await response.json();
         if (!response.ok) throw new Error();
         if (!active) return;
-        const status = data.checkout?.payment_status;
-        setMessage(status === "processing" ? "Ihre SEPA-Zahlung wird bearbeitet. Erst nach Zahlungserfolg bestätigen und versenden wir Ihre Bestellung."
-          : status === "succeeded" ? `Zahlung bestätigt. Bestellnummer: ${data.checkout.order_number ?? "wird geprüft"}.`
-          : status === "failed" ? "Zahlung fehlgeschlagen. Es wurde keine Bestellung bestätigt."
-          : status === "manual_review" ? "Ihre Zahlung wird geprüft. Bitte nicht erneut bestellen."
-          : "Zahlung noch nicht bestätigt. Bitte warten Sie auf die Bestellbestätigung.");
+        setMessage(cartPaymentMessage(data.checkout));
       } catch { if (active) setMessage("Zahlungsstatus momentan nicht abrufbar. Bitte nicht erneut bestellen; die Bearbeitung läuft unabhängig weiter."); }
     };
     const start = window.setTimeout(() => void poll(), 0);

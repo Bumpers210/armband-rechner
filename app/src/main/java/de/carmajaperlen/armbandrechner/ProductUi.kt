@@ -1025,11 +1025,14 @@ internal fun ProductPublicationPreviewScreen(
             onDismissRequest = acknowledge,
             modifier = Modifier.testTag("publication-feedback"),
             title = {
-                Text(if (confirmation != null) "Veröffentlichung bestätigt" else "Veröffentlichung nicht bestätigt")
+                Text(
+                    if (confirmation != null) "Veröffentlichung bestätigt" else "Veröffentlichung nicht bestätigt",
+                    modifier = Modifier.testTag("publication-feedback-title"),
+                )
             },
-            text = {
-                Text(confirmation ?: "$error\n\nDer Ausgang ist nicht bestätigt. Bitte prüfe die Verbindung oder den Serverstand, bevor du es erneut versuchst.")
-            },
+            text = if (confirmation == null) {
+                { Text("$error\n\nDer Ausgang ist nicht bestätigt. Bitte prüfe die Verbindung oder den Serverstand, bevor du es erneut versuchst.") }
+            } else null,
             confirmButton = {
                 TextButton(onClick = acknowledge, modifier = Modifier.testTag("publication-feedback-confirm")) {
                     Text(if (confirmation != null) "Fertig" else "Verstanden")

@@ -376,14 +376,14 @@ const cartTestTexts: LegalBundleTexts = {
   ] }],
 };
 
-export const cartTestLegalBundle: LegalBundle = createLegalBundle({
+export const cartTestLegalBundleV3: LegalBundle = createLegalBundle({
   id: "cmj-test-legal-2026-10-06-v3", environment: "test", version: "v3", status: "test_only",
   archiveUrl: "/legal-archive/test/cmj-test-legal-2026-10-06-v3/", createdAt: "2026-10-06T00:00:00.000Z", texts: cartTestTexts,
 });
 
 // Historical approved bundles remain byte-for-byte unchanged. This new draft is
 // intentionally not selected by a production build or marked approved.
-export const cartProductionLegalDraft: LegalBundle = createLegalBundle({
+export const cartProductionLegalDraftV6: LegalBundle = createLegalBundle({
   id: "cmj-production-legal-2026-10-06-v6", environment: "production", version: "v6", status: "awaiting_external_approval",
   archiveUrl: "/legal-archive/production/cmj-production-legal-2026-10-06-v6/", createdAt: "2026-10-06T00:00:00.000Z",
   texts: {
@@ -408,8 +408,47 @@ export const cartProductionLegalDraft: LegalBundle = createLegalBundle({
   },
 });
 
+// A new quantity limit gets a new immutable version; previous snapshots keep
+// their original content and hash. Neither draft grants production approval.
+const cartQuantityLimitNotice =
+  "Pro Bestellung sind insgesamt höchstens 10 Armbänder möglich, über alle Positionen und Mengen zusammen. Größere Warenkörbe müssen vor der Zahlung angepasst werden; sie werden nicht automatisch gekürzt oder aufgeteilt.";
+
+export const cartTestLegalBundle: LegalBundle = createLegalBundle({
+  id: "cmj-test-legal-2026-10-25-v4", environment: "test", version: "v4", status: "test_only",
+  archiveUrl: "/legal-archive/test/cmj-test-legal-2026-10-25-v4/", createdAt: "2026-10-25T00:00:00.000Z",
+  texts: {
+    ...cartTestTexts,
+    terms: cartTestTexts.terms.map((section) => ({
+      ...section, paragraphs: [...section.paragraphs, cartQuantityLimitNotice],
+    })),
+    shipping: cartTestTexts.shipping.map((section) => ({
+      ...section, paragraphs: [
+        "Versand innerhalb Deutschlands als eine gemeinsame Sendung per Maxibrief; einmalig 2,70 € je Bestellung mit insgesamt höchstens 10 Armbändern. Keine Teillieferungen oder zusätzlichen Versandarten.",
+        ...section.paragraphs.slice(1),
+      ],
+    })),
+  },
+});
+
+export const cartProductionLegalDraft: LegalBundle = createLegalBundle({
+  id: "cmj-production-legal-2026-10-25-v7", environment: "production", version: "v7", status: "awaiting_external_approval",
+  archiveUrl: "/legal-archive/production/cmj-production-legal-2026-10-25-v7/", createdAt: "2026-10-25T00:00:00.000Z",
+  texts: {
+    ...cartProductionLegalDraftV6.texts,
+    terms: cartProductionLegalDraftV6.texts.terms.map((section) => section.heading === "1. Geltungsbereich"
+      ? { ...section, paragraphs: [...section.paragraphs, cartQuantityLimitNotice] }
+      : section),
+    shipping: cartProductionLegalDraftV6.texts.shipping.map((section) => section.heading === "Versand"
+      ? { ...section, paragraphs: [
+        ...section.paragraphs.slice(0, 2),
+        "Versand einmalig 2,70 € je Bestellung mit insgesamt höchstens 10 Armbändern, als gemeinsame Sendung ohne Teillieferungen.",
+      ] }
+      : section),
+  },
+});
+
 export const legalBundlesByTarget = {
-  test: [cartTestLegalBundle, testLegalBundle],
+  test: [cartTestLegalBundle, cartTestLegalBundleV3, testLegalBundle],
   production: [productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle],
 } as const;
 

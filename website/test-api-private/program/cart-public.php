@@ -14,6 +14,28 @@ function carmaja_cart_rate_owner(mixed $raw, string $ip): string
         ? carmaja_shop_token_hash($raw) : hash('sha256', 'anonymous|' . $ip);
 }
 
+/** Cart tabs keep independently expiring tokens; a context refresh revokes none.
+ * The MAC key is the 256-bit HttpOnly session cookie, never returned to JS.
+ * Only the existing session hash is persisted; legacy routes are unchanged.
+ */
+function carmaja_cart_csrf_token(string $sessionRaw, int $now = 0): string
+{
+    carmaja_shop_token_hash($sessionRaw);
+    $expires = ($now ?: time()) + CARMAJA_SHOP_CSRF_TTL_SECONDS;
+    return $expires . '.' . hash_hmac('sha256', 'cart-csrf-v3|' . $expires, $sessionRaw);
+}
+
+function carmaja_cart_verify_csrf(string $token, string $sessionRaw, int $now = 0): void
+{
+    carmaja_shop_token_hash($sessionRaw);
+    $now = $now ?: time();
+    if (preg_match('/^([0-9]{10})\.([a-f0-9]{64})$/D', $token, $parts) !== 1
+        || (int) $parts[1] <= $now || (int) $parts[1] > $now + CARMAJA_SHOP_CSRF_TTL_SECONDS
+        || !hash_equals(hash_hmac('sha256', 'cart-csrf-v3|' . $parts[1], $sessionRaw), $parts[2])) {
+        throw new CarmajaCommerceException('context_invalid', 'Shop-Kontext ist ungültig oder abgelaufen.', 403);
+    }
+}
+
 function carmaja_cart_json_body(): array
 {
     if (strtolower(trim(explode(';', (string) ($_SERVER['CONTENT_TYPE'] ?? ''))[0])) !== 'application/json') {
@@ -94,6 +116,7 @@ function carmaja_cart_route(string $method, array $segments): never
     if ($method === 'GET' && $segments === ['context']) {
         if (!is_string($raw) || strlen($raw) < 32 || strlen($raw) > 128) { $raw = carmaja_shop_token(); }
         $context = carmaja_shop_context($commerce, $raw);
+        $context['csrfToken'] = carmaja_cart_csrf_token($raw);
         unset($context['sessionHash']);
         carmaja_shop_cookie('__Host-cmj_shop_session', $raw, time() + CARMAJA_SHOP_SESSION_TTL_SECONDS);
         carmaja_bootstrap_send(200, ['ok' => true, 'context' => $context]);
@@ -108,11 +131,8 @@ function carmaja_cart_route(string $method, array $segments): never
         throw new CarmajaCommerceException('shop_session_expired', 'Shop-Sitzung ist abgelaufen.', 403);
     }
     if (in_array($method, ['POST','PUT'], true)) {
-        if (strtotime($session['csrf_expires_at'] . ' UTC') < time()) {
-            throw new CarmajaCommerceException('shop_session_expired', 'Bitte Shop-Kontext neu laden.', 403);
-        }
         if (!isset($_SERVER['HTTP_ORIGIN'])) { throw new CarmajaCommerceException('cors_origin_required', 'Origin erforderlich.', 403); }
-        carmaja_shop_verify_raw_context(carmaja_shop_require_header('X-CSRF-Token'), $session['csrf_hash']);
+        carmaja_cart_verify_csrf(carmaja_shop_require_header('X-CSRF-Token'), $raw);
     }
     if ($segments === ['cart']) {
         if ($method === 'PUT') {

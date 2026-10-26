@@ -4,7 +4,7 @@ import { money, shopApiOrigin } from "@/lib/cart-client";
 type Inventory = {productId: string; name: string; onHand: number; reserved: number; available: number; inventoryVersion: number; quantityConfirmed: boolean};
 type Position = {positionNo: number; productId: string; name: string; quantity: number; priceMinor: number};
 
-export function InventoryAdmin({csrf}: {csrf: string}) {
+export function InventoryAdmin({csrf, refreshVersion = 0}: {csrf: string; refreshVersion?: number}) {
   const [rows, setRows] = useState<Inventory[]>([]);
   const [id, setId] = useState("");
   const [target, setTarget] = useState("");
@@ -17,7 +17,7 @@ export function InventoryAdmin({csrf}: {csrf: string}) {
     if (!response.ok) throw new Error("Mengenbestand ist noch nicht freigegeben oder nicht erreichbar.");
     setRows(data.inventory);
   }
-  useEffect(() => { const timer = window.setTimeout(() => { void load().catch((error: Error) => setMessage(error.message)); }, 0); return () => window.clearTimeout(timer); }, []);
+  useEffect(() => { const timer = window.setTimeout(() => { void load().catch(() => { setRows([]); setMessage("Bestand nicht erreichbar. Bitte neu laden; keine ungeprüfte Änderung vornehmen."); }); }, 0); return () => window.clearTimeout(timer); }, [refreshVersion]);
   const selected = rows.find((row) => row.productId === id);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -51,7 +51,7 @@ export function InventoryAdmin({csrf}: {csrf: string}) {
   </section>;
 }
 
-export function OrderPositionsAdmin({orderId, csrf}: {orderId: string; csrf: string}) {
+export function OrderPositionsAdmin({orderId, csrf, onInventoryChanged}: {orderId: string; csrf: string; onInventoryChanged?: () => void}) {
   const [items, setItems] = useState<Position[]>([]);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -87,7 +87,10 @@ export function OrderPositionsAdmin({orderId, csrf}: {orderId: string; csrf: str
     } catch (error) {
       if (submitted) setBlocked(true);
       setMessage(error instanceof Error ? error.message : "Ausgang unklar. Zuerst Bestandsaudit prüfen; nicht erneut wiedereinlagern.");
-    } finally { setBusy(false); }
+    } finally {
+      if (submitted) onInventoryChanged?.();
+      setBusy(false);
+    }
   }
   return <details onToggle={(event) => { if (event.currentTarget.open) void load(); }}><summary>Positionen und geprüfte Rückgaben</summary>
     {totals ? <p>Bestellsumme: {money(totals.total)} · Erstattet: {money(totals.refunded)}. Erstattungen ausschließlich über Stripe.</p> : null}

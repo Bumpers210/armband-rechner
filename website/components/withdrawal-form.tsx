@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { shopContext } from "@/lib/cart-client";
+import { withdrawalFailureMessage } from "@/lib/withdrawal-message.mjs";
 
 const apiOrigin =
   process.env.CARMAJA_SHOP_API_ORIGIN ??
@@ -46,7 +47,10 @@ export function WithdrawalForm() {
         }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message ?? "preview");
+      if (!response.ok) {
+        setMessage(withdrawalFailureMessage("preview", payload.error?.code));
+        return;
+      }
       setPreview(payload.withdrawal as Preview);
       setSelected(Object.fromEntries((payload.withdrawal.items ?? []).map((item: {positionNo: number; quantity: number}) => [item.positionNo, item.quantity])));
       setMessage(
@@ -54,8 +58,8 @@ export function WithdrawalForm() {
           ? "Bitte prüfen Sie die Angaben und bestätigen Sie den Widerruf ausdrücklich."
           : "Die Angaben konnten nicht eindeutig zugeordnet werden. Der Widerruf wird nach Ihrer Bestätigung manuell geprüft.",
       );
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Widerruf konnte nicht vorbereitet werden.");
+    } catch {
+      setMessage(withdrawalFailureMessage("preview"));
     } finally {
       setBusy(false);
     }
@@ -79,11 +83,18 @@ export function WithdrawalForm() {
         }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message ?? "confirm");
+      if (!response.ok) {
+        setMessage(withdrawalFailureMessage("confirm", payload.error?.code));
+        return;
+      }
+      if (payload.withdrawal?.state !== "submitted" || !payload.withdrawal.receivedAt) {
+        setMessage(withdrawalFailureMessage("confirm"));
+        return;
+      }
       setMessage(`Widerruf eingegangen am ${payload.withdrawal.receivedAt}. Eine elektronische Eingangsbestätigung wird versendet.`);
       setPreview(null);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Widerruf konnte nicht bestätigt werden.");
+    } catch {
+      setMessage(withdrawalFailureMessage("confirm"));
     } finally {
       setBusy(false);
     }
@@ -101,7 +112,7 @@ export function WithdrawalForm() {
         </form>
       ) : (
         <div className="withdrawal-confirmation">
-          <p>{message}</p>
+          <p role="status">{message}</p>
           {(preview.items ?? []).map((item) => <label key={item.positionNo}>
             {item.name} (bestellt: {item.quantity}; 0 = nicht widerrufen)
             <input type="number" min={0} step={1} value={selected[item.positionNo] ?? 0}

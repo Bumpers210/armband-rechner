@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { money, readCart, replaceCart, shopApiOrigin, shopContext } from "@/lib/cart-client";
+import { CART_MAX_QUANTITY, money, readCart, replaceCart, shopApiOrigin, shopContext } from "@/lib/cart-client";
 
 export function ShopBuyNow({ productId }: { productId: string }) {
   const [product, setProduct] = useState<{priceMinor: number; available: boolean; availableQuantity: number} | null>(null);
@@ -36,11 +36,12 @@ export function ShopBuyNow({ productId }: { productId: string }) {
   }
   return <section className="shop-buy-now" aria-live="polite">
     {product ? <p className="shop-price">{money(product.priceMinor)}</p> : null}
-    <label>Menge <input type="number" min={1} step={1} max={product?.availableQuantity || 1} value={quantity}
+    <label>Menge <input type="number" min={1} step={1} max={Math.min(CART_MAX_QUANTITY, product?.availableQuantity || 1)} value={quantity}
       onChange={(event) => setQuantity(Number(event.target.value))} /></label>
     {message ? <p>{message}</p> : null}
-    <button className="shop-buy-button" type="button" disabled={busy || !product?.available || !Number.isInteger(quantity) || quantity < 1 || quantity > product.availableQuantity}
+    <button className="shop-buy-button" type="button" disabled={busy || !product?.available || !Number.isInteger(quantity) || quantity < 1 || quantity > CART_MAX_QUANTITY || quantity > product.availableQuantity}
       onClick={() => void add()}>{busy ? "Wird hinzugefügt …" : "In den Warenkorb"}</button>
+    <p>Maximal {CART_MAX_QUANTITY} Armbänder insgesamt je Bestellung.</p>
     <p><Link href="/warenkorb/">Warenkorb ansehen</Link></p>
   </section>;
 }

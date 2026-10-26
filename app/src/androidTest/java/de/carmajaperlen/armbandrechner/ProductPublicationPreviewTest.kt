@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -188,7 +189,9 @@ class ProductPublicationPreviewTest {
             busy.value = false
         }
         composeRule.onNodeWithTag("publication-feedback").assertIsDisplayed()
-        composeRule.onNodeWithText("Die Produktverwaltung hat die Veröffentlichung bestätigt.").assertIsDisplayed()
+        composeRule.onNodeWithTag("publication-feedback-title")
+            .assertIsDisplayed().assertTextEquals("Veröffentlichung bestätigt")
+        composeRule.onNodeWithText("Die Produktverwaltung hat die Veröffentlichung bestätigt.").assertDoesNotExist()
         composeRule.mainClock.advanceTimeBy(10_000)
         composeRule.onNodeWithTag("publication-feedback").assertIsDisplayed()
         assertEquals(0, backCalls.get())

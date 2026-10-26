@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { CelestialOrnament } from "@/components/celestial-ornament";
 import { ProductList } from "@/components/product-list";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -30,11 +31,12 @@ export default function ProductsPage() {
       <main id="main-content" className="products-main">
         <section className="products-intro">
           <div className="content-shell products-intro-inner">
-            <p className="v2-eyebrow">Aktuelle Auswahl</p>
+            <CelestialOrnament />
+            <p className="v2-eyebrow">Von der Natur inspiriert. Für dich gefertigt.</p>
             <h1>Handgefertigte Armbänder</h1>
             <p>
-              Eine Auswahl aktuell verfügbarer Stücke mit Bildern, Materialien
-              und Größen.
+              Jeder Stein erzählt seine eigene Geschichte. Entdecke Farben,
+              die dich berühren, und ein Armband, das sich nach dir anfühlt.
             </p>
           </div>
         </section>

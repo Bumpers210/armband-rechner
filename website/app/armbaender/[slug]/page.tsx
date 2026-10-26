@@ -186,13 +186,6 @@ export default async function ProductDetailPage({
               <p className="product-status product-status--sold">Nicht verfügbar</p>
             ) : null}
             <ProductDescription product={product} />
-            {product.notices.length > 0 ? (
-              <section aria-label="Produkthinweise">
-                <h2>Hinweise zu Natursteinen</h2>
-                {product.notices.map((notice) => <p key={notice}>{notice}</p>)}
-              </section>
-            ) : null}
-
             <dl className="product-detail-facts">
               <div>
                 <dt>Materialien</dt>
@@ -215,6 +208,13 @@ export default async function ProductDetailPage({
                 <dd>{product.displayPearlSize}</dd>
               </div>
             </dl>
+
+            {product.notices.length > 0 ? (
+              <section className="product-notices" aria-label="Produkthinweise">
+                <h2>Hinweise zu Natursteinen</h2>
+                {product.notices.map((notice) => <p key={notice}>{notice}</p>)}
+              </section>
+            ) : null}
 
             <Link className="v2-text-link" href="/material-pflege/">
               Hinweise zu Material &amp; Pflege

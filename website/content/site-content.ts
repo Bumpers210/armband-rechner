@@ -139,10 +139,10 @@ export const siteContent: SiteContent = {
     { label: "Kontakt", href: "/kontakt/" },
   ],
   hero: {
-    eyebrow: "Handgefertigt · Naturstein · kleine Stückzahlen",
-    title: "Handgefertigte Perlenarmbänder aus echten Edelsteinen",
+    eyebrow: "Von Hand gefertigt",
+    title: "Edelsteinarmbänder mit Charakter.",
     description:
-      "Liebevoll gefertigte Armbänder aus echten Edelsteinen. Ein hochwertiges Stück Natur, das schmückt und Bedeutung hat.",
+      "Handgefertigte Edelsteinarmbänder voller Farbe und Charakter. Als persönlicher Begleiter, als Erinnerung an das, was dir wichtig ist – oder einfach, weil du es schön findest.",
     image: {
       src: "/images/bracelets/hero-dunkelrot-braun-holz.jpg",
       alt: "Dunkelrot-braunes Perlenarmband mit goldfarbenen Akzenten auf verwittertem Holz.",
@@ -153,7 +153,7 @@ export const siteContent: SiteContent = {
     },
   },
   introduction:
-    "Jedes Armband entsteht in sorgfältiger Handarbeit. Farben, Maserungen und Einschlüsse machen die verwendeten Natursteine zu individuellen Begleitern.",
+    "Manchmal ist es eine Farbe, manchmal eine besondere Maserung, die uns innehalten lässt. Aus dieser Liebe zu Natursteinen entstehen unsere Armbänder – von Hand gefertigt und mit Raum für deine ganz eigene Bedeutung.",
   instagram: {
     profileName: "carmaja_perlen",
     url: "https://www.instagram.com/carmaja_perlen/",
@@ -249,7 +249,7 @@ export const siteContent: SiteContent = {
       },
     ],
   },
-  statement: "Jeder Stein ist anders. Jedes Armband auch.",
+  statement: "Von der Erde geformt. Mit dem Herzen gewählt.",
   maker: {
     eyebrow: "Persönlich gefertigt",
     title: "Eine Schatztruhe voller Steine",

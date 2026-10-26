@@ -5,11 +5,29 @@ declare(strict_types=1);
 require_once __DIR__ . '/commerce-core.php';
 
 const CARMAJA_CART_MAX_POSITIONS = 100;
+const CARMAJA_CART_MAX_QUANTITY = 10;
 const CARMAJA_CART_MAX_AMOUNT = 99999999;
 const CARMAJA_PRODUCT_NOTICES = [
     'Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.',
     'Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.',
 ];
+
+/** Only for new carts/quotes/reservations, never historical payment evidence. */
+function carmaja_cart_quantity(array $items): int
+{
+    $quantity = 0;
+    foreach ($items as $item) {
+        if (!is_array($item) || !is_int($item['quantity'] ?? null) || $item['quantity'] < 1) {
+            throw new CarmajaCommerceException('cart_invalid', 'Positive ganze Mengen sind erforderlich.', 422);
+        }
+        // Check before addition: even manipulated large integers cannot overflow.
+        if ($item['quantity'] > CARMAJA_CART_MAX_QUANTITY - $quantity) {
+            throw new CarmajaCommerceException('cart_quantity_limit', 'Maximal 10 Armbänder je Bestellung. Bitte die Gesamtmenge reduzieren.', 422);
+        }
+        $quantity += $item['quantity'];
+    }
+    return $quantity;
+}
 
 function carmaja_cart_items(mixed $items): array
 {
@@ -37,6 +55,7 @@ function carmaja_cart_items(mixed $items): array
     foreach ($merged as $id => $quantity) {
         $result[] = ['productId' => $id, 'quantity' => $quantity];
     }
+    carmaja_cart_quantity($result);
     return $result;
 }
 

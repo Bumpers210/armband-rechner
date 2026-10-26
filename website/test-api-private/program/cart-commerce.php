@@ -135,6 +135,14 @@ final class CarmajaCartCommerce extends CarmajaCommercePdo
         $prices = ($cart['price_reference'] ?? null) === null ? [] : json_decode($cart['price_reference'], true, 32, JSON_THROW_ON_ERROR);
         $live = [];
         $canCheckout = $items !== [];
+        $quantityLimitExceeded = false;
+        try { carmaja_cart_quantity($items); }
+        catch (CarmajaCommerceException $error) {
+            if ($error->errorCode !== 'cart_quantity_limit') { throw $error; }
+            // Older oversized carts stay visible/removable, but get no new quote.
+            $quantityLimitExceeded = true;
+            $canCheckout = false;
+        }
         foreach ($items as $item) {
             try {
                 $product = $this->loadLiveProduct($item['productId']);
@@ -154,7 +162,8 @@ final class CarmajaCartCommerce extends CarmajaCommercePdo
         return ['cartVersion' => (int) ($cart['cart_version'] ?? 0), 'items' => $live,
             'shippingMinor' => $items === [] ? 0 : 270,
             'totalMinor' => $items === [] ? 0 : ($priced ? carmaja_cart_total($live) : null),
-            'currency' => 'eur', 'canCheckout' => $canCheckout];
+            'currency' => 'eur', 'canCheckout' => $canCheckout,
+            'quantityLimitExceeded' => $quantityLimitExceeded];
     }
 
     public function replaceCart(string $owner, array $body, string $key): array
@@ -195,6 +204,7 @@ final class CarmajaCartCommerce extends CarmajaCommercePdo
     public function quoteCart(string $owner, array $shipping, string $legalBundleId): array
     {
         $cart = $this->readCart($owner);
+        carmaja_cart_quantity($cart['items']);
         if (!$cart['canCheckout']) {
             throw new CarmajaCommerceException('cart_not_buyable', 'Bitte Mengen und Verfügbarkeit prüfen.', 409);
         }
@@ -243,6 +253,7 @@ final class CarmajaCartCommerce extends CarmajaCommercePdo
             if ($cart === null || (int) $cart['cart_version'] !== $body['expectedCartVersion']) {
                 throw new CarmajaCommerceException('cart_version_conflict', 'Warenkorb bitte neu laden.', 409);
             }
+            carmaja_cart_quantity(json_decode($cart['items'], true, 32, JSON_THROW_ON_ERROR));
             // Only one unresolved checkout per cart revision, even with another key.
             $open = $this->row("SELECT checkout_id FROM checkout_sagas WHERE session_hash = ? AND cart_version = ?
                 AND state IN ('creating','created','stripe_open','payment_pending','manual_review') FOR UPDATE", [$owner, $body['expectedCartVersion']]);
@@ -255,6 +266,8 @@ final class CarmajaCartCommerce extends CarmajaCommercePdo
                 throw new CarmajaCommerceException('context_invalid', 'Bitte aktuelle Preise erneut prüfen.', 409);
             }
             $snapshot = json_decode($quote['snapshot'], true, 32, JSON_THROW_ON_ERROR);
+            // Recheck quotes issued before the limit; no new stock locks/writes yet.
+            carmaja_cart_quantity($snapshot['items']);
             $legal = $this->loadApprovedLegalBundle($snapshot['legalBundleId']);
             if (!hash_equals($legal['bundle_hash'], $snapshot['legalBundleHash'])) {
                 throw new CarmajaCommerceException('legal_snapshot_stale', 'Rechtstextfassung bitte erneut prüfen.', 409);

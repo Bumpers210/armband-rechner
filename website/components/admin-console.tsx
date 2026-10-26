@@ -85,12 +85,18 @@ export function AdminConsole() {
   const [mails, setMails] = useState<Mail[]>([]);
   const [reviews, setReviews] = useState<ReviewCase[]>([]);
   const [message, setMessage] = useState('');
+  const [inventoryRevision, setInventoryRevision] = useState(0);
 
   async function loadDashboard(): Promise<boolean> {
     const endpoints = ['orders', 'payments', 'mails', 'reviews'] as const;
-    const responses = await Promise.all(
-      endpoints.map((endpoint) => fetch(`${apiOrigin}/admin/v1/${endpoint}`, { credentials: 'include' })),
-    );
+    let responses: Response[];
+    try {
+      responses = await Promise.all(
+        endpoints.map((endpoint) => fetch(`${apiOrigin}/admin/v1/${endpoint}`, { credentials: 'include', cache: 'no-store' })),
+      );
+    } catch {
+      return false;
+    }
     if (responses.some((response) => !response.ok)) {
       return false;
     }
@@ -107,21 +113,28 @@ export function AdminConsole() {
   async function login(event: FormEvent) {
     event.preventDefault();
     setMessage('Anmeldung wird geprüft …');
-    const response = await fetch(`${apiOrigin}/admin/v1/login`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    const result = await response.json().catch(() => null);
-    if (!response.ok || !result?.ok) {
-      setMessage('Anmeldung nicht möglich.');
-      return;
+    try {
+      const response = await fetch(`${apiOrigin}/admin/v1/login`, {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const result = await response.json().catch(() => null);
+      if (!response.ok || !result?.ok || typeof result.admin?.csrfToken !== 'string' || result.admin.csrfToken === '') {
+        setCsrf('');
+        setMessage('Anmeldung nicht möglich.');
+        return;
+      }
+      setCsrf(result.admin.csrfToken);
+      setPassword('');
+      const loaded = await loadDashboard();
+      setMessage(loaded ? 'Angemeldet.' : 'Angemeldet, aber die Übersicht konnte nicht vollständig geladen werden.');
+    } catch {
+      setCsrf('');
+      setMessage('Anmeldung derzeit nicht erreichbar. Bitte Verbindung prüfen und erneut versuchen.');
     }
-    setCsrf(result.admin.csrfToken);
-    setPassword('');
-    const loaded = await loadDashboard();
-    setMessage(loaded ? 'Angemeldet.' : 'Angemeldet, aber die Übersicht konnte nicht vollständig geladen werden.');
   }
 
   async function markShipped(orderId: string): Promise<void> {
@@ -183,7 +196,7 @@ export function AdminConsole() {
         <button type="submit">Anmelden</button>
       </form>
       <p role="status">{message}</p>
-      {csrf !== '' ? <InventoryAdmin csrf={csrf} /> : null}
+      {csrf !== '' ? <InventoryAdmin csrf={csrf} refreshVersion={inventoryRevision} /> : null}
       {csrf !== '' && (
         <section aria-label="Bestellungen">
           <h2>Bestellungen</h2>
@@ -193,7 +206,7 @@ export function AdminConsole() {
                 <li key={order.order_id}>
                   <strong>{order.order_number}</strong> – {order.payment_method_type ?? 'unbekannt'} / {order.payment_status} / {order.shipment_status ?? 'not_ready'}
                   {order.refund_status !== 'none' ? ` – Erstattung: ${order.refund_status}` : ''}
-                  <OrderPositionsAdmin orderId={order.order_id} csrf={csrf} />
+                  <OrderPositionsAdmin orderId={order.order_id} csrf={csrf} onInventoryChanged={() => setInventoryRevision((version) => version + 1)} />
                   {order.shipment_status === 'ready' && (
                     <button type="button" onClick={() => void markShipped(order.order_id)}>Als versandt markieren</button>
                   )}

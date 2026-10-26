@@ -201,6 +201,11 @@ function cart_sandbox_http(): never
         $suffix = substr((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH),
             strlen('/' . basename(cart_sandbox_root()) . '/index.php'));
         $method = $_SERVER['REQUEST_METHOD'] ?? '';
+        // Actual admin router, but only inside the explicitly owned site-E2E stage.
+        if (str_starts_with($suffix, '/admin/v1/') && is_file(cart_sandbox_root() . '/site-owner.json')) {
+            $_SERVER['REQUEST_URI'] = $suffix;
+            carmaja_bootstrap_route_request();
+        }
         if ($suffix === '/stripe/webhook' && $method === 'POST') {
             $raw = file_get_contents('php://input', false, null, 0, CARMAJA_STRIPE_WEBHOOK_MAX_BYTES + 1);
             $commerce = carmaja_bootstrap_commerce($config);
@@ -219,7 +224,7 @@ function cart_sandbox_http(): never
             carmaja_cart_route($method, explode('/', substr($suffix, strlen('/shop/v3/'))));
         }
         http_response_code(404);
-    } catch (CarmajaCommerceException|CarmajaStripeException $error) {
+    } catch (CarmajaCommerceException|CarmajaStripeException|CarmajaShopAdminException $error) {
         http_response_code($error->httpStatus);
         echo json_encode(['ok' => false, 'error' => ['code' => $error->errorCode]]);
     } catch (Throwable) { http_response_code(503); echo '{"ok":false,"error":{"code":"sandbox_unavailable"}}'; }
