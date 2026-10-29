@@ -3204,6 +3204,333 @@ Testprodukte, Bilder, Bestaende und private Konfigurationen unangetastet.
 `git diff --check` vor der lokalen Sicherung bestanden; im Commit keine
 Datei aus `website/hosting/**`, keine Zugangsdaten oder Laufzeitdatei.
 
+### 3.77 Artikelverwaltung am PC, ausschliesslich Test (28.10.2026)
+
+Auf ausdruecklichen Auftrag eine Test-Browserverwaltung unter
+`/artikelverwaltung/` ergaenzt; erreichbar auch ueber den Test-Admin-Link.
+Produktname, formatiertes Beschreibungsdokument, Materialien, Metall- und
+Pflegeangaben, Messwerte, Preis in EUR, Verkaufsfreigabe und bis zu fuenf
+Bilder lassen sich bearbeiten. JPEG-Aufbereitung bis 3200 Pixel/5 MiB,
+Hauptbild/Reihenfolge/Entfernen und unterbrochene Bilduebertragung werden
+getrennt behandelt. Bei ungeklaerter Bilduebertragung bleibt Publizieren
+gesperrt. Automatische Hinweise bleiben serververwaltet und nicht loeschbar.
+
+Der neue private Browseradapter ruft dieselben V5-Dienste wie Android auf:
+kein paralleler Produktstore, keine zweite Bestandsquelle. Vollstaendiges PUT
+mit `expectedProductVersion`, serverseitiger Version/Hash und Idempotenz;
+409 behaelt die Eingaben und sperrt weiteres Speichern/Publizieren bis zum
+bestaetigten Neuladen. Speichern, Publizieren, Archivieren/Wiederherstellen
+und Bestandspflege sind getrennte Aktionen. Anfangsbestand nutzt die
+bestehende einmalige Vormerkung, Anpassungen den bestehenden versionierten
+Commerce-Dienst; gepruefte Rueckgaben bleiben in der Bestellverwaltung.
+
+Authentifizierung mit bestehenden App-Testbenutzern, jedoch eigenstaendiger
+30-Minuten-Browsersitzung. Hostgebundenes Secure/HttpOnly/SameSite=Strict-
+Cookie ausschliesslich unter `/product-browser/`, CSRF, exakte Test-Origin-
+Pruefung, bestehende Anmeldesperre und 120 Anfragen/Minute je Sitzung.
+Passwort-/Benutzerwiderruf beendet Sitzungen. Keine Geraetetokens im Browser,
+kein Passwort in Browser-Speichern, keine Zugangsaenderung. Testgates und
+bestehendes V5-Testfenster einschliesslich Namespace/Produktlimit bleiben
+wirksam. Alte geschuetzte Master-Testprodukte werden nicht migriert.
+
+Neue Dateien: `components/product-manager.tsx`, `lib/product-browser-client.ts`,
+`app/artikelverwaltung/page.tsx`, zugehoeriges CSS,
+`test-api-private/program/product-browser.php`, `scripts/product-browser-test.php`
+und `tests/node/product-browser.test.mjs` sowie
+`tests/php/product-browser-test.php`. Der bestehende Admin erhaelt nur einen
+Test-Link; Produktionsseite der Artikelverwaltung bleibt nicht erreichbar.
+
+Nachweise:
+
+- PHP 8.4.23: Lint aller drei neuen PHP-Dateien; 59 bestehende API-Tests und
+  37 neue Browser-/Shared-Data-Pruefungen bestanden. Kuenstlicher Roundtrip
+  Browser -> App-Dienst -> Browser einschliesslich Konflikten, Bildern und
+  Lifecycle; keine lokalen Testfixtures zurueckgelassen. Bootstrap (13),
+  Warenkorb- und V5-Guardreihen ebenfalls bestanden.
+- npm ci, Lint, TypeScript, 233 Node-Tests einschliesslich 14 neuer
+  Browservertrag-/ausfuehrender Editorpruefungen, bestehende Shell-Mockreihen
+  und Testbuild/Export bestanden. Audit ohne Befund. Optionaler lokaler
+  Tracking-PHP-Aufruf mangels `php` im PATH uebersprungen; Produktionshosting
+  nicht veraendert oder global gelintet. Keine Android-Aenderung.
+- Test-HTTP: ohne Login 401, fremder Origin 403, DELETE 405; gueltiger
+  PUT-Preflight 204 mit Credentials, expliziten CSRF-/Idempotenzheadern und
+  `no-store`. Anmeldeseite im Browser sichtbar, keine JavaScript-Fehler.
+- Nur Verwaltungs-/Adminseiten, neue statische Assets und zwei private
+  Programme plus gekapselter oeffentlicher Testadapter bereitgestellt:
+  22 geaenderte/neue Dateien, private hashgebundene Ruecksicherung und
+  dateiweise atomare Aktivierung. Die bestehenden Rootrouter und V5-App-
+  Programme bleiben unveraendert. Kein Produkt- oder Bildexport ersetzt.
+- Vorher-/Nachhervergleich bestehender Produktdateien, Bilder, Konfigurationen,
+  App-Zugangs-/Geraetedateien sowie Commerce-Produkt-/Inventar-/Auditzeilen
+  identisch. Keine Checkout-, Zahlungs-, Mail- oder Bestandsmutation.
+
+Offen: angemeldeter Live-Browser-/App-Praxisnachweis. Betreiberin kennt ihre
+App-Testanmeldung nicht mehr; kein Passwort erraten, ausgelesen oder
+zurueckgesetzt. Vor einem Reset ist die gemeinsame Auswirkung auf die
+App-Anmeldung ausdruecklich zu klaeren. Lokale Nachweise sind keine Behauptung
+eines bestandenen authentifizierten Live-E2E-Tests. Publizieren erzeugt wie
+bisher die Testprojektion; ein statischer Testwebsite-Neubuild wird dadurch
+nicht automatisch gestartet.
+
+Installationspakete und eigene temporaere Hilfsdateien sind entfernt;
+private Ruecksicherung/Installationsjournal und die angeforderte neue
+Verwaltung bleiben fuer Betrieb und Rollback erhalten. Kein Commit, Push,
+main-Merge oder Produktionszugriff. `CARMAJA_TEST_DEPLOY_ENABLED=false`.
+Urteil: implementiert und testseitig bereitgestellt, Browser-Endabnahme offen.
+
+### 3.78 Perlenauswahl und Kalkulation am PC (29.10.2026)
+
+Auf Rueckmeldung der Betreiberin die fehlenden App-Kalkulationsfunktionen in
+der Test-Artikelverwaltung ergaenzt, ohne Android-/Produktionsaenderungen:
+
+- Authentifizierter read-only-Endpunkt `GET /product-browser/.../price-list`
+  (technisch `index.php?route=/price-list`) liest dieselbe feste
+  Google-Preisliste wie `GvizPriceListSource` in Android. Keine frei waehlbare
+  URL, keine Zugangsdaten, keine Speicherung einer zweiten Preisliste.
+  TLS-Zertifikatspruefung, keine Redirects, 20-Sekunden-/1-MB-Grenze,
+  strikter Spalten-/Aktiv-/Duplikatvertrag; keine eval-Ausfuehrung.
+- Perlen/Spacer suchen und Mengen 0..9999 waehlen. Arbeitsminuten,
+  Stundenlohn, sonstige Kosten und Aufschlag entsprechen der App.
+  Dezimalarithmetik ohne Gleitkomma-Geldrechnung; Zeitdivision und Aufschlag
+  mit zehn Nachkommastellen HALF_UP, Verkaufspreis mit zwei Stellen HALF_UP,
+  Empfehlung auf 50 Cent CEILING, Geldanzeige HALF_EVEN wie NumberFormat.
+- Explizite Uebernahme in neuen/geoeffneten Artikel: nur Materialien,
+  Spacer/Edelstahl-Zuordnung und Centpreis. Bestehende andere Felder bleiben
+  erhalten; Ueberschreiben im Editor bestaetigen. Erst gesondertes Speichern
+  ruft V5 auf. Keine automatische Veroeffentlichung oder Bestandsmutation.
+- Interne Kalkulationseingaben der App liegen bisher nur auf dem Handy und
+  gehoeren nicht zum V5-Payload. Der Browser behauptet keine Synchronisierung
+  dieser Daten; seine Vorschau bleibt im offenen Fenster. Seitenwechsel
+  warnen bei geaenderter Rechnung. Neue Rechnung behaelt Stundenlohn/Aufschlag.
+  In oeffentlichen Produkten erscheinen keine internen Kosten.
+
+Nachweise: PHP 8.4.23 Lint aller fuenf betroffenen PHP-Dateien bestanden;
+59 Product-API-Tests, 37 Browser-Sicherheits-/Shared-Data-Pruefungen und
+15 Katalogpruefungen bestanden. 242 Node-Tests inkl. neun neuer
+Dezimal-/Mapping-/UI-/Katalogvertragsfaelle bestanden; Shell-Mockintegration
+bestanden (separater lokaler PHP-Klickstatistiktest mangels `php` im PATH
+uebersprungen, kein Lint/Kopieren des Produktionshostings). Nach `npm ci`
+Lint/TypeScript sauber wiederholt, Audit 0 Befunde, Testexport mit 25 Seiten
+bestanden. Erstes parallel zur Paketinstallation gestartetes Lint wurde
+dadurch unterbrochen; nach Installation erfolgreich wiederholt, kein Codefehler.
+
+Testbereitstellung: ausschliesslich drei private Browser-/Katalogprogramme,
+`artikelverwaltung/` und notwendige neue hashbenannte Websiteassets; 13
+geaenderte/neue Dateien. Keine Produktprojektion oder Produktbilder deployt.
+Private Ruecksicherung/Journal unter
+`/home/www/carmaja-private-test/product-calculator-release-20261029-5c91f0`.
+Aktive Quelldaten und beide Testkonfigurationen/Providerkonfigurationen,
+V5-Benutzer/Geraete, Bestands-/Audit-/Initialisierungszeilen und alle anderen
+Websiteinhalte vor/nachher unveraendert verglichen; Test-DB nur lesend ueber
+TLS. Serverseitiger echter HTTPS-Katalogabruf: 18 aktive Eintraege.
+Unauthentifizierter HTTP-Katalogabruf: 401, `no-store`, keine Preiswerte.
+Neuer Browser-Tab zeigt die Anmeldeseite; angemeldete Sichtpruefung noch offen.
+
+Der separat freigegebene App-Testpasswortreset ist technisch bestaetigt:
+Passwort geaendert, Benutzerdatenvertrag/Bestandsdaten erhalten, Datei 0600;
+keine Geheimwerte im Bericht. Serverseitiger Resethelper/Receipt und lokale
+Resetprogramme vollstaendig entfernt. Die aktuelle Deployment-Vergleichsbasis
+ist nach diesem Reset aufgenommen. Bestehende Geraetetokens nicht veraendert.
+Neues Paket und temporaerer Installer entfernt; private Rollbacknachweise
+bleiben erhalten. GitHub-Schalter lesend `CARMAJA_TEST_DEPLOY_ENABLED=false`.
+Kein Commit, Push, Merge, Workflowlauf oder Produktionszugriff.
+Urteil: Erweiterung lokal bestanden und testseitig bereit; angemeldete
+Browser-Endabnahme ausstehend, keine neue Warenkorb-Gesamtabnahme.
+
+### 3.79 Angemeldeter PC-Kalkulationsnachweis (29.10.2026)
+
+Nach ausdruecklicher Anmeldebestaetigung der Betreiberin im echten
+Chrome-Testtab geprueft; keine Anmeldung automatisiert oder ausgelesen:
+
+- Authentifizierter Abruf der 18 aktiven Perlen-/Spacerpreise sowie Suche
+  nach Rosenquarz erfolgreich. Aktualisierung erhaelt die bereits
+  eingegebenen Mengen und Kosten.
+- Kuenstliche Rechnung: 20 Rosenquarz und 2 Edelstahlspacer ergeben
+  3,26 EUR Material, 30 Minuten bei 20 EUR/Stunde ergeben 10,00 EUR Arbeit.
+  Mit 1,50 EUR sonstigen Kosten: 14,76 EUR Gesamtkosten, 50 Prozent
+  Aufschlag = 7,38 EUR, rechnerisch 22,14 EUR, Empfehlung 22,50 EUR.
+- Leere Rechnung wird nicht uebernommen. Menge -1, 1.5 und 10000 sowie
+  negative Arbeitszeit abgewiesen; letzte gueltige Werte bleiben erhalten.
+- Als neuen Artikel uebernommen: Materialien Rosenquarz, Metallelemente
+  Edelstahlspacer, Preis 22,50 EUR, Version 0/ungespeichert, Verkaufsfreigabe
+  aus, Veroeffentlichen deaktiviert. Kein Speichern, Upload, Publish oder
+  Bestandsbefehl ausgeloest.
+- Bestehende Artikel ausschliesslich gelesen: HANDY-TEST Version 7, 28 EUR,
+  Masse 18 cm/8 mm, Bestand 3/0/3 und beide Bilder geladen. HANDY-TEST
+  BILD3200 Version 7, 20 EUR, Verkaufsfreigabe aus, vorhandener Bestand
+  5/0/5 unveraendert; beide Originale mit 3200x1800 bzw. 1800x3200 geladen.
+  Diese Bestandswerte sind Beobachtungen, keine Initialisierung/Korrektur.
+
+Abgrenzung: Der native Bestaetigungsdialog wurde geoeffnet und geschlossen;
+danach hing die Browserautomatik dieses Tabs. Nachverfolgung des
+Abbruchergebnisses dort nicht als bestandenen Live-Test behauptet. Mit
+frischem Tab autonom fortgesetzt; erneuter Katalog-/Bildabruf ohne
+Browserkonsolenfehler. Zwei zusaetzliche ausfuehrende Tests des echten
+ProductManager-Callbacks belegen: Abbruch erhaelt saemtliche Felder und
+loest keinen Request aus; Bestaetigung veraendert nur Perlen/Spacer/Preis
+im lokalen Editor, behaelt uebrige Werte und sperrt Veroeffentlichen bis
+zum Speichern. Keine neue Fachlogik und kein erneutes Deployment.
+
+25 gezielte Browser-/Kalkulationstests und insgesamt 244 Node-Tests bestanden;
+Website-Lint bestanden. Bisheriger PHP-/TypeScript-/Testbuildnachweis bleibt
+unveraendert gueltig, da ausschliesslich Tests und Dokumentation ergaenzt.
+Erneute Shell-Mockregression vollstaendig bestanden; der separate lokale
+PHP-Klickstatistiktest bleibt mangels `php` im PATH uebersprungen. Keine
+Ausfuehrung oder Aenderung produktiver Hostingdateien.
+
+Eigene ungespeicherte Testeingaben mit den beiden Testtabs verworfen; kein
+Testprodukt serverseitig angelegt, folglich keine Produktbereinigung noetig.
+Ein sauberer angemeldeter Artikelverwaltungstab bleibt fuer die Betreiberin
+offen. Erneuter privater Vergleich gegen die Releasebasis bestaetigt
+unveraenderte Produkte, Bilder, Bestands-/Auditzeilen, Zugangsdaten und
+private Konfigurationen; nur technische Browsersitzungsdaten wurden benutzt.
+Keine temporaeren Testdateien auf dem Server zurueckgelassen. Deployschalter lesend weiterhin
+`CARMAJA_TEST_DEPLOY_ENABLED=false`. Kein Commit, Push, Merge,
+Produktionszugriff oder Produktionsaenderung.
+
+Urteil: abgegrenzter angemeldeter Lese-/Kalkulationsnachweis bestanden.
+Dies ist keine schreibende Browser-/App-End-to-End-Abnahme und keine neue
+Warenkorb-Gesamt- oder Produktionsfreigabe.
+
+### 3.80 Abschluss der PC-Kalkulationsabnahme (29.10.2026)
+
+Der noch offene native Abbruchdialog aus 3.79 wurde durch die Betreiberin
+manuell auf der Testwebsite geprueft und im Chat bestaetigt:
+"Abbruch geprueft - Eingaben unveraendert." Grundlage war der angeleitete
+Versuch an einem ungespeicherten neuen Artikel: Kalkulation uebernehmen,
+im Bestaetigungsdialog abbrechen, vorhandene Artikelfelder beibehalten.
+Dies ist ein manueller Live-Nachweis, keine nachtraeglich behauptete
+automatisierte Browserpruefung. Ein gesonderter Nachweis des sichtbaren
+Rueckmeldungstexts wurde damit nicht behauptet.
+
+Abschliessend erneut lokal bestanden, ohne Aenderung der Anwendungslogik:
+
+- 244 Node-Tests, darunter alle 25 Browser-/Kalkulationstests. Der echte
+  ProductManager-Callback erhaelt bei Abbruch saemtliche Editorfelder und
+  erzeugt keinen Request; bei Bestaetigung bleiben nur die vorgesehenen
+  Artikelfelder lokal geaendert, ohne automatisches Speichern.
+- PHP 8.4.23 mit ausschliesslich prozesslokalen Erweiterungen: Syntax von
+  fuenf betroffenen PHP-Dateien, 59 Product-API-Tests, 37 Browser-Sicherheits-/
+  Shared-Data-Pruefungen und 15 Preiskatalogpruefungen bestanden.
+- Website-Lint und Testbuild einschliesslich TypeScript, 25 statischen
+  Seiten, Vorschaubildern und Testexport-Verifikation bestanden. Der Build
+  verwendet kuenstliche Fixtures, kein Deployment und keine Produktionsdaten.
+- `git diff --check` bestanden. Keine App-, Abhaengigkeits-, API- oder
+  Workflowaenderung; nur diese Abnahmedokumentation und der Produktionsplan
+  werden fortgeschrieben. Bestehende uncommittete Aenderungen bleiben erhalten.
+
+Der bestehende private Releasevergleich wurde nach der manuellen
+Bestaetigung erneut erfolgreich ausgefuehrt: bereitgestelltes Artefakt und
+geschuetzte Produkt-/Bilddateien, Bestands-/Auditdaten, Zugangsdaten sowie
+private Konfigurationen gegen die Vergleichsbasis unveraendert. Lediglich
+der private technische Pruefnachweis wurde aktualisiert. Keine neuen
+Testprodukte, Testtabellen, Endpunkte, Zugangskonfigurationen oder Cronjobs
+angelegt; kein Daten-Cleanup erforderlich. Lokale PHP-Fixtures werden durch
+die Tests bereinigt, erzeugte Testbuilddateien bleiben ausschliesslich lokal.
+Der vorhandene angemeldete Browserzustand der Betreiberin wird nicht
+veraendert. Deployschalter lesend `CARMAJA_TEST_DEPLOY_ENABLED=false`.
+
+Urteil: Perlenauswahl und PC-Kalkulation einschliesslich ungespeicherter
+Uebernahme und manuell bestaetigtem Live-Abbruch testseitig abgenommen.
+Der Abbruchdialog-Blocker ist geschlossen. Diese abgegrenzte Abnahme ersetzt
+keinen noch ausstehenden schreibenden Browser-/App-End-to-End-Nachweis der
+gesamten Artikelverwaltung und erteilt keine neue Warenkorb-Gesamt-, Release-
+oder Produktionsfreigabe. Kein Commit, Push, Merge, Deployment,
+Produktionszugriff oder Cutover.
+
+### 3.81 Schreibender PC-Praxisnachweis mit kuenstlichem Artikel (29. Oktober 2026)
+
+Freigegeben ist ausschliesslich die Testumgebung. Der neue kuenstliche Artikel
+`HANDY-TEST PC-ABNAHME 20261029-7e42c8` wurde ueber die angemeldete PC-Oberflaeche
+angelegt; die beiden schon vorhandenen Handy-Testartikel wurden nicht bearbeitet.
+Ein privater Vorhervergleich schuetzt bestehende Produkt-/Bilddateien,
+Bestands-/Initialisierungs-/Auditdaten und Runtime-/Zugangskonfigurationen.
+
+Praktisch bestanden:
+
+- Zwei kuenstliche JPEGs im Browser ausgewaehlt: 4000 x 2500 wurde auf
+  3200 x 2000 reduziert, 1800 x 3200 unveraendert uebertragen. Beide Bilder
+  anschliessend auf dem Server mit den erwarteten Abmessungen vorhanden.
+- Abgelaufene Browsersitzung lehnt Speichern ab, ohne einen Artikel anzulegen.
+  Erneute Anmeldung erhaelt ungespeicherte Felder und vorbereitete Bilder;
+  danach erfolgreiches Speichern. Keine Zugangswerte ausgelesen oder protokolliert.
+- Erstes Speichern: 31,25 EUR, 18,5 cm, 8 mm, formatierte Beschreibung,
+  Materialien, Pflegehinweis, zwei Bilder, automatisch genau zwei Hinweise,
+  Verkaufsfreigabe aus. Serverseitige Produktversion 1 und kanonischer Hash
+  gueltig; noch keine oeffentliche oder Commerce-Projektion.
+- Serverstand erneut geladen: Daten, Bilder und Formatierung erhalten.
+  Danach ausschliesslich den kuenstlichen Artikel auf 32,50 EUR / 19 cm
+  geaendert und das Hochformat zum Hauptbild verschoben. Speichern ergibt
+  Produktversion 2; beide Bilder bleiben vollstaendig erhalten.
+- Veroeffentlichen und erneutes Veroeffentlichen: Versionen 3 und 4,
+  gleiche Test-SKU, konsistente private Public-Projektion Version 4 ohne
+  stock/vintedUrl sowie passende Commerce-Testprojektion. Verkaufsfreigabe
+  bleibt false; kein Anfangsbestand, keine Verkaufsabbuchung. Anzeige 0 / 0 / 0.
+- Vollstaendiges Neuladen der Website und erneutes Auswaehlen des Artikels:
+  Version 4, 32,50 EUR, 19 cm, 8 mm, beide geladenen Bilder in neuer Reihenfolge,
+  Formatierung und Hinweise erhalten. Kein Testwebsite- oder GitHub-Publish.
+- App-V5- und Browser-Produktdienst liefern fuer den gespeicherten Datensatz
+  identische Vertragsfelder. Das ist ein serverseitiger Dienstvergleich,
+  ausdruecklich noch kein bestaetigter Handy-Roundtrip.
+- Wiederholte private Vergleiche bestaetigen unveraenderte bestehende
+  Testartikel, Bilder, Bestandszeilen und private Konfigurationen.
+
+Erneute lokale Regression: 25 Node-Browser-/Kalkulationstests sowie PHP 8.4.23
+mit 59 Product-API-Tests und 37 Browser-Sicherheits-/Shared-Data-Pruefungen
+bestanden. Keine Funktionskorrektur erforderlich; die umfassendere Regression
+aus 3.80 wird dadurch nicht als erneut durchgefuehrt ausgegeben.
+
+Offen: manuelle Handy-Sichtpruefung des am PC angelegten Artikels gemaess dem
+vereinbarten Geraetetestmodus. Der nicht kaufbare kuenstliche Artikel und sein
+privater Vergleichs-/Cleanupnachweis bleiben dafuer voruebergehend erhalten.
+Cleanup ist noch nicht abgeschlossen und erfolgt erst nach dieser Pruefung,
+ausschliesslich fuer eigene Testdaten. Keine vorhandenen Testprodukte,
+Zugangsdaten oder privaten Konfigurationen entfernen. Keine neue Endabnahme,
+kein Commit, Push, Deployment, Produktionszugriff oder Cutover.
+
+### 3.82 Manueller Handy-Abgleich, Cleanup und PC-Praxisabnahme (29. Oktober 2026)
+
+Die Betreiberin bestaetigt: "PC-Testartikel am Handy vollstaendig sichtbar."
+Dies schliesst die in 3.81 angeforderte manuelle Sichtpruefung des am PC
+gespeicherten/veroeffentlichten Artikels mit 32,50 EUR, 19 cm, 8 mm, beiden
+Bildern und Hinweisen sowie Verkaufsfreigabe aus. Kein automatisierter
+Handytest und kein zusaetzlicher schreibender Handy-Roundtrip behauptet.
+Der offene Vermerk am Ende von 3.81 ist damit historisch abgeschlossen.
+
+Cleanup auf ausdruecklichen Auftrag und mit schreibfreiem Vorflug bestanden:
+
+- Den genau benannten kuenstlichen Testartikel mit Version 4 und weiterhin
+  Verkaufsfreigabe false serverseitig geprueft; kein Bestand, kein Checkout,
+  keine Bestellung, keine Reservierungsnutzung und keine Bestandskorrektur.
+- Ausschliesslich seine Produkt-/Commerce-Projektionsdaten und zehn eigene
+  Produkt-, Bild-, Idempotenz-/Vorgangs- und Lockdateien entfernt. Keine
+  Tabellen, bestehenden Produkte oder bestehenden Bestandseintraege geloescht.
+- Eigene Eintraege in privater Public-Projektion, SKU-Zaehler und Testaudit
+  eng begrenzt bereinigt. Fremde Aenderungen waeren vor dem Schreiben ein
+  Abbruchgrund gewesen; vorhandene Daten wurden nicht pauschal ueberschrieben.
+- Anschliessend kein eigener Testartikel mehr vorhanden. Bestehende
+  Produkt-/Bilddateien, Bestands-/Auditzeilen und private Konfigurationen
+  gegen den Vorherstand unveraendert; unabhaengiger privater Releasevergleich
+  ebenfalls erfolgreich. Bestehende Browser-/App-Zugaenge bleiben erhalten.
+- Eigenen privaten Prueferordner samt Vorher-/Statusdateien und lokale
+  Hilfsskripte, kuenstliche Ausgangsbilder und temporaere Screenshots entfernt;
+  Abwesenheit geprueft. Keine neuen Endpunkte oder Cronjobs zurueckgelassen.
+  Dauerhafter Testbetrieb und dessen private Konfigurationen bleiben bestehen.
+
+Abschlussregression erneut bestanden: 244 Node-Tests einschliesslich frischem
+Testexport, PHP 8.4.23 mit 59 Product-API-, 37 Browser-Sicherheits-/Shared-Data-
+und 15 Katalogpruefungen. Website-Lint und `git diff --check` bestanden.
+Keine Anwendungscodekorrektur erforderlich; nur dieser Bericht und der
+Produktionsplan fortgeschrieben. Kein erneuter Android-Build behauptet.
+
+Urteil: PC-Artikelverwaltung im geprueften Testumfang aus 3.77 bis 3.82
+einschliesslich Kalkulation, Speichern, Bildern, Veroeffentlichen, erneuter
+Anzeige und manuell bestaetigtem PC-zu-App-Abgleich testseitig abgenommen;
+eigener Cleanup abgeschlossen. Keine darueber hinausgehende Warenkorb-,
+Release- oder Produktionsfreigabe. Kein Commit, Push, Merge oder Deployment.
+`main`, `website/hosting/**` und Produktion unveraendert. Testdeployschalter
+abschliessend lesend bestaetigt: `CARMAJA_TEST_DEPLOY_ENABLED=false`.
+
 ## 4. Noch offene Pflichtnachweise
 
 1. Historische Einzelbestellungen sind kuenstlich und praktisch verlustfrei migriert (3.17). Die abgegrenzten Funktions-/Parallelitaets-/Backup- und Crash-/Timeoutreihen sind bestanden; weitere Pflichtfaelle sind damit nicht pauschal freigegeben.

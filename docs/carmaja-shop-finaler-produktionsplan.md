@@ -2,6 +2,72 @@
 
 ## Neue Erweiterung vom 6. Oktober 2026: Mengenbestand und Warenkorb
 
+PC-Praxisabnahme 29. Oktober 2026 (Abnahmebericht 3.81/3.82): Kuenstlichen
+Artikel mit zwei Bildern ueber die Browserverwaltung gespeichert, erneut
+geladen, Preis/Mass und Bildreihenfolge geaendert sowie zweimal ausschliesslich
+in die Testprojektion veroeffentlicht. 3200-Pixel-Grenze, Formatierung,
+automatische Hinweise, serverseitige Versionen/Hash und Verkaufsfreigabe aus
+bestanden; Bestand bleibt 0 / 0 / 0. Vorhandene Testprodukte, Bilder, Bestaende
+und private Konfigurationen unveraendert verglichen. App-/Browserdienste
+liefern identische Vertragsfelder; vollstaendige Sichtbarkeit auf dem Handy
+anschliessend manuell durch die Betreiberin bestaetigt. Eigenen kuenstlichen
+Artikel, seine Projektions-/Datei-/Auditdaten und temporaeren Prueferartefakte
+eng begrenzt entfernt; Bestandsschutz und Cleanup unabhaengig nachgeprueft.
+244 Node-Tests einschliesslich frischem Testexport, 59 PHP-API-, 37 PHP-Browser-
+und 15 PHP-Katalogpruefungen sowie Website-Lint und `git diff --check` erneut
+bestanden. Der gepruefte PC-Praxisumfang einschliesslich PC-zu-App-Sichtpruefung
+ist damit testseitig abgenommen. Keine weitergehende Warenkorb-, Release-
+oder Produktionsfreigabe; kein Commit, Push oder Deployment. Testdeploygate false.
+
+Test-Ergaenzung 29. Oktober 2026: Perlenauswahl und Kalkulation am PC
+(Abnahmebericht 3.78). Die angemeldete Artikelverwaltung liest ausschliesslich
+dieselbe feste Preisliste wie die App. Material, Arbeitszeit, Stundenlohn,
+sonstige Kosten und Aufschlag verwenden deren Dezimal-/Rundungsvertrag;
+die Preisempfehlung wird auf 50 Cent aufgerundet. Uebernehmen fuellt nur
+Perlen, Spacer und Preis im ungespeicherten Editor; kein automatisches
+Speichern, Veroeffentlichen oder Aendern des Bestands. Die App speichert
+Kalkulationseingaben bisher nur lokal: keine nachtraeglich behauptete
+Synchronisierung interner Kalkulationen. Browser-Kalkulationen bleiben
+ebenfalls nur im offenen Fenster; gemeinsame Artikelfelder nutzen weiterhin V5.
+242 Node-Tests, PHP-API-/Browser-/Katalogtests, TypeScript, Lint und Testexport
+bestanden. Testseitig eng begrenzt bereitgestellt; 18 aktive Katalogeintraege
+ueber verifiziertes HTTPS geladen. Produkte, Bilder, Bestand, bestehende
+Seiten und private Konfigurationen unveraendert verglichen. Das separat
+freigegebene App-Testpasswort wurde erfolgreich durch die Betreiberin erneuert;
+Reset-Hilfen bereinigt. Angemeldeter Lese-/Kalkulationsnachweis am 29.10.
+bestanden (3.79): Katalog, Rechnung, Eingabegrenzen und Uebernahme in einen
+ungespeicherten Artikel geprueft; reale Testprodukte nicht gespeichert oder
+veraendert. 244 Node-Tests bestanden, Abbruch-/Bestaetigungspfad zusaetzlich
+ausfuehrend getestet. Der zunaechst wegen einer Automationsstoerung offene
+Live-Abbruch wurde anschliessend von der Betreiberin manuell geprueft und
+mit unveraenderten Eingaben bestaetigt (3.80); keine nachtraeglich behauptete
+automatisierte Live-Pruefung. Abschliessend erneut 244 Node-Tests, PHP 8.4.23
+(59 API-Tests, 37 Browser- und 15 Katalogpruefungen sowie fuenf Syntaxpruefungen),
+Website-Lint, TypeScript, Testexport mit 25 Seiten und `git diff --check`
+bestanden. Privater Vergleich bestaetigt unveraenderte Testprodukte, Bilder,
+Bestaende und Konfigurationen; Deployschalter weiterhin false.
+Perlenauswahl und PC-Kalkulation einschliesslich Abbruchdialog sind damit
+testseitig abgenommen. Keine pauschale schreibende PC-/App-E2E-, Warenkorb-,
+Release- oder Produktionsfreigabe. Keine Commit-/Pushfreigabe.
+
+Test-Erweiterung 28. Oktober 2026: Artikelverwaltung am PC (Abnahmebericht
+3.77). Die neue Testseite `/artikelverwaltung/` verwendet dieselben privaten
+V5-Produktdienste und Commerce-Bestandsvorgaenge wie die Beta-App, keinen
+zweiten Produktdatenbestand. Artikel, formatierte Beschreibung, Bilder bis
+3200 Pixel, Messwerte, Preis, Verkaufsfreigabe, Veroeffentlichen/Archivieren
+und getrennte Bestandspflege sind implementiert. Bestehende App-Testbenutzer
+werden mit separater kurzer Browser-Sitzung, CSRF und Versionskonflikten
+abgesichert; Zugangsdaten und App-Geraetetokens bleiben unveraendert.
+Lokale Regression und unangemeldete Test-HTTP-Sicherheitspruefungen bestanden.
+Testseitige Bereitstellung ist rollbackfaehig, vorhandene Produkte, Bilder,
+Bestaende und private Konfigurationen unveraendert verglichen. Der angemeldete
+Browser-/App-Praxisnachweis war noch offen: Betreiberin kannte den bestehenden
+Testzugang nicht mehr. Stand 28.10. ohne Passwortreset; Freigabe und technische
+Bestaetigung des Resets am 29.10. siehe 3.78. Keine neue Gesamtfreigabe.
+Der bestehende isolierte V5-Testumfang und seine Laufzeit bleiben bestehen;
+Veroeffentlichen aktualisiert die Testprojektion, nicht automatisch den
+statischen Websitebuild. Keine Produktions-, Commit- oder Pushfreigabe.
+
 Aktueller Nachtrag 26. Oktober 2026 (Abnahmebericht 3.74):
 Die bisher offenen Aenderungen auf `codex/shop-inventory-cart` fuer einen
 gemeinsamen lokalen Integrationscommit zusammengefuehrt: Websitegestaltung,
