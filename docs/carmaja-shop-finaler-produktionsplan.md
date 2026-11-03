@@ -68,6 +68,31 @@ Der bestehende isolierte V5-Testumfang und seine Laufzeit bleiben bestehen;
 Veroeffentlichen aktualisiert die Testprojektion, nicht automatisch den
 statischen Websitebuild. Keine Produktions-, Commit- oder Pushfreigabe.
 
+Aktueller Testnachweis 27. Oktober 2026 (Abnahmebericht 3.75):
+Die dauerhafte Test-Shop-Anbindung ist auf ausdruecklichen Auftrag
+bereitgestellt und verifiziert. Private MySQL-/TLS-, Stripe-Sandbox-/Test-Legal- und
+Brevo-Testkonfiguration angebunden; Root-Shop-v3 und separater Testworker
+einschliesslich echtem IONOS-UnixCron */5 bereit. Bestehende Produkt-/V5-
+Routen und private Konfigurationen erhalten. 215 Node-Tests, 32 PHP-Suites,
+Website-Lint und Testexport bestanden. Browser-Warenkorb 2+1 mit einmalig
+270 Cent Versand und den drei freigegebenen Test-Zahlungsarten verifiziert.
+Mehrere automatische Worker-Laeufe im Fuenf-Minuten-Takt, Lock und Lease
+bestanden. Erster Browsercheckout von Stripe als unbezahlt abgelaufen
+bestaetigt; signiertes Ablaufereignis verarbeitet, beide Reservierungen
+ohne Bestandsabbuchung freigegeben. Anschliessender echter Sandbox-
+Browserkauf ueber 77,70 EUR samt signiertem Webhook, bestaetigter Bestellung,
+atomarer Mengenabbuchung 2+1, Replay-Schutz und beiden von Brevo als
+zugestellt bestaetigten Bestellmails bestanden. Fehlenden Test-Bestellnummern-
+Zaehler eng begrenzt initialisiert; keine bestehenden Nummern veraendert.
+Eigene kuenstliche Kaufdaten, Produktseiten/Bilder und temporaere Pakete
+bereinigt. Abschliessender Fuenf-Produkt-Export mit 194 Dateien hashgeprueft;
+vorhandene Produkte, Bilder, Bestaende und private Konfigurationen unveraendert.
+Test-Runtime, Sandbox-Webhook und echter Testcron bleiben fuer den
+angeforderten Testbetrieb aktiv. Dieser integrierte Kartenzahlungs-E2E-
+Nachweis wiederholt nicht die bereits separat bestandenen Klarna-/SEPA-
+Pruefreihen und ist keine Produktions- oder Cutoverfreigabe. Testdeployschalter false;
+kein Commit, Push, main-Merge oder Produktionszugriff.
+
 Aktueller Nachtrag 26. Oktober 2026 (Abnahmebericht 3.74):
 Die bisher offenen Aenderungen auf `codex/shop-inventory-cart` fuer einen
 gemeinsamen lokalen Integrationscommit zusammengefuehrt: Websitegestaltung,

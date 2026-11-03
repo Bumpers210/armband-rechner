@@ -6,7 +6,7 @@ import ts from 'typescript';
 
 // Execute the actual client/components with artificial replies, without a
 // browser login, network, Stripe, test product or database access.
-function harness(quantities = [6, 4], rejectPut = false) {
+function harness(quantities = [6, 4], rejectPut = false, productPreviews = []) {
   const states = []; let cursor = 0; const calls = []; const redirects = [];
   let cart = { cartVersion: 1, items: quantities.map((quantity, i) => ({ productId: `product-000${i + 1}`, quantity, name: `Armband ${i + 1}`, priceMinor: 2800, buyable: true })),
     totalMinor: 2800 * quantities.reduce((a, b) => a + b, 0) + 270, shippingMinor: 270, canCheckout: true, checkoutContextToken: 'artificial-quote' };
@@ -40,7 +40,8 @@ function harness(quantities = [6, 4], rejectPut = false) {
       require(name) {
         if (name === 'react') return react;
         if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx };
-        if (name === 'next/link') return () => null;
+        if (name === 'next/link') return { default: 'a' };
+        if (name === 'next/image') return { default: 'img' };
         if (name === '@/lib/cart-client') return client;
         throw new Error('Unexpected import');
       },
@@ -50,7 +51,7 @@ function harness(quantities = [6, 4], rejectPut = false) {
   client = load('lib/cart-client.ts');
   const component = load('components/shop-cart.tsx');
   return { client, calls, redirects, states, get cart() { return cart; },
-    render() { cursor = 0; return component.ShopCart(); },
+    render() { cursor = 0; return component.ShopCart({ productPreviews }); },
   };
 }
 function nodes(node, predicate) {
@@ -134,4 +135,51 @@ test('Produktseite verwendet die gemeinsame Mengenpruefung und begrenzt das einz
   assert.match(source, /quantity > CART_MAX_QUANTITY/);
   assert.match(source, /await replaceCart\(cart, items\)/);
   assert.match(source, /Armbänder insgesamt je Bestellung/);
+});
+
+test('Warenkorb zeigt das kleine Hauptbild zum passenden Artikel und verlinkt die Detailseite', async () => {
+  const previews = [{ productId: 'product-0001', href: '/armbaender/test-eins/', image: {
+    src: '/images/product-previews/CP-2026-0001/aaaaaaaaaaaaaaaa/01-240.jpg', alt: 'Rosenquarz-Armband',
+  } }];
+  const h = harness([2, 1], false, previews); const tree = await loadCart(h);
+  const images = nodes(tree, node => node.type === 'img');
+  assert.equal(images.length, 1);
+  assert.equal(images[0].props.src, previews[0].image.src);
+  assert.equal(images[0].props.alt, 'Rosenquarz-Armband');
+  assert.equal(images[0].props.width, 112);
+  assert.equal(nodes(tree, node => node.props?.href === '/armbaender/test-eins/').length, 2);
+  assert.match(text(tree), /Bild nicht verfügbar/);
+  assert.match(text(tree), /56,00\s*€/);
+  assert.equal(h.calls.filter(call => call.method === 'PUT').length, 0);
+});
+
+test('Fehlendes oder nicht ladbares Artikelbild aendert weder Warenkorb noch Kaufberechtigung', async () => {
+  const h = harness([1], false, [{ productId: 'product-0001', href: '/armbaender/test/',
+    image: { src: '/images/products/CP-2026-0001/01.jpg', alt: 'Armband' } }]);
+  let tree = await loadCart(h); const before = h.cart;
+  nodes(tree, node => node.type === 'img')[0].props.onError(); tree = h.render();
+  assert.equal(nodes(tree, node => node.type === 'img').length, 0);
+  assert.match(text(tree), /Bild nicht verfügbar/);
+  assert.equal(button(tree, 'Weiter zur Zahlung').props.disabled, false);
+  assert.equal(h.cart, before);
+  assert.equal(h.calls.filter(call => call.method === 'PUT').length, 0);
+});
+
+test('Schoenere Zusammenfassung behaelt serverseitige Summen, Preiswarnungen und Fail-closed bei', async () => {
+  const h = harness([2]);
+  Object.assign(h.cart.items[0], { priceChanged: true, previousPriceMinor: 2500, buyable: false });
+  Object.assign(h.cart, { totalMinor: null, canCheckout: false });
+  const tree = await loadCart(h);
+  assert.match(text(tree), /Preis geändert: vorher/);
+  assert.match(text(tree), /Gewünschte Menge momentan nicht verfügbar/);
+  assert.match(text(tree), /Gesamtnicht verfügbar/);
+  assert.equal(button(tree, 'Weiter zur Zahlung').props.disabled, true);
+});
+
+test('Warenkorbseite uebergibt nur oeffentliche Bild- und Linkdaten, niemals statischen Bestand oder Preise', () => {
+  const source = readFileSync(new URL('../../app/warenkorb/page.tsx', import.meta.url), 'utf8');
+  assert.match(source, /publicProducts\.map/);
+  assert.match(source, /mainProductImage\(product\)/);
+  assert.match(source, /image\.previews\?\.\[240\] \?\? image\.src/);
+  assert.doesNotMatch(source, /priceMinor|salesEnabled|stock|availableQuantity|sourceHash|productVersion/);
 });

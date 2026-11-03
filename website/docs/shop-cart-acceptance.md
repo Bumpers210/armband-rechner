@@ -3204,6 +3204,154 @@ Testprodukte, Bilder, Bestaende und private Konfigurationen unangetastet.
 `git diff --check` vor der lokalen Sicherung bestanden; im Commit keine
 Datei aus `website/hosting/**`, keine Zugangsdaten oder Laufzeitdatei.
 
+### 3.75 Integrierter Testbetrieb am 27. Oktober 2026 – verifiziert
+
+Auf ausdruecklichen Auftrag wurde der lokale Integrationsstand
+`1b20d2e2c7cc1f95f549612144ecc1f9844dfc26` ausschliesslich in der
+bestehenden IONOS-Testumgebung bereitgestellt und abschliessend verifiziert. Keine Produktion, kein
+main-Merge, kein Push und kein neuer Commit in diesem Schritt.
+
+Bereits nachgewiesen:
+
+- npm ci und Audit ohne Befund, Website-Lint, 215 Node-Tests und 31
+  PHP-8.4-Suites im ersten Durchlauf. Abschliessend erneut alle 32 aktuellen
+  PHP-Suites bestanden, darunter 23 Test-Runtime-Sicherheitspruefungen;
+  PHP-Lint und `git diff --check` ebenfalls bestanden.
+- Testexport mit sieben Produkten fuer den kuenstlichen E2E-Lauf sowie
+  anschliessender Fuenf-Produkt-Export fuer den abschliessenden Cleanup
+  erfolgreich gebaut und auf den Testexportvertrag geprueft.
+- Private, getrennte Test-Shop-Runtime mit MySQL 8/InnoDB und aktiver TLS-
+  Sitzung, Stripe-Sandbox, Test-Legal-Bundle v4 und Brevo-Testempfaenger-
+  Allowlist. Persistente private Datenbank-, Stripe- und Brevo-Konfigurationen
+  bleiben erhalten; kein Zugriff auf fremde Secret-Stores.
+- Root-Routen `/shop/v3` und `/admin/v1` rollbackfaehig angebunden;
+  bestehende Produkt- und V5-App-Routen unveraendert erhalten.
+- CORS, sichere Shopsitzung, Mehrtab-CSRF, no-store, Idempotenz,
+  veraltete Warenkorbversion und ungueltige Mengen praktisch per HTTP geprueft.
+- Aktueller Websiteexport privat rueckgesichert und dateiweise atomar
+  bereitgestellt. Eine Bildkollision mit unbenutzten Repository-Beispielbildern
+  wurde vor der ersten Websiteaenderung abgefangen; das korrigierte Paket
+  enthaelt ausschliesslich die Originalbilder des ausgewaehlten Testkatalogs.
+- Alle fuenf vorhandenen Produkte erhalten. HANDY-TEST BILD3200 bleibt
+  nicht kaufbar; beide Browser-Grossansichten laden 3200 x 1800 bzw.
+  1800 x 3200 Pixel. Rechtstext-, Widerrufs-, Abbruch- und Fehlerseiten
+  erreichbar, ohne produktive API-/Websiteverlinkung im geprueften Vertrag.
+- Browser-Warenkorb mit ausschliesslich zwei neuen kuenstlichen Artikeln,
+  Mengen 2 + 1, 75,00 EUR Warenwert plus einmalig 2,70 EUR Versand.
+  Stripe-Sandbox zeigt Karte, Klarna und SEPA, keinen PayPal-Kaufweg;
+  verpflichtende AGB-Zustimmung und Test-Rechtstextlink vorhanden.
+- Eigener IONOS-UnixCron `Carmaja-Test-Cart-Worker`, `*/5 * * * *`,
+  mit `/usr/bin/php8.4` und ausschliesslich privatem Testworker angelegt
+  und in der Kundenoberflaeche verifiziert. Erster echter Lauf
+  18:46:34 UTC: 735 ms, Exit 0, beide Worker-Leases freigegeben und
+  MySQL-Start-/Erfolgszeitpunkte vorhanden. Direkter Erstlauf: 116 ms.
+  Separater flock-/Lease-Konkurrenztest samt Wiederuebernahme bestanden;
+  dessen eigener technischer Pruefeintrag unmittelbar entfernt.
+
+Fortsetzung 27. Oktober: Zweiter echter Cronlauf um 18:51:38 UTC, 662 ms,
+anschliessende Laeufe im Fuenf-Minuten-Takt ebenfalls erfolgreich. Der
+erste Browsercheckout wurde von Stripe als `expired`/`unpaid` bestaetigt;
+kein PaymentIntent, keine Zustimmung und keine Bestellung. Die generische
+Stripe-Endseite unterscheidet Zahlung und Zeitueberschreitung nicht eindeutig.
+Signiert zugestelltes Ablaufereignis durch den Worker verarbeitet, beide
+Reservierungen gemeinsam `released`, kuenstlicher Bestand weiterhin 30/30,
+keine Bestellmail. Privater Ablaufnachweis gespeichert; kein Zahlungserfolg
+allein aus der Nutzerbestaetigung abgeleitet.
+
+Abschliessender erfolgreicher Browserkauf:
+
+- Stripe bestaetigt ausschliesslich Sandbox, Karte, `paid`, 7.770 Cent und
+  angenommene AGB. Originales signiertes `checkout.session.completed`
+  verschluesselt persistiert und durch den Worker verarbeitet.
+- Die vorhandene Testdatenbank hatte keine `carmaja-v1`-Bestellnummernsequenz.
+  Die erste Finalisierung scheiterte deshalb transaktional ohne Teilabbuchung;
+  Reservierungen blieben blockierend und die Inbox im Retry. Der neue
+  Test-Runtime-Initialisierer legt ausschliesslich bei fehlender Sequenz und
+  null Bestellungen den Startwert an. Vorhandene gueltige Sequenzen werden
+  unveraendert erhalten; fehlende Sequenz bei vorhandenen Bestellungen oder
+  ungueltiger Zaehler werden abgelehnt. Zweiter Initialisiererlauf: `preserve`.
+- Wiederanlauf um 19:24:08 UTC: 1.003 ms, zwei Zahlungs-/Inboxarbeiten und
+  zwei Mails verarbeitet. Bestellung `CMJ-00000001`, zwei Positionen mit
+  Mengen 2 und 1, Versand einmalig 270 Cent, Test-Legal-Snapshot gebunden.
+- Nur kuenstliche Artikel: Bestand 30/30 -> 28/29, reserviert 0/0,
+  beide Reservierungen `converted`. Zweifache erneute Ereignisverarbeitung
+  und Inbox-Deduplizierung lassen Bestellung, Nummernsequenz, Zahlungen,
+  Bestand und Mail-Outbox unveraendert.
+- Bestellbestaetigung und Betreiberbenachrichtigung jeweils mit genau
+  einem Versuch von Brevo angenommen. Anschliessend beide Nachrichten
+  ueber ihre private Nachrichtenkennung im Bericht fuer den erlaubten
+  Testempfaenger als `delivered` bestaetigt. Keine Empfaengeradresse,
+  Provider-ID oder sonstigen personenbezogenen Inhalte im Repository.
+- Browser-Rueckkehr zeigt die bestaetigte Bestellnummer. Abschliessender
+  Fuenf-Produkt-Export (194 Dateien) dateiweise atomar aktiviert und gehasht.
+  Produktdetail, 3200x1800-/1800x3200-Grossbilder, ausgeschalteter Verkauf
+  beim Bildtest, leerer Warenkorb, Rechtstext-/Footer-, Abbruch- und
+  Fehlerseiten erneut live geprueft. Live-API: HTTP 200, korrekter
+  Test-Origin/CORS und `no-store`.
+- Echter Cron laeuft weiter im Fuenf-Minuten-Takt; nach Daten-Cleanup
+  erfolgreicher Lauf 19:31:35 UTC mit 107 ms. Worker-Leases freigegeben,
+  kein offener Prueffall und keine ausstehende Zahlungs-/Mailarbeit.
+
+Cleanup und erhaltener Betrieb:
+
+- Nur zwei eigene kuenstliche Commerce-Produkte, zwei terminale Checkouts,
+  vier Reservierungen, eine Bestellung samt Positionen und zugehoerige
+  Payment-/Inbox-/Outbox-/Audit-/Warenkorbreihen transaktional entfernt.
+  Bestellnummernsequenz nicht zurueckgesetzt. Keine Tabellen geloescht.
+- 18 eigene kuenstliche Produktseiten-/Bilddateien hashgebunden entfernt;
+  private Uploadpakete, Exportkopien, HTTP-Testcookie und Einmalskripte
+  entfernt. Lokale temporäre Taskdateien nach Abschluss entfernt.
+- Bestehende fuenf oeffentliche Produkte und ihre Bilder sowie beide
+  V5-/Commerce-Produkte mit bestehenden Bestaenden, Entwuerfen und
+  privaten DB-/Stripe-/Brevo-Konfigurationen unveraendert verglichen.
+  Getrennte Restore-Datenbank weiterhin leer.
+- Angeforderte dauerhafte Test-Runtime, Stripe-Sandbox-Webhook, SDK,
+  privater Worker und `Carmaja-Test-Cart-Worker` bleiben bewusst erhalten,
+  ebenso die private Originalwebsite-Ruecksicherung und geheimwertfreie
+  Testnachweise. Dies sind Betriebsbestandteile, keine offenen Testfixtures.
+  Normale anonyme Sitzungen/Rate-Limits bleiben nach ihrem Laufzeitvertrag
+  erhalten. Stripe-/Brevo-Sandbox-/Versandhistorie wird nicht als geloescht
+  behauptet; lokale kuenstliche Kaufdaten sind entfernt.
+- Test-Deployschalter abschliessend `false`. Kein Commit, Push, main-Merge,
+  Produktionszugriff oder Cutover. Keine Laufzeitdateien/Secrets versioniert.
+
+Urteil: zusammengefuehrter Testwebsite-/Warenkorb-/Kartenzahlungsbetrieb
+verifiziert. Bereits separat bestandene Klarna-/SEPA- und Geraetereihen
+bleiben eigene Nachweise; keine erneute Vollpruefung aller Zahlungsmethoden
+in diesem Lauf. Release-/CI-, approved-Legal-Ueberfuehrung und alle
+Produktionsgates bleiben gesonderte Schritte.
+
+### 3.76 Warenkorb mit Produktvorschaubildern (28.10.2026)
+
+Auf Nutzerauftrag ausschliesslich die geschuetzte Test-Warenkorbansicht
+erweitert: kleine Hauptbilder aus der oeffentlichen Projektions-Whitelist,
+Artikelverlinkung, getrennte Einzel-/Positionspreise und eine warme,
+responsive Bestelluebersicht. Bilder bevorzugen vorhandene 240-Pixel-
+Derivate; fehlende oder defekte Bilder erhalten einen neutralen Platzhalter.
+Der statische Katalog liefert ausschliesslich Bild- und Linkdaten.
+Preise, Verfuegbarkeit, Summen, CSRF, Idempotenz und Checkoutberechtigung
+bleiben an die unveraenderte Live-API gebunden.
+
+Nachweise: npm ci/Audit ohne Befund, Website-Lint, 219 Node-Tests (darunter
+vier neue ausfuehrende Bild-/Fallback-/Preisvertragspruefungen), bestehende
+Shell-Mockreihen, TypeScript, Fuenf-Produkt-Testbuild und Exportpruefung
+bestanden. Keine PHP-/API- oder Android-Aenderung; der optionale lokale
+Tracking-PHP-Test blieb mangels `php` im PATH uebersprungen.
+
+Nur Warenkorb-HTML/RSC und benoetigte neue statische Assets aktiviert,
+zehn geaenderte/neue Dateien; vorherige Fassung privat hashgebunden
+rueckgesichert, Aktivierung dateiweise atomar. Andere Seiten einschliesslich
+Rechtstexten und Produktdetails unveraendert. Live im Browser: Vorschaubild
+240 x 223 geladen, Desktop- und 390-Pixel-Ansicht ohne horizontalen
+Ueberlauf. Menge 2 -> 1 -> 2 mit korrekten Summen 58,70/30,70/58,70 EUR;
+kein Checkout, keine Zahlung, keine Reservierung ausgeloest.
+
+Vorher-/Nachhervergleich der privaten Produkt-/Bild-/Zugangskonfigurationen
+und Commerce-Produkt-/Inventar-/Auditzeilen identisch. Temporäre Kopien,
+Uploadpakete und Hilfsdateien bereinigt; private Ruecksicherung bleibt.
+Kein Commit, Push, main-Merge oder Produktionszugriff. Test-Deployschalter
+lesend weiterhin `false`. Keine neue Gesamt- oder Produktionsfreigabe.
+
 ### 3.77 Artikelverwaltung am PC, ausschliesslich Test (28.10.2026)
 
 Auf ausdruecklichen Auftrag eine Test-Browserverwaltung unter
@@ -3539,7 +3687,7 @@ abschliessend lesend bestaetigt: `CARMAJA_TEST_DEPLOY_ENABLED=false`.
 4. Mehrtab-CSRF, Warenkorbkonflikt-Sperre, HTTP-CSRF-/Sessionablauf, Rate Limits, API-Ausfall sowie Teilwiderruf/Admin-HTTP bestanden (3.16). Quote-/Checkouttokenablauf und Browser-Abbruch/Ablauf sind bestanden (3.17). Dynamischer v3-Browser-SEPA-status processing -> bestaetigt live bestanden (3.24). Integrierte Teilwiderrufs- und angemeldete Admin-UI-Flows einschliesslich Mengenpflege und Wiedereinlagerung bestanden (3.65/3.66), eigener Cleanup abgeschlossen. Rueckkehrstatus, Website-/Admin-Korrekturen und Sicherheitsupdates sind gemeinsam als geschuetzter Testwebsite-Preview bereitgestellt und geprueft (3.68), aber noch nicht dauerhaft in den Testwebsite-Zweig uebernommen. Neue Admin-Fehlerrueckmeldung live negativ geprueft; Bestandsaktualisierung nach Rueckgabe lokal ausfuehrend getestet (3.66). Keine pauschale Gesamtfreigabe.
 5. Signierte Beta lokal bestanden (3.12), APK-Vertrag erneut bestaetigt (3.37); manuelle lokale Handypruefung von Version 1.4.0-beta.1 bestanden (3.38). Weitere Handypruefungen einschliesslich App/API/Publisher-Roundtrip und Bestandspflege erfolgen gemaess 3.39 ausschliesslich manuell mit getrennten serverseitigen Kontrollen. Keine USB-/ADB-/Instrumentierungsvoraussetzung; isolierte V5-Test-API bereit (3.40), manuelle Handyanmeldung serverseitig bestaetigt (3.41). Manuelles V5-Speichern/Synchronisieren mit erneutem Oeffnen und kanonischer Serverpruefung bestanden (3.42); Anfangsmenge 3 vor Veroeffentlichung vorgemerkt (3.43), manuelle Testveroeffentlichung mit konsistenter privater V4-Projektion und einmaliger Initialisierung 0 -> 3 bestanden (3.44). Handy-Bestandsanzeige bestanden (3.51), erneute manuelle Synchronisierung ohne Bestandsmutation und ohne automatische Veroeffentlichung bestanden (3.52). Manuelle Erhoehung und Rueckkorrektur 3 -> 4 -> 3 mit vollstaendiger Auditfolge bestanden (3.53/3.54). Erneutes Publizieren ohne Anfangsbestandswiederholung mit sichtbarer Bestaetigung in Beta.3 bestanden (3.57). Lokale Sichtpruefungen ersetzen die dynamischen Flows aus Punkt 4 nicht.
 6. Alle sechs abgeschlossenen Zeitgrenzfallversuche vom 14. Oktober vollstaendig bereinigt (3.27/3.29/3.31/3.33/3.35/3.36); kein Zeitgrenzfall-Testlauf mehr offen. Ebenso Browser-SEPA-Pruefreihe (3.24), fruehere Browser-/HTTP-/Cron-Pruefreihe (3.18) und erste Zahlungs-/Mail-Pruefreihe (3.11) bereinigt; reale Testprodukte unveraendert. Weitere Nachweise verwenden die nach 3.20/3.25 dauerhaft privat erhaltenen Datenbank-/Stripe-Testkonfigurationen und benoetigen weiterhin einen eigenen vollstaendigen Artefakt-/Testdaten-Cleanup.
-7. Externe Rechts-, Datenschutz- und Versandfreigabe der aktuellen Prueffassung v7 samt Inhalts-Hash durch die Betreiberin bestaetigt und dokumentiert (3.73, `shop-cart-legal-review.md`). Praktische Packkapazitaet und Gesamtbestellgrenze von 10 Stueck bestaetigt, lokal und isoliert gegen MySQL 8 bestanden (3.69/3.70/3.72). Websitehinweis und Testfassung v4 als geschuetzter Preview bereit (3.71). Offen bleiben die kontrollierte technische Ueberfuehrung in eine `approved`-Fassung mit nachgewiesener Textgleichheit/neuem Bundle-Hash sowie die dauerhafte Integration; kein stilles Umschreiben der geprueften Fassung. Root-Shop-Runtime weiterhin nicht dauerhaft aktiviert. Keine Produktions-/Cutoverfreigabe.
+7. Externe Rechts-, Datenschutz- und Versandfreigabe der aktuellen Prueffassung v7 samt Inhalts-Hash durch die Betreiberin bestaetigt und dokumentiert (3.73, `shop-cart-legal-review.md`). Praktische Packkapazitaet und Gesamtbestellgrenze von 10 Stueck bestaetigt, lokal und isoliert gegen MySQL 8 bestanden (3.69/3.70/3.72). Websitehinweis und Testfassung v4 als geschuetzter Preview bereit (3.71), inzwischen im erhaltenen Testbetrieb verifiziert (3.75). Offen bleiben die kontrollierte technische Ueberfuehrung in eine produktive `approved`-Fassung mit nachgewiesener Textgleichheit/neuem Bundle-Hash sowie die Release-/CI-Integration; kein stilles Umschreiben der geprueften Fassung. Root-Shop-Runtime und echter Workercron ausschliesslich in der Testumgebung dauerhaft angebunden (3.75). Keine Produktions-/Cutoverfreigabe.
 8. Bild-Testbeta 1.4.0-beta.2 / Code 11 ist signiert bereit (3.49); die
    nachfolgende Rueckmeldungs-Beta 1.4.0-beta.3 / Code 12 ist installiert (3.56).
    Der manuelle Upload zweier 3200-Pixel-Originale ist serverseitig bestanden
