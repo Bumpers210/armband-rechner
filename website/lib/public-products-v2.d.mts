@@ -24,7 +24,7 @@ export type DescriptionDocumentV1 = {
 };
 
 export type PublicProductV2 = {
-  productModelVersion: 2 | 3;
+  productModelVersion: 2 | 3 | 4;
   productId: string;
   productVersion: number;
   sourceHash: string;
@@ -33,6 +33,8 @@ export type PublicProductV2 = {
   publicTitle: string;
   description: string;
   descriptionDocument: DescriptionDocumentV1 | null;
+  noticePolicyId: "natural-stones-v1" | null;
+  notices: string[];
   materials: string[];
   metalElements: string[];
   braceletSizeCm: number;
@@ -50,6 +52,6 @@ export function loadPublicProductsV2(
   productsFile: string,
   imageRoot: string,
 ): {
-  version: 2 | 3;
+  version: 2 | 3 | 4;
   products: PublicProductV2[];
 };

@@ -64,6 +64,9 @@ data class ProductDraft(
     val pearlSizeMm: String = "",
     val shortDescription: String = "",
     val descriptionDocument: DescriptionDocument? = null,
+    val notices: List<String> = emptyList(),
+    val pendingInitialInventoryOperationId: String? = null,
+    val pendingInitialOnHand: Int? = null,
     val careInstructions: List<String> = emptyList(),
     val priceMinor: Int = 0,
     val currency: String = "eur",
@@ -98,7 +101,7 @@ data class ProductDraft(
                 )
             }
             runCatching {
-                if (modelVersion >= PRODUCT_MODEL_VERSION) {
+                if (modelVersion >= PRODUCT_MODEL_V3) {
                     requireNotNull(descriptionDocument) {
                         "Formatierte Beschreibung ist erforderlich."
                     }
@@ -112,7 +115,7 @@ data class ProductDraft(
             }
                 .exceptionOrNull()
                 ?.let { put("shortDescription", it.message ?: "Formatierte Beschreibung ist ungültig.") }
-            if (priceMinor < 50) put("priceMinor", "Verkaufspreis muss mindestens 0,50 € betragen.")
+            if (priceMinor < (if (modelVersion >= 4) 1 else 50)) put("priceMinor", "Verkaufspreis muss positiv sein.")
             if (currency != "eur") put("currency", "Für V1 ist ausschließlich EUR zulässig.")
             if (images.isEmpty()) put("images", "Mindestens ein Hauptfoto ist erforderlich.")
         }
@@ -181,7 +184,7 @@ internal fun ProductDraft.prepareForPublish(
     )
 }
 
-const val PRODUCT_MODEL_VERSION = 3
+const val PRODUCT_MODEL_VERSION = 4
 
 internal fun normalizeMeasurement(value: String): String? {
     val normalized = value.trim().replace(',', '.')
@@ -193,13 +196,13 @@ internal fun displayMeasurement(value: String, unit: String): String {
     return "${value.replace('.', ',')} $unit"
 }
 
-internal fun parsePriceMinor(value: String): Int? {
+internal fun parsePriceMinor(value: String, minimumMinor: Int = 50): Int? {
     val normalized = value.trim().replace(',', '.')
     val amount = normalized.toBigDecimalOrNull()?.takeIf { it.signum() >= 0 } ?: return null
     val cents = runCatching {
         amount.setScale(2, RoundingMode.UNNECESSARY).movePointRight(2).intValueExact()
     }.getOrNull() ?: return null
-    return cents.takeIf { it >= 50 }
+    return cents.takeIf { it >= minimumMinor }
 }
 
 internal fun displayPriceMinor(value: Int): String =

@@ -6,6 +6,8 @@ return [
     'environment' => 'production',
     'publishTarget' => 'production',
     'productionPublishEnabled' => false,
+    'inventoryCartEnabled' => false,
+    'productApiV5WritesEnabled' => false,
     'privateDir' => '/REPLACE_WITH_VERIFIED_PRIVATE_PRODUCTION_PATH',
     'apiWebroot' => '/REPLACE_WITH_VERIFIED_PRODUCTION_API_WEBROOT',
     'websiteWebroot' => '/REPLACE_WITH_VERIFIED_PRODUCTION_WEBSITE_WEBROOT',

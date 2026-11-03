@@ -372,6 +372,7 @@ assert(
   "JSON-LD oder OpenGraph verwendet nicht die Testdomain.",
 );
 
+const { PREVIEW_EDGES, productPreviewPath } = await import("../lib/product-image-previews.mjs");
 for (const product of [...enabled, ...unavailable]) {
   for (const image of product.images) {
     const outputImage = path.join(outputDirectory, image.src.slice(1));
@@ -381,6 +382,13 @@ for (const product of [...enabled, ...unavailable]) {
       dimensions.width === image.width && dimensions.height === image.height,
       `Exportiertes Produktbild ist ungültig: ${image.src}`,
     );
+    for (const edge of PREVIEW_EDGES) {
+      const preview = productPreviewPath(image.src, product.sourceHash, edge);
+      const size = readJpegDimensions(path.join(outputDirectory, preview.slice(1)));
+      assert(size.width > 0 && size.height > 0 && Math.max(size.width, size.height) <= edge
+        && size.width <= image.width && size.height <= image.height,
+      "Vorschaubild fehlt oder überschreitet seine Grenzen.");
+    }
   }
 }
 

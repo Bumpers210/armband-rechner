@@ -3,6 +3,7 @@ import { ContactEmailLink } from "@/components/contact-email-link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteContent } from "@/content/site-content";
+import { CelestialOrnament } from "@/components/celestial-ornament";
 
 export const metadata: Metadata = {
   title: "Kontakt",
@@ -20,6 +21,7 @@ export default function ContactPage() {
       <main id="main-content">
         <section className="v2-page-intro v2-page-intro--contact">
           <div className="content-shell">
+            <CelestialOrnament />
             <p className="v2-eyebrow">{siteContent.closing.eyebrow}</p>
             <h1>{siteContent.closing.title}</h1>
             <p>{siteContent.closing.customText}</p>

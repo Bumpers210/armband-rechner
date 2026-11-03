@@ -35,11 +35,13 @@ data class ProductServerUpdate(
     val pearlSizeMm: String,
     val shortDescription: String,
     val descriptionDocument: DescriptionDocument? = null,
+    val notices: List<String> = emptyList(),
     val careInstructions: List<String>,
     val priceMinor: Int,
     val currency: String,
     val available: Boolean,
     val images: List<ProductServerImage>,
+    val salesEnabled: Boolean = false,
 )
 
 data class PublishResult(
@@ -53,6 +55,7 @@ data class PublishResult(
     val productVersion: Int,
     val sourceHash: String,
     val available: Boolean,
+    val salesEnabled: Boolean = false,
 )
 
 data class ProductLoginResult(
@@ -90,7 +93,7 @@ open class ProductApiClient {
     ): ProductLoginResult {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v4/login",
+            path = "v5/login",
             method = "POST",
             token = null,
             body = JSONObject()
@@ -109,11 +112,11 @@ open class ProductApiClient {
 
     open fun saveDraft(baseUrl: String, token: String, draft: ProductDraft): ProductServerUpdate {
         val idempotencyKey = requireNotNull(draft.pendingV2SaveOperationId) {
-            "V4-Speichern benötigt eine persistierte Idempotenz-ID."
+            "V5-Speichern benötigt eine persistierte Idempotenz-ID."
         }
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v4/products/${draft.draftId}",
+            path = "v5/products/${draft.draftId}",
             method = "PUT",
             token = token,
             body = draft.toSaveJson(),
@@ -128,7 +131,7 @@ open class ProductApiClient {
     open fun getDraft(baseUrl: String, token: String, draftId: String): ProductServerUpdate {
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v4/products/$draftId",
+            path = "v5/products/$draftId",
             method = "GET",
             token = token,
             body = null,
@@ -139,7 +142,7 @@ open class ProductApiClient {
     open fun listProducts(baseUrl: String, token: String): List<ProductServerUpdate> {
         return requestJson(
             baseUrl = baseUrl,
-            path = "v4/products",
+            path = "v5/products",
             method = "GET",
             token = token,
             body = null,
@@ -156,7 +159,7 @@ open class ProductApiClient {
         require(IMAGE_ID_PATTERN.matches(imageId)) { "Bild-ID ist ungültig." }
         val connection = openConnection(
             baseUrl = baseUrl,
-            path = "v4/products/$productId/images/$imageId",
+            path = "v5/products/$productId/images/$imageId",
             method = "GET",
             token = token,
         ).apply {
@@ -217,7 +220,7 @@ open class ProductApiClient {
         val boundary = "CarmajaBoundary${UUID.randomUUID()}"
         val connection = openConnection(
             baseUrl = baseUrl,
-            path = "v4/products/${draft.draftId}/images",
+            path = "v5/products/${draft.draftId}/images",
             method = "POST",
             token = token,
             headers = mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString()),
@@ -281,7 +284,7 @@ open class ProductApiClient {
             )
         val response = requestJson(
             baseUrl = baseUrl,
-            path = "v4/products/${draft.draftId}/$action",
+            path = "v5/products/${draft.draftId}/$action",
             method = "POST",
             token = token,
             body = JSONObject()
@@ -303,6 +306,7 @@ open class ProductApiClient {
             productVersion = product.productVersion,
             sourceHash = product.sourceHash,
             available = product.available,
+            salesEnabled = product.salesEnabled,
         )
     }
 
@@ -325,6 +329,27 @@ open class ProductApiClient {
             }
         }
         return readResponse(connection)
+    }
+
+    fun inventory(baseUrl: String, token: String, id: String): ProductInventory {
+        val data = requestJson(baseUrl, "v5/products/$id/inventory", "GET", token, null).getJSONObject("inventory")
+        return ProductInventory(data.getInt("onHand"), data.getInt("reserved"), data.getInt("available"), data.getLong("inventoryVersion"))
+    }
+
+    fun adjustInventory(baseUrl: String, token: String, id: String, target: Int, version: Long, reason: String, operationId: String): ProductInventory {
+        require(target >= 0)
+        val data = requestJson(baseUrl, "v5/products/$id/inventory", "POST", token,
+            JSONObject().put("targetOnHand", target).put("expectedInventoryVersion", version)
+                .put("reason", reason).put("correlationId", operationId),
+            mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString(), "Idempotency-Key" to operationId)).getJSONObject("inventory")
+        return ProductInventory(data.getInt("onHand"), data.getInt("reserved"), data.getInt("available"), data.getLong("inventoryVersion"))
+    }
+
+    fun stageInitialInventory(baseUrl: String, token: String, id: String, target: Int, operationId: String) {
+        require(target >= 0)
+        requestJson(baseUrl, "v5/products/$id/initial-inventory", "POST", token,
+            JSONObject().put("targetOnHand", target),
+            mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString(), "Idempotency-Key" to operationId))
     }
 
     private fun openConnection(
@@ -483,7 +508,8 @@ private val IMAGE_ID_PATTERN = Regex(
     "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-" +
         "[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$",
 )
-private const val MAX_IMAGE_DOWNLOAD_BYTES = 1_048_576
+private val MAX_IMAGE_DOWNLOAD_BYTES =
+    ProductImagePolicy.forTarget(BuildConfig.PRODUCT_PUBLISH_TARGET).maxBytes
 
 internal fun ProductDraft.toSaveJson(): JSONObject {
     val imagesV2 = images.mapIndexed { index, image ->
@@ -511,10 +537,8 @@ internal fun ProductDraft.toSaveJson(): JSONObject {
         images = imagesV2,
         priceMinor = priceMinor,
         currency = currency,
-        salesEnabled = false,
-    ).toJson().apply {
-        remove("salesEnabled")
-    }
+        salesEnabled = salesEnabled,
+    ).toJson()
 }
 
 private fun CalculationSnapshot.toJson(): JSONObject {
@@ -590,13 +614,25 @@ internal fun JSONObject.toServerUpdate(): ProductServerUpdate {
         shortDescription = optString("description").ifBlank { optString("shortDescription") },
         descriptionDocument = optJSONObject("descriptionDocument")
             ?.let(DescriptionDocument::fromJson),
+        notices = optStringList("notices"),
         careInstructions = optStringList("careInstructions"),
         priceMinor = getInt("priceMinor"),
         currency = getString("currency"),
         available = optBoolean("available", optString("status", "draft") == "published"),
+        salesEnabled = if (optInt("productModelVersion", 2) >= 4) {
+            val permission = opt("salesEnabled")
+            if (permission !is Boolean) {
+                throw ProductApiException(0, "invalid_api_response", message = "Verkaufsfreigabe fehlt in der Serverantwort.")
+            }
+            permission
+        } else {
+            optBoolean("salesEnabled", optBoolean("available", false))
+        },
         images = serverImages,
     )
 }
+
+data class ProductInventory(val onHand: Int, val reserved: Int, val available: Int, val version: Long)
 
 private fun JSONObject.optStringList(name: String): List<String> {
     val values = optJSONArray(name) ?: return emptyList()

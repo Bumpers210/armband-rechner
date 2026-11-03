@@ -1,0 +1,10 @@
+{
+  "name": "@carmaja/minimatch-compat",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Development-only ESLint compatibility facade for the patched minimatch engine",
+  "main": "index.cjs",
+  "dependencies": {
+    "minimatch-v11": "npm:minimatch@11.0.4"
+  }
+}

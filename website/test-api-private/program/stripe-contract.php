@@ -66,8 +66,34 @@ function carmaja_stripe_checkout_parameters(
     array $snapshot,
     string $successUrl,
     string $cancelUrl,
-    int $expiresAt
+    int $expiresAt,
+    int $minimumUnitAmountMinor = CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR
 ): array {
+    if (isset($snapshot['items'])) {
+        require_once __DIR__ . '/cart-contract.php';
+        if (!is_array($snapshot['items']) || $snapshot['items'] === []
+            || count($snapshot['items']) > CARMAJA_CART_MAX_POSITIONS
+            || carmaja_cart_total($snapshot['items'], $snapshot['shippingSnapshot']['amountMinor'] ?? -1) !== ($snapshot['totalMinor'] ?? null)
+            || !preg_match('/^[a-f0-9]{64}$/', $snapshot['snapshotHash'] ?? '')) {
+            throw new CarmajaStripeException('stripe_snapshot_invalid', 'Warenkorb-Snapshot ungültig.', 422);
+        }
+        $first = $snapshot['items'][0];
+        $params = carmaja_stripe_checkout_parameters([
+            'checkoutId' => $snapshot['checkoutId'], 'productId' => $first['productId'],
+            'productVersion' => $first['productVersion'], 'sourceHash' => $first['sourceHash'],
+            'productName' => $first['name'], 'priceMinor' => $first['priceMinor'], 'currency' => 'eur',
+            'legalBundleId' => $snapshot['legalBundleId'], 'shippingSnapshot' => $snapshot['shippingSnapshot'],
+        ], $successUrl, $cancelUrl, $expiresAt, 1);
+        $params['line_items'] = array_map(static fn ($item) => [
+            'price_data' => ['currency' => 'eur', 'unit_amount' => $item['priceMinor'],
+                'product_data' => ['name' => $item['name'], 'metadata' => ['productId' => $item['productId']]]],
+            'quantity' => $item['quantity'],
+        ], $snapshot['items']);
+        $params['metadata'] = ['checkoutId' => $snapshot['checkoutId'], 'legalBundleId' => $snapshot['legalBundleId'],
+            'snapshotHash' => $snapshot['snapshotHash'], 'checkoutKind' => 'cart'];
+        $params['payment_intent_data']['metadata'] = $params['metadata'];
+        return $params;
+    }
     $required = [
         'checkoutId', 'productId', 'productVersion', 'sourceHash',
         'productName', 'priceMinor', 'currency', 'legalBundleId',
@@ -85,7 +111,7 @@ function carmaja_stripe_checkout_parameters(
 
     if ($snapshot['currency'] !== 'eur'
         || !is_int($snapshot['priceMinor'])
-        || $snapshot['priceMinor'] < CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR
+        || $snapshot['priceMinor'] < $minimumUnitAmountMinor
         || !is_int($expiresAt)
         || $expiresAt < time() + CARMAJA_STRIPE_CHECKOUT_LIFETIME_SECONDS - 5
         || $expiresAt > time() + CARMAJA_STRIPE_CHECKOUT_LIFETIME_SECONDS + 5) {
@@ -305,6 +331,23 @@ final class CarmajaStripeGateway
                 502
             );
         }
+    }
+
+    public function retrieveRefund(string $id): array
+    {
+        try { return $this->resourceArray($this->client->refunds->retrieve($id)); }
+        catch (Throwable) { throw new CarmajaStripeException('stripe_refund_reconciliation_failed', 'Erstattung muss abgeglichen werden.', 502); }
+    }
+
+    public function listChargeRefunds(string $chargeId): array
+    {
+        try {
+            $result = [];
+            foreach ($this->client->refunds->all(['charge' => $chargeId, 'limit' => 100])->autoPagingIterator() as $refund) {
+                $result[] = $this->resourceArray($refund);
+            }
+            return $result;
+        } catch (Throwable) { throw new CarmajaStripeException('stripe_refund_reconciliation_failed', 'Erstattungen müssen abgeglichen werden.', 502); }
     }
 
     private function resourceArray(mixed $resource): array

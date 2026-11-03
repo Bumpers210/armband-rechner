@@ -330,7 +330,7 @@ function carmaja_api_v2_validate_images(mixed $value): array
     return $images;
 }
 
-function carmaja_api_v2_validate_put_payload(array $payload): array
+function carmaja_api_v2_validate_put_payload(array $payload, int $minimumPriceMinor = 50): array
 {
     carmaja_api_v2_reject_client_managed_fields($payload);
     carmaja_api_reject_unknown_fields($payload, carmaja_api_v2_allowed_put_fields());
@@ -359,11 +359,11 @@ function carmaja_api_v2_validate_put_payload(array $payload): array
 
     $priceMinor = $payload['priceMinor'] ?? null;
 
-    if (!is_int($priceMinor) || $priceMinor < 50) {
+    if (!is_int($priceMinor) || $priceMinor < $minimumPriceMinor) {
         throw new CarmajaApiException(
             422,
             'Preis ist ungültig.',
-            ['priceMinor' => 'Ganzzahl von mindestens 50 Cent erwartet.'],
+            ['priceMinor' => 'Ganzzahl von mindestens ' . $minimumPriceMinor . ' Cent erwartet.'],
             'invalid_price'
         );
     }

@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { shopContext } from "@/lib/cart-client";
+import { withdrawalFailureMessage } from "@/lib/withdrawal-message.mjs";
 
 const apiOrigin =
   process.env.CARMAJA_SHOP_API_ORIGIN ??
@@ -12,23 +14,18 @@ type Preview = {
   withdrawalId: string;
   confirmationToken: string;
   matchStatus: "matched" | "manual_review";
+  items: Array<{positionNo: number; name: string; quantity: number}>;
 };
 
 export function WithdrawalForm() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<Record<number, number>>({});
+  const [details, setDetails] = useState("");
 
   async function context(): Promise<{ csrfToken: string }> {
-    const response = await fetch(`${apiOrigin}/shop/v2/context`, {
-      credentials: "include",
-      cache: "no-store",
-    });
-    const payload = await response.json();
-    if (!response.ok || typeof payload.context?.csrfToken !== "string") {
-      throw new Error("context");
-    }
-    return payload.context;
+    return shopContext();
   }
 
   async function identify(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -38,7 +35,7 @@ export function WithdrawalForm() {
     try {
       const data = new FormData(event.currentTarget);
       const csrf = await context();
-      const response = await fetch(`${apiOrigin}/shop/v2/withdrawals/preview`, {
+      const response = await fetch(`${apiOrigin}/shop/v3/withdrawals/preview`, {
         method: "POST",
         credentials: "include",
         cache: "no-store",
@@ -50,15 +47,19 @@ export function WithdrawalForm() {
         }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message ?? "preview");
+      if (!response.ok) {
+        setMessage(withdrawalFailureMessage("preview", payload.error?.code));
+        return;
+      }
       setPreview(payload.withdrawal as Preview);
+      setSelected(Object.fromEntries((payload.withdrawal.items ?? []).map((item: {positionNo: number; quantity: number}) => [item.positionNo, item.quantity])));
       setMessage(
         payload.withdrawal.matchStatus === "matched"
           ? "Bitte prüfen Sie die Angaben und bestätigen Sie den Widerruf ausdrücklich."
           : "Die Angaben konnten nicht eindeutig zugeordnet werden. Der Widerruf wird nach Ihrer Bestätigung manuell geprüft.",
       );
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Widerruf konnte nicht vorbereitet werden.");
+    } catch {
+      setMessage(withdrawalFailureMessage("preview"));
     } finally {
       setBusy(false);
     }
@@ -69,7 +70,7 @@ export function WithdrawalForm() {
     setBusy(true);
     try {
       const csrf = await context();
-      const response = await fetch(`${apiOrigin}/shop/v2/withdrawals/confirm`, {
+      const response = await fetch(`${apiOrigin}/shop/v3/withdrawals/confirm`, {
         method: "POST",
         credentials: "include",
         cache: "no-store",
@@ -77,14 +78,23 @@ export function WithdrawalForm() {
         body: JSON.stringify({
           withdrawalId: preview.withdrawalId,
           confirmationToken: preview.confirmationToken,
+          items: Object.entries(selected).filter(([, quantity]) => quantity > 0).map(([positionNo, quantity]) => ({positionNo: Number(positionNo), quantity})),
+          details,
         }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error?.message ?? "confirm");
+      if (!response.ok) {
+        setMessage(withdrawalFailureMessage("confirm", payload.error?.code));
+        return;
+      }
+      if (payload.withdrawal?.state !== "submitted" || !payload.withdrawal.receivedAt) {
+        setMessage(withdrawalFailureMessage("confirm"));
+        return;
+      }
       setMessage(`Widerruf eingegangen am ${payload.withdrawal.receivedAt}. Eine elektronische Eingangsbestätigung wird versendet.`);
       setPreview(null);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Widerruf konnte nicht bestätigt werden.");
+    } catch {
+      setMessage(withdrawalFailureMessage("confirm"));
     } finally {
       setBusy(false);
     }
@@ -102,7 +112,13 @@ export function WithdrawalForm() {
         </form>
       ) : (
         <div className="withdrawal-confirmation">
-          <p>{message}</p>
+          <p role="status">{message}</p>
+          {(preview.items ?? []).map((item) => <label key={item.positionNo}>
+            {item.name} (bestellt: {item.quantity}; 0 = nicht widerrufen)
+            <input type="number" min={0} step={1} value={selected[item.positionNo] ?? 0}
+              onChange={(event) => setSelected({...selected, [item.positionNo]: Number(event.target.value)})} />
+          </label>)}
+          <label>Ergänzende Angaben (optional)<textarea value={details} maxLength={4000} onChange={(event) => setDetails(event.target.value)} /></label>
           <button type="button" disabled={busy} onClick={() => void confirm()}>
             Widerruf bestätigen
           </button>

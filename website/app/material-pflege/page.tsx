@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteContent } from "@/content/site-content";
+import { CelestialOrnament } from "@/components/celestial-ornament";
 
 export const metadata: Metadata = {
   title: "Material & Pflege",
@@ -20,6 +21,7 @@ export default function MaterialsAndCarePage() {
       <main id="main-content">
         <section className="v2-page-intro">
           <div className="content-shell">
+            <CelestialOrnament />
             <p className="v2-eyebrow">{siteContent.materials.eyebrow}</p>
             <h1>Material & Pflege</h1>
             <p>

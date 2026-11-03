@@ -242,3 +242,22 @@ test("Wurzelversion 2 akzeptiert keine Produkte des Modells 3", async () => {
     await rm(current.root, { recursive: true, force: true });
   }
 });
+
+test("Modell 4 akzeptiert ausschließlich die serverseitigen festen Hinweise", async () => {
+  const notices = [
+    "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+    "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.",
+  ];
+  const description = "Neues künstliches Produkt";
+  const model4 = product({ productModelVersion: 4, description,
+    descriptionDocument: {version: 1, blocks: [{type: "paragraph", spans: [{text: description, bold: false, italic: false, font: "standard", size: "normal"}]}]},
+    noticePolicyId: "natural-stones-v1", notices });
+  for (const [value, valid] of [[model4, true], [{...model4, noticePolicyId: null, notices: []}, true],
+    [{...model4, notices: []}, false], [{...model4, notices: [...notices, notices[0]]}, false],
+    [{...model4, stock: 3}, false], [{...model4, vintedUrl: "https://example.invalid"}, false]]) {
+    const current = await fixture(value, 4);
+    try { if (valid) assert.deepEqual(current.load().products[0].notices, value.notices);
+      else assert.throws(current.load); }
+    finally { await rm(current.root, {recursive: true, force: true}); }
+  }
+});

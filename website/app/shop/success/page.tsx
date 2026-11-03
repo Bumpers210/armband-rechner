@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { CheckoutQueryCleanup } from "@/components/checkout-query-cleanup";
+import { CartPaymentStatus } from "@/components/cart-payment-status";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { CelestialOrnament } from "@/components/celestial-ornament";
 
 export default function ShopSuccessPage() {
   return (
@@ -11,7 +13,9 @@ export default function ShopSuccessPage() {
       <main id="main-content" className="checkout-confirmation-main">
         <div className="content-shell checkout-confirmation-shell">
           <section className="checkout-confirmation-card">
+            <CelestialOrnament />
             <CheckoutQueryCleanup />
+            <CartPaymentStatus />
             <header className="checkout-confirmation-heading">
               <p className="v2-eyebrow">Ihre Bestellung</p>
               <h1>Vielen Dank</h1>
@@ -34,7 +38,7 @@ export default function ShopSuccessPage() {
                   <span aria-hidden="true">2</span>
                   <div>
                     <strong>Sorgfältig verpackt</strong>
-                    <p>Wir bereiten Ihr Armband persönlich für den Versand vor.</p>
+                    <p>Nach Zahlungsbestätigung bereiten wir Ihre Armbänder gemeinsam für den Versand vor.</p>
                   </div>
                 </li>
                 <li>

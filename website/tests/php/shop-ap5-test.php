@@ -259,6 +259,48 @@ $tests['AP5-Verträge und Statusachsen'] = static function () use ($assert): voi
         'Manueller Mail-Neuversand muss seine Outbox-ID vor dem Audit sichern.');
 };
 
+$tests['Warenkorbmails enthalten Mengen, Hinweise und einmaligen Versand'] = static function () use ($assert): void {
+    $requests = [];
+    $client = new CarmajaBrevoClient([
+        'environment' => 'test', 'shopWebsiteOrigin' => 'https://test.carmaja-perlen.de',
+        'brevoApiKey' => 'synthetic', 'brevoSenderEmail' => 'test@example.invalid',
+    ], static function (array $request) use (&$requests): array {
+        $requests[] = $request;
+        return ['status' => 201, 'body' => '{"messageId":"<synthetic-cart>"}'];
+    });
+    $result = $client->send(['message_type' => 'order_confirmation', 'dedupe_key' => 'cart-artificial-mail',
+        'recipient' => 'buyer@example.invalid', 'payload' => json_encode([
+            'orderNumber' => 'TEST-CART-0001', 'totalMinor' => 8670,
+            'shipping' => ['amountMinor' => 270], 'legal' => ['legalBundleId' => 'cmj-test-legal-2026-10-06-v3'],
+            'items' => [['name' => 'Test <A>', 'quantity' => 2, 'priceMinor' => 2800, 'currency' => 'eur',
+                'notices' => ['Natursteine können von der Abbildung abweichen.']],
+                ['name' => 'Test B', 'quantity' => 1, 'priceMinor' => 2800, 'currency' => 'eur', 'notices' => []]],
+        ], JSON_THROW_ON_ERROR)]);
+    $assert($result['outcome'] === 'sent' && count($requests) === 1, 'Warenkorbmail nicht versendet.');
+    $html = $requests[0]['htmlContent'];
+    $assert(str_contains($html, '2 × 28,00') && str_contains($html, '1 × 28,00'), 'Mengen fehlen.');
+    $assert(str_contains($html, 'Test &lt;A&gt;') && !str_contains($html, 'Test <A>'), 'Produktname nicht escaped.');
+    $assert(str_contains($html, 'Natursteine') && substr_count($html, '2,70') === 1 && str_contains($html, '86,70'), 'Hinweis, Versand oder Summe fehlt.');
+};
+$tests['Teilwiderrufsmail bestätigt Auswahl statt automatischer Erstattung'] = static function () use ($assert): void {
+    $requests = [];
+    $client = new CarmajaBrevoClient(['brevoApiKey' => 'synthetic', 'brevoSenderEmail' => 'test@example.invalid'],
+        static function (array $request) use (&$requests): array {
+            $requests[] = $request;
+            return ['status' => 201, 'body' => '{"messageId":"<synthetic-partial>"}'];
+        });
+    $result = $client->send(['message_type' => 'withdrawal_receipt', 'dedupe_key' => 'partial-artificial-mail',
+        'recipient' => 'buyer@example.invalid', 'payload' => json_encode([
+            'withdrawalId' => 'withdrawal-artificial', 'receivedAt' => '2026-10-06T12:00:00Z',
+            'content' => ['orderNumber' => 'TEST-CART-0001', 'name' => 'Test', 'email' => 'buyer@example.invalid',
+                'items' => [['positionNo' => 2, 'quantity' => 1]], 'details' => '<script>test</script>'],
+        ], JSON_THROW_ON_ERROR)]);
+    $assert($result['outcome'] === 'sent', 'Teilwiderruf nicht bestätigt.');
+    $html = $requests[0]['htmlContent'];
+    $assert(str_contains($html, 'Position 2: 1 Stück') && str_contains($html, 'nicht automatisch eine Erstattung'), 'Erklärungsinhalt fehlt.');
+    $assert(!str_contains($html, '<script>'), 'Freitext nicht escaped.');
+};
+
 $passed = 0;
 foreach ($tests as $name => $test) {
     try {

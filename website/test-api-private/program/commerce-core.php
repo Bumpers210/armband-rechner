@@ -13,6 +13,17 @@ declare(strict_types=1);
 
 const CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR = 50;
 const CARMAJA_COMMERCE_CURRENCY = 'eur';
+
+function carmaja_commerce_projection_sales_enabled(array $product, string $action): bool
+{
+    if (($product['productModelVersion'] ?? 0) === 4) {
+        if (!is_bool($product['salesEnabled'] ?? null)) {
+            throw new CarmajaCommerceException('projection_product_invalid', 'Verkaufsfreigabe fehlt.', 422);
+        }
+        return $action !== 'archive' && $product['salesEnabled'];
+    }
+    return $action !== 'archive';
+}
 const CARMAJA_COMMERCE_INVENTORY_REASONS = [
     'activate_new_unique',
     'shop_sale',
@@ -306,7 +317,7 @@ final class CarmajaCommerceMemory
             throw new CarmajaCommerceException('projection_action_invalid', 'Projektionsaktion ist ungültig.', 422);
         }
         $productId = (string) ($product['productId'] ?? '');
-        $salesEnabled = $action !== 'archive';
+        $salesEnabled = carmaja_commerce_projection_sales_enabled($product, $action);
         $this->products[$productId] = [
             'productId' => $productId,
             'productVersion' => (int) ($product['productVersion'] ?? 0),
@@ -772,11 +783,11 @@ final class CarmajaCommerceMemory
 }
 
 /** MySQL 8/InnoDB repository used by AP2 server-side code and later workers. */
-final class CarmajaCommercePdo
+class CarmajaCommercePdo
 {
     public function __construct(
-        private readonly PDO $pdo,
-        private readonly ?string $operatorEmail = null
+        protected readonly PDO $pdo,
+        protected readonly ?string $operatorEmail = null
     )
     {
         if ($operatorEmail !== null
@@ -1104,7 +1115,10 @@ final class CarmajaCommercePdo
         foreach (preg_split('/;\s*(?:\r?\n|$)/', $normalized) ?: [] as $statement) {
             $statement = trim($statement);
             if ($statement !== '') {
-                $this->pdo->exec($statement);
+                // Dynamic EXECUTE may return rows (including a SELECT 1 no-op).
+                // Drain its cursor before the next migration statement.
+                $cursor = $this->pdo->query($statement);
+                $cursor->closeCursor();
             }
         }
         $journal = $this->pdo->prepare(
@@ -1132,7 +1146,7 @@ final class CarmajaCommercePdo
         $currency = (string) ($product['currency'] ?? '');
         if ($productId === '' || $productVersion < 1 || $title === ''
             || preg_match('/^[a-f0-9]{64}$/', $sourceHash) !== 1
-            || $priceMinor < CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR
+            || $priceMinor < (($product['productModelVersion'] ?? 0) === 4 ? 1 : CARMAJA_COMMERCE_MINIMUM_AMOUNT_MINOR)
             || $currency !== CARMAJA_COMMERCE_CURRENCY) {
             throw new CarmajaCommerceException('projection_product_invalid', 'Produktprojektion ist unvollständig.', 422);
         }
@@ -1163,7 +1177,7 @@ final class CarmajaCommercePdo
                 return is_array($result) ? $result : [];
             }
 
-            $salesEnabled = $action === 'archive' ? 0 : 1;
+            $salesEnabled = (int) carmaja_commerce_projection_sales_enabled($product, $action);
             $upsert = $pdo->prepare(
                 'INSERT INTO commerce_products
                     (product_id, product_version, source_hash, name, description,
@@ -1994,7 +2008,7 @@ final class CarmajaCommercePdo
         });
     }
 
-    private function openReviewCase(PDO $pdo, string $subjectType, string $subjectId, string $reason): void
+    protected function openReviewCase(PDO $pdo, string $subjectType, string $subjectId, string $reason): void
     {
         $existing = $pdo->prepare(
             "SELECT review_case_id FROM review_cases
@@ -2712,6 +2726,7 @@ final class CarmajaCommercePdo
                         json_decode((string) $row['product_snapshot'], true, 32, JSON_THROW_ON_ERROR)['name']
                         ?? ''
                     ),
+                    'items' => json_decode((string) $row['product_snapshot'], true, 32, JSON_THROW_ON_ERROR)['items'] ?? [],
                     'shippingName' => (string) (
                         json_decode((string) $row['shipping_snapshot'], true, 32, JSON_THROW_ON_ERROR)['publicName']
                         ?? ''

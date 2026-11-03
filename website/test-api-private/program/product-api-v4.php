@@ -133,15 +133,16 @@ function carmaja_api_v4_product_image_file(string $productId, string $imageId): 
 
     $size = filesize($path);
     $imageInfo = @getimagesize($path);
+    $limits = carmaja_api_image_limits();
     if (!is_int($size)
         || $size < 1
-        || $size > CARMAJA_MAX_IMAGE_BYTES
+        || $size > $limits['bytes']
         || !is_array($imageInfo)
         || ($imageInfo[2] ?? null) !== IMAGETYPE_JPEG
         || (int) ($imageInfo[0] ?? 0) < 1
         || (int) ($imageInfo[1] ?? 0) < 1
-        || (int) $imageInfo[0] > CARMAJA_MAX_IMAGE_EDGE
-        || (int) $imageInfo[1] > CARMAJA_MAX_IMAGE_EDGE) {
+        || (int) $imageInfo[0] > $limits['edge']
+        || (int) $imageInfo[1] > $limits['edge']) {
         throw new CarmajaApiException(404, 'Produktbild wurde nicht gefunden.', [], 'image_not_found');
     }
 
@@ -278,7 +279,7 @@ function carmaja_api_v4_transition_product(
     ): array {
         $draft = carmaja_api_load_draft($productId);
         if (!is_array($draft)
-            || ($draft['productModelVersion'] ?? null) !== CARMAJA_PRODUCT_MODEL_V3) {
+            || !in_array($draft['productModelVersion'] ?? null, [3, 4], true)) {
             throw new CarmajaApiException(
                 409,
                 'Produkt muss zuerst mit der aktuellen App gespeichert werden.',
@@ -317,7 +318,11 @@ function carmaja_api_v4_transition_product(
                     . '-' . carmaja_api_slugify((string) $draft['name']);
             }
             $draft['status'] = $action === 'archive' ? 'disabled' : 'published';
-            $draft['salesEnabled'] = $action !== 'archive';
+            // Preserve the explicit sales permission in the stocked model.
+            // Archiving always closes sales; restoring never grants permission.
+            $draft['salesEnabled'] = $action !== 'archive'
+                && (($draft['productModelVersion'] ?? 0) === 4
+                    ? ($draft['salesEnabled'] ?? false) === true : true);
             $draft['publishedAt'] = $draft['publishedAt'] ?? carmaja_api_now();
             if ($action === 'archive') {
                 $draft['archivedAt'] = carmaja_api_now();
@@ -326,6 +331,10 @@ function carmaja_api_v4_transition_product(
             }
             $draft['updatedAt'] = carmaja_api_now();
             $draft['version'] = (int) ($draft['version'] ?? 0) + 1;
+            if (($draft['productModelVersion'] ?? 0) === 4) {
+                $draft['productVersion'] = (int) $draft['productVersion'] + 1;
+                $draft['sourceHash'] = carmaja_api_v3_product_from_draft($draft)['sourceHash'];
+            }
             $draft[$operationField] = $operationId;
             $draft['lastV4LifecycleOperationId'] = $operationId;
             $draft['lastV4LifecycleAction'] = $action;
@@ -360,6 +369,11 @@ function carmaja_api_v4_transition_product(
         'result' => 'success',
     ]);
     $responseProduct = carmaja_api_v4_product_response_from_draft($prepared['draft']);
+    if (($prepared['draft']['productModelVersion'] ?? 0) === 4) {
+        $responseProduct['salesEnabled'] = $prepared['draft']['salesEnabled'];
+        $responseProduct['available'] = $responseProduct['status'] === 'published'
+            && $responseProduct['salesEnabled'];
+    }
     return [
         'publication' => [
             'productId' => $productId,

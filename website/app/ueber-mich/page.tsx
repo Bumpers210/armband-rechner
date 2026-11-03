@@ -5,6 +5,7 @@ import Link from "next/link";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteContent } from "@/content/site-content";
+import { CelestialOrnament } from "@/components/celestial-ornament";
 
 export const metadata: Metadata = {
   title: "Über mich",
@@ -22,6 +23,7 @@ export default function AboutPage() {
       <main id="main-content">
         <section className="v2-page-intro">
           <div className="content-shell">
+            <CelestialOrnament />
             <p className="v2-eyebrow">{siteContent.maker.eyebrow}</p>
             <h1>{siteContent.maker.title}</h1>
           </div>

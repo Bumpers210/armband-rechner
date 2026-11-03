@@ -148,7 +148,11 @@ test("freigegebenes Legal Bundle v5 beschreibt Kollektionen und ist aktiv", asyn
   const source = await readFile(new URL("../../content/legal-bundles.ts", import.meta.url), "utf8");
   assert.match(source, /id: "cmj-production-legal-2026-08-16-v5"/);
   assert.match(source, /export const productionLegalBundleV5/);
-  assert.doesNotMatch(source, /productionLegalBundleV5Draft|awaiting_external_approval/);
+  const bundleStart = source.indexOf('export const productionLegalBundleV5:');
+  const bundleEnd = source.indexOf('\n});', bundleStart);
+  assert.ok(bundleStart >= 0 && bundleEnd > bundleStart);
+  assert.doesNotMatch(source.slice(bundleStart, bundleEnd), /productionLegalBundleV5Draft|awaiting_external_approval/);
+  assert.match(source.slice(bundleStart, bundleEnd), /status: "approved"/);
   assert.match(source, /dd37346635df45d48b9789484940942783606946ceec7ff3eed3e4173f1aef49/);
   assert.match(source, /wiederholt bestellbaren Kollektion/);
   assert.match(source, /Andere Kundinnen und Kunden können dieselbe aktive Kollektion/);

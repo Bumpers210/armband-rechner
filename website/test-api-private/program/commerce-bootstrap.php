@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/commerce-core.php';
 require_once __DIR__ . '/stripe-contract.php';
+require_once __DIR__ . '/cart-commerce.php';
 
 function carmaja_bootstrap_commerce(array $config): CarmajaCommercePdo
 {
@@ -50,7 +51,9 @@ function carmaja_bootstrap_commerce(array $config): CarmajaCommercePdo
         || trim((string) ($status['Ssl_version'] ?? '')) === '') {
         throw new CarmajaBootstrapException('commerce_tls_not_active', 'Commerce-Datenbankverbindung ist nicht nachweislich verschlüsselt.');
     }
-    return new CarmajaCommercePdo($pdo, $config['brevoOperatorEmail'] ?? null);
+    return ($config['inventoryCartEnabled'] ?? false) === true
+        ? new CarmajaCartCommerce($pdo, $config['brevoOperatorEmail'] ?? null)
+        : new CarmajaCommercePdo($pdo, $config['brevoOperatorEmail'] ?? null);
 }
 
 function carmaja_bootstrap_stripe(array $config): CarmajaStripeGateway

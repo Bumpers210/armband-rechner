@@ -23,6 +23,11 @@ const PRODUCT_KEYS_V2 = [
   "updatedAt",
 ];
 const PRODUCT_KEYS_V3 = [...PRODUCT_KEYS_V2, "descriptionDocument"];
+const PRODUCT_KEYS_V4 = [...PRODUCT_KEYS_V3, "noticePolicyId", "notices"];
+const PRODUCT_NOTICES = [
+  "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+  "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.",
+];
 const DESCRIPTION_DOCUMENT_KEYS = ["blocks", "version"];
 const DESCRIPTION_BLOCK_KEYS = ["spans", "type"];
 const DESCRIPTION_SPAN_KEYS = ["bold", "font", "italic", "size", "text"];
@@ -218,11 +223,19 @@ function validateImage(value, product, index, imageCount, imageRoot) {
 function validateProduct(value, index, imageRoot) {
   const location = `products[${index}]`;
   const product = requireObject(value, location);
-  if (![2, 3].includes(product.productModelVersion)) {
-    fail(location, "Produktmodell 2 oder 3 erwartet.");
+  if (![2, 3, 4].includes(product.productModelVersion)) {
+    fail(location, "Produktmodell 2, 3 oder 4 erwartet.");
   }
-  const productKeys = product.productModelVersion === 3 ? PRODUCT_KEYS_V3 : PRODUCT_KEYS_V2;
+  const productKeys = product.productModelVersion === 4 ? PRODUCT_KEYS_V4
+    : product.productModelVersion === 3 ? PRODUCT_KEYS_V3 : PRODUCT_KEYS_V2;
   requireExactKeys(product, productKeys, productKeys, location);
+  if (product.productModelVersion === 4) {
+    const expected = product.noticePolicyId === "natural-stones-v1" ? PRODUCT_NOTICES : [];
+    if (![null, "natural-stones-v1"].includes(product.noticePolicyId)
+      || JSON.stringify(product.notices) !== JSON.stringify(expected)) {
+      fail(location, "Unveränderbare Hinweiszuordnung stimmt nicht überein.");
+    }
+  }
   const productId = requireString(product.productId, `${location}.productId`, 40);
   const sku = requireString(product.sku, `${location}.sku`, 20);
   const slug = requireString(product.slug, `${location}.slug`, 180);
@@ -243,7 +256,7 @@ function validateProduct(value, index, imageRoot) {
     fail(location, "Positive Produktversion erwartet.");
   }
 
-  if (!Number.isInteger(product.priceMinor) || product.priceMinor < 50) {
+  if (!Number.isInteger(product.priceMinor) || product.priceMinor < (product.productModelVersion === 4 ? 1 : 50)) {
     fail(`${location}.priceMinor`, "Ganzzahl von mindestens 50 Cent erwartet.");
   }
 
@@ -279,7 +292,7 @@ function validateProduct(value, index, imageRoot) {
     DESCRIPTION_MAX_CHARACTERS,
     true,
   );
-  const descriptionDocument = product.productModelVersion === 3
+  const descriptionDocument = product.productModelVersion >= 3
     ? validateDescriptionDocument(
         product.descriptionDocument,
         description,
@@ -297,6 +310,8 @@ function validateProduct(value, index, imageRoot) {
     publicTitle,
     description,
     descriptionDocument,
+    noticePolicyId: product.noticePolicyId ?? null,
+    notices: product.notices ?? [],
     materials: requireStringList(product.materials, `${location}.materials`, { allowEmpty: false }),
     metalElements: requireStringList(product.metalElements, `${location}.metalElements`),
     braceletSizeCm,
@@ -327,11 +342,14 @@ export function loadPublicProductsV2(productsFile, imageRoot) {
   const root = requireObject(decoded, "root");
   requireExactKeys(root, ROOT_KEYS, ROOT_KEYS, "root");
 
-  if (![2, 3].includes(root.version) || !Array.isArray(root.products)) {
-    fail("root", "Version 2 oder 3 mit Produktliste erwartet.");
+  if (![2, 3, 4].includes(root.version) || !Array.isArray(root.products)) {
+    fail("root", "Version 2, 3 oder 4 mit Produktliste erwartet.");
   }
   if (root.version === 2 && root.products.some((product) => product?.productModelVersion !== 2)) {
     fail("root", "Version 2 darf nur Produkte des Modells 2 enthalten.");
+  }
+  if (root.products.some((product) => product?.productModelVersion > root.version)) {
+    fail("root", "Produktmodell darf die Projektionsversion nicht überschreiten.");
   }
 
   const products = root.products.map((product, index) =>

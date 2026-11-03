@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
+import { CelestialOrnament } from "@/components/celestial-ornament";
 
 export const metadata: Metadata = {
   title: {
@@ -28,6 +29,7 @@ export default function ImprintPage() {
       <SiteHeader />
       <main className="legal-main" id="main-content">
         <div className="content-shell legal-content">
+          <CelestialOrnament />
           <h1>{imprint.title}</h1>
 
           <section className="legal-section">

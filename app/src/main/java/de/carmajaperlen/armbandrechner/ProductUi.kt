@@ -85,9 +85,13 @@ data class ProductUiActions(
     val onDescriptionFontChange: (DescriptionFont) -> Unit = {},
     val onDescriptionSizeChange: (DescriptionSize) -> Unit = {},
     val onPriceChange: (TextFieldValue) -> Unit = {},
+    val onSalesEnabledChange: (Boolean) -> Unit = {},
     val onImagesPicked: (List<Uri>) -> Unit = {},
     val onSave: () -> Unit = {},
     val onSync: () -> Unit = {},
+    val onLoadInventory: () -> Unit = {},
+    val onAdjustInventory: (Int, String) -> Unit = { _, _ -> },
+    val onStageInitialInventory: (Int) -> Unit = {},
     val onRequestPublicationPreview: () -> Unit = {},
     val onCancelPublicationPreview: () -> Unit = {},
     val onPublish: () -> Unit = {},
@@ -303,6 +307,31 @@ internal fun ProductManagementSection(
         val draft = state.selectedDraft
         val editor = state.selectedEditor
         if (draft != null && editor != null) {
+            key("inventory-" + draft.draftId) {
+                var target by remember { mutableStateOf("") }
+                Text("Bestand (separat von Produktdaten)", fontWeight = FontWeight.Bold)
+                OutlinedTextField(value = target, onValueChange = { target = it }, label = { Text("Gezählte Stückzahl") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                val quantity = target.toIntOrNull()?.takeIf { it >= 0 }
+                OutlinedButton(onClick = actions.onLoadInventory, enabled = !state.busy) { Text("Bestand neu laden") }
+                val inventory = state.inventory?.takeIf { state.inventoryProductId == draft.draftId }
+                inventory?.let { Text("Vorhanden: ${it.onHand} · reserviert: ${it.reserved} · verfügbar: ${it.available}") }
+                if (draft.status != ProductStatus.Published) {
+                    OutlinedButton(onClick = { quantity?.let(actions.onStageInitialInventory) }, enabled = !state.busy && quantity != null) {
+                        Text("Anfangsbestand einmalig vormerken")
+                    }
+                }
+                if (inventory != null) {
+                    listOf("initial_count" to "Erstzählung bestätigen", "receive_stock" to "Neue fertige Armbänder",
+                        "mark_unsellable" to "Beschädigt / nicht verfügbar", "correction" to "Zählkorrektur").forEach { (reason, label) ->
+                        OutlinedButton(onClick = { quantity?.let { actions.onAdjustInventory(it, reason) } }, enabled = !state.busy && quantity != null) { Text(label) }
+                    }
+                }
+                val notices = if (draft.productVersion == 0 && draft.version == 0) listOf(
+                    "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+                    "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen.") else draft.notices
+                notices.forEach { Text(it) }
+            }
             key(draft.draftId) {
                 when {
                     draft.status == ProductStatus.Published &&
@@ -401,7 +430,8 @@ internal fun PublishedProductView(
             )
             Text("Bilder: ${draft.images.size}/5")
             Text(
-                text = "Verfügbar, bis die Kollektion in der App gelöscht wird.",
+                text = if (draft.salesEnabled) "Verkaufsfreigabe an · Kauf nur mit verfügbarem Bestand."
+                    else "Verkaufsfreigabe aus · Nicht kaufbar.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -638,8 +668,17 @@ internal fun ProductDraftForm(
                 busy = busy,
                 keyboardType = KeyboardType.Decimal,
             )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Checkbox(
+                    checked = editor.salesEnabled,
+                    onCheckedChange = actions.onSalesEnabledChange,
+                    enabled = !busy,
+                    modifier = Modifier.testTag("product-sales-enabled"),
+                )
+                Text("Verkaufsfreigabe")
+            }
             Text(
-                text = "Währung: EUR · Verfügbarkeit wird beim Veröffentlichen automatisch aktiviert",
+                text = "Währung: EUR · Kauf nur mit Verkaufsfreigabe und verfügbarem Bestand. Veröffentlichen ändert die Freigabe nicht.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -861,6 +900,9 @@ internal fun ProductPublicationPreviewScreen(
     onBack: () -> Unit,
     onPublish: () -> Unit,
     modifier: Modifier = Modifier,
+    confirmation: String? = null,
+    error: String? = null,
+    onDismissError: () -> Unit = {},
 ) {
     BackHandler(enabled = !busy, onBack = onBack)
     val description = draft.descriptionDocument
@@ -888,7 +930,11 @@ internal fun ProductPublicationPreviewScreen(
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(
-                        text = "VORSCHAU · NOCH NICHT VERÖFFENTLICHT",
+                        text = if (confirmation == null) {
+                            "VORSCHAU · NOCH NICHT VERÖFFENTLICHT"
+                        } else {
+                            "VERÖFFENTLICHUNG BESTÄTIGT"
+                        },
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.testTag("publication-preview-label"),
@@ -906,7 +952,8 @@ internal fun ProductPublicationPreviewScreen(
                 modifier = Modifier.testTag("publication-preview-title"),
             )
             Text(
-                text = "Verfügbar",
+                text = if (draft.salesEnabled) "Verkaufsfreigabe an · Bestand wird im Shop geprüft"
+                    else "Verkaufsfreigabe aus",
                 style = MaterialTheme.typography.labelLarge,
                 color = WebsitePreviewMoss,
             )
@@ -914,6 +961,7 @@ internal fun ProductPublicationPreviewScreen(
                 document = description,
                 modifier = Modifier.testTag("publication-preview-description"),
             )
+            draft.notices.forEach { Text(it, modifier = Modifier.testTag("publication-preview-notice")) }
 
             ProductPreviewFact("Materialien", draft.materials.joinToString(", "))
             ProductPreviewFact(
@@ -939,11 +987,11 @@ internal fun ProductPublicationPreviewScreen(
                 border = BorderStroke(1.dp, WebsitePreviewLine),
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = WebsitePreviewMoss),
             ) {
-                Text("Zurück zum Bearbeiten")
+                Text(if (confirmation == null) "Zurück zum Bearbeiten" else "Zurück zur Produktverwaltung")
             }
             Button(
                 onClick = onPublish,
-                enabled = !busy,
+                enabled = !busy && confirmation == null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp)
@@ -953,9 +1001,44 @@ internal fun ProductPublicationPreviewScreen(
                     contentColor = WebsitePreviewSurface,
                 ),
             ) {
-                Text(if (busy) "Veröffentlichung läuft …" else "Jetzt veröffentlichen")
+                if (busy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp).testTag("publication-preview-progress"),
+                        strokeWidth = 2.dp,
+                    )
+                    Spacer(Modifier.width(10.dp))
+                }
+                Text(when {
+                    busy -> "Veröffentlichung läuft …"
+                    confirmation != null -> "Veröffentlichung bestätigt"
+                    else -> "Jetzt veröffentlichen"
+                })
             }
         }
+    }
+
+    // The preview replaces the calculator Scaffold, so its SnackbarHost is
+    // not available here. Keep the outcome visible until explicitly acknowledged.
+    if (!busy && (confirmation != null || error != null)) {
+        val acknowledge = if (confirmation != null) onBack else onDismissError
+        AlertDialog(
+            onDismissRequest = acknowledge,
+            modifier = Modifier.testTag("publication-feedback"),
+            title = {
+                Text(
+                    if (confirmation != null) "Veröffentlichung bestätigt" else "Veröffentlichung nicht bestätigt",
+                    modifier = Modifier.testTag("publication-feedback-title"),
+                )
+            },
+            text = if (confirmation == null) {
+                { Text("$error\n\nDer Ausgang ist nicht bestätigt. Bitte prüfe die Verbindung oder den Serverstand, bevor du es erneut versuchst.") }
+            } else null,
+            confirmButton = {
+                TextButton(onClick = acknowledge, modifier = Modifier.testTag("publication-feedback-confirm")) {
+                    Text(if (confirmation != null) "Fertig" else "Verstanden")
+                }
+            },
+        )
     }
 }
 

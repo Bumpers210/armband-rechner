@@ -17,16 +17,27 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "next": "16.3.0",
+    "next": "16.4.3",
     "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react-dom": "19.2.6",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "16.4.3",
+    "minimatch": "file:./scripts/minimatch-compat",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "eslint": { "minimatch": "$minimatch" },
+    "@eslint/config-array": { "minimatch": "$minimatch" },
+    "@eslint/eslintrc": { "minimatch": "$minimatch" },
+    "eslint-plugin-import": { "minimatch": "$minimatch" },
+    "eslint-plugin-react": { "minimatch": "$minimatch" },
+    "eslint-plugin-jsx-a11y": { "minimatch": "$minimatch" },
+    "@typescript-eslint/typescript-estree": { "minimatch": "11.0.4" }
   }
 }

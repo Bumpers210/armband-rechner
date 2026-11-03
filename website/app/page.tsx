@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import { CelestialOrnament } from "@/components/celestial-ornament";
 import { ProductList } from "@/components/product-list";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -68,13 +69,14 @@ export default function Home() {
                 {siteContent.hero.description}
               </p>
               <Link className="v2-button v2-button--warm" href="/armbaender/">
-                Armbänder ansehen
+                Dein Armband entdecken
               </Link>
             </div>
           </div>
         </section>
 
         <section className="v2-introduction" aria-label="Über Carmaja-Perlen">
+          <div className="v2-section-ornament"><CelestialOrnament /></div>
           <div className="content-shell v2-introduction-grid">
             <p className="v2-introduction-statement">{siteContent.statement}</p>
             <div className="v2-introduction-copy">
@@ -90,12 +92,12 @@ export default function Home() {
           <div className="content-shell">
             <div className="v2-section-heading">
               <div>
-                <p className="v2-eyebrow">Aktuelle Auswahl</p>
-                <h2>Armbänder entdecken</h2>
+                <p className="v2-eyebrow">Kleine Schätze aus Naturstein</p>
+                <h2>Was spricht dich an?</h2>
               </div>
               <p>
-                Eine kleine Auswahl handgefertigter Stücke mit Bildern,
-                Materialien und Größen.
+                Sanfte Farben oder ausdrucksstarke Steine? Lass dich von
+                unserer Auswahl inspirieren und finde deinen persönlichen Begleiter.
               </p>
             </div>
             {visibleProducts.length > 0 ? (

@@ -138,10 +138,11 @@ class ProductDraftRepository(
                 pearlSizeMm = update.pearlSizeMm,
                 shortDescription = update.shortDescription,
                 descriptionDocument = descriptionDocument,
+                notices = update.notices,
                 careInstructions = update.careInstructions,
                 priceMinor = update.priceMinor,
                 currency = update.currency.lowercase(),
-                salesEnabled = update.available,
+                salesEnabled = update.salesEnabled,
                 internalCalculation = CalculationSnapshot(
                     quantities = emptyMap(),
                     workMinutes = "0",
@@ -297,6 +298,9 @@ class ProductDraftRepository(
             .put("pearlSizeMm", draft.pearlSizeMm)
             .put("shortDescription", draft.shortDescription)
             .put("descriptionDocument", draft.descriptionDocument?.toJson())
+            .put("notices", JSONArray(draft.notices))
+            .put("pendingInitialInventoryOperationId", draft.pendingInitialInventoryOperationId)
+            .put("pendingInitialOnHand", draft.pendingInitialOnHand)
             .put("careInstructions", JSONArray(draft.careInstructions))
             .put("priceMinor", draft.priceMinor)
             .put("currency", draft.currency)
@@ -331,6 +335,9 @@ class ProductDraftRepository(
             shortDescription = json.optString("shortDescription"),
             descriptionDocument = json.optJSONObject("descriptionDocument")
                 ?.let(DescriptionDocument::fromJson),
+            notices = json.optStringList("notices"),
+            pendingInitialInventoryOperationId = json.optStringOrNull("pendingInitialInventoryOperationId"),
+            pendingInitialOnHand = if (json.has("pendingInitialOnHand") && !json.isNull("pendingInitialOnHand")) json.getInt("pendingInitialOnHand") else null,
             careInstructions = json.optStringList("careInstructions"),
             priceMinor = if (json.has("priceMinor")) {
                 json.optInt("priceMinor", 0)
@@ -491,10 +498,10 @@ class ProductDraftRepository(
     }
 
     private fun Bitmap.scaleToMax(maxEdge: Int): Bitmap {
-        val largest = maxOf(width, height)
-        if (largest <= maxEdge) return this
-        val ratio = maxEdge.toFloat() / largest.toFloat()
-        return Bitmap.createScaledBitmap(this, (width * ratio).toInt(), (height * ratio).toInt(), true)
+        val (targetWidth, targetHeight) = ProductImagePolicy(maxEdge, MAX_IMAGE_BYTES)
+            .scaledDimensions(width, height)
+        if (targetWidth == width && targetHeight == height) return this
+        return Bitmap.createScaledBitmap(this, targetWidth, targetHeight, true)
     }
 
     private fun compressToLimit(bitmap: Bitmap): ByteArray {
@@ -523,8 +530,9 @@ class ProductDraftRepository(
 
     companion object {
         private const val MAX_IMAGES = 5
-        private const val MAX_IMAGE_EDGE = 1600
-        private const val MAX_IMAGE_BYTES = 1_048_576
+        private val imagePolicy = ProductImagePolicy.forTarget(BuildConfig.PRODUCT_PUBLISH_TARGET)
+        private val MAX_IMAGE_EDGE = imagePolicy.maxEdge
+        private val MAX_IMAGE_BYTES = imagePolicy.maxBytes
     }
 }
 

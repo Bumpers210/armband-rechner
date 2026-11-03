@@ -200,13 +200,14 @@ internal fun applyServerUpdate(
         version = update.version,
         productVersion = update.productVersion,
         sourceHash = update.sourceHash,
+        notices = update.notices,
         sku = update.sku ?: draft.sku,
         slug = update.slug ?: draft.slug,
         status = update.status,
         serverUpdatedAt = update.updatedAt ?: draft.serverUpdatedAt,
         priceMinor = update.priceMinor,
         currency = update.currency,
-        salesEnabled = update.available,
+        salesEnabled = update.salesEnabled,
         shortDescription = update.shortDescription,
         descriptionDocument = update.descriptionDocument ?: draft.descriptionDocument,
         pendingV2SaveOperationId = null,
@@ -225,4 +226,5 @@ private fun ProductServerUpdate.matchesMetadata(draft: ProductDraft): Boolean {
         careInstructions == draft.careInstructions
         && priceMinor == draft.priceMinor
         && currency == draft.currency
+        && salesEnabled == draft.salesEnabled
 }

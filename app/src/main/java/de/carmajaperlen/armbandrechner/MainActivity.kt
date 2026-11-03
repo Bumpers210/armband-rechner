@@ -139,8 +139,12 @@ class MainActivity : ComponentActivity() {
                         productViewModel.updateSelectedEditor(ProductEditorField.Price, value)
                     },
                     onImagesPicked = productViewModel::addImages,
+                    onSalesEnabledChange = productViewModel::updateSalesEnabled,
                     onSave = productViewModel::saveSelected,
                     onSync = productViewModel::syncSelected,
+                    onLoadInventory = productViewModel::loadSelectedInventory,
+                    onAdjustInventory = productViewModel::adjustSelectedInventory,
+                    onStageInitialInventory = productViewModel::stageSelectedInitialInventory,
                     onRequestPublicationPreview = productViewModel::requestPublicationPreview,
                     onCancelPublicationPreview = productViewModel::cancelPublicationPreview,
                     onPublish = productViewModel::publishSelected,
@@ -155,6 +159,9 @@ class MainActivity : ComponentActivity() {
                             environmentLabel = productState.apiEndpoint?.environmentLabel
                                 ?: "Produktverwaltung",
                             busy = productState.busy,
+                            confirmation = productState.publicationConfirmation,
+                            error = productState.error,
+                            onDismissError = productActions.onMessageShown,
                             onBack = productActions.onCancelPublicationPreview,
                             onPublish = productActions.onPublish,
                         )

@@ -33,6 +33,9 @@ data class ProductUiState(
     val fieldErrors: Map<String, String> = emptyMap(),
     val conflict: ProductSyncConflictState? = null,
     val publicationPreview: ProductDraft? = null,
+    val publicationConfirmation: String? = null,
+    val inventory: ProductInventory? = null,
+    val inventoryProductId: String? = null,
 ) {
     val selectedDraft: ProductDraft?
         get() = drafts.firstOrNull { it.draftId == selectedDraftId }
@@ -42,7 +45,19 @@ data class ProductUiState(
 
     val selectedHasUnsavedChanges: Boolean
         get() = selectedDraftId in unsavedDraftIds
+
+    val canPublishPreview: Boolean
+        get() = publicationPreview != null && !busy && publicationConfirmation == null
 }
+
+internal fun publicationConfirmation(result: PublishResult): String =
+    if (result.commitSha == null) {
+        "Das Produkt wurde in der Produktverwaltung veröffentlicht. " +
+            "Die Website wird dadurch nicht automatisch aktualisiert."
+    } else {
+        "Die Veröffentlichung wurde angenommen. " +
+            "Die Aktualisierung der Website läuft separat und kann noch etwas dauern."
+    }
 
 class ProductViewModel(
     private val repository: ProductDraftRepository,
@@ -165,6 +180,16 @@ class ProductViewModel(
     }
 
     fun toggleDescriptionBold() = updateDescriptionEditor(RichDescriptionEditorState::toggleBold)
+
+    fun updateSalesEnabled(value: Boolean) {
+        val editor = _uiState.value.selectedEditor ?: return
+        draftSession.markChanged(editor.draftId)
+        _uiState.value = _uiState.value.copy(
+            editors = _uiState.value.editors + (editor.draftId to editor.copy(salesEnabled = value)),
+            unsavedDraftIds = draftSession.unsavedDraftIds,
+            publicationPreview = null,
+        )
+    }
 
     fun toggleDescriptionItalic() = updateDescriptionEditor(RichDescriptionEditorState::toggleItalic)
 
@@ -313,6 +338,45 @@ class ProductViewModel(
         }
     }
 
+    fun loadSelectedInventory() {
+        val draft = _uiState.value.selectedDraft ?: return
+        runBusy {
+            val inventory = withContext(Dispatchers.IO) { apiClient.inventory(requireBaseUrl(), requireToken(), draft.draftId) }
+            _uiState.value = _uiState.value.copy(inventory = inventory, inventoryProductId = draft.draftId)
+        }
+    }
+
+    fun adjustSelectedInventory(target: Int, reason: String) {
+        val draft = _uiState.value.selectedDraft ?: return
+        val inventory = _uiState.value.inventory?.takeIf { _uiState.value.inventoryProductId == draft.draftId } ?: return
+        if (target < 0) return
+        runBusy {
+            try {
+                val updated = withContext(Dispatchers.IO) {
+                    apiClient.adjustInventory(requireBaseUrl(), requireToken(), draft.draftId, target, inventory.version, reason, UUID.randomUUID().toString())
+                }
+                _uiState.value = _uiState.value.copy(inventory = updated, message = "Bestand gespeichert.")
+            } catch (error: Exception) {
+                val fresh = withContext(Dispatchers.IO) { runCatching { apiClient.inventory(requireBaseUrl(), requireToken(), draft.draftId) }.getOrNull() }
+                _uiState.value = _uiState.value.copy(inventory = fresh)
+                throw error
+            }
+        }
+    }
+
+    fun stageSelectedInitialInventory(target: Int) {
+        if (target < 0) return
+        val draft = selectedDraftSnapshot() ?: return
+        runBusy {
+            val current = syncDraft(draft)
+            val operation = current.pendingInitialInventoryOperationId ?: UUID.randomUUID().toString()
+            val quantity = current.pendingInitialOnHand ?: target
+            val pending = saveAndReplace(current.copy(pendingInitialInventoryOperationId = operation, pendingInitialOnHand = quantity))
+            withContext(Dispatchers.IO) { apiClient.stageInitialInventory(requireBaseUrl(), requireToken(), pending.draftId, quantity, operation) }
+            _uiState.value = _uiState.value.copy(message = "Anfangsbestand vorgemerkt; wird bei Veröffentlichung genau einmal übernommen.")
+        }
+    }
+
     fun requestPublicationPreview() {
         val draft = selectedDraftSnapshot() ?: return
         val validation = draft.validateForPublish()
@@ -323,14 +387,21 @@ class ProductViewModel(
 
         _uiState.value = _uiState.value.copy(
             publicationPreview = draft,
+            publicationConfirmation = null,
             fieldErrors = emptyMap(),
+            message = null,
             error = null,
         )
     }
 
     fun cancelPublicationPreview() {
         if (_uiState.value.busy) return
-        _uiState.value = _uiState.value.copy(publicationPreview = null)
+        _uiState.value = _uiState.value.copy(
+            publicationPreview = null,
+            publicationConfirmation = null,
+            message = null,
+            error = null,
+        )
     }
 
     fun publishSelected() {
@@ -341,6 +412,7 @@ class ProductViewModel(
             )
             return
         }
+        if (!_uiState.value.canPublishPreview) return
 
         runBusy {
             var current = saveAndReplace(draft)
@@ -359,19 +431,14 @@ class ProductViewModel(
                     status = result.status,
                     productVersion = result.productVersion,
                     sourceHash = result.sourceHash,
-                    salesEnabled = result.available,
+                    salesEnabled = result.salesEnabled,
                     pendingPublishOperationId = null,
                 ),
             )
             _uiState.value = _uiState.value.copy(
-                message = if (result.commitSha == null) {
-                    "Für Testwebsite bereitgestellt (${result.deploymentStatus})."
-                } else {
-                    "Veröffentlichung gestartet: ${result.commitSha.take(7)} (${result.deploymentStatus})."
-                },
+                publicationConfirmation = publicationConfirmation(result),
                 fieldErrors = emptyMap(),
                 editingDraftId = null,
-                publicationPreview = null,
             )
         }
     }
@@ -437,7 +504,7 @@ class ProductViewModel(
                     status = result.status,
                     productVersion = result.productVersion,
                     sourceHash = result.sourceHash,
-                    salesEnabled = result.available,
+                    salesEnabled = result.salesEnabled,
                     pendingArchiveOperationId = null,
                     pendingRestoreOperationId = null,
                 ),
@@ -540,6 +607,11 @@ class ProductViewModel(
             selectedDraftId = draft.draftId,
             editors = editors,
             unsavedDraftIds = draftSession.unsavedDraftIds,
+            // Keep the persisted operation/version after a partial publish failure.
+            // A retry from the still-open preview must not reuse its stale snapshot.
+            publicationPreview = _uiState.value.publicationPreview?.let { preview ->
+                if (preview.draftId == draft.draftId) draft else preview
+            },
         )
     }
 

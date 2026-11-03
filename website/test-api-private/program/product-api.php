@@ -11,6 +11,14 @@ const CARMAJA_SLUG_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
 const CARMAJA_MAX_IMAGES = 5;
 const CARMAJA_MAX_IMAGE_BYTES = 1048576;
 const CARMAJA_MAX_IMAGE_EDGE = 1600;
+
+function carmaja_api_image_limits(): array
+{
+    // Production keeps its existing contract until a separate release approval.
+    return carmaja_api_publish_target() === 'test'
+        ? ['edge' => 3200, 'bytes' => 5 * 1048576]
+        : ['edge' => CARMAJA_MAX_IMAGE_EDGE, 'bytes' => CARMAJA_MAX_IMAGE_BYTES];
+}
 const CARMAJA_BACKUP_KEEP = 30;
 const CARMAJA_LOGIN_LIMIT = 5;
 const CARMAJA_LOGIN_WINDOW_SECONDS = 900;
@@ -2767,7 +2775,7 @@ function carmaja_api_commit_public_product(
         $repoPathPrefix . '/contents/website/content/products.json?ref=' . rawurlencode($branch)
     );
     $productModelVersion = $publicProduct['productModelVersion'] ?? null;
-    $isVersionedProduct = in_array($productModelVersion, [2, 3], true);
+    $isVersionedProduct = in_array($productModelVersion, [2, 3, 4], true);
     $targetDocumentVersion = $isVersionedProduct ? (int) $productModelVersion : 1;
     $currentProducts = ['version' => $targetDocumentVersion, 'products' => []];
 
@@ -2782,13 +2790,13 @@ function carmaja_api_commit_public_product(
         ? $currentProducts['products']
         : [];
     $currentDocumentVersion = $currentProducts['version'] ?? null;
-    $isSafeV3Upgrade = $targetDocumentVersion === 3
-        && $currentDocumentVersion === 2
+    $isSafeV3Upgrade = in_array($targetDocumentVersion, [3,4], true)
+        && in_array($currentDocumentVersion, [2,3,4], true)
         && array_reduce(
             $products,
             static fn (bool $safe, mixed $product): bool => $safe
                 && is_array($product)
-                && ($product['productModelVersion'] ?? null) === 2,
+                && in_array($product['productModelVersion'] ?? null, [2,3,4], true),
             true
         );
     if ($currentDocumentVersion !== $targetDocumentVersion
@@ -2801,6 +2809,7 @@ function carmaja_api_commit_public_product(
             'public_product_model_conflict'
         );
     }
+    if ($isSafeV3Upgrade) { $targetDocumentVersion = max($targetDocumentVersion, $currentDocumentVersion); }
     $publicProductForJson = array_diff_key($publicProduct, [
         '_imageBlobs' => true,
         '_removePublic' => true,
@@ -3038,6 +3047,7 @@ function carmaja_api_process_jpeg(
     bool $requireHttpUpload
 ): array {
     $extension = strtolower((string) pathinfo($originalName, PATHINFO_EXTENSION));
+    $limits = carmaja_api_image_limits();
     $actualSize = is_file($sourcePath) ? filesize($sourcePath) : false;
 
     if (!in_array($extension, ['jpg', 'jpeg'], true)) {
@@ -3061,12 +3071,12 @@ function carmaja_api_process_jpeg(
     if (!is_int($actualSize)
         || $actualSize <= 0
         || $declaredSize !== $actualSize
-        || $actualSize > CARMAJA_MAX_IMAGE_BYTES) {
+        || $actualSize > $limits['bytes']) {
         throw new CarmajaApiException(
-            $actualSize > CARMAJA_MAX_IMAGE_BYTES ? 413 : 422,
+            $actualSize > $limits['bytes'] ? 413 : 422,
             'Bilddatei hat eine ungültige Größe.',
-            ['images' => 'Maximal 1 MB pro Bild erlaubt.'],
-            $actualSize > CARMAJA_MAX_IMAGE_BYTES
+            ['images' => 'Maximal ' . ($limits['bytes'] / 1048576) . ' MiB pro Bild erlaubt.'],
+            $actualSize > $limits['bytes']
                 ? 'image_too_large'
                 : 'image_size_invalid'
         );
@@ -3083,6 +3093,11 @@ function carmaja_api_process_jpeg(
         );
     }
 
+    // Reject oversized dimensions before allocating a decoded bitmap (decompression bombs).
+    if ($info[0] < 1 || $info[1] < 1 || max($info[0], $info[1]) > $limits['edge']) {
+        throw new CarmajaApiException(422, 'Bildabmessungen sind ungültig.',
+            ['images' => 'Maximale Kantenlänge ist ' . $limits['edge'] . ' Pixel.'], 'image_dimensions_invalid');
+    }
     $raw = file_get_contents($sourcePath);
     $decoded = is_string($raw) ? @imagecreatefromstring($raw) : false;
 
@@ -3107,11 +3122,11 @@ function carmaja_api_process_jpeg(
 
         if ($width < 1
             || $height < 1
-            || max($width, $height) > CARMAJA_MAX_IMAGE_EDGE) {
+            || max($width, $height) > $limits['edge']) {
             throw new CarmajaApiException(
                 422,
                 'Bildabmessungen sind ungültig.',
-                ['images' => 'Maximale Kantenlänge ist 1600 Pixel.'],
+                ['images' => 'Maximale Kantenlänge ist ' . $limits['edge'] . ' Pixel.'],
                 'image_dimensions_invalid'
             );
         }
@@ -3131,14 +3146,14 @@ function carmaja_api_process_jpeg(
 
         if (!is_int($cleanSize)
             || $cleanSize <= 0
-            || $cleanSize > CARMAJA_MAX_IMAGE_BYTES
+            || $cleanSize > $limits['bytes']
             || $cleanInfo === false
             || ($cleanInfo[2] ?? null) !== IMAGETYPE_JPEG) {
             @unlink($destinationPath);
             throw new CarmajaApiException(
                 422,
                 'Neu gespeichertes Bild überschreitet die erlaubten Grenzen.',
-                ['images' => 'Bild muss nach Bereinigung maximal 1 MB groß sein.'],
+                ['images' => 'Bild muss nach Bereinigung maximal ' . ($limits['bytes'] / 1048576) . ' MiB groß sein.'],
                 'image_output_invalid'
             );
         }

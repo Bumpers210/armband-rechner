@@ -231,7 +231,7 @@ export function ProductImageGallery({
           data-lightbox-open={mainIndex}
         >
           <Image
-            src={mainImage.src}
+            src={mainImage.previews?.[640] ?? mainImage.src}
             alt={mainImage.alt}
             width={mainImage.width}
             height={mainImage.height}
@@ -263,7 +263,7 @@ export function ProductImageGallery({
           data-lightbox-open={mainIndex}
         >
           <Image
-            src={mainImage.src}
+            src={mainImage.previews?.[1200] ?? mainImage.src}
             alt={mainImage.alt}
             width={mainImage.width}
             height={mainImage.height}
@@ -291,7 +291,7 @@ export function ProductImageGallery({
                   data-lightbox-open={index}
                 >
                   <Image
-                    src={image.src}
+                    src={image.previews?.[240] ?? image.src}
                     alt={image.alt}
                     width={image.width}
                     height={image.height}
