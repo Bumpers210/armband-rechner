@@ -28,6 +28,16 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.4.3",
+    "minimatch": "file:./scripts/minimatch-compat",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "eslint": { "minimatch": "$minimatch" },
+    "@eslint/config-array": { "minimatch": "$minimatch" },
+    "@eslint/eslintrc": { "minimatch": "$minimatch" },
+    "eslint-plugin-import": { "minimatch": "$minimatch" },
+    "eslint-plugin-react": { "minimatch": "$minimatch" },
+    "eslint-plugin-jsx-a11y": { "minimatch": "$minimatch" },
+    "@typescript-eslint/typescript-estree": { "minimatch": "11.0.4" }
   }
 }

@@ -2,6 +2,15 @@
 
 ## Neue Erweiterung vom 6. Oktober 2026: Mengenbestand und Warenkorb
 
+Sicherheitsnachtrag 3. November 2026 (Abnahmebericht 3.83, PR #92): Die
+16 moderaten npm-Entwicklungsbefunde wurden gezielt durch minimatch 11.0.4
+und eine getestete Kompatibilitaetsfassade fuer die vorhandenen Lintwerkzeuge
+geschlossen. Laufzeitabhaengigkeiten und Shopvertraege unveraendert. Beide
+npm-Audits ohne Befund, 250 Node-Tests, Shell-Mocks, 224 PHP-Pruefungen,
+Website-Lint und Testexport bestanden. CI prueft kuenftig auch den vollstaendigen
+npm-Audit. Neuer Commit/Push nur im Warenkorbbranch; SHA-gebundene CI-Ergebnisse
+im PR. Keine Merge-, Deployment-, Produktions- oder Cutoverfreigabe.
+
 PC-Praxisabnahme 29. Oktober 2026 (Abnahmebericht 3.81/3.82): Kuenstlichen
 Artikel mit zwei Bildern ueber die Browserverwaltung gespeichert, erneut
 geladen, Preis/Mass und Bildreihenfolge geaendert sowie zweimal ausschliesslich

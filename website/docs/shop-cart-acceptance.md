@@ -3679,6 +3679,35 @@ Release- oder Produktionsfreigabe. Kein Commit, Push, Merge oder Deployment.
 `main`, `website/hosting/**` und Produktion unveraendert. Testdeployschalter
 abschliessend lesend bestaetigt: `CARMAJA_TEST_DEPLOY_ENABLED=false`.
 
+### 3.83 Gezielte minimatch-Sicherheitsbereinigung fuer PR #92 (3. November 2026)
+
+Die 16 moderaten npm-Befunde des gesicherten Stands c9f3c43 gehen auf
+[GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)
+in den Entwicklungs-/Lintabhaengigkeiten zurueck. Beide alten minimatch-Baeume
+werden durch die gepinnte Upstream-Engine 11.0.4 ersetzt. Die sechs noch auf
+callable v3 angewiesenen Lintverbraucher erhalten eine kleine, lokale und rein
+entwicklungsseitige Kompatibilitaetsfassade; typescript-estree nutzt v11 direkt.
+Die Fassade enthaelt keinen alten Matcher und erzeugt keine RegExp. Ihr eng
+begrenzter makeRe/test-Vertrag und die spaetere Entfernung sind dokumentiert.
+Keine Warnungsunterdrueckung, kein force-Downgrade, keine Aenderung an Next,
+React, sharp, App, Shop-Fachlogik oder Laufzeitpaketen.
+
+Lokale Nachweise: 250 Node-Tests (einschliesslich sechs neuer Engine-/Consumer-,
+React-/A11y-/Importregel-, Ignore- und Amplifikationsregressionen), Shell-Mockreihen,
+Website-Lint, TypeScript und Testexport mit 25 Seiten bestanden. Die Fassade
+ist nicht im oeffentlichen JS-/HTML-Export enthalten. PHP 8.4.23: 23 Runtime-,
+59 Produkt-API-, 37 Browser-, 15 Katalog-, 13 Bootstrap-, 20 Admin- und
+57 lokale E2E-Vertragspruefungen bestanden. Optionaler Shell-PHP-Klickstatistik-
+Test mangels PHP im Bash-PATH uebersprungen; kein Hosting-PHP veraendert/geprueft.
+`npm audit` und `npm audit --omit=dev` jeweils 0 Befunde. Der Website-CI-Build
+erhaelt einen zusaetzlichen `npm audit --audit-level=moderate`-Schritt; Trigger,
+Deploymentbedingungen und Freigabeschalter bleiben unveraendert.
+
+Commit/Push ausschliesslich auf `codex/shop-inventory-cart` fuer PR #92
+freigegeben; der genaue neue CI-Nachweis wird nach dem Push im PR festgehalten.
+Keine neue Gesamt-/Produktionsfreigabe. Kein Merge, Deployment, Server- oder
+Providerzugriff. Testprodukte, Bestaende und private Konfigurationen unveraendert.
+
 ## 4. Noch offene Pflichtnachweise
 
 1. Historische Einzelbestellungen sind kuenstlich und praktisch verlustfrei migriert (3.17). Die abgegrenzten Funktions-/Parallelitaets-/Backup- und Crash-/Timeoutreihen sind bestanden; weitere Pflichtfaelle sind damit nicht pauschal freigegeben.
