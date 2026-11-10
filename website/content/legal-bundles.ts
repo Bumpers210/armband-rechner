@@ -447,9 +447,21 @@ export const cartProductionLegalDraft: LegalBundle = createLegalBundle({
   },
 });
 
+// Technical promotion of the externally approved v7 texts. The review draft
+// above retains its exact hash; status is hash-relevant and is not overwritten.
+export const cartProductionLegalBundle: LegalBundle = createLegalBundle({
+  id: cartProductionLegalDraft.id,
+  environment: cartProductionLegalDraft.environment,
+  version: cartProductionLegalDraft.version,
+  status: "approved",
+  archiveUrl: cartProductionLegalDraft.archiveUrl,
+  createdAt: cartProductionLegalDraft.createdAt,
+  texts: cartProductionLegalDraft.texts,
+});
+
 export const legalBundlesByTarget = {
   test: [cartTestLegalBundle, cartTestLegalBundleV3, testLegalBundle],
-  production: [productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle],
+  production: [cartProductionLegalBundle, productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle],
 } as const;
 
 export function getActiveLegalBundle(): LegalBundle {

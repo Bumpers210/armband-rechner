@@ -3710,6 +3710,21 @@ Providerzugriff. Testprodukte, Bestaende und private Konfigurationen unveraender
 
 ## 4. Noch offene Pflichtnachweise
 
+Aktueller lokaler Nachtrag 10. November 2026: Der PR-92-main-Stand ist Basis
+des isolierten `codex/cart-production-package`. Backupkorrekturen, V5-/Shop-v3-
+Paketvertrag, gesperrter Mengenimport, separate Checkout-Sperre und textgleiche
+technische approved-Ueberfuehrung von Legal v7 sind lokal umgesetzt und geprueft.
+254 Node-Tests, 36 PHP-Suiten, PHP-Lint, Shell-Mocks, Website-Lint/TypeScript,
+Testexport und kuenstlicher Produktionsbuild bestanden; npm-Audit 0 Befunde.
+Details und ausdrueckliche Nachweisgrenzen stehen im
+[lokalen Produktionspaket](cart-production-package.md).
+Die unten historisch noch offene lokale Bundle-/Backupintegration ist damit
+geschlossen, nicht jedoch deren Bereitstellung oder Produktionsabnahme.
+Kein Serverzugriff, keine Aenderung bestehender Testprodukte/Konfigurationen,
+kein Commit, Push, main-Merge oder Deployment. Praktischer Test der neuen
+Paket-/Mengenimportkombination, saubere SHA-/CI-Bindung, aktuelle Produktions-
+und Restorepruefung, reale Zaehlliste und gesonderte Aktivierung bleiben offen.
+
 1. Historische Einzelbestellungen sind kuenstlich und praktisch verlustfrei migriert (3.17). Die abgegrenzten Funktions-/Parallelitaets-/Backup- und Crash-/Timeoutreihen sind bestanden; weitere Pflichtfaelle sind damit nicht pauschal freigegeben.
 2. Echte Stripe-Testzahlungen einschliesslich Browser-SEPA bis Bestellung/Mail sind abgegrenzt nachgewiesen (3.24). Echter asynchroner SEPA-Erfolg und echter SEPA-Fehler nach dem Checkoutzeitpunkt mit jeweils beobachtetem processing nach diesem Zeitpunkt bestanden (3.31/3.36). Der fruehere Fehlerfall 3.7 ersetzt diesen Zeitgrenznachweis nicht. Bereits bestandene Doppel-/Reihenfolge-, Timeout- und Wiederanlaufnachweise bleiben erhalten, keine pauschale Gesamtfreigabe.
 3. Originale Browser-Kartenzahlung-bis-Bestellmail-Kette einschliesslich Legal-Snapshot, Providerzustellung, Worker-Wiederanlauf und HTTP-Webhook-Replay bestanden (3.15). Cron-Blocker durch Nutzerentscheidung geschlossen (3.19), ohne nachtraeglichen technischen Erfolgsnachweis. Lock und Lease sind separat praktisch bestanden (3.16). Die abgegrenzten realen Mail-, bestaetigten Empfangs- und injizierten Fehlernachweise aus 3.10 sind bestanden.

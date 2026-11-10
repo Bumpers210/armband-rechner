@@ -244,7 +244,9 @@ jobs:
           CARMAJA_PUBLISH_ACTOR: ${{ github.actor }}
           CARMAJA_PUBLISH_FORCED: ${{ github.event.forced }}
           CARMAJA_PUBLISH_DELETED: ${{ github.event.deleted }}
-        run: node website/scripts/validate-production-publisher-push.mjs
+        run: |
+          node -e "const c=require('./website/config/production-shop-deployment.json'); if(c.guards.automaticWebsiteDeployment!==true || c.guards.publisherEnabled!==true) process.exit(1)"
+          node website/scripts/validate-production-publisher-push.mjs
 
   deploy-production-site:
     needs:

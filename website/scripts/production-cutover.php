@@ -311,7 +311,8 @@ function carmaja_cutover_main(array $arguments): int
             'ok' => true,
             'mode' => 'plan',
             'readyForPlan' => $contract['readyForPlan'] && $contract['selectedProductCount'] === 1,
-            'readyForApply' => $contract['readyForApply'] && $contract['selectedProductCount'] === 1,
+            'readyForApply' => false,
+            'retired' => true,
             'selectedProductCount' => $contract['selectedProductCount'],
             'legalBundleId' => $contract['legalBundleId'],
             'salesModel' => 'collection',
@@ -323,20 +324,8 @@ function carmaja_cutover_main(array $arguments): int
         || ($options['confirmation'] ?? null) !== 'APPLY-CARMAJA-PRODUCTION-COLLECTION-CUTOVER') {
         throw new CarmajaProductionCutoverException('cutover_confirmation_missing');
     }
-    $productsPath = $options['products'] ?? null;
-    $configPath = $options['config'] ?? null;
-    if (!is_string($productsPath) || !is_string($configPath)) {
-        throw new CarmajaProductionCutoverException('cutover_inputs_missing');
-    }
-    $product = carmaja_cutover_selected_product($manifest, carmaja_cutover_read_json($productsPath));
-    carmaja_cutover_apply(
-        carmaja_cutover_connect(carmaja_cutover_load_config($configPath)),
-        $manifest,
-        $product
-    );
-    echo json_encode(['ok' => true, 'mode' => 'apply', 'salesModel' => 'collection'], JSON_THROW_ON_ERROR)
-        . PHP_EOL;
-    return 0;
+    // Historical collection manifest is not permission for a quantity cutover.
+    throw new CarmajaProductionCutoverException('legacy_collection_cutover_retired');
 }
 
 if (!defined('CARMAJA_PRODUCTION_CUTOVER_NO_RUN')) {

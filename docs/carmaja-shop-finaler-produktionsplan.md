@@ -1,5 +1,34 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Aktueller lokaler Produktionskandidat – 10. November 2026
+
+Basis ist der zusammengefuehrte PR-92-Stand
+`f7b5604c7b59312667598ad4c60d4e2a7770f4e6`. Die Warenkorb-Erweiterung hat
+fuer ihren Umfang Vorrang vor den historischen Einzelkaufabschnitten unten.
+Das lokale Paket wird isoliert auf `codex/cart-production-package` vorbereitet;
+kein neuer Commit, Push, Merge, Serverzugriff oder Deployment ist erfolgt.
+
+Geschlossen: fehlende V5-/Shop-v3-Produktionsdateiliste, Backupkorrekturen
+`9b58d69`/`b4e9d3f`, separate Sperre neuer Checkouts, Versions-/Mengenvertrag,
+technische textgleiche approved-Ueberfuehrung von Legal v7, leeres gesperrtes
+Mengenmanifest und transaktionaler/idempotenter Importadapter. Historischer
+Kollektionen-Apply und alter Sieben-Dateien-API-Deploy sind gesperrt.
+
+Der neue Build-only-Workflow enthaelt keinerlei Produktionszugang.
+Lokale Pruefkandidaten aus uncommittierter Arbeit sind ausdruecklich kein
+freigegebener Release. Details, reproduzierbare Befehle, Nachweisgrenzen und
+strikte Aktivierungsreihenfolge:
+[Produktionspaket Warenkorb](../website/docs/cart-production-package.md).
+
+Weiter offen: Review/Commit/CI/gesonderter main-Merge, praktischer isolierter
+Nachweis der neuen Paket-/Importkombination, stabil signierte Produktions-App,
+aktueller Produktions-Preflight, frisches verschluesseltes Backup mit Offsite-
+und Restore-Nachweis, abgearbeitete Altzahlungen, bestaetigte reale Mengen,
+kontrollierte Migration/Bereitstellung und ausdruecklicher Kaufstart mit
+Erstbestellung/Beobachtung. Kein erneutes Oeffnen bereits bestaetigter
+Rechtsfreigaben und keine Behauptung einer heutigen Produktionspruefung.
+Keine erfundenen Ist-Arbeitsstunden oder neuen Kalenderzusagen.
+
 ## Neue Erweiterung vom 6. Oktober 2026: Mengenbestand und Warenkorb
 
 Sicherheitsnachtrag 3. November 2026 (Abnahmebericht 3.83, PR #92): Die

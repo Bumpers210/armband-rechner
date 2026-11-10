@@ -4,6 +4,18 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/stripe-contract.php';
 
+function carmaja_shop_checkout_enabled(array $config): bool
+{
+    return ($config['shopCheckoutEnabled'] ?? (($config['environment'] ?? null) === 'test')) === true;
+}
+
+function carmaja_shop_require_checkout_enabled(array $config): void
+{
+    if (!carmaja_shop_checkout_enabled($config)) {
+        throw new CarmajaCommerceException('checkout_temporarily_closed', 'Neue Bestellungen sind vorübergehend nicht möglich.', 503);
+    }
+}
+
 final class CarmajaCheckoutService
 {
     public function __construct(
@@ -15,6 +27,7 @@ final class CarmajaCheckoutService
 
     public function start(array $request, string $idempotencyKey): array
     {
+        carmaja_shop_require_checkout_enabled($this->config);
         $allowed = ['productId'];
         $unknown = array_diff(array_keys($request), $allowed);
         if ($unknown !== [] || !is_string($request['productId'] ?? null)

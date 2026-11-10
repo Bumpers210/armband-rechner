@@ -34,7 +34,7 @@ test("Produktionsdeployment bleibt trotz automatischer Produktprüfung manuell u
 
 test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsarten identisch", async () => {
   const deployment = JSON.parse(await text("website/config/production-shop-deployment.json"));
-  const cutover = JSON.parse(await text("website/config/production-collection-cutover-manifest.v2.json"));
+  const cutover = JSON.parse(await text("website/config/production-cart-cutover-manifest.v3.json"));
   const runtime = await text("website/config/runtime-config.production.example.php");
   const bootstrap = await text("website/test-api-private/program/bootstrap.php");
 
@@ -46,14 +46,15 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsa
     assert.match(bootstrap, new RegExp(`['\"]${method}['\"]`));
   }
   assert.equal(deployment.shop.shippingAmountMinor, 270);
-  assert.equal(deployment.shop.apiVersion, 2);
-  assert.equal(deployment.shop.salesModel, "collection");
-  assert.equal(cutover.shipping.amountMinor, 270);
+  assert.equal(deployment.shop.apiVersion, 3);
+  assert.equal(deployment.shop.salesModel, "stocked_collection");
+  assert.equal(cutover.shippingAmountMinor, 270);
   assert.match(runtime, /'shippingAmountMinor'\s*=>\s*270/);
-  assert.equal(deployment.shop.legalBundleId, "cmj-production-legal-2026-08-16-v5");
-  assert.equal(cutover.legalBundle.legalBundleId, "cmj-production-legal-2026-08-16-v5");
-  assert.equal(cutover.legalBundle.status, "approved");
-  assert.match(runtime, /cmj-production-legal-2026-08-16-v5/);
+  assert.equal(deployment.shop.legalBundleId, "cmj-production-legal-2026-10-25-v7");
+  assert.equal(cutover.legalBundleId, deployment.shop.legalBundleId);
+  assert.equal(cutover.status, "not_approved");
+  assert.deepEqual(cutover.selectedProducts, []);
+  assert.match(runtime, /cmj-production-legal-2026-10-25-v7/);
   assert.equal(deployment.paths.worker, "/home/www/carmaja-private-shop/worker.php");
   assert.equal(deployment.paths.backupCli, "/home/www/carmaja-private-shop/backup.php");
   assert.equal(deployment.paths.backupDirectory, "/home/www/carmaja-private-shop/backups");
@@ -72,11 +73,12 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsa
   assert.match(runtime, /'commerceRestoreRequireTls'\s*=>\s*true/);
   assert.match(runtime, /'backupDirectory'\s*=>\s*'\/home\/www\/carmaja-private-shop\/backups'/);
   assert.match(runtime, /'backupOffsiteTarget'\s*=>\s*'onedrive-pull:\/\/carmaja-production\/Carmaja-Perlen\/Backups'/);
-  assert.equal(deployment.guards.publisherEnabled, true);
+  assert.equal(deployment.guards.publisherEnabled, false);
   assert.equal(deployment.guards.automaticApiDeployment, false);
-  assert.equal(deployment.guards.automaticWebsiteDeployment, true);
-  assert.equal(deployment.guards.productApiV4WritesEnabled, true);
-  assert.equal(deployment.guards.collectionCommerceEnabled, true);
+  assert.equal(deployment.guards.automaticWebsiteDeployment, false);
+  assert.equal(deployment.guards.productApiV4WritesEnabled, false);
+  assert.equal(deployment.guards.collectionCommerceEnabled, false);
+  assert.equal(deployment.guards.shopCheckoutEnabled, false);
   assert.match(runtime, /'productApiV4WritesEnabled'\s*=>\s*false/);
   assert.match(runtime, /'collectionCommerceEnabled'\s*=>\s*false/);
   assert.equal(deployment.runtime.cron, "*/5 * * * *");

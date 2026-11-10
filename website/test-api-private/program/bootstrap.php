@@ -144,6 +144,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'productApiV4WritesEnabled',
         'productApiV5WritesEnabled',
         'inventoryCartEnabled',
+        'shopCheckoutEnabled',
         'collectionCommerceEnabled',
         'privateDir',
         'productPrivateDir',
@@ -215,6 +216,8 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $collectionCommerceEnabled = $config['collectionCommerceEnabled'] ?? false;
     $productApiV5WritesEnabled = $config['productApiV5WritesEnabled'] ?? false;
     $inventoryCartEnabled = $config['inventoryCartEnabled'] ?? false;
+    // Existing test contracts remain usable; production must opt in explicitly.
+    $shopCheckoutEnabled = $config['shopCheckoutEnabled'] ?? ($environment === 'test');
 
     if (!in_array($publishTarget, ['test', 'production'], true)
         || $environment !== $publishTarget
@@ -223,6 +226,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         || !is_bool($collectionCommerceEnabled)
         || !is_bool($productApiV5WritesEnabled)
         || !is_bool($inventoryCartEnabled)
+        || !is_bool($shopCheckoutEnabled)
         || ($productApiV5WritesEnabled && !$inventoryCartEnabled)
         || ($publishTarget === 'test' && $productionPublishEnabled)) {
         throw new CarmajaBootstrapException(
@@ -484,6 +488,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'productApiV4WritesEnabled' => $productApiV4WritesEnabled,
         'productApiV5WritesEnabled' => $productApiV5WritesEnabled,
         'inventoryCartEnabled' => $inventoryCartEnabled,
+        'shopCheckoutEnabled' => $shopCheckoutEnabled,
         'collectionCommerceEnabled' => $collectionCommerceEnabled,
         'privateDir' => $privateDir,
         'productPrivateDir' => $productPrivateDir,
