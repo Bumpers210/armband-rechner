@@ -55,8 +55,41 @@ ausschliesslich mit lokal erzeugten Testbelegen. Er erteilt keine echte
 Produktionsfreigabe. MySQL-AUTO_INCREMENT-Luecken nach Rollback sind erlaubt;
 Datensaetze, Mengen, Audit und Snapshots muessen vollstaendig zurueckgerollt sein.
 
-Der praktische Lauf steht bei Erstellung dieser Datei noch aus. Ein gruenes
+Der praktische Paketnachweis ist bestanden. Ein gruenes
 Ergebnis ersetzt nicht den spaeter separat freizugebenden Produktions-Preflight,
 aktuelles Produktionsbackup/Restore, bestaetigte Mengen oder Cutoverfreigabe.
 Bestehende IONOS-Testprodukte, Bestaende und private Konfigurationen werden
 weder gelesen noch veraendert.
+
+## Praktische Abnahme
+
+Erster vollstaendiger GitHub-Lauf:
+[42896991357](https://github.com/Bumpers210/armband-rechner/actions/runs/42896991357),
+Testcommit `1305f9ab03dc45dba78ea66f09596ed6d9b3f09a`.
+Gepruefter Paketcommit bleibt `1e361a3e6714fdcd3e2c20ddf9187ef28f38965b`.
+
+| Nachweis | Ergebnis |
+| --- | --- |
+| Server / PHP | MySQL 8.0.46 / PHP 8.4.27 |
+| TLS | Beide Sitzungen verschluesselt; CA und Hostidentitaet geprueft; Klartextverbindung abgelehnt |
+| Praktischer Pakettest | 62 Pruefungen bestanden |
+| Leeres Schema / historische Migration | Fuenf Migrationen, 38 InnoDB-Tabellen, Journal und Wiederholung bestanden |
+| Historische Daten | Bestellung, Position, Zahlung, Versand, Legal Bundle und Outbox erhalten |
+| Import und Wiederanlauf | SIGKILL waehrend zweiter Anpassung vollstaendig zurueckgerollt; zehn parallele Aufrufe, genau zwei Auditeintraege |
+| Backup / Restore | Vor und nach Migration bestanden; Wiederholung, Unicode, Binaerdaten, Struktur, Inhalt und Produktdateien verglichen |
+| Fehlerfaelle | Lock, Row-Lock-Timeout, HMAC, falscher Schluessel, Manipulation, Abbruch, Pfade und nichtleeres Restoreziel bestanden |
+| Paket / PHP | 40 Dateien und 31 PHP-Dateien geprueft; 49 unterschiedliche Offline-Import-/Freigabepruefungen und 9 Backup-Tests bestanden |
+| Node / Shell / Website | 254 bestehende Node-Tests, 3 Workflowvertraege, Shelltests, Lint und Testexport bestanden |
+| Cleanup | Beide Datenbanken leer; Container, Datenbanken, Schluessel und temporaere Dateien anschliessend entfernt; separat bestaetigt |
+
+Der lokale Windows-Gesamtlauf war durch den nicht verfuegbaren WSL-Bash-Aufruf
+eingeschraenkt. Die unveraenderte vollstaendige Node-/Shell-Suite bestand auf
+Linux in diesem GitHub-Lauf. Lokaler PHP-Lint, die betroffenen PHP- und
+Node-Vertragstests, ESLint, Website-Testbuild und `git diff --check` bestanden.
+
+Der Ergebnisbericht enthaelt den konkreten MySQL-Image-Digest sowie den
+Cleanupnachweis. Die Testdatenbank-/Schluesseldateien und Backups werden nicht
+als Artefakt aufbewahrt. Nur Testbranch gepusht, kein PR/Merge, kein Deployment,
+kein IONOS- oder Produktionszugriff. Main, bestehende Produkte, Bestaende und
+private Konfigurationen unveraendert. Dies ist ausschliesslich die Abnahme
+des isolierten Pakettests, keine oeffentliche Shopfreigabe.
