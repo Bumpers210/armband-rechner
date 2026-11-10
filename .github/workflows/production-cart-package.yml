@@ -54,7 +54,7 @@ jobs:
           test ! -e "$fixture_root"
           test ! -L "$fixture_root"
           sudo install -d -m 0700 -o "$(id -u)" -g "$(id -g)" "$fixture_root"
-          trap 'rmdir "$fixture_root"' EXIT
+          trap 'sudo rmdir "$fixture_root"' EXIT
           test "$(realpath "$fixture_root")" = "$fixture_root"
           for test_file in website/tests/php/*-test.php; do
             printf '\nPHP suite: %s\n' "$test_file"

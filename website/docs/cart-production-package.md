@@ -185,4 +185,8 @@ GitHub-gehosteten Linux-Runner, lehnt vorhandene Verzeichnisse/Symlinks ab
 und entfernt den leeren Fixtureordner per EXIT-Trap. Keine Testauslassung,
 keine Aenderung an Installations-/Shoplogik und kein IONOS-Zugriff.
 Der Korrekturcommit loest eine neue vollstaendige CI aus; deren Ergebnis
-wird im PR festgehalten. Keine Deployment- oder Mergefreigabe.
+wird im PR festgehalten. Die vollstaendige PHP-Regression bestand im zweiten
+Lauf; das abschliessende `rmdir` benoetigt wie die Anlage `sudo`, weil das
+Elternverzeichnis dem Runner-Administrator gehoert. Der Cleanup bleibt auf
+genau den neu angelegten, leeren Fixtureordner beschraenkt (nicht rekursiv).
+Keine Deployment- oder Mergefreigabe.
