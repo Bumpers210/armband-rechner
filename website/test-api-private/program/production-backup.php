@@ -528,9 +528,13 @@ final class CarmajaProductionBackup
             && ($this->config['backupTestMode'] ?? null) === true
             && str_starts_with(rtrim((string) ($this->config['privateDir'] ?? ''), '/') . '/', '/home/www/carmaja-private-test/')
             && $this->config['backupOffsiteTarget'] === 'test-sink://ap7-backup-e2e';
+        $productionPublishEnabled = $this->config['productionPublishEnabled'] ?? null;
+        $githubAdapterEnabled = $this->config['githubAdapterEnabled'] ?? null;
         if ((!$productionMode && !$testMode)
-            || ($this->config['productionPublishEnabled'] ?? null) !== false
-            || ($this->config['githubAdapterEnabled'] ?? null) !== false
+            || !is_bool($productionPublishEnabled)
+            || !is_bool($githubAdapterEnabled)
+            || ($productionPublishEnabled && !$githubAdapterEnabled)
+            || ($testMode && ($productionPublishEnabled || $githubAdapterEnabled))
             || ($this->config['commerceRequireTls'] ?? null) !== true
             || ($this->config['commerceRestoreRequireTls'] ?? null) !== true
             || $this->databaseName($this->config['commerceDsn']) === $this->databaseName($this->config['commerceRestoreDsn'])
@@ -1034,6 +1038,7 @@ final class CarmajaProductionBackup
         $dsn = $this->parseDsn($this->config[$prefix . 'Dsn']);
         $lines = [
             '[client]',
+            'default-character-set=utf8mb4',
             'host=' . $this->optionValue($dsn['host']),
             'port=' . $dsn['port'],
             'user=' . $this->optionValue($this->config[$prefix . 'User']),

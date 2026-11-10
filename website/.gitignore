@@ -6,6 +6,7 @@ node_modules/
 out/
 out-test/
 .test-deploy-package/
+.production-cart-package/
 
 # Local tooling and test output
 coverage/

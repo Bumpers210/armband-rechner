@@ -1,0 +1,68 @@
+name: Validate production cart package
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/production-cart-package.yml'
+      - 'website/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-cart-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: json, mbstring, gd, exif, pdo, pdo_mysql, pdo_sqlite, sodium, curl, openssl, intl
+          coverage: none
+      - name: Install locked dependencies
+        working-directory: website
+        run: npm ci
+      - name: Website contracts and security audit
+        working-directory: website
+        run: |
+          npm run lint:test
+          npm test
+          npm audit --audit-level=moderate
+      - name: PHP regression without provider or database connections
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test_file in website/tests/php/*-test.php; do php "$test_file"; done
+      - name: Artificial production website build (never deployable)
+        run: node website/scripts/check-production-cart-build.mjs
+      - name: Build complete allowlisted private package
+        run: node website/scripts/prepare-production-cart-package.mjs build website/.production-cart-package
+      - name: Lint packaged PHP and verify package integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do php -l "$file"; done < <(find website/.production-cart-package -type f -name '*.php' -print0)
+          node website/scripts/prepare-production-cart-package.mjs verify website/.production-cart-package
+          git diff --check
+      - name: Upload private-code release candidate (no credentials)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Carmaja-Warenkorb-Produktionspaket-${{ github.sha }}
+          path: website/.production-cart-package/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30

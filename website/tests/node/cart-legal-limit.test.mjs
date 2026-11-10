@@ -57,13 +57,20 @@ test('Testarchiv erhaelt v3 neben der neuen v4 ohne Produktionsfassungen', () =>
   }
 });
 
-test('Produktionsentwurf v7 bleibt gesperrt und nicht im aktiven Produktionsbuild', () => {
+test('Freigegebene v7-Texte werden mit neuem technischen Hash produktiv gebunden', () => {
   const content = bundles('production');
   const draft = content.cartProductionLegalDraft;
   assert.equal(draft.id, 'cmj-production-legal-2026-10-25-v7');
   assert.equal(draft.status, 'awaiting_external_approval');
   assert.throws(() => legal.assertCheckoutLegalBundle(draft, 'production'), /nicht freigegeben/);
-  assert.equal(content.getActiveLegalBundle(), content.productionLegalBundleV5);
+  const approved = content.cartProductionLegalBundle;
+  assert.equal(draft.contentHash, '55b56a713077bf4697341392d1676c57667a198d371ab8e6f39b03e75a6c6501');
+  assert.equal(content.getActiveLegalBundle(), approved);
+  assert.deepEqual(approved.texts, draft.texts);
+  assert.equal(approved.id, draft.id);
+  assert.notEqual(approved.contentHash, draft.contentHash);
+  assert.equal(approved.status, 'approved');
+  assert.doesNotThrow(() => legal.assertCheckoutLegalBundle(approved, 'production'));
   assert.ok(!content.legalBundlesByTarget.production.includes(draft));
   assert.match(JSON.stringify(draft.texts.terms), /insgesamt höchstens 10/);
   assert.match(JSON.stringify(draft.texts.shipping), /einmalig 2,70 € je Bestellung mit insgesamt höchstens 10/);

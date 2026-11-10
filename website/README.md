@@ -2,6 +2,10 @@
 
 Diese Next.js-Anwendung erzeugt den statischen Export der öffentlichen Carmaja-Perlen-Website.
 
+Das aktuelle, rein lokal vorbereitete Warenkorb-Produktionspaket und seine
+weiterhin gesperrten Aktivierungsschritte sind unter
+[Produktionspaket Warenkorb](docs/cart-production-package.md) beschrieben.
+
 ## Lokale Pruefungen
 
 ```powershell

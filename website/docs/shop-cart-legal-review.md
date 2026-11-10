@@ -1,5 +1,18 @@
 # Warenkorb/Mengenbestand – externe Freigabe dokumentiert
 
+## Technische Ueberfuehrung am 10. November 2026 (nur lokal)
+
+Die unten dokumentierte externe Freigabe wird ohne Textaenderung technisch
+gebunden. `cartProductionLegalDraft` bleibt samt Pruefhash unveraendert.
+`cartProductionLegalBundle` verwendet dieselben Texte, ID, Version,
+Archivadresse und Dokumentdatum mit Status `approved` und dadurch neuem Hash
+`ed7713ce8d6c9f16b320f1376303df7f38c306177793a9c5beeb548b9455d752`.
+Textgleichheit und beide kanonischen Hashes sind automatisiert geprueft.
+Die lokale Produktionsbuildauswahl verwendet diese Fassung; Testfassung und
+historische Bundles bleiben unveraendert. Keine heutige Rechtsfreigabe durch
+den Agenten, kein Deployment und keine Aktivierung in der Produktionsruntime.
+Die folgenden Nicht-aktiviert-Vermerke beschreiben den Stand vom 25. Oktober.
+
 Stand: 25. Oktober 2026. Die Betreiberin hat im Chat ausdruecklich bestaetigt,
 dass der externe Pruefer die endgueltige Dokumentversion samt Inhalts-Hash
 und die unten aufgefuehrten Kaufablaeufe freigegeben hat. Diese Mitteilung

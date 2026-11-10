@@ -18,8 +18,8 @@ test("Produktionsbackup ist privat, verschlüsselt und fail-closed", async () =>
   assert.equal(deployment.runtime.backupServerRetentionDays, 7);
   assert.equal(deployment.runtime.backupOffsiteTarget, "onedrive-pull://carmaja-production/Carmaja-Perlen/Backups");
   assert.equal(deployment.guards.automaticApiDeployment, false);
-  assert.equal(deployment.guards.automaticWebsiteDeployment, true);
-  assert.equal(deployment.guards.publisherEnabled, true);
+  assert.equal(deployment.guards.automaticWebsiteDeployment, false);
+  assert.equal(deployment.guards.publisherEnabled, false);
   assert.match(runtime, /'backupEncryptionKeyFile'\s*=>\s*'\/home\/www\/carmaja-private-shop\/config\/backup-key\.php'/);
   assert.match(runtime, /'backupEncryptionKey'\s*=>\s*null/);
   assert.doesNotMatch(runtime, /[A-Za-z0-9+/]{43}=/);
@@ -30,6 +30,7 @@ test("Produktionsbackup ist privat, verschlüsselt und fail-closed", async () =>
   assert.match(service, /--single-transaction/);
   assert.match(service, /--events/);
   assert.match(service, /--tz-utc/);
+  assert.match(service, /default-character-set=utf8mb4/);
   assert.match(service, /--no-tablespaces/);
   assert.match(service, /--init-command=SET @@SESSION\.FOREIGN_KEY_CHECKS=0, @@SESSION\.time_zone='\+00:00'/);
   assert.match(service, /assertClientTls/);

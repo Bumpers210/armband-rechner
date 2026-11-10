@@ -140,11 +140,11 @@ test("freigegebene Produktionsfassung v4 bleibt unverändert archiviert", async 
   assert.match(source, /0bc420ad6dd574ae0005d63f9e6c494d6db18a71b4a9f294314209f0b4dea9f1/);
   assert.match(
     source,
-    /production: \[productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle\]/,
+    /production: \[cartProductionLegalBundle, productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle\]/,
   );
 });
 
-test("freigegebenes Legal Bundle v5 beschreibt Kollektionen und ist aktiv", async () => {
+test("historisches Legal Bundle v5 beschreibt Kollektionen und bleibt archiviert", async () => {
   const source = await readFile(new URL("../../content/legal-bundles.ts", import.meta.url), "utf8");
   assert.match(source, /id: "cmj-production-legal-2026-08-16-v5"/);
   assert.match(source, /export const productionLegalBundleV5/);
@@ -158,7 +158,7 @@ test("freigegebenes Legal Bundle v5 beschreibt Kollektionen und ist aktiv", asyn
   assert.match(source, /Andere Kundinnen und Kunden können dieselbe aktive Kollektion/);
   assert.match(
     source,
-    /production: \[productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle\]/,
+    /production: \[cartProductionLegalBundle, productionLegalBundleV5, productionLegalBundleV4, productionLegalBundle\]/,
   );
 });
 

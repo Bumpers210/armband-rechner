@@ -34,6 +34,11 @@ jobs:
       archive-sha256: ${{ steps.package.outputs.archive-sha256 }}
 
     steps:
+      - name: Block obsolete seven-file product API deployment
+        run: |
+          echo 'Legacy API deployment is retired. Build the complete production-cart-package; activation requires a separate approved runbook.'
+          exit 1
+
       - name: Check out exact API candidate
         uses: actions/checkout@v4
         with:

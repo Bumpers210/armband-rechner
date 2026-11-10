@@ -62,10 +62,21 @@ function carmaja_cart_shipping(array $config): array
         'minBusinessDays' => (int) $config['shippingMinBusinessDays'], 'maxBusinessDays' => (int) $config['shippingMaxBusinessDays']];
 }
 
+function carmaja_cart_checkout_view(array $cart, array $config): array
+{
+    if (!carmaja_shop_checkout_enabled($config)) {
+        $cart['canCheckout'] = false;
+        $cart['checkoutClosed'] = true;
+        unset($cart['checkoutContextToken']);
+    }
+    return $cart;
+}
+
 /** Network calls occur only after reserveCart has committed all positions. */
 function carmaja_cart_start(CarmajaCartCommerce $commerce, CarmajaStripeGateway $stripe, array $config,
     string $owner, array $body, string $key): array
 {
+    carmaja_shop_require_checkout_enabled($config);
     $reservation = $commerce->reserveCart($owner, $body, $key);
     $checkout = $reservation['checkout'];
     $id = $checkout['checkout_id'];
@@ -122,7 +133,9 @@ function carmaja_cart_route(string $method, array $segments): never
         carmaja_bootstrap_send(200, ['ok' => true, 'context' => $context]);
     }
     if ($method === 'GET' && count($segments) === 2 && $segments[0] === 'products') {
-        carmaja_bootstrap_send(200, ['ok' => true, 'product' => $commerce->loadLiveProduct($segments[1])]);
+        $product = $commerce->loadLiveProduct($segments[1]);
+        if (!carmaja_shop_checkout_enabled($config)) { $product['available'] = false; }
+        carmaja_bootstrap_send(200, ['ok' => true, 'product' => $product]);
     }
     if (!is_string($raw) || strlen($raw) < 32 || strlen($raw) > 128) { throw new CarmajaCommerceException('shop_session_required', 'Shop-Sitzung erforderlich.', 403); }
     $owner = carmaja_shop_token_hash($raw);
@@ -136,15 +149,17 @@ function carmaja_cart_route(string $method, array $segments): never
     }
     if ($segments === ['cart']) {
         if ($method === 'PUT') {
-            carmaja_bootstrap_send(200, ['ok' => true, 'cart' => $commerce->replaceCart($owner, carmaja_cart_json_body(), carmaja_shop_require_header('Idempotency-Key'))]);
+            $cart = $commerce->replaceCart($owner, carmaja_cart_json_body(), carmaja_shop_require_header('Idempotency-Key'));
+            carmaja_bootstrap_send(200, ['ok' => true, 'cart' => carmaja_cart_checkout_view($cart, $config)]);
         }
         if ($method === 'GET') {
-            $cart = $commerce->readCart($owner);
+            $cart = carmaja_cart_checkout_view($commerce->readCart($owner), $config);
             if ($cart['canCheckout']) { $cart = $commerce->quoteCart($owner, carmaja_cart_shipping($config), $config['activeLegalBundleId']); }
             carmaja_bootstrap_send(200, ['ok' => true, 'cart' => $cart]);
         }
     }
     if ($method === 'POST' && $segments === ['checkouts']) {
+        carmaja_shop_require_checkout_enabled($config);
         $key = carmaja_shop_require_header('Idempotency-Key');
         $body = carmaja_cart_json_body();
         $bucket = carmaja_shop_rate_key($owner, (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));

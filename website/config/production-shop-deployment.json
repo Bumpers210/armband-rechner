@@ -1,5 +1,5 @@
 {
-  "contractVersion": 1,
+  "contractVersion": 2,
   "environment": "production",
   "sourceCommit": "runtime-selected-and-verified",
   "paths": {
@@ -45,25 +45,34 @@
     "stateChangesOnly": true
   },
   "shop": {
-    "apiVersion": 2,
-    "salesModel": "collection",
+    "apiVersion": 3,
+    "productApiVersion": 5,
+    "productModelVersion": 4,
+    "publicProjectionVersion": 4,
+    "salesModel": "stocked_collection",
+    "maxOrderQuantity": 10,
+    "maxCartPositions": 100,
     "paymentMethodTypes": ["card", "klarna", "sepa_debit"],
     "shippingMethodId": "deutsche-post-maxibrief",
     "shippingPublicName": "Deutsche Post Maxibrief",
     "shippingAmountMinor": 270,
     "shippingMinBusinessDays": 2,
     "shippingMaxBusinessDays": 4,
-    "legalBundleId": "cmj-production-legal-2026-08-16-v5"
+    "legalBundleId": "cmj-production-legal-2026-10-25-v7"
   },
   "guards": {
     "copyRuntimeConfig": false,
     "copyCredentials": false,
     "automaticActivation": false,
     "productionDataAccess": false,
-    "publisherEnabled": true,
+    "publisherEnabled": false,
     "automaticApiDeployment": false,
-    "automaticWebsiteDeployment": true,
-    "productApiV4WritesEnabled": true,
-    "collectionCommerceEnabled": true
+    "automaticWebsiteDeployment": false,
+    "productApiV4WritesEnabled": false,
+    "collectionCommerceEnabled": false,
+    "productApiV5WritesEnabled": false,
+    "inventoryCartEnabled": false,
+    "shopCheckoutEnabled": false,
+    "productBrowserProductionEnabled": false
   }
 }

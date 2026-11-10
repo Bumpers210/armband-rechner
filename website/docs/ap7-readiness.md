@@ -1,5 +1,18 @@
 # AP7.0 – lokale Produktionsbereitschaft
 
+## Vorrangiger Nachtrag: Warenkorb-Produktionspaket, 10. November 2026
+
+Aktuelle lokale Basis: `f7b5604c7b59312667598ad4c60d4e2a7770f4e6` (PR #92).
+Der folgende August-Stand ist historisch, keine aktuelle Live-Auskunft.
+V5/Modell 4/Shop v3, Mengenmanifest, vollstaendige private Paket-Allowlist,
+Backupkorrekturen, Checkout-Sperre und textgleich freigegebenes Legal v7 sind
+lokal vorbereitet. Kein Produktionszugriff, keine Server- oder Datenmutation.
+Ein lokales Paket ersetzt weder CI noch aktuelle Backup-/Restore-, Mengen-
+und Betriebsnachweise. PC-Artikelverwaltung bleibt test-only.
+
+Massgeblicher aktueller Ablauf und verbleibende Freigabegates:
+[Warenkorb-Produktionspaket](cart-production-package.md).
+
 Stand: 2026-08-22
 
 Basis: AP6-Commit `bb4345fbfb26fede5bdf61be0ef6191746a98ef0`

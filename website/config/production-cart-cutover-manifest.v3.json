@@ -1,0 +1,21 @@
+{
+  "manifestVersion": 3,
+  "environment": "production",
+  "status": "not_approved",
+  "releaseSha": null,
+  "productModelVersion": 4,
+  "productApiVersion": 5,
+  "shopApiVersion": 3,
+  "salesModel": "stocked_collection",
+  "inventorySource": "commerce_inventory",
+  "paymentMethodTypes": ["card", "klarna", "sepa_debit"],
+  "shippingAmountMinor": 270,
+  "maxOrderQuantity": 10,
+  "legalBundleId": "cmj-production-legal-2026-10-25-v7",
+  "legalBundleHash": null,
+  "backupId": null,
+  "restoreProofSha256": null,
+  "countConfirmedAt": null,
+  "actorId": null,
+  "selectedProducts": []
+}
