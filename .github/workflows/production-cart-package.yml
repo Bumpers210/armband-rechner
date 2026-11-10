@@ -46,7 +46,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for test_file in website/tests/php/*-test.php; do php "$test_file"; done
+          # Reproduce the path-only POSIX fixture on this disposable runner,
+          # never on IONOS. Refuse to reuse or modify any existing directory.
+          test "$RUNNER_ENVIRONMENT" = github-hosted
+          test "$RUNNER_OS" = Linux
+          fixture_root='/home/www/carmaja-private-test'
+          test ! -e "$fixture_root"
+          test ! -L "$fixture_root"
+          sudo install -d -m 0700 -o "$(id -u)" -g "$(id -g)" "$fixture_root"
+          trap 'rmdir "$fixture_root"' EXIT
+          test "$(realpath "$fixture_root")" = "$fixture_root"
+          for test_file in website/tests/php/*-test.php; do
+            printf '\nPHP suite: %s\n' "$test_file"
+            php "$test_file"
+          done
       - name: Artificial production website build (never deployable)
         run: node website/scripts/check-production-cart-build.mjs
       - name: Build complete allowlisted private package

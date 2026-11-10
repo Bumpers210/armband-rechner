@@ -172,3 +172,17 @@ fuer die gesperrte Artikelverwaltungsroute eine Nicht-gefunden-Seite statt
 gar keiner Datei. Der Test prueft nun diese Seite und das fehlende Loginformular.
 Android-/Signierungstests wurden nicht wiederholt, da App und Gradle unveraendert
 sind; der spaetere stabile Produktionsbuild bleibt ein eigenes Releasegate.
+
+### PR-/CI-Fortsetzung am 10. November 2026
+
+Auf ausdruecklichen Auftrag wurde der lokale Stand als `e7d73dc` gesichert,
+nur `codex/cart-production-package` gepusht und PR #93 ohne Auto-Merge erstellt.
+API- und Website-CI bestanden. Die neue Paket-CI machte eine fehlende
+Testvorbereitung sichtbar: Linux-Dateirechtetests verlangen den festen
+IONOS-aehnlichen privaten Pfad, der auf dem GitHub-Rechner noch nicht existiert.
+Der Workflow erzeugt ihn deshalb ausschliesslich auf einem kurzlebigen
+GitHub-gehosteten Linux-Runner, lehnt vorhandene Verzeichnisse/Symlinks ab
+und entfernt den leeren Fixtureordner per EXIT-Trap. Keine Testauslassung,
+keine Aenderung an Installations-/Shoplogik und kein IONOS-Zugriff.
+Der Korrekturcommit loest eine neue vollstaendige CI aus; deren Ergebnis
+wird im PR festgehalten. Keine Deployment- oder Mergefreigabe.

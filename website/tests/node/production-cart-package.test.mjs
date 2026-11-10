@@ -70,6 +70,11 @@ test('CI only builds and verifies; old API deployment and automatic publisher pa
   assert.match(build, /pull_request:/);
   assert.match(build, /actions\/upload-artifact/);
   assert.doesNotMatch(build, /secrets\.|environment:|\bssh\b|\bscp\b|git push/);
+  assert.match(build, /test "\$RUNNER_ENVIRONMENT" = github-hosted/);
+  assert.match(build, /test ! -e "\$fixture_root"/);
+  assert.match(build, /test ! -L "\$fixture_root"/);
+  assert.match(build, /install -d -m 0700/);
+  assert.match(build, /trap 'rmdir "\$fixture_root"' EXIT/);
   assert.match(readFileSync(path.join(workflows, 'deploy-production-api.yml'), 'utf8'), /Block obsolete seven-file[\s\S]*?exit 1/);
   assert.match(readFileSync(path.join(workflows, 'deploy-website.yml'), 'utf8'), /guards\.automaticWebsiteDeployment!==true/);
 });
