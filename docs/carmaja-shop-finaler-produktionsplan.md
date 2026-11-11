@@ -1,5 +1,40 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Lokale Produktionsvorbereitung nach PR 96 am 11. November 2026
+
+PR #96 ist kontrolliert in main
+`bb4cf04abf4297d782b15cf9a54311e12f542da0` zusammengefuehrt. Dessen CI bestand,
+Deploymentjobs wurden uebersprungen. Der oeffentliche Produktabgleich liegt
+damit im Repository, nicht auf der Produktionswebsite.
+
+Die aktuelle Vorbereitung erfolgt isoliert auf `codex/cart-release-preparation`.
+Das vollstaendige lokale Warenkorbpaket erhaelt jetzt auch die separat
+installierte Wartungssperre: der vorhandene private Marker bleibt bei einem
+spaeteren Programmaustausch wirksam. Runtime, Testprodukte, Bilder, Bestaende,
+Schluessel und Rueckfallbelege werden nicht beruehrt. CP-2026-0008/-0009 bleiben
+nicht oeffentlich; die sechs bisherigen Produkte bleiben unveraendert.
+
+Das Paket hat 41 Dateien plus Manifest und bleibt ein nicht freigegebener
+lokaler Kandidat. Diese Ergaenzung benoetigt noch Commit-/PR-/CI-Nachweis und
+eine separate Mergefreigabe. Keine Bereitstellung oder Entsperrung, kein
+Serverzugriff, Bestandsimport, Shopstart oder Cutover in diesem Auftrag.
+Die Modell-3-Quellen sind noch keine abgenommenen Modell-4-Produktquellen;
+deren spaetere Umstellung und die gezaehlten Mengen bleiben eigene Gates.
+
+Lokal bestanden: 39 PHP-Suiten mit dokumentierten Windows-Ausnahmen,
+261 Node-Tests, Shell-Mocks, aktueller und historischer Wartungsnachweis,
+PHP-Lint, Test- und Produktionsbuilds, Paket-/Exportpruefung, Sicherheitsaudit
+ohne Befunde und Diff-Pruefung. Alle sechs lesend abgefragten GitHub-
+Deploy-/Publishschalter bleiben false. Keine neue Produktionsabnahme daraus
+ableiten; aktuelle Grenzen und Einzelergebnisse stehen im folgenden Nachweis.
+
+Aktuelle Ausfuehrungsreihenfolge, Sperrerhalt, Pruefungen und Rueckfallgrenzen:
+[Vorbereitung der Warenkorb Produktionsbereitstellung](../website/docs/cart-production-release-preparation.md).
+Der Restpfad fuehrt ueber finalen Releasecommit, lesenden Preflight,
+Backup/Restore, kompatibles Schema/Programme, Produktmodell und gezaehlte
+Mengen zur gesonderten Startfreigabe. Keine neuen Ist-Stunden oder
+Kalenderzusagen. Die folgenden Abschnitte dokumentieren fruehere Staende.
+
 ## Lokaler Produktabgleich am 11. November 2026
 
 Der freigegebene lokale Abgleich auf `codex/cart-product-cleanup` aktualisiert
