@@ -3109,8 +3109,24 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
             'action' => $action,
             'productId' => $product['productId'],
             'requestHash' => $requestHash,
+            'productVersion' => $product['productVersion'],
+            'sourceHash' => $product['sourceHash'],
         ];
         return ['action' => $action, 'available' => $action !== 'archive'];
+    };
+
+    $assertConsistent = static function (int $expectedVersion, ?string $operationId = null) use (
+        $productId, &$projectionCalls
+    ): array {
+        $stored = carmaja_api_load_draft($productId);
+        $canonical = carmaja_api_v3_product_from_draft($stored);
+        carmaja_api_test_same($canonical['sourceHash'], $stored['sourceHash'], 'Gespeicherter Lebenszyklus-Hash ist veraltet.');
+        carmaja_api_test_same($expectedVersion, $stored['productVersion'], 'Lebenszyklus muss die Produktversion genau einmal erhöhen.');
+        if ($operationId !== null) {
+            carmaja_api_test_same($stored['productVersion'], $projectionCalls[$operationId]['productVersion'], 'Commerce-Version weicht von der Quelle ab.');
+            carmaja_api_test_same($stored['sourceHash'], $projectionCalls[$operationId]['sourceHash'], 'Commerce-Hash weicht von der Quelle ab.');
+        }
+        return $stored;
     };
 
     $publishBody = [
@@ -3119,8 +3135,18 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
         'operationId' => 'v4-collection-publish-0001',
     ];
     $published = carmaja_api_v4_publish_product($productId, $publishBody, carmaja_api_test_actor());
+    $storedPublished = $assertConsistent($uploaded['productVersion'] + 1, $publishBody['operationId']);
     $publishedAgain = carmaja_api_v4_publish_product($productId, $publishBody, carmaja_api_test_actor());
     carmaja_api_test_same($published, $publishedAgain, 'Veröffentlichung ist nicht idempotent.');
+    carmaja_api_test_same($storedPublished, carmaja_api_load_draft($productId), 'Publish-Replay änderte den Datensatz.');
+    $publicAfterPublish = carmaja_api_read_json(carmaja_api_path('products/public-products-v2.json'), [])['products'][0];
+    carmaja_api_test_same($storedPublished['productVersion'], $publicAfterPublish['productVersion'], 'Öffentliche Version weicht von der Quelle ab.');
+    carmaja_api_test_same($storedPublished['sourceHash'], $publicAfterPublish['sourceHash'], 'Öffentlicher Hash weicht von der Quelle ab.');
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_publish_product($productId,
+            [...$publishBody, 'operationId' => 'v4-collection-stale-publish'], carmaja_api_test_actor()),
+        409, 'product_version_conflict'
+    );
     carmaja_api_test_same(true, $published['product']['available'], 'Veröffentlichte Kollektion ist nicht verfügbar.');
     $sku = $published['product']['sku'];
     $slug = $published['product']['slug'];
@@ -3130,6 +3156,13 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
         'expectedSourceHash' => $published['product']['sourceHash'],
         'operationId' => 'v4-collection-archive-0001',
     ];
+    $failProjectionAction = 'archive';
+    carmaja_api_test_exception(
+        static fn (): array => carmaja_api_v4_archive_product($productId, $archiveBody, carmaja_api_test_actor()),
+        503, 'collection_projection_temporarily_unavailable'
+    );
+    carmaja_api_test_same($storedPublished, carmaja_api_load_draft($productId), 'Abgelehnte Commerce-Archivierung änderte die Quelle.');
+    $failProjectionAction = null;
     $archivePublishAttempts = 0;
     $GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V3'] = static function (
         array $publicProduct,
@@ -3161,6 +3194,7 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
         'publish_adapter_temporarily_unavailable'
     );
     $draftAfterFailedArchive = carmaja_api_load_draft($productId);
+    $assertConsistent($published['product']['productVersion'] + 1, $archiveBody['operationId']);
     carmaja_api_test_same(
         'disabled',
         $draftAfterFailedArchive['status'] ?? null,
@@ -3170,6 +3204,7 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
     $archivedAgain = carmaja_api_v4_archive_product($productId, $archiveBody, carmaja_api_test_actor());
     unset($GLOBALS['CARMAJA_API_PUBLISH_ADAPTER_V3']);
     carmaja_api_test_same($archived, $archivedAgain, 'Archivierung ist nicht idempotent.');
+    carmaja_api_test_same($draftAfterFailedArchive, carmaja_api_load_draft($productId), 'Archiv-Retry änderte Version/Hash erneut.');
     carmaja_api_test_same(3, $archivePublishAttempts, 'Archiv-Publisher wurde nicht deterministisch wiederholt.');
     carmaja_api_test_same('disabled', $archived['product']['status'], 'Kollektion wurde nicht archiviert.');
     $publicAfterArchive = carmaja_api_read_json(
@@ -3194,6 +3229,7 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
         503,
         'collection_projection_temporarily_unavailable'
     );
+    $draftAfterFailedRestore = $assertConsistent($archived['product']['productVersion'] + 1);
     $publicAfterFailedRestore = carmaja_api_read_json(
         carmaja_api_path('products/public-products-v2.json'),
         ['version' => 3, 'products' => []]
@@ -3205,15 +3241,39 @@ carmaja_api_test('V4 veröffentlicht, archiviert und stellt dieselbe Kollektion 
     );
     $failProjectionAction = null;
     $restored = carmaja_api_v4_restore_product($productId, $restoreBody, carmaja_api_test_actor());
+    $assertConsistent($archived['product']['productVersion'] + 1, $restoreBody['operationId']);
+    carmaja_api_test_same($draftAfterFailedRestore, carmaja_api_load_draft($productId), 'Restore-Retry änderte Version/Hash erneut.');
+    carmaja_api_test_same($restored, carmaja_api_v4_restore_product($productId, $restoreBody, carmaja_api_test_actor()), 'Restore-Replay ist nicht idempotent.');
+    $publicAfterRestore = carmaja_api_read_json(carmaja_api_path('products/public-products-v2.json'), [])['products'][0];
+    carmaja_api_test_same($draftAfterFailedRestore['productVersion'], $publicAfterRestore['productVersion'], 'Restore publiziert eine andere Version.');
+    carmaja_api_test_same($draftAfterFailedRestore['sourceHash'], $publicAfterRestore['sourceHash'], 'Restore publiziert einen anderen Hash.');
     carmaja_api_test_same(true, $restored['product']['available'], 'Wiederhergestellte Kollektion ist nicht verfügbar.');
     carmaja_api_test_same($sku, $restored['product']['sku'], 'Wiederherstellung änderte die SKU.');
     carmaja_api_test_same($slug, $restored['product']['slug'], 'Wiederherstellung änderte die Adresse.');
     carmaja_api_test_same(3, count($projectionCalls), 'Lebenszyklus wurde nicht genau einmal je Vorgang projiziert.');
     carmaja_api_test_same(
-        2,
+        3,
         $projectionAttempts[$restoreBody['operationId']] ?? 0,
         'Fehlgeschlagene Commerce-Projektion wurde nicht mit derselben Vorgangskennung wiederholt.'
     );
+    $audit = [];
+    foreach (glob(carmaja_api_path('audit/*.jsonl')) ?: [] as $path) {
+        foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            $entry = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
+            if (($entry['action'] ?? null) === 'product_v4_restore') { $audit[] = $entry; }
+        }
+    }
+    carmaja_api_test_same($restored['product']['productVersion'], $audit[0]['context']['productVersion'] ?? null, 'Audit bindet nicht die gespeicherte Ergebnisversion.');
+
+    // Saving alone intentionally does not publish: detect lag, never overwrite
+    // the approved public projection just to make versions/hashes match.
+    $publicBeforeSave = file_get_contents(carmaja_api_path('products/public-products-v2.json'));
+    $savedLater = carmaja_api_v4_put_product($productId,
+        [...$body, 'expectedProductVersion' => $restored['product']['productVersion'], 'name' => 'Noch nicht erneut veröffentlicht'],
+        carmaja_api_test_actor(), 'v4-collection-save-after-restore');
+    $assertConsistent($restored['product']['productVersion'] + 1);
+    carmaja_api_test_assert($savedLater['sourceHash'] !== $publicAfterRestore['sourceHash'], 'Separat gespeicherter neuer Entwurf wurde nicht erkannt.');
+    carmaja_api_test_same($publicBeforeSave, file_get_contents(carmaja_api_path('products/public-products-v2.json')), 'Speichern veröffentlichte unerlaubt neue Daten.');
     unset($GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4']);
 });
 
@@ -3379,9 +3439,17 @@ carmaja_api_test('V5 bewahrt Verkaufsfreigabe bei Speichern, Upload, Publish, Re
     $GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4'] = static function ($product) use (&$projected): array {
         $projected[] = $product; return [];
     };
-    $transition = static fn ($p, $action, $key) => carmaja_api_v4_transition_product($id,
-        ['expectedProductVersion' => $p['productVersion'], 'expectedSourceHash' => $p['sourceHash'], 'operationId' => $key],
-        carmaja_api_test_actor(), $action);
+    $transition = static function ($p, $action, $key) use ($id, &$projected): array {
+        $result = carmaja_api_v4_transition_product($id,
+            ['expectedProductVersion' => $p['productVersion'], 'expectedSourceHash' => $p['sourceHash'], 'operationId' => $key],
+            carmaja_api_test_actor(), $action);
+        $stored = carmaja_api_load_draft($id);
+        carmaja_api_test_same($p['productVersion'] + 1, $stored['productVersion'], 'V5-Lebenszyklusversion änderte sich unerwartet.');
+        carmaja_api_test_same(carmaja_api_v3_product_from_draft($stored)['sourceHash'], $stored['sourceHash'], 'V5 speichert einen veralteten Hash.');
+        carmaja_api_test_same($stored['sourceHash'], $result['product']['sourceHash'], 'V5-Antwort ist nicht hashgleich.');
+        carmaja_api_test_same($stored['sourceHash'], $projected[array_key_last($projected)]['sourceHash'], 'V5-Projektion ist nicht hashgleich.');
+        return $result;
+    };
     try {
         $published = $transition($uploaded, 'publish', 'v5-permission-publish');
         carmaja_api_test_same(false, $published['product']['salesEnabled'], 'Publish aktivierte Verkauf.');

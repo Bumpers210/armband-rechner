@@ -1,5 +1,27 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Lokale Produkt-/Hashkorrektur – 11. November 2026
+
+Basis ist main `f2ca27f18350914a1e63631739071dbf6074450d` nach PR #94.
+Im isolierten Branch `codex/cart-product-consistency` ist der im lesenden
+Preflight erkannte Modell-3-Lebenszyklusfehler lokal korrigiert: Verfügbarkeit,
+serverseitige Produktversion und gespeicherter Quellhash müssen gemeinsam
+fortgeschrieben werden. Modell-4-Verkaufsfreigabe und Bestandsregeln bleiben
+unverändert. Eine abweichende veröffentlichte Fassung und ein unvollständiger
+Legacy-Entwurf werden getrennt behandelt, nicht automatisch überschrieben.
+
+Lokale Korrektur und künstliche Regression bestanden: PHP 8.4.23 mit 59
+Produkt-API-Tests sowie Bootstrap-/Admin-/Browser-/Commerce-/Importprüfungen,
+260 Node-Tests mit Shell-Mocks, Website-Lint, Testexport, Paketprüfung und
+`git diff --check`. Vor der Korrektur wurde der gespeicherte Hashfehler
+reproduziert. Reale Datenbereinigung und erneuter Produktionsnachweis bleiben offen.
+
+Ursache, künstliche Regression und gesondert freizugebende Bereinigung:
+[Produkt-/Hash-Bereinigungsplan](../website/docs/product-consistency-cleanup.md).
+Keine heutige Serververbindung, keine Änderung realer Produktdaten und keine
+Bereitstellung. Die folgenden älteren Statusabschnitte bleiben historische
+Nachweise; diese lokale Korrektur ersetzt keine Produktionsgates oder Freigaben.
+
 ## Lokale Schema-Kompatibilitaetskorrektur – 11. November 2026
 
 Die beim lesenden Produktions-Preflight erkannte historische AP6-Baseline

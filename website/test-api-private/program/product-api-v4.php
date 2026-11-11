@@ -331,10 +331,10 @@ function carmaja_api_v4_transition_product(
             }
             $draft['updatedAt'] = carmaja_api_now();
             $draft['version'] = (int) ($draft['version'] ?? 0) + 1;
-            if (($draft['productModelVersion'] ?? 0) === 4) {
-                $draft['productVersion'] = (int) $draft['productVersion'] + 1;
-                $draft['sourceHash'] = carmaja_api_v3_product_from_draft($draft)['sourceHash'];
-            }
+            // Both supported models bind salesEnabled into the canonical hash.
+            // Advance once before persisting/projecting; retries reuse this state.
+            $draft['productVersion'] = (int) $draft['productVersion'] + 1;
+            $draft['sourceHash'] = carmaja_api_v3_product_from_draft($draft)['sourceHash'];
             $draft[$operationField] = $operationId;
             $draft['lastV4LifecycleOperationId'] = $operationId;
             $draft['lastV4LifecycleAction'] = $action;
@@ -363,7 +363,7 @@ function carmaja_api_v4_transition_product(
     ]);
     carmaja_api_audit_best_effort('product_v4_' . $action, [
         'productId' => $productId,
-        'productVersion' => $expectedVersion,
+        'productVersion' => $prepared['draft']['productVersion'],
         'operationId' => $operationId,
         'deviceId' => $actor['tokenId'] ?? null,
         'result' => 'success',
