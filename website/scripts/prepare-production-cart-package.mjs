@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import vm from 'node:vm';
 import ts from 'typescript';
 import * as legal from '../lib/legal-bundles.mjs';
+import { hotfix } from './build-product-maintenance-hotfix.mjs';
 
 export const websiteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const programs = Object.freeze([
@@ -16,7 +17,12 @@ export const programs = Object.freeze([
   'product-api.php', 'production-backup.php', 'production-monitor.php',
   'shop-admin-cli.php', 'shop-admin.php', 'shop-checkout.php', 'shop-public.php',
   'stripe-contract.php', 'stripe-webhook.php', 'production-cart-cutover.php',
+  'product-maintenance-guard.php',
 ]);
+// Preserve the already installed private maintenance marker when replacing the
+// full program directory. Reuse only the guard transformation, never the
+// historical V4 hash/version patch (already present in current main).
+const guardedPrograms = new Set(['bootstrap.php', 'product-api.php', 'product-api-v2.php', 'product-api-v3.php']);
 export const migrationIds = Object.freeze([
   'commerce-v1-schema', 'commerce-v1-ap4-shop', 'commerce-v1-ap5-admin',
   'commerce-v2-collections', 'commerce-v3-cart-inventory',
@@ -55,7 +61,12 @@ function sourceFile(relative) {
 /** Only repository programs and public legal content; never reads runtime data. */
 export function packageContents() {
   const files = new Map();
-  for (const name of programs) files.set(`private/program/${name}`, sourceFile(`test-api-private/program/${name}`));
+  for (const name of programs) {
+    const source = name === 'product-maintenance-guard.php' ? `scripts/${name}` : `test-api-private/program/${name}`;
+    const data = sourceFile(source);
+    files.set(`private/program/${name}`, guardedPrograms.has(name)
+      ? Buffer.from(hotfix(name, data.toString('utf8').replaceAll('\r\n', '\n'))) : data);
+  }
   for (const name of ['worker.php', 'monitor.php', 'backup.php', 'cart-cutover.php']) {
     files.set(`private/${name}`, sourceFile(`test-api-private/${name}`));
   }
@@ -73,7 +84,7 @@ export function packageContents() {
   files.set('contract.json', sourceFile('config/production-shop-deployment.json'));
   files.set('cutover-template.json', sourceFile('config/production-cart-cutover-manifest.v3.json'));
   // No runtime template is an installable configuration. Installers must preserve
-  // config/, vendor/, products, auth, backups and all other private data.
+  // config/, vendor/, products, auth, backups, maintenance/ and all other private data.
   const manifest = {
     formatVersion: 1, releaseKind: 'cart-production', environment: 'production',
     sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: websiteRoot, encoding: 'utf8' }).trim(),

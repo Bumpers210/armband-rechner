@@ -73,6 +73,11 @@ jobs:
         run: node website/scripts/check-production-cart-build.mjs
       - name: Build complete allowlisted private package
         run: node website/scripts/prepare-production-cart-package.mjs build website/.production-cart-package
+      - name: Preserve existing maintenance locks in current package
+        run: |
+          CARMAJA_TEST_PHP="$(command -v php)" \
+            CARMAJA_TEST_PHP_EXT="$(php -r 'echo ini_get("extension_dir");')" \
+            node website/scripts/test-production-cart-maintenance.mjs
       - name: Lint packaged PHP and verify package integrity
         shell: bash
         run: |

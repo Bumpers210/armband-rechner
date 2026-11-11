@@ -1,5 +1,17 @@
 # Lokales Produktionspaket: Mengenbestand und Warenkorb
 
+## Aktuelle Releasevorbereitung am 11. November 2026
+
+Nach PR #96 ist main `bb4cf04abf4297d782b15cf9a54311e12f542da0` die neue Basis.
+Der lokale Kandidat `codex/cart-release-preparation` ergaenzt den zwingenden
+Erhalt der bereits installierten Wartungssperre im vollstaendigen Paket.
+Aktuell sind es **41 Dateien plus Manifest**; Runtime und Marker sind keine
+Paketinhalte. Noch kein Commit, Push, Merge oder Deployment dieser Ergaenzung.
+Die sechs oeffentlichen Produkte/Bilder bleiben unveraendert; CP-2026-0008/-0009
+werden nicht aufgenommen. Die aktuelle Reihenfolge und Rueckfallgrenzen stehen
+in der [Releasevorbereitung](cart-production-release-preparation.md).
+Die folgenden datierten Nachweise dokumentieren ihre jeweiligen Basisstaende.
+
 ## Lokaler Nachtrag: historische Schema-Kompatibilitaet, 11. November 2026
 
 Isolierter Worktree `cart-historical-schema`, Branch
@@ -128,7 +140,7 @@ Der dritte Befehl benoetigt einen noch nicht vorhandenen lokalen `out`-Ordner.
 Er verwendet ausschliesslich kuenstliche Produkte und entfernt seinen
 Produktions-Testexport wieder. Er erzeugt kein deploybares Websiteartefakt.
 
-`manifest.json` bindet Quellcommit, alle 40 Dateien, Dateigroessen, SHA-256,
+`manifest.json` bindet Quellcommit, alle 41 Dateien, Dateigroessen, SHA-256,
 Legal Bundle und SQL-/Journalsummen. Symlinks, zusaetzliche, fehlende oder
 veraenderte Dateien sowie das Ueberschreiben eines bestehenden Pakets werden
 abgelehnt. Uncommittete Arbeit wird als `workingTreeDirty=true` gekennzeichnet.

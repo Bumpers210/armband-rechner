@@ -15,7 +15,7 @@ test('Complete deterministic cart production package excludes runtime and test-o
     assert.ok(a.files.has(`private/program/${name}`));
   }
   for (const name of a.files.keys()) {
-    assert.doesNotMatch(name, /runtime-config|\.htpasswd|\.env|vendor\/|uploads\/|auth\/|backups\/|product-browser|test-runtime|ap3b-async/);
+    assert.doesNotMatch(name, /runtime-config|\.htpasswd|\.env|vendor\/|uploads\/|auth\/|backups\/|maintenance\/|product-browser|test-runtime|ap3b-async/);
   }
   for (const name of ['public/index.php', 'public/.htaccess', 'contract.json']) {
     assert.doesNotMatch(a.files.get(name).toString(), /carmaja-private-test|test-api\.carmaja/);
@@ -27,6 +27,23 @@ test('Complete deterministic cart production package excludes runtime and test-o
     for (const match of source.matchAll(/require_once __DIR__ \. '\/([^']+\.php)'/g)) {
       assert.ok(programs.includes(match[1]), `${name} -> ${match[1]}`);
     }
+  }
+});
+
+test('Full private package retains maintenance guards without reapplying the historical V4 patch', () => {
+  const { files } = packageContents();
+  const program = name => files.get(`private/program/${name}`).toString();
+  for (const name of ['bootstrap.php', 'product-api.php']) {
+    assert.match(program(name), /require_once __DIR__ \. '\/product-maintenance-guard\.php'/);
+  }
+  assert.match(program('bootstrap.php'), /function carmaja_bootstrap_route_request\(\): never\s*\{\s*carmaja_product_maintenance_assert_http/);
+  assert.match(program('product-api.php'), /carmaja_product_maintenance_assert_lock\(\$name\)/);
+  for (const name of ['product-api.php', 'product-api-v2.php', 'product-api-v3.php']) {
+    assert.match(program(name), /carmaja_product_maintenance_assert\('publisher'\)/);
+  }
+  assert.match(program('product-maintenance-guard.php'), /dirname\(__DIR__\).*\/maintenance/);
+  for (const name of ['product-api-v4.php', 'product-api-v5.php', 'ap3-worker.php', 'production-backup.php']) {
+    assert.deepEqual(files.get(`private/program/${name}`), readFileSync(path.join(websiteRoot, 'test-api-private/program', name)));
   }
 });
 
@@ -72,6 +89,7 @@ test('CI only builds and verifies; old API deployment and automatic publisher pa
   assert.match(build, /persist-credentials: false\s+# [^\n]+\s+fetch-depth: 0/);
   assert.match(build, /product-maintenance-activation-test\.php\|\*\/product-maintenance-guard-test\.php\) continue/);
   assert.match(build, /CARMAJA_TEST_PHP="\$\(command -v php\)"[\s\S]*node website\/scripts\/test-product-maintenance-hotfix\.mjs/);
+  assert.match(build, /node website\/scripts\/test-production-cart-maintenance\.mjs/);
   assert.doesNotMatch(build, /secrets\.|environment:|\bssh\b|\bscp\b|git push/);
   assert.match(build, /test "\$RUNNER_ENVIRONMENT" = github-hosted/);
   assert.match(build, /test ! -e "\$fixture_root"/);
