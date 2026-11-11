@@ -36,17 +36,28 @@ dort mangels Linux-PHP uebersprungen). Gezielte Paket-/Historien-/Workflowtests
 10/10, Website-Lint, Testexport und `git diff --check` bestanden.
 Temporarer Basisworktree entfernt; In-Memory-Datenbanken verworfen.
 
-Der MySQL-Harness verwendet kuenftig die echte AP6-SQL-Ausgangsfassung,
-vergleicht das aktualisierte Schema mit einer Neuinstallation und prueft
-Erhalt aller alten Journalzeilen vor/nach Backup/Restore, Crash und zehn
-parallelen Importwiederholungen. **Dieser erweiterte MySQL-Lauf ist noch offen.**
-Lokal ist kein MySQL-Server vorhanden. Commit, Push und isolierter GitHub-Test
-wurden separat freigegeben. Der Workflow ist ausschliesslich fuer
-`codex/cart-historical-schema` erlaubt und bindet Paket und Testharness an
-den unveraenderlichen Ausloesecommit (`github.sha` / `PACKAGE_SOURCE_SHA`).
-Es wird nicht das alte main-Paket oder ein beweglicher Branchstand getestet.
-Der alte bestandene 62-Pruefungen-Lauf ersetzt diesen neuen Nachweis nicht.
+Der erweiterte MySQL-Nachweis ist bestanden: Lauf
+[42980723713](https://github.com/Bumpers210/armband-rechner/actions/runs/42980723713)
+pruefte Paket und Harness aus `50fcbbc122f4fa7bd8a95e03531a7a8f02ec933b`.
+MySQL 8.0.46 / PHP 8.4.27: **67 praktische Pruefungen bestanden**.
+Die echte AP6-SQL-Ausgangsfassung wurde mit den Folgemigrationen aktualisiert;
+das Ergebnis stimmt strukturell mit einer Neuinstallation ueberein. Alle
+alten Journalzeilen einschliesslich Pruefsummen und Zeitstempeln blieben
+vor/nach Backup/Restore, Crash und zehn parallelen Importwiederholungen erhalten.
+Beide Datenbanken wurden geleert; Container, Schluessel, Konfigurationen und
+Temporaerdateien wurden entfernt und der Cleanup separat bestaetigt.
 
+Auch 260 Node-Tests, 3 separat ausgefuehrte Workflowvertraege, Shelltests,
+PHP-Regression, Lint und Testexport bestanden auf dem GitHub-Linux-Rechner.
+Die lokalen Windows-Shellabweichungen treten dort nicht auf. Details und
+Nachweisgrenzen: [MySQL-Abnahme](cart-package-mysql-test.md).
+Der Workflow ist ausschliesslich fuer `codex/cart-historical-schema` erlaubt
+und bindet beide Checkouts an den unveraenderlichen Ausloesecommit
+(`github.sha` / `PACKAGE_SOURCE_SHA`), nicht an einen beweglichen Branch.
+Der fruehere 62-Pruefungen-Lauf testete noch die aktualisierte Basisdatei;
+erst der heutige Lauf belegt die konkrete AP6-Ausgangslage.
+
+Korrektur committed und ausschliesslich auf den freigegebenen Branch gepusht.
 Kein Merge, Deployment oder IONOS-/Produktionszugriff in diesem Auftrag.
 Testprodukte, private Konfigurationen und Produktion bleiben unveraendert.
 

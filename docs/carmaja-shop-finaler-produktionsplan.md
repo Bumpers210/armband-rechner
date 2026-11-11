@@ -6,10 +6,14 @@ Die beim lesenden Produktions-Preflight erkannte historische AP6-Baseline
 wird im isolierten Branch `codex/cart-historical-schema` jetzt eng
 hashgebunden zusammen mit der vorhandenen Kollektionen-Vorwaertsmigration
 akzeptiert. Bestehende Migrationseintraege und SQL-Dateien bleiben unveraendert.
-Lokale kuenstliche Vertrags-/Importtests sind bestanden; der erweiterte echte
-MySQL-Upgrade-/Restorelauf muss noch mit dem neuen Korrekturstand erfolgen.
-Commit, Push und isolierter GitHub-Test dieses Korrekturstands sind separat
-freigegeben. Kein Merge, IONOS-/Produktionszugriff oder Produktionsschritt.
+Lokale kuenstliche Vertrags-/Importtests und der echte MySQL-Upgrade-/Restorelauf
+sind bestanden: 67 praktische Pruefungen mit MySQL 8.0.46, alte Journalzeilen
+unveraendert, historisches Upgrade strukturgleich zur Neuinstallation,
+Backup/Restore, Crash, zehn parallele Importe und vollstaendiger Cleanup.
+Gepruefter Korrekturcommit `50fcbbc122f4fa7bd8a95e03531a7a8f02ec933b`,
+GitHub-Lauf [42980723713](https://github.com/Bumpers210/armband-rechner/actions/runs/42980723713).
+Commit und Push erfolgten ausschliesslich auf `codex/cart-historical-schema`.
+Kein Merge, IONOS-/Produktionszugriff oder Produktionsschritt.
 Nachweise und Grenzen: [Produktionspaket Warenkorb](../website/docs/cart-production-package.md).
 Alle Freigaben fuer Bereitstellung, Migration und Kaufstart bleiben unveraendert.
 

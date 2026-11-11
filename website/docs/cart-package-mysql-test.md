@@ -1,5 +1,45 @@
 # Isolierter MySQL-8-Paketnachweis
 
+## Historische AP6-Baseline: Abnahme vom 11. November 2026
+
+Freigegeben: Commit/Push ausschliesslich auf `codex/cart-historical-schema`
+und isolierter GitHub-Test. Kein Merge, Deployment oder Produktionszugriff.
+Paket und Testharness stammen jetzt aus demselben geprueften Ausloesecommit:
+`50fcbbc122f4fa7bd8a95e03531a7a8f02ec933b`.
+Lauf [42980723713](https://github.com/Bumpers210/armband-rechner/actions/runs/42980723713)
+ist vollstaendig erfolgreich abgeschlossen.
+
+- MySQL 8.0.46 / PHP 8.4.27; **67 praktische Pruefungen bestanden**.
+- AP6-Schema aus `bb4345f` tatsaechlich angelegt, danach AP4, AP5,
+  collections und cart ausgefuehrt. Kein Umetikettieren einer modernen Basis.
+- Historische Journalpruefsummen und Zeitstempel bleiben vollstaendig erhalten,
+  auch bei Wiederholung. Das finale Schema ist strukturgleich zur Neuinstallation.
+- Alte Bestell-, Zahlungs-, Versand-, Rechts- und Outboxnachweise erhalten;
+  keine geschaetzten Mengen und keine Verkaufsaktivierung.
+- Verschluesseltes Backup/Restore vor und nach Migration, wiederholter
+  Struktur-/Inhalts-/Dateivergleich, Manipulations- und Wiederanlauftests bestanden.
+- SIGKILL waehrend zweiter Bestandsanpassung: vollstaendiger Rollback.
+  Zehn konkurrierende Importe: Mengen und Audit genau einmal, Journal unveraendert.
+- TLS mit CA-/Hostpruefung fuer beide kuenstlichen Datenbanken; Klartext und
+  Zugriff des Sourcebenutzers auf das Restoreziel werden abgelehnt.
+- 113 lokale PHP-Schema-/Importpruefungen, 9 Backup-, 59 Produkt-API-,
+  13 Bootstrap- und 10 AP7-Vertragstests auch auf GitHub bestanden.
+- 260 Node-Tests plus 3 separat ausgefuehrte Workflowtests, Shelltests,
+  Lint und Testexport bestanden. Alle 40 Paketdateien wurden hashgeprueft.
+- Ergebnisartefakt `MySQL8-Pakettest-50fcbbc122f4fa7bd8a95e03531a7a8f02ec933b-1`:
+  `databaseCleanup=both_empty`, `resourceCleanup=passed`,
+  `productionAccess=false`, `ionosAccess=false`. Container, Datenbanken,
+  temporaere Schluessel, Runtime und Dateien wurden vollstaendig entfernt.
+
+Der Branchworkflow testet immer den konkreten `github.sha`; beide Checkouts
+und der PHP-/Shell-Harness muessen dieselbe SHA bestaetigen. Er hat weder
+Repositorysecrets noch SSH-/Providerzugang oder Deploymentrechte.
+Die GitHub-Deployschalter bleiben false. Der Nachweis ist keine
+Produktionsmigration, kein aktueller Produktions-Restore und keine Cutoverfreigabe.
+Bestehende IONOS-Testprodukte und private Konfigurationen wurden nicht beruehrt.
+
+## Historischer Paketnachweis vom 10. November 2026
+
 Stand: 10. November 2026. Freigegeben ist ausschliesslich der Testworkflow
 auf `codex/cart-package-mysql-test`, einschliesslich Commit und Push.
 Kein Merge, Deployment oder Produktionszugriff.
