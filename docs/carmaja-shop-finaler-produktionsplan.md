@@ -1,5 +1,95 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Lokaler Produktabgleich am 11. November 2026
+
+Der freigegebene lokale Abgleich auf `codex/cart-product-cleanup` aktualisiert
+in `website/content/products.json` ausschliesslich `productVersion`, `sourceHash`
+und `updatedAt` fuer CP-2026-0002, -0004, -0005, -0006 und -0007.
+CP-2026-0003 bleibt unveraendert. Texte, Preise, Slugs, Verkaufsflags und alle
+16 Bilder sind unveraendert. Die strikte Projektion enthaelt weiterhin genau
+sechs Produkte auf Modell-/Projektionsversion 3. CP-2026-0008/-0009 sind nicht
+enthalten und werden mit diesem Stand nicht oeffentlich hinzugefuegt.
+
+Der lokale Vorbereitungshelfer besitzt keinen Apply-/Publishpfad und besteht
+20 kuenstliche Vertragspruefungen. Private Produktdaten, Testprodukte,
+Konfigurationen, Bestandsdaten und Wartungssperren wurden nicht veraendert.
+Temporaere lokale Kandidatendaten sind entfernt. Commit, Branch-Push und PR
+ohne Merge sind freigegeben; Merge benoetigt weiterhin eine separate Freigabe
+nach bestandenem CI-/Review-Gate. Die CI fuehrt auch die historischen,
+ausschliesslich kuenstlichen Wartungs-/Reparaturtests aus.
+Website-Deployment und Entsperrung bleiben getrennte spaetere Produktionsgates;
+kein neuer Shopbuild gegen die alte Runtime, kein Shopstart oder Cutover.
+
+Umfang, Pruefungen und genaue Reihenfolge:
+[Lokaler oeffentlicher Produktabgleich](../website/docs/product-consistency-cleanup.md).
+
+## Private Produktbereinigung abgeschlossen am 11. November 2026
+
+Auf Basis des zusammengefuehrten PR #95 wurde die separat freigegebene
+Produktbereinigung unter aktiven Schreib-, Publisher- und Checkout-Sperren
+ausgefuehrt. Acht private Produktquellen und bestehende Commerce-Projektionen
+haben jetzt konsistente serverseitige Versionen und Hashes. CP-2026-0008
+verwendet in beiden Quellen 32,50 EUR und den aktuellen Produktverwaltungstext.
+CP-2026-0003 und der Legacy-Entwurf blieben unveraendert; keine Verkaufsfreigabe
+und kein Bestand wurden geaendert.
+
+Bestanden: 48 lokale und 51 kuenstliche MySQL-Reparaturpruefungen einschliesslich
+Row-Lock-Timeout, Unterbrechung, Wiederanlauf und Manipulationsschutz; drei
+identische Dry-Runs, manifestgebundene Ausfuehrung und unabhaengige Kontrolle
+aller 22 Modell-3-Hashes sowie neun Quelle-/Commerce-Bindungen. PHP-Regression,
+260 Node-Tests, Shell-Mocks, Website-Lint und Testexport bestanden. Frische
+verschluesselte Backups vor und nach Apply wurden im getrennten Restore-Ziel
+vollstaendig verglichen und per bestehendem OneDrive-Pull integritaetsgeprueft
+geladen. Restore-Ziel und temporaere Reparaturdateien sind bereinigt.
+
+Historische Geschaeftsdaten, Bilder, private Konfigurationen, Authdaten,
+Migrationsjournal und nicht ausgewaehlte Daten blieben unveraendert. Private
+Reparaturbelege und Rueckfallsicherungen bleiben erhalten. Aktive TLS-Sitzungen
+sind bestaetigt; das akzeptierte CA-/Hostidentitaets-Restrisiko bleibt bestehen.
+
+**Offen bleibt die oeffentliche Projektionsangleichung:** Die sechs publizierten
+Produkte und Website-Dateien wurden bewusst nicht aktualisiert; CP-2026-0008
+und -0009 nicht neu veroeffentlicht. Keine vollstaendige oeffentliche
+Kettenabnahme aus der internen Bereinigung ableiten. Naechster separat
+freizugebender Schritt ist die kontrollierte Vorbereitung/Angleichung der
+oeffentlichen Produktprojektion bei weiterhin geschlossenem Kaufweg.
+Alle Wartungssperren bleiben erhalten. Kein Website-Deployment, Shopstart,
+Bestandsimport oder Cutover; kein Commit, Push oder Merge in diesem Auftrag.
+Keine erfundenen Ist-Stunden oder neuen Kalenderzusagen.
+
+Details und unveraenderte Freigabegrenzen:
+[Abgeschlossene private Produktbereinigung](../website/docs/product-consistency-cleanup.md).
+Die folgenden Abschnitte dokumentieren fruehere Staende.
+
+## Produktionskorrektur mit Wartungssperre vom 11. November 2026
+
+PR #95 ist in main `6ca2fd17615061ed76b832646640cec8eebf1935` enthalten.
+Auf dem vorhandenen aelteren Produktionsstand wurde ausschliesslich die separat
+freigegebene, kompatible Modell-3-Versions-/Hashkorrektur privat bereitgestellt.
+Kein Gesamtdeployment des Warenkorbs. Produktmutationen, Publisher und neue
+Checkouts sind ueber einen separaten privaten Wartungsmarker wirksam gesperrt;
+Runtime und Zugangsdaten bleiben unveraendert. Bestehende Zahlungsverarbeitung
+wird dadurch nicht abgeschaltet. Entsperrung erfolgt nicht automatisch.
+
+Frisches verschluesseltes Backup, hashgepruefter OneDrive-Download und Restore
+im getrennten, anschliessend wieder geleerten Ziel bestanden. 55 API-, 13
+Bootstrap-, 39 Sperr- und 86 Aktivierungs-/Wiederanlaufpruefungen sowie sieben
+oeffentliche und sieben private Produktions-Sperrpruefungen bestanden.
+Produktdaten, Geschaeftsdaten, private Konfigurationen und Website unveraendert
+verglichen. Temporaere Uebertragungs-/Pruefdateien entfernt; Rueckfallkopien
+und Wartungssperre bleiben privat erhalten.
+
+Die Bereinigung vorhandener Produktdatensaetze ist weiterhin offen. Fuer
+CP-2026-0008 gilt nach Betreiberentscheidung die aktuelle Produktverwaltung
+mit 32,50 EUR und aktuellem Text. Keine automatische neue Veroeffentlichung
+der fehlenden oeffentlichen Produkte. Naechster Schritt: kuenstlich gepruefter
+Reparaturadapter, gebundenes Manifest und neuer Dry-Run unter diesen Sperren.
+Kein Website-Deployment, Shopstart, Bestandsimport oder Cutover; kein neuer
+Commit, Push oder Merge. Keine neuen Ist-Stunden oder Kalenderzusagen.
+Einzelnachweise und Abgrenzung:
+[Produktbereinigung und Wartungssperren](../website/docs/product-consistency-cleanup.md).
+Die folgenden Abschnitte dokumentieren die jeweils frueheren Staende.
+
 ## Lokale Produkt-/Hashkorrektur – 11. November 2026
 
 Basis ist main `f2ca27f18350914a1e63631739071dbf6074450d` nach PR #94.
