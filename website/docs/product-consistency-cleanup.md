@@ -47,7 +47,7 @@ auch 59 Produkt-API-, 13 Bootstrap- und 48 Reparaturtests wurden wiederholt.
 Der historische Wartungs-Hotfix reproduziert zuerst den alten Lebenszyklusfehler
 mit kuenstlichen Daten. Mit Korrektur bestehen 55 historische Produkt-API-,
 39 Sperr-, 86 Aktivierungs-/Abbruch-/Manipulations- und 13 Bootstrappruefungen.
-Der PHP-Testtreiber laedt PDO plattformabhaengig, ohne eine lokale oder
+Der PHP-Testtreiber laedt iconv und PDO plattformabhaengig, ohne eine lokale oder
 serverseitige PHP-Konfiguration zu veraendern.
 PHP-8.4-Lint, `npm ci`, Website-Lint, alle 260 Node-Tests und nachfolgenden
 Shell-Mocks sind bestanden. Die vier Paket-/Workflowvertragstests wurden nach

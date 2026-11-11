@@ -9,10 +9,13 @@ const extensionDir = process.env.CARMAJA_TEST_PHP_EXT;
 if (!php || !extensionDir) throw new Error('Explicit test PHP required');
 const args = ['-n', '-d', `extension_dir=${extensionDir}`];
 const builtIn = JSON.parse(execFileSync(php, ['-n', '-r', 'echo json_encode(array_map("strtolower", get_loaded_extensions()));'], { encoding: 'utf8' }));
-// Windows includes PDO in the binary; Linux can require loading pdo.so first.
-for (const extension of ['mbstring', 'gd', 'exif', 'sodium', 'pdo', 'pdo_sqlite']) {
+// Windows includes iconv/PDO in the binary; Linux may load them as shared modules.
+const requiredExtensions = ['iconv', 'mbstring', 'gd', 'exif', 'sodium', 'pdo', 'pdo_sqlite'];
+for (const extension of requiredExtensions) {
   if (!builtIn.includes(extension)) args.push('-d', `extension=${extension}`);
 }
+const active = JSON.parse(execFileSync(php, [...args, '-r', 'echo json_encode(array_map("strtolower", get_loaded_extensions()));'], { encoding: 'utf8' }));
+if (requiredExtensions.some((extension) => !active.includes(extension))) throw new Error('Required synthetic-test PHP extension missing');
 const root = mkdtempSync(join(tmpdir(), 'carmaja-product-maintenance-'));
 const packageRoot = join(root, 'package');
 const fixture = join(root, 'website');
