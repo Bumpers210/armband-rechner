@@ -69,6 +69,9 @@ test('CI only builds and verifies; old API deployment and automatic publisher pa
   assert.match(build, /workflow_dispatch:/);
   assert.match(build, /pull_request:/);
   assert.match(build, /actions\/upload-artifact/);
+  assert.match(build, /persist-credentials: false\s+# [^\n]+\s+fetch-depth: 0/);
+  assert.match(build, /product-maintenance-activation-test\.php\|\*\/product-maintenance-guard-test\.php\) continue/);
+  assert.match(build, /CARMAJA_TEST_PHP="\$\(command -v php\)"[\s\S]*node website\/scripts\/test-product-maintenance-hotfix\.mjs/);
   assert.doesNotMatch(build, /secrets\.|environment:|\bssh\b|\bscp\b|git push/);
   assert.match(build, /test "\$RUNNER_ENVIRONMENT" = github-hosted/);
   assert.match(build, /test ! -e "\$fixture_root"/);

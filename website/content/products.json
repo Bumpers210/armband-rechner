@@ -4,8 +4,8 @@
         {
             "productModelVersion": 3,
             "productId": "3da76a24-3213-4e8f-b9aa-336ea95e4aa3",
-            "productVersion": 4,
-            "sourceHash": "04460e81f96a578813b165d37bcd231bbf10e3e6ceb4759aa64702dad28afe97",
+            "productVersion": 6,
+            "sourceHash": "4a4851f1e3aef9a49f6a5748b03fc4d006d1f1897c29f6c264ae0b9a336aca8f",
             "sku": "CP-2026-0002",
             "slug": "cp-2026-0002-ares",
             "title": "Ares",
@@ -49,7 +49,7 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-08-21T17:07:36+00:00",
+            "updatedAt": "2026-11-11T14:06:14Z",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -235,8 +235,8 @@
         {
             "productModelVersion": 3,
             "productId": "15289192-a35c-43f1-8407-a9e387ae08ac",
-            "productVersion": 2,
-            "sourceHash": "23470833fdfdf6ec33ffd50009d988126b5447bb581a2aa13d9f64834274130a",
+            "productVersion": 3,
+            "sourceHash": "e1ce6f5c0f983a8dfb84bc1b1541a0078ee839c560198e762beddd52acbb11d2",
             "sku": "CP-2026-0004",
             "slug": "cp-2026-0004-artemis",
             "title": "Artemis",
@@ -279,7 +279,7 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-08-30T05:42:57+00:00",
+            "updatedAt": "2026-11-11T14:06:14Z",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -361,8 +361,8 @@
         {
             "productModelVersion": 3,
             "productId": "827962bf-8d04-4761-975c-9828758df708",
-            "productVersion": 4,
-            "sourceHash": "33f8625eed991d1b1a3e795009613fe471868f9023f2c47d2f53e2ffd0481c43",
+            "productVersion": 5,
+            "sourceHash": "a47bef3887c325c87c5f509462cb88eeafb83f2c6522b5139ed2a34f7030254b",
             "sku": "CP-2026-0005",
             "slug": "cp-2026-0005-asklepios",
             "title": "Asklepios",
@@ -399,7 +399,7 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-08-30T05:45:42+00:00",
+            "updatedAt": "2026-11-11T14:06:14Z",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -481,8 +481,8 @@
         {
             "productModelVersion": 3,
             "productId": "425f83ba-90c6-4b70-931a-b3575020b836",
-            "productVersion": 2,
-            "sourceHash": "f2c11b7ed236f54fca99d92defa3ce5b1c41ebbeb96a32646ee52f14dff55a99",
+            "productVersion": 3,
+            "sourceHash": "9d096635bf998d940f5466e3ce29d99c9644014f501472fb2810f46366aab9d5",
             "sku": "CP-2026-0006",
             "slug": "cp-2026-0006-athena",
             "title": "Athena",
@@ -518,7 +518,7 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-08-31T17:28:50+00:00",
+            "updatedAt": "2026-11-11T14:06:14Z",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -600,8 +600,8 @@
         {
             "productModelVersion": 3,
             "productId": "5a3c86ea-a1e8-4391-bcc0-22f28cb197ef",
-            "productVersion": 2,
-            "sourceHash": "2519765455427ab1f366fb6372146a87d2dd0185f357dac9aed20da00cb87d0a",
+            "productVersion": 3,
+            "sourceHash": "65f01646ab36edcabf486638a95fc32ee9834b85551416518ccb1141ae05b40f",
             "sku": "CP-2026-0007",
             "slug": "cp-2026-0007-helios",
             "title": "Helios",
@@ -645,7 +645,7 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-10-13T13:13:21+00:00",
+            "updatedAt": "2026-11-11T14:06:14Z",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
