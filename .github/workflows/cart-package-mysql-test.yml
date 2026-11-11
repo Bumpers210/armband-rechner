@@ -1,0 +1,91 @@
+name: Isolated MySQL 8 cart package test
+
+on:
+  push:
+    branches: [codex/cart-historical-schema]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cart-package-mysql-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mysql-package:
+    if: github.repository == 'Bumpers210/armband-rechner' && github.ref == 'refs/heads/codex/cart-historical-schema'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      PACKAGE_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: harness
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.PACKAGE_SOURCE_SHA }}
+          path: package-source
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+          cache: npm
+          cache-dependency-path: package-source/website/package-lock.json
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, pdo_sqlite, sodium, zlib, mbstring, gd, exif, curl, openssl, intl, pcntl, posix
+          coverage: none
+      - name: Build and verify exact historical-fix commit
+        working-directory: package-source/website
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$PACKAGE_SOURCE_SHA"
+          test -z "$(git status --porcelain)"
+          npm ci
+          node scripts/prepare-production-cart-package.mjs build .production-cart-package
+          node scripts/prepare-production-cart-package.mjs verify .production-cart-package
+          while IFS= read -r -d '' file; do php -l "$file"; done < <(find .production-cart-package -type f -name '*.php' -print0)
+      - name: Validate test harness and related offline contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n harness/website/scripts/cart-package-mysql-ci.sh
+          php -l harness/website/scripts/cart-package-mysql-ci.php
+          node --test harness/website/tests/node/cart-package-mysql-workflow.test.mjs
+          php package-source/website/tests/php/production-cart-history-test.php
+          php package-source/website/tests/php/production-backup-test.php
+          php package-source/website/tests/php/product-api-test.php
+          php package-source/website/tests/php/product-bootstrap-test.php
+          php package-source/website/tests/php/ap7-production-test.php
+          git -C harness diff --check
+      - name: Existing Node, shell and test-export regression
+        working-directory: package-source/website
+        run: |
+          npm run lint:test
+          npm test
+          npm run build:test
+      - name: Install IONOS-compatible dump and restore clients
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y mariadb-client
+      - name: MySQL 8 migrations, import, encrypted backup and restore
+        shell: bash
+        run: bash harness/website/scripts/cart-package-mysql-ci.sh run
+      - name: Always remove owned ephemeral resources
+        if: always()
+        shell: bash
+        run: bash harness/website/scripts/cart-package-mysql-ci.sh cleanup
+      - name: Upload only non-secret verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MySQL8-Pakettest-${{ env.PACKAGE_SOURCE_SHA }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/cart-package-mysql-report.json
+          if-no-files-found: error
+          retention-days: 14

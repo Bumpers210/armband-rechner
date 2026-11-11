@@ -1,5 +1,68 @@
 # Lokales Produktionspaket: Mengenbestand und Warenkorb
 
+## Lokaler Nachtrag: historische Schema-Kompatibilitaet, 11. November 2026
+
+Isolierter Worktree `cart-historical-schema`, Branch
+`codex/cart-historical-schema`, Basis `374e86d` (main-Paket `1e361a3` plus
+isolierter MySQL-Testharness). Keine neue Produktionsfreigabe.
+
+Der lesende Preflight hat eine regulaere AP6-Baseline erkannt. Deren
+Journalpruefsumme unterscheidet sich von der spaeter um Kollektionen ergaenzten
+Basisdatei. `assertJournal` akzeptiert jetzt genau die belegte Kombination
+aus AP6-Basispruefsumme, aktueller Basispruefsumme und separat angewendeter,
+hashidentischer Kollektionenmigration. AP4, AP5 und Warenkorbmigration bleiben
+streng an das Paket gebunden. Unbekannte, fehlende, zusaetzliche oder
+manipulierte Eintraege sowie unvollstaendige Releasevertraege werden abgelehnt.
+
+Die Pruefung liest ausschliesslich. Weder SQL-Migrationsdateien noch
+Journalpruefsummen oder Zeitstempel werden umgeschrieben. Eine bestehende
+Datenbank darf nicht erneut durch `migrate()` mit der aktuellen Basisdatei
+initialisiert werden; nur ausstehende Vorwaertsmigrationen sind vorgesehen.
+Die unveraenderte historische SQL-Datei liegt ausschliesslich als
+[Testfixture](../tests/fixtures/schema-history/README.md) vor, nicht im Paket.
+
+Lokale Nachweise mit PHP 8.4.23: 113 Schema-/Cutover-/Importpruefungen,
+9 Backup-, 59 Produkt-API-, 13 Bootstrap- und 10 AP7-Vertragspruefungen bestanden.
+Der neue Regressionstest reproduzierte vor der Korrektur `schema_journal_conflict`.
+Er prueft danach beide Baselines vor/nach der Warenkorbmigration,
+datenbankseitige Schreibsperre, Journalerhalt, Manipulation, Importabbruch
+und idempotente Wiederholung ausschliesslich mit kuenstlichen In-Memory-Daten.
+Dies ist ausdruecklich kein MySQL-DDL-Nachweis.
+
+Node: 257/260 bestanden; die drei Windows-Shellfehler wurden auf sauberem
+Basisstand identisch reproduziert und dieselben Shelltests unter WSL/Linux
+erfolgreich ausgefuehrt (28 Smoke-Szenarien; separater PHP-Klickstatistiktest
+dort mangels Linux-PHP uebersprungen). Gezielte Paket-/Historien-/Workflowtests
+10/10, Website-Lint, Testexport und `git diff --check` bestanden.
+Temporarer Basisworktree entfernt; In-Memory-Datenbanken verworfen.
+
+Der erweiterte MySQL-Nachweis ist bestanden: Lauf
+[42980723713](https://github.com/Bumpers210/armband-rechner/actions/runs/42980723713)
+pruefte Paket und Harness aus `50fcbbc122f4fa7bd8a95e03531a7a8f02ec933b`.
+MySQL 8.0.46 / PHP 8.4.27: **67 praktische Pruefungen bestanden**.
+Die echte AP6-SQL-Ausgangsfassung wurde mit den Folgemigrationen aktualisiert;
+das Ergebnis stimmt strukturell mit einer Neuinstallation ueberein. Alle
+alten Journalzeilen einschliesslich Pruefsummen und Zeitstempeln blieben
+vor/nach Backup/Restore, Crash und zehn parallelen Importwiederholungen erhalten.
+Beide Datenbanken wurden geleert; Container, Schluessel, Konfigurationen und
+Temporaerdateien wurden entfernt und der Cleanup separat bestaetigt.
+
+Auch 260 Node-Tests, 3 separat ausgefuehrte Workflowvertraege, Shelltests,
+PHP-Regression, Lint und Testexport bestanden auf dem GitHub-Linux-Rechner.
+Die lokalen Windows-Shellabweichungen treten dort nicht auf. Details und
+Nachweisgrenzen: [MySQL-Abnahme](cart-package-mysql-test.md).
+Der Workflow ist ausschliesslich fuer `codex/cart-historical-schema` erlaubt
+und bindet beide Checkouts an den unveraenderlichen Ausloesecommit
+(`github.sha` / `PACKAGE_SOURCE_SHA`), nicht an einen beweglichen Branch.
+Der fruehere 62-Pruefungen-Lauf testete noch die aktualisierte Basisdatei;
+erst der heutige Lauf belegt die konkrete AP6-Ausgangslage.
+
+Korrektur committed und ausschliesslich auf den freigegebenen Branch gepusht.
+Kein Merge, Deployment oder IONOS-/Produktionszugriff in diesem Auftrag.
+Testprodukte, private Konfigurationen und Produktion bleiben unveraendert.
+
+## Bisheriger Paketstand vom 10. November 2026
+
 Stand: 10. November 2026. Basis: zuletzt bestaetigter `origin/main`/PR #92,
 `f7b5604c7b59312667598ad4c60d4e2a7770f4e6`.
 Isolierter Branch: `codex/cart-production-package`.
