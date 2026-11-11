@@ -1,5 +1,18 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Lokale Schema-Kompatibilitaetskorrektur – 11. November 2026
+
+Die beim lesenden Produktions-Preflight erkannte historische AP6-Baseline
+wird im isolierten Branch `codex/cart-historical-schema` jetzt eng
+hashgebunden zusammen mit der vorhandenen Kollektionen-Vorwaertsmigration
+akzeptiert. Bestehende Migrationseintraege und SQL-Dateien bleiben unveraendert.
+Lokale kuenstliche Vertrags-/Importtests sind bestanden; der erweiterte echte
+MySQL-Upgrade-/Restorelauf muss noch mit dem neuen Korrekturstand erfolgen.
+Commit, Push und isolierter GitHub-Test dieses Korrekturstands sind separat
+freigegeben. Kein Merge, IONOS-/Produktionszugriff oder Produktionsschritt.
+Nachweise und Grenzen: [Produktionspaket Warenkorb](../website/docs/cart-production-package.md).
+Alle Freigaben fuer Bereitstellung, Migration und Kaufstart bleiben unveraendert.
+
 ## Aktueller lokaler Produktionskandidat – 10. November 2026
 
 Basis ist der zusammengefuehrte PR-92-Stand

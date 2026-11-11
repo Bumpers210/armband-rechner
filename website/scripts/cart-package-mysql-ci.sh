@@ -6,7 +6,9 @@ test "${GITHUB_ACTIONS:-}" = true
 test "${RUNNER_ENVIRONMENT:-}" = github-hosted
 test "${RUNNER_OS:-}" = Linux
 test "${GITHUB_REPOSITORY:-}" = Bumpers210/armband-rechner
-test "${GITHUB_REF:-}" = refs/heads/codex/cart-package-mysql-test
+test "${GITHUB_REF:-}" = refs/heads/codex/cart-historical-schema
+test "${PACKAGE_SOURCE_SHA:-}" = "${GITHUB_SHA:-}"
+[[ "${GITHUB_SHA:-}" =~ ^[a-f0-9]{40}$ ]]
 [[ "${GITHUB_RUN_ID:-}" =~ ^[0-9]+$ && "${GITHUB_RUN_ATTEMPT:-}" =~ ^[0-9]+$ ]]
 root="/home/www/carmaja-private-test/cart-package-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 container="carmaja-package-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"

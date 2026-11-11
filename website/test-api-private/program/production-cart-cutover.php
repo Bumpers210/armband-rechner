@@ -14,6 +14,14 @@ final class CarmajaCartCutover
     public const MIGRATIONS = ['commerce-v1-schema', 'commerce-v1-ap4-shop',
         'commerce-v1-ap5-admin', 'commerce-v2-collections', 'commerce-v3-cart-inventory'];
 
+    // Exact AP6 baseline from bb4345fbfb26fede5bdf61be0ef6191746a98ef0.
+    // b4c447a later inlined the separately journaled collections additions
+    // into the base SQL. This is one verified upgrade path, not a wildcard.
+    // SHA-256 normalization matches migrate(): LF, then strip SQL comments.
+    private const AP6_BASELINE = '388e3d44299ae0890fb83d4881d87aa26d7e93d30ee3af8ac07033a4106ea27b';
+    private const COLLECTIONS_BASELINE = 'fed1e46e6635c3f3fd60ec703cea5f14e841fcbe43629eec2ce9032b2bac52f8';
+    private const COLLECTIONS_FORWARD = '33bc5be8e76781b73ff6c23950bb99ac4d9bea67e4632c917f3002b37550d00d';
+
     private static function require(bool $condition, string $code): void
     {
         if (!$condition) { throw new RuntimeException($code); }
@@ -115,14 +123,34 @@ final class CarmajaCartCutover
 
     public static function assertJournal(PDO $pdo, array $release, bool $afterMigration): void
     {
+        $migrations = $release['migrations'] ?? null;
+        self::require(is_array($migrations) && array_is_list($migrations)
+            && count($migrations) === count(self::MIGRATIONS), 'release_contract_invalid');
+        foreach ($migrations as $index => $migration) {
+            self::require(is_array($migration)
+                && ($migration['migrationId'] ?? null) === self::MIGRATIONS[$index]
+                && is_string($migration['journalSha256'] ?? null)
+                && preg_match('/^[a-f0-9]{64}$/D', $migration['journalSha256']) === 1,
+                'release_contract_invalid');
+        }
         $journal = $pdo->query('SELECT migration_id,checksum FROM schema_migrations')->fetchAll(PDO::FETCH_KEY_PAIR);
         $expected = $afterMigration ? self::MIGRATIONS : array_slice(self::MIGRATIONS, 0, 4);
         $actual = array_keys($journal); sort($actual); $ids = $expected; sort($ids);
         self::require($actual === $ids, 'schema_journal_unexpected');
-        foreach ($release['migrations'] as $migration) {
+        foreach ($migrations as $migration) {
             if (!in_array($migration['migrationId'], $expected, true)) { continue; }
-            self::require(hash_equals($migration['journalSha256'], $journal[$migration['migrationId']]), 'schema_journal_conflict');
+            $stored = $journal[$migration['migrationId']];
+            $historicalUpgrade = $migration['migrationId'] === 'commerce-v1-schema'
+                && $stored === self::AP6_BASELINE
+                && $migration['journalSha256'] === self::COLLECTIONS_BASELINE
+                && $journal['commerce-v2-collections'] === self::COLLECTIONS_FORWARD
+                && $migrations[3]['journalSha256'] === self::COLLECTIONS_FORWARD;
+            self::require(is_string($stored)
+                && (hash_equals($migration['journalSha256'], $stored) || $historicalUpgrade),
+                'schema_journal_conflict');
         }
+        // Read-only acceptance: retain original checksums and applied_at values.
+        // Never re-run the base schema to "repair" a historical journal.
     }
 
     /** Caller holds the private maintenance lock, with app/publisher writes off. */

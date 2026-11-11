@@ -77,6 +77,18 @@ function migrate(PDO $pdo, string $package, array $release, int $count = 5): voi
         } else { $commerce->migrateForward($migration['migrationId'], $package . '/' . $migration['path']); }
     }
 }
+function migrateHistoricalBaseline(PDO $pdo, string $package, array $release): void {
+    ensure(tables($pdo) === [], 'historical_fixture_requires_empty_database');
+    $fixture = dirname(__DIR__) . '/tests/fixtures/schema-history/ap6-commerce-schema.sql';
+    $sql = str_replace("\r\n", "\n", (string) file_get_contents($fixture));
+    ensure(hash('sha256', preg_replace('/^\s*--.*$/m', '', $sql))
+        === '388e3d44299ae0890fb83d4881d87aa26d7e93d30ee3af8ac07033a4106ea27b', 'historical_fixture_integrity');
+    // Actually execute the old DDL, rather than relabeling a modern schema.
+    (new CarmajaCommercePdo($pdo))->migrate($fixture);
+    migrate($pdo, $package, $release, 4); // skips the already applied base
+    CarmajaCartCutover::assertJournal($pdo, $release, false);
+    check(true, 'original_ap6_schema_plus_ap4_ap5_collections_accepted');
+}
 function seedLegal(PDO $pdo, array $release): void {
     $pdo->prepare("INSERT INTO legal_bundles (legal_bundle_id,terms_version,privacy_version,withdrawal_version,shipping_version,merchant_version,bundle_hash,status) VALUES (?,'fixture','fixture','fixture','fixture','fixture',?,'approved')")
         ->execute([$release['legalBundleId'], $release['legalBundleHash']]);
@@ -115,7 +127,9 @@ function historicalOrder(PDO $pdo, array $release): string {
 try {
     ensure(getenv('GITHUB_ACTIONS') === 'true' && getenv('RUNNER_ENVIRONMENT') === 'github-hosted'
         && getenv('RUNNER_OS') === 'Linux' && getenv('GITHUB_REPOSITORY') === 'Bumpers210/armband-rechner'
-        && getenv('GITHUB_REF') === 'refs/heads/codex/cart-package-mysql-test', 'github_fixture_only');
+        && getenv('GITHUB_REF') === 'refs/heads/codex/cart-historical-schema'
+        && preg_match('/^[a-f0-9]{40}$/D', (string) getenv('GITHUB_SHA')) === 1
+        && getenv('PACKAGE_SOURCE_SHA') === getenv('GITHUB_SHA'), 'github_fixture_only');
     $mode = $argv[1] ?? '';
     ensure(is_string(getenv('RUNNER_TEMP')) && realpath(getenv('RUNNER_TEMP')) === getenv('RUNNER_TEMP'), 'report_root_rejected');
     $report = getenv('RUNNER_TEMP') . '/cart-package-mysql-report.json';
@@ -200,6 +214,7 @@ try {
     migrate($source, $package, $release);
     CarmajaCartCutover::assertJournal($source, $release, true);
     check(count(tables($source)) === 38, 'empty_schema_all_five_migrations');
+    $freshStructures = array_map(static fn ($entry) => $entry[0], fingerprint($source));
     check((int) $source->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND engine<>'InnoDB'")->fetchColumn() === 0, 'all_tables_innodb');
     $before = fingerprint($source); migrate($source, $package, $release);
     check($before === fingerprint($source), 'migration_journal_idempotent');
@@ -208,7 +223,12 @@ try {
     clearOwned($source);
 
     $phase = 'historical_migration_and_backup';
-    migrate($source, $package, $release, 4); seedLegal($source, $release);
+    migrateHistoricalBaseline($source, $package, $release); seedLegal($source, $release);
+    $oldJournal = rows($source, 'schema_migrations');
+    $historyBeforeReplay = fingerprint($source);
+    migrate($source, $package, $release, 4);
+    CarmajaCartCutover::assertJournal($source, $release, false);
+    check($historyBeforeReplay === fingerprint($source), 'historical_migrations_replay_without_journal_rewrite');
     $historyCheckout = historicalOrder($source, $release);
     $history = [];
     foreach (['orders','order_items','legal_bundles','shipments','mail_outbox','stripe_metadata_outbox'] as $table) { $history[$table] = rows($source, $table); }
@@ -230,6 +250,11 @@ try {
     check($restored['status'] === 'restored_and_compared' && tables($restore) === [], 'pre_migration_backup_restore_all_structures_contents_files');
     check($beforeBackup === fingerprint($source), 'backup_restore_does_not_mutate_source');
     migrate($source, $package, $release);
+    $upgradedJournal = rows($source, 'schema_migrations');
+    check(count($upgradedJournal) === count($oldJournal)+1
+        && array_diff($oldJournal, $upgradedJournal) === [], 'original_journal_checksums_and_timestamps_preserved');
+    check(array_map(static fn ($entry) => $entry[0], fingerprint($source)) === $freshStructures,
+        'historical_upgrade_schema_equals_fresh_schema');
     foreach ($history as $table => $values) { check(rows($source, $table) === $values, 'history_preserved_' . $table); }
     check((int) $source->query('SELECT quantity FROM order_items')->fetchColumn() === 1, 'historical_single_item_quantity_one');
     $payment = $source->query('SELECT * FROM payments')->fetch(PDO::FETCH_ASSOC);
@@ -266,6 +291,7 @@ try {
     $afterImport = fingerprint($source);
     CarmajaCartCutover::importCounts($source, maintenance(), $manifest, $products, $release);
     check($afterImport === fingerprint($source), 'repeat_has_no_mutation');
+    check(rows($source, 'schema_migrations') === $upgradedJournal, 'historical_journal_preserved_after_crash_and_ten_imports');
     $source->exec("UPDATE commerce_inventory SET on_hand=2,inventory_version=inventory_version+1 WHERE product_id='ci-counted-0001'");
     CarmajaCartCutover::importCounts($source, maintenance(), $manifest, $products, $release);
     check((int)$source->query('SELECT SUM(on_hand) FROM commerce_inventory')->fetchColumn() === 5, 'replay_preserves_later_inventory_adjustment');

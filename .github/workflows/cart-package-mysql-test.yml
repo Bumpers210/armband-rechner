@@ -2,7 +2,7 @@ name: Isolated MySQL 8 cart package test
 
 on:
   push:
-    branches: [codex/cart-package-mysql-test]
+    branches: [codex/cart-historical-schema]
   workflow_dispatch:
 
 permissions:
@@ -14,14 +14,15 @@ concurrency:
 
 jobs:
   mysql-package:
-    if: github.repository == 'Bumpers210/armband-rechner' && github.ref == 'refs/heads/codex/cart-package-mysql-test'
+    if: github.repository == 'Bumpers210/armband-rechner' && github.ref == 'refs/heads/codex/cart-historical-schema'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     env:
-      PACKAGE_SOURCE_SHA: 1e361a3e6714fdcd3e2c20ddf9187ef28f38965b
+      PACKAGE_SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           path: harness
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -39,7 +40,7 @@ jobs:
           php-version: '8.4'
           extensions: pdo_mysql, pdo_sqlite, sodium, zlib, mbstring, gd, exif, curl, openssl, intl, pcntl, posix
           coverage: none
-      - name: Build and verify unchanged main package
+      - name: Build and verify exact historical-fix commit
         working-directory: package-source/website
         shell: bash
         run: |
@@ -57,9 +58,11 @@ jobs:
           bash -n harness/website/scripts/cart-package-mysql-ci.sh
           php -l harness/website/scripts/cart-package-mysql-ci.php
           node --test harness/website/tests/node/cart-package-mysql-workflow.test.mjs
-          php package-source/website/tests/php/production-cart-cutover-test.php
-          php package-source/website/tests/php/production-cart-import-test.php
+          php package-source/website/tests/php/production-cart-history-test.php
           php package-source/website/tests/php/production-backup-test.php
+          php package-source/website/tests/php/product-api-test.php
+          php package-source/website/tests/php/product-bootstrap-test.php
+          php package-source/website/tests/php/ap7-production-test.php
           git -C harness diff --check
       - name: Existing Node, shell and test-export regression
         working-directory: package-source/website
