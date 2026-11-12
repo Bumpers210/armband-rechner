@@ -7,7 +7,7 @@ require_once __DIR__ . '/product-model4-migration.php';
 
 const CMJ_M4P_TOOL_FILES = [
     'product-model4-production.php', 'product-model4-migration.php', 'product-model4-preparation.php',
-    'product-api.php', 'product-api-v2.php', 'product-api-v3.php', 'cart-contract.php', 'production-backup.php',
+    'product-api.php', 'product-api-v2.php', 'product-api-v3.php', 'commerce-core.php', 'cart-contract.php', 'production-backup.php',
 ];
 const CMJ_M4P_CLOSED_FLAGS = [
     'productionPublishEnabled', 'githubAdapterEnabled', 'productApiV4WritesEnabled',
@@ -37,6 +37,21 @@ function cmj_m4p_json(string $path, bool $secret = false): array
 }
 
 function cmj_m4p_hash(string $value): bool { return preg_match('/^[a-f0-9]{64}$/D', $value) === 1; }
+
+// The CLI and the isolated cold-start test use this exact package loader.
+// Validate the entire set before executing dependencies or loading any runtime.
+function cmj_m4p_load_dependencies(string $tool, array $release): void
+{
+    $actual = array_keys($release['toolFiles'] ?? []); sort($actual);
+    $expected = CMJ_M4P_TOOL_FILES; sort($expected);
+    cmj_model4_require($actual === $expected, 'release_file_set');
+    foreach (CMJ_M4P_TOOL_FILES as $name) {
+        cmj_model4_require(hash_file('sha256', cmj_m4p_file($tool . '/' . $name)) === ($release['toolFiles'][$name] ?? null), 'release_file_set');
+    }
+    foreach (['product-api.php', 'product-api-v2.php', 'product-api-v3.php', 'cart-contract.php', 'production-backup.php'] as $name) {
+        require_once $tool . '/' . $name;
+    }
+}
 
 function cmj_m4p_time(mixed $value): int
 {
@@ -491,10 +506,7 @@ function cmj_m4p_main(array $argv): int
         cmj_model4_require(hash_file('sha256', $paths['job'] . '/approval.json') === $argv[3], 'approval_binding');
         $release = cmj_m4p_json($paths['job'] . '/release.json', true);
         cmj_model4_require(hash_file('sha256', $paths['job'] . '/release.json') === ($approval['releaseManifestSha256'] ?? null), 'release_binding');
-        foreach (CMJ_M4P_TOOL_FILES as $name) {
-            cmj_model4_require(hash_file('sha256', cmj_m4p_file($paths['tool'] . '/' . $name)) === ($release['toolFiles'][$name] ?? null), 'release_file_set');
-        }
-        foreach (['product-api.php', 'product-api-v2.php', 'product-api-v3.php', 'cart-contract.php', 'production-backup.php'] as $name) require_once $paths['tool'] . '/' . $name;
+        cmj_m4p_load_dependencies($paths['tool'], $release);
         cmj_model4_require(hash_file('sha256', cmj_m4p_file($paths['runtime'], true)) === ($approval['runtimeSha256'] ?? null), 'runtime_binding');
         $rawConfig = (static fn ($file) => require $file)($paths['runtime']);
         cmj_model4_require(is_array($rawConfig), 'runtime_incomplete');

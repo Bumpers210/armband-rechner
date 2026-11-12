@@ -12,6 +12,7 @@ export const toolSources = Object.freeze({
   'product-api.php': 'test-api-private/program/product-api.php',
   'product-api-v2.php': 'test-api-private/program/product-api-v2.php',
   'product-api-v3.php': 'test-api-private/program/product-api-v3.php',
+  'commerce-core.php': 'test-api-private/program/commerce-core.php',
   'cart-contract.php': 'test-api-private/program/cart-contract.php',
   'production-backup.php': 'test-api-private/program/production-backup.php',
 });

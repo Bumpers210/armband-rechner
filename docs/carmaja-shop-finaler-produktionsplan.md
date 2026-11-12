@@ -1,5 +1,32 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Umstellungswerkzeug: lokale Paketkorrektur vom 12. November 2026
+
+Der anschliessende lesende Vorflug fand die fehlende transitive Abhaengigkeit
+`commerce-core.php` im privaten Modell-4-Artefakt. Lokal wird sie jetzt als
+neunte Datei paketiert und an den exakten Dateihashvertrag gebunden. Ein neuer
+Kaltstarttest laedt ausschliesslich das gebaute Paket in frischen PHP-Prozessen,
+ohne bereits vorgeladene Repository-/Testfixture-Abhaengigkeiten. Vollstaendiges
+Laden und kuenstliche Produktkanonisierung sowie fehlende, manipulierte und
+nicht gebundene Dateien sind geprueft; der echte CLI verweigert den Start am
+nicht autorisierten Ort. Die Pruefung ist in beide relevanten CI-Vertraege
+aufgenommen. Fachlogik und bestehende Produktionssperren bleiben unveraendert.
+
+Lokaler Nachweis mit PHP 8.4.23: fuenf Kaltstart-/Negativfaelle, Paketlint und
+die bestehenden Vorbereitungs-, Adapter-, Caller-, Backup-, API-, Bootstrap-,
+Admin- und Warenkorbtests bestanden. Kein neuer MySQL-/Linuxlauf oder
+produktiver Restore. Auch 269 Node-Tests, Lint, Testbuild/Export (25 Seiten),
+Shelltests, lokale Workflowsyntax sowie Diff-/Geheimwertpruefung bestanden.
+Details und Nachweisgrenzen:
+[Privater Produktionsaufrufer](../website/docs/product-model4-production-caller.md).
+
+Die Korrektur liegt auf `codex/model4-package-dependencies`. Commit, Push und
+PR-Pruefung sind separat beauftragt; deren Ergebnis ist erst nach abgeschlossenem
+CI-Lauf bestaetigt. Kein Merge, Serverzugriff oder Deployment. Die korrigierte Bereitstellung und ein
+aktueller manifestgebundener Restore fehlen weiterhin. Produktumstellung,
+Mengeneinfuhr, Entsperrung und Cutover bleiben gesperrt. Keine Aenderung an
+realen Daten, privaten Konfigurationen oder vorhandenen Freigabestaenden.
+
 ## Schritte 1/2: Integrationsstand vom 12. November 2026
 
 Schritt 1 ist mit [PR #98](https://github.com/Bumpers210/armband-rechner/pull/98)
