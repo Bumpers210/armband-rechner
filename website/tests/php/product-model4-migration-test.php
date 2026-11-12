@@ -192,8 +192,13 @@ try {
     }
     foreach ($events as $i => $event) {
         $f = m4t_fixture($root, 'process-crash-' . $i); $f['pdo'] = null;
-        $command = [PHP_BINARY, '-n', '-d', 'extension_dir=' . ini_get('extension_dir')];
-        foreach (['mbstring', 'gd', 'pdo_sqlite'] as $extension) array_push($command, '-d', 'extension=' . $extension);
+        // Windows test PHP gets its extensions process-locally. Linux CI already
+        // has a verified PHP 8.4 ini; -n there would also disable the PDO core .so.
+        $command = [PHP_BINARY];
+        if (PHP_OS_FAMILY === 'Windows') {
+            array_push($command, '-n', '-d', 'extension_dir=' . ini_get('extension_dir'));
+            foreach (['mbstring', 'gd', 'pdo_sqlite'] as $extension) array_push($command, '-d', 'extension=' . $extension);
+        }
         array_push($command, __FILE__, '--crash-child', $f['private'], $event);
         $process = proc_open($command, [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         fclose($pipes[0]); $output = stream_get_contents($pipes[1]); $error = stream_get_contents($pipes[2]); fclose($pipes[1]); fclose($pipes[2]);
