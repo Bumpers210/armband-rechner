@@ -5,10 +5,10 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 const source = file => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
-function loadClient(fetch = async () => { throw new Error('Unexpected network'); }) {
+function loadClient(fetch = async () => { throw new Error('Unexpected network'); }, target = 'test') {
   const testModule = {exports: {}};
   vm.runInNewContext(ts.transpileModule(source('lib/product-browser-client.ts'), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText,
-    {module: testModule, exports: testModule.exports, fetch, FormData, Blob, process: {env: {CARMAJA_SITE_TARGET: 'test'}}, crypto: {randomUUID: () => '99999999-9999-4999-8999-999999999992'}});
+    {module: testModule, exports: testModule.exports, fetch, FormData, Blob, process: {env: {CARMAJA_SITE_TARGET: target}}, crypto: {randomUUID: () => '99999999-9999-4999-8999-999999999992'}});
   return testModule.exports;
 }
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -59,9 +59,25 @@ test('Server-Bildabruf benötigt Anmeldung und liefert keinen Token in der URL',
   const calls = []; const c = loadClient(async(url,opts)=>{calls.push({url,...opts});return {ok:true,headers:{get:()=> 'image/jpeg'},blob:async()=>new Blob(['test'])};});
   await c.productImageBlob('abc','def'); assert.equal(calls[0].credentials,'include'); assert.equal(calls[0].cache,'no-store'); assert.doesNotMatch(calls[0].url,/token|secret|auth/i);
 });
-test('Produktionsseite bleibt gesperrt und Admin-Link wird nur im Testbuild angezeigt', () => {
-  assert.match(source('app/artikelverwaltung/page.tsx'), /if \(!siteTarget\.isTest\) notFound\(\)/);
-  assert.match(source('app/admin/page.tsx'), /siteTarget\.isTest \?/);
+test('Produktionsformular ist noindex, Datenzugang bleibt separat serverseitig gesperrt', () => {
+  assert.match(source('app/artikelverwaltung/page.tsx'), /index: false, follow: false/);
+  assert.match(source('app/admin/page.tsx'), /href="\/artikelverwaltung\/"/);
+  assert.match(source('config/runtime-config.production.example.php'), /'productBrowserProductionEnabled' => false/);
+  assert.match(source('test-api-private/program/product-browser-http.php'), /productBrowserProductionEnabled.*!== true/);
+});
+test('Produktion verwendet nur den Produktionsendpunkt, Test nur den Testendpunkt, unbekannte Ziele scheitern', () => {
+  const c = loadClient(undefined, 'production');
+  assert.equal(c.productBrowserUrl('/products'), 'https://api.carmaja-perlen.de/product-browser/index.php?route=%2Fproducts');
+  assert.equal(c.newProduct().name, ''); assert.equal(c.newProduct().salesEnabled, false);
+  assert.equal(c.PRODUCT_BROWSER_IS_TEST, false);
+  assert.throws(() => loadClient(undefined, 'unknown').productBrowserUrl('/products'));
+});
+test('Private HTTP-Grenze verwendet sichere getrennte Cookies ohne Teststage oder Geräte-Bearer', () => {
+  const code = source('test-api-private/program/product-browser-http.php');
+  assert.match(code, /'secure'=>true, 'httponly'=>true, 'samesite'=>'Strict'/);
+  assert.match(code, /Cache-Control: no-store/); assert.match(code, /Vary: Origin/);
+  assert.match(code, /maintenance_guard_missing/); assert.match(code, /carmaja_product_maintenance_assert\('product'\)/);
+  assert.doesNotMatch(code, /cart-v5-device-test|carmaja-private-test|test-api\.carmaja|'domain'\s*=>/);
 });
 test('Editor speichert keine Passwörter oder Geräte-Tokens in Browser-Speichern', () => {
   const code = source('components/product-manager.tsx') + source('lib/product-browser-client.ts');

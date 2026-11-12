@@ -2,7 +2,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/product-price-list.php';
 
-/** Test-only browser boundary. Product mutations use the very same V5 services as Android. */
+/** Explicitly gated browser boundary. Uses the same V5 services/users as Android. */
 final class CarmajaProductBrowser
 {
     public const ORIGIN = 'https://test.carmaja-perlen.de';
@@ -12,11 +12,20 @@ final class CarmajaProductBrowser
 
     public function __construct(private readonly array $config, private readonly Closure $guard)
     {
-        if (($config['environment'] ?? null) !== 'test' || ($config['publishTarget'] ?? null) !== 'test'
-            || ($config['productionPublishEnabled'] ?? true) !== false
-            || ($config['githubAdapterEnabled'] ?? true) !== false) {
-            throw new CarmajaApiException(503, 'Artikelverwaltung nur in der Testumgebung verfügbar.', [], 'test_only');
+        $test = ($config['environment'] ?? null) === 'test' && ($config['publishTarget'] ?? null) === 'test'
+            && ($config['productionPublishEnabled'] ?? true) === false && ($config['githubAdapterEnabled'] ?? true) === false;
+        $production = ($config['environment'] ?? null) === 'production' && ($config['publishTarget'] ?? null) === 'production'
+            && ($config['productBrowserProductionEnabled'] ?? null) === true;
+        if (!$test && !$production) {
+            throw new CarmajaApiException(503, 'Artikelverwaltung nicht freigegeben.', [], 'product_browser_disabled');
         }
+    }
+
+    public function cookieName(): string { return $this->config['publishTarget'] === 'production' ? '__Secure-cmj_product_production' : self::COOKIE; }
+    public function websiteOrigin(): string { return $this->config['publishTarget'] === 'production' ? 'https://www.carmaja-perlen.de' : self::ORIGIN; }
+    public function requireOrigin(string $origin): void
+    {
+        if ($origin !== $this->websiteOrigin()) throw new CarmajaApiException(403, 'Anfrage nicht erlaubt.', [], 'origin_invalid');
     }
 
     public static function origin(string $origin): void
@@ -28,8 +37,9 @@ final class CarmajaProductBrowser
 
     private function directory(): string
     {
-        $root = realpath($this->config['privateDir']);
-        if (!is_string($root) || is_link($this->config['privateDir'])) { throw new RuntimeException('private_path_invalid'); }
+        $configured = $this->config['productPrivateDir'] ?? $this->config['privateDir'];
+        $root = realpath($configured);
+        if (!is_string($root) || is_link($configured) || is_link($root . '/auth')) { throw new RuntimeException('private_path_invalid'); }
         $path = $root . '/auth/browser-sessions';
         if (is_link($path)) { throw new RuntimeException('session_path_invalid'); }
         if (!is_dir($path) && !mkdir($path, 0700)) { throw new RuntimeException('session_directory_failed'); }
@@ -96,6 +106,7 @@ final class CarmajaProductBrowser
         }
         $cookie = bin2hex(random_bytes(32));
         $session = ['username' => $username, 'credentialStamp' => $this->credentialStamp($user),
+            'environment' => $this->config['publishTarget'],
             'csrf' => bin2hex(random_bytes(32)), 'expires' => $now + self::SESSION_SECONDS,
             'minute' => intdiv($now, 60), 'requests' => 0];
         $this->write($this->path($cookie), $session);
@@ -110,6 +121,7 @@ final class CarmajaProductBrowser
             $session = is_file($path) && !is_link($path) ? json_decode((string) file_get_contents($path), true) : null;
             $user = is_array($session) ? $this->user((string) ($session['username'] ?? '')) : null;
             if (!is_array($session) || ($session['expires'] ?? 0) <= $now || $user === null
+                || (($session['environment'] ?? 'test') !== $this->config['publishTarget'])
                 || !hash_equals($this->credentialStamp($user), (string) ($session['credentialStamp'] ?? ''))) {
                 throw new CarmajaApiException(401, 'Sitzung beendet. Bitte erneut anmelden.', [], 'session_expired');
             }

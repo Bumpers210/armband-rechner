@@ -10,6 +10,8 @@ return [
     'productionPublishEnabled' => false,
     'productApiV4WritesEnabled' => false,
     'productApiV5WritesEnabled' => false,
+    // Separate browser-auth boundary; enable only after its production smoke test.
+    'productBrowserProductionEnabled' => false,
     'inventoryCartEnabled' => false,
     // Separate release gate: workers/webhooks continue while new purchases stop.
     'shopCheckoutEnabled' => false,

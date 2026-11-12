@@ -47,10 +47,12 @@ try {
   }
   const conditions = readFileSync(path.join(output, 'shopbedingungen/index.html'), 'utf8');
   assert.match(conditions, /10 Armbänder/);
-  // Next exports a not-found document for this statically known test-only route.
+  // Public shell has no data; the private production browser API remains opt-in.
   const manager = readFileSync(path.join(output, 'artikelverwaltung/index.html'), 'utf8');
-  assert.match(manager, /Diese Seite gibt es nicht/);
-  assert.doesNotMatch(manager, /<form|name="password"|data-product-manager/);
+  assert.match(manager, /Mit App-Zugang anmelden/);
+  assert.match(manager, /name="password"/);
+  assert.match(manager, /noindex/);
+  assert.doesNotMatch(manager, /test-api\.carmaja|test\.carmaja|HANDY-TEST|Testumgebung/);
   console.log('CART_PRODUCTION_FIXTURE_BUILD_OK; artificial export removed, no deployment');
 } finally {
   // Exact fixed worktree output created by this invocation; no server paths.

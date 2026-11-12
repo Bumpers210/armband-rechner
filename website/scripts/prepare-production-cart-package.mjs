@@ -18,6 +18,7 @@ export const programs = Object.freeze([
   'shop-admin-cli.php', 'shop-admin.php', 'shop-checkout.php', 'shop-public.php',
   'stripe-contract.php', 'stripe-webhook.php', 'production-cart-cutover.php',
   'product-maintenance-guard.php',
+  'product-browser.php', 'product-browser-http.php', 'product-price-list.php',
 ]);
 // Preserve the already installed private maintenance marker when replacing the
 // full program directory. Reuse only the guard transformation, never the

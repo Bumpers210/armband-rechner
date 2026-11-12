@@ -13,8 +13,10 @@ class ProductImagePolicyTest {
         assertEquals(1600 to 1490, policy.scaledDimensions(1600, 1490))
         assertEquals(3200 to 1, policy.scaledDimensions(6400, 1))
     }
-    @Test fun productionLimitsAreUnchanged() {
-        assertEquals(ProductImagePolicy(1600, 1_048_576), ProductImagePolicy.forTarget("production"))
+    @Test fun productionMatchesTestAndNeverUpscalesExistingImages() {
+        assertEquals(ProductImagePolicy(3200, 5 * 1_048_576), ProductImagePolicy.forTarget("production"))
+        assertEquals(3200 to 2400, ProductImagePolicy.forTarget("production").scaledDimensions(4032, 3024))
+        assertEquals(1600 to 1490, ProductImagePolicy.forTarget("production").scaledDimensions(1600, 1490))
     }
     @Test(expected = IllegalStateException::class) fun unknownTargetFailsClosed() {
         ProductImagePolicy.forTarget("unknown")

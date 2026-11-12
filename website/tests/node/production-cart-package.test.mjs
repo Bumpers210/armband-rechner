@@ -11,11 +11,11 @@ test('Complete deterministic cart production package excludes runtime and test-o
   assert.equal(a.manifest.deployAuthorized, false);
   assert.equal(a.manifest.migrationAuthorized, false);
   assert.equal(a.manifest.checkoutAuthorized, false);
-  for (const name of ['bootstrap.php','product-api-v5.php','cart-commerce.php','cart-public.php','production-backup.php','production-cart-cutover.php']) {
+  for (const name of ['bootstrap.php','product-api-v5.php','cart-commerce.php','cart-public.php','production-backup.php','production-cart-cutover.php','product-browser.php','product-browser-http.php','product-price-list.php']) {
     assert.ok(a.files.has(`private/program/${name}`));
   }
   for (const name of a.files.keys()) {
-    assert.doesNotMatch(name, /runtime-config|\.htpasswd|\.env|vendor\/|uploads\/|auth\/|backups\/|maintenance\/|product-browser|test-runtime|ap3b-async/);
+    assert.doesNotMatch(name, /runtime-config|\.htpasswd|\.env|vendor\/|uploads\/|auth\/|backups\/|maintenance\/|product-browser-test|test-runtime|ap3b-async/);
   }
   for (const name of ['public/index.php', 'public/.htaccess', 'contract.json']) {
     assert.doesNotMatch(a.files.get(name).toString(), /carmaja-private-test|test-api\.carmaja/);

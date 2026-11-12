@@ -9,15 +9,13 @@ const CARMAJA_IMAGE_PATTERN =
 const CARMAJA_OPERATION_PATTERN = '/^[A-Za-z0-9._:-]{8,100}$/';
 const CARMAJA_SLUG_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
 const CARMAJA_MAX_IMAGES = 5;
-const CARMAJA_MAX_IMAGE_BYTES = 1048576;
-const CARMAJA_MAX_IMAGE_EDGE = 1600;
+const CARMAJA_MAX_IMAGE_BYTES = 5 * 1048576;
+const CARMAJA_MAX_IMAGE_EDGE = 3200;
 
 function carmaja_api_image_limits(): array
 {
-    // Production keeps its existing contract until a separate release approval.
-    return carmaja_api_publish_target() === 'test'
-        ? ['edge' => 3200, 'bytes' => 5 * 1048576]
-        : ['edge' => CARMAJA_MAX_IMAGE_EDGE, 'bytes' => CARMAJA_MAX_IMAGE_BYTES];
+    carmaja_api_publish_target(); // Still reject an unknown/unconfigured target.
+    return ['edge' => CARMAJA_MAX_IMAGE_EDGE, 'bytes' => CARMAJA_MAX_IMAGE_BYTES];
 }
 const CARMAJA_BACKUP_KEEP = 30;
 const CARMAJA_LOGIN_LIMIT = 5;

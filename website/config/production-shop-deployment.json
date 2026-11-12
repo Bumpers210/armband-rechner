@@ -60,6 +60,22 @@
     "shippingMaxBusinessDays": 4,
     "legalBundleId": "cmj-production-legal-2026-10-25-v7"
   },
+  "productManagement": {
+    "page": "/artikelverwaltung/",
+    "privateApiRoute": "/product-browser/index.php",
+    "websiteOrigin": "https://www.carmaja-perlen.de",
+    "cookie": "__Secure-cmj_product_production",
+    "cookiePath": "/product-browser/",
+    "sessionSeconds": 1800,
+    "sharedAppUsers": true,
+    "sharedProductModel": 4,
+    "maxImageEdge": 3200,
+    "maxImageBytes": 5242880,
+    "maxMultipartRequestBytes": 6291456,
+    "phpUploadMaxFilesizeMinimumBytes": 5242880,
+    "phpPostMaxSizeMinimumBytes": 6291456,
+    "requiresSeparateActivation": true
+  },
   "guards": {
     "copyRuntimeConfig": false,
     "copyCredentials": false,
