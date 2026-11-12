@@ -161,6 +161,7 @@ carmaja_bootstrap_test(
 
         carmaja_bootstrap_test_same('test', $config['publishTarget'], 'Falsches Ziel.');
         carmaja_bootstrap_test_same(false, $config['productApiV4WritesEnabled'], 'v4-Schreiben muss standardmäßig gesperrt sein.');
+        carmaja_bootstrap_test_same(false, $config['productBrowserProductionEnabled'], 'Browser muss standardmaessig gesperrt sein.');
         carmaja_bootstrap_test_same(false, $config['collectionCommerceEnabled'], 'Kollektionen-Checkout muss standardmäßig gesperrt sein.');
         carmaja_bootstrap_test_same(
             false,
@@ -202,6 +203,14 @@ carmaja_bootstrap_test(
         );
     }
 );
+
+carmaja_bootstrap_test('Produktionsbrowser akzeptiert weder Strings noch Aktivierung im Test', static function (): void {
+    $fixture = carmaja_bootstrap_test_fixture();
+    foreach (['true', 1, true] as $flag) {
+        carmaja_bootstrap_test_exception(static fn () => carmaja_bootstrap_validate_config(
+            [...$fixture['config'], 'productBrowserProductionEnabled'=>$flag], $fixture['configFile']), 'config_environment_invalid');
+    }
+});
 
 carmaja_bootstrap_test(
     'Produktionsmonitoring kann in der Testumgebung nicht aktiviert werden',

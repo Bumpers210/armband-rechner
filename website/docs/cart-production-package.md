@@ -1,5 +1,15 @@
 # Lokales Produktionspaket: Mengenbestand und Warenkorb
 
+## Produktionsverwaltung vorbereitet am 12. November 2026
+
+Der aktuelle Schritt-2-Kandidat ergaenzt drei private Browserprogramme:
+**44 Dateien plus Manifest**. Die statische PC-Verwaltungsseite ist enthalten,
+ihr Datenzugang bleibt mit `productBrowserProductionEnabled=false` geschlossen.
+App und API verwenden im neuen Paket 3200 Pixel / 5 MiB, ohne bestehende Bilder
+zu veraendern. [Vertrag und Nachweise](production-product-management.md).
+Die folgenden datierten Abnahmen bleiben historische Belege, nicht die aktuelle
+Aussage, dass die PC-Verwaltung technisch ausschliesslich test-only waere.
+
 ## Aktuelle Releasevorbereitung am 11. November 2026
 
 Nach PR #96 ist main `bb4cf04abf4297d782b15cf9a54311e12f542da0` die neue Basis.
@@ -206,7 +216,8 @@ bleiben gueltig, ersetzen diese abschliessende Paketpruefung aber nicht.
 8. Mengenadapter mit gesperrten Schreibwegen ausfuehren und Ergebnis/Audit
    vergleichen. Nicht bestaetigte Produkte bleiben nicht kaufbar. V5-App,
    API, Worker, Website und Publisher kontrolliert kompatibel umstellen.
-   Kaufweg bleibt dabei geschlossen; Test-Browserverwaltung bleibt test-only.
+   Kaufweg bleibt dabei geschlossen; die Browser-Produktionsfreigabe bleibt ein
+   eigener, standardmaessig ausgeschalteter und separat zu pruefender Schalter.
 9. Erst nach ausdruecklicher Freigabe neue Checkouts oeffnen; kontrollierte
    echte Bestellung, Zahlung, Mengenabbuchung, Mails und Beobachtung pruefen.
 
@@ -221,9 +232,10 @@ Ein Website-Rollback veraendert niemals Commerce-Daten.
 
 Main, entfernte Branches, GitHub-Schalter, Test-/Produktionsserver, reale
 Produkte, Mengen, private Konfigurationen, Cronjobs und laufende Zahlungen.
-Die PC-Artikelverwaltung ist weiterhin ausschliesslich fuer die Testumgebung
-freigegeben; ein produktiver Browser-Authentifizierungsvertrag ist ein
-eigener Folgeauftrag, kein stiller Bestandteil dieses Shop-Releases.
+Die damalige PC-Artikelverwaltung war ausschliesslich fuer die Testumgebung
+freigegeben. Der explizite Folgeauftrag vom 12. November schliesst jetzt den
+produktiven Browser-Authentifizierungsvertrag; er erteilt keine Bereitstellungs-
+oder Aktivierungsfreigabe.
 
 ## Lokale Abnahme am 10. November 2026
 

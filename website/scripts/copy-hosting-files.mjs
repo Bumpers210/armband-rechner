@@ -35,7 +35,8 @@ for (const entry of entries) {
   );
 }
 
-if (isTest) {
+// Both release targets use small derivatives; original images remain unchanged.
+if (siteTarget === "test" || siteTarget === "production") {
   const fixtureImages = process.env.CARMAJA_PRODUCT_IMAGES_DIR;
 
   if (fixtureImages) {

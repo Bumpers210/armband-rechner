@@ -3380,7 +3380,7 @@ carmaja_api_test('V5 bewahrt bestehende Entwürfe ohne Hinweise bei Modellupgrad
     carmaja_api_test_same($old['pearlSizeMm'], $saved['pearlSizeMm'], 'Perlengröße verloren.');
 });
 
-carmaja_api_test('3200px Testbilder, Download und unveränderte Produktionsgrenzen', static function (): void {
+carmaja_api_test('3200px Bilder und Download mit identischen Test-/Produktionsgrenzen', static function (): void {
     $fixture = carmaja_api_test_fixture();
     $source = $fixture['root'] . '/zoom.jpg';
     $target = $fixture['root'] . '/zoom-clean.jpg';
@@ -3402,9 +3402,16 @@ carmaja_api_test('3200px Testbilder, Download und unveränderte Produktionsgrenz
     $download = carmaja_api_v4_product_image_file($draft['draftId'], $draft['images'][0]['imageId']);
     carmaja_api_test_same(filesize($stored), $download['size'], 'Großbild-Download gesperrt.');
     carmaja_api_test_use_target($fixture, 'production');
-    carmaja_api_test_same(['edge' => 1600, 'bytes' => 1048576], carmaja_api_image_limits(), 'Produktionsgrenzen verändert.');
-    carmaja_api_test_exception(fn () => carmaja_api_process_jpeg($target, '01.jpg', filesize($target),
+    carmaja_api_test_same(['edge' => 3200, 'bytes' => 5242880], carmaja_api_image_limits(), 'Produktionsgrenzen inkonsistent.');
+    $result = carmaja_api_process_jpeg($target, '01.jpg', filesize($target), $fixture['root'] . '/production.jpg', false);
+    carmaja_api_test_same(3200, $result['width'], 'Produktionsbild verkleinert.');
+    carmaja_api_test_create_jpeg($source, 3201, 80); clearstatcache(true, $source);
+    carmaja_api_test_exception(fn () => carmaja_api_process_jpeg($source, '01.jpg', filesize($source),
         $fixture['root'] . '/forbidden.jpg', false), 422, 'image_dimensions_invalid');
+    file_put_contents($source, str_repeat('x', 5242881)); clearstatcache(true, $source);
+    carmaja_api_test_exception(fn () => carmaja_api_process_jpeg($source, '01.jpg', filesize($source),
+        $fixture['root'] . '/forbidden.jpg', false), 413, 'image_too_large');
+    carmaja_api_test_assert(!is_file($fixture['root'] . '/forbidden.jpg'), 'Unzulaessiges Bild wurde gespeichert.');
 });
 
 carmaja_api_test('V5 bewahrt Verkaufsfreigabe bei Speichern, Upload, Publish, Replay und Restore', static function (): void {

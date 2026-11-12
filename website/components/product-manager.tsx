@@ -3,7 +3,7 @@
 import {FormEvent, useEffect, useRef, useState} from 'react';
 import {ProductCalculator} from '@/components/product-calculator';
 import {DescriptionDocument, editingProduct, ManagedInventory, ManagedProduct, newProduct, newSpan, prepareProductImage,
-  priceFromInput, ProductBrowserError, ProductImage, productImageBlob, productPayload, productRequest, TextSpan} from '@/lib/product-browser-client';
+  priceFromInput, PRODUCT_BROWSER_IS_TEST, ProductBrowserError, ProductImage, productImageBlob, productPayload, productRequest, TextSpan} from '@/lib/product-browser-client';
 
 const statusNames: Record<string, string> = {draft: 'Entwurf', ready: 'Bereit', published: 'Veröffentlicht', disabled: 'Archiviert', sold: 'Verkauft'};
 const euro = (price: number) => new Intl.NumberFormat('de-DE', {style: 'currency', currency: 'EUR'}).format(price / 100);
@@ -102,7 +102,7 @@ export function ProductManager() {
   async function login(e: FormEvent<HTMLFormElement>) {
     e.preventDefault(); const form = e.currentTarget; const fields = new FormData(form);
     await run(async () => { const data = await productRequest<{csrfToken: string}>('/login', 'POST', {username: fields.get('username'), password: fields.get('password')});
-      form.reset(); setCsrf(data.csrfToken); await loadProducts(); setMessage('Angemeldet. App und Browser verwenden dieselben Testartikel.'); });
+      form.reset(); setCsrf(data.csrfToken); await loadProducts(); setMessage('Angemeldet. App und Browser verwenden dieselben Artikel.'); });
   }
   async function finishImages() {
     const job = imageRecovery.current; if (!job) return;
@@ -145,7 +145,7 @@ export function ProductManager() {
       const operationId = keyFor(`${action}:${selected.productId}`, contract);
       const data = await productRequest<{product: ManagedProduct}>(`/products/${selected.productId}/${action}`, 'POST', {...contract, operationId}, csrf, operationId);
       accept(data.product); pending.current.delete(`${action}:${selected.productId}`); await loadProducts();
-      setMessage(action === 'publish' ? 'Veröffentlichung bestätigt. Die Testprojektion ist aktualisiert; die statische Testwebsite benötigt anschließend einen eigenen Testbuild.'
+      setMessage(action === 'publish' ? 'Veröffentlichung bestätigt. Die Website wird erst mit dem freigegebenen Websitebuild aktualisiert.'
         : action === 'archive' ? 'Artikel archiviert. Bestand bleibt erhalten.' : 'Artikel wiederhergestellt. Verkaufsfreigabe separat prüfen.');
     });
   }
@@ -170,11 +170,11 @@ export function ProductManager() {
   }
   const canPublish = selected && selected.productVersion > 0 && !dirty && !conflict && !imageRecovery.current;
   return <section className="product-manager" aria-label="Artikelverwaltung">
-    <header className="pm-heading"><p className="eyebrow">Deine Werkstatt · Testumgebung</p><h1>Artikel am PC verwalten</h1>
+    <header className="pm-heading"><p className="eyebrow">Deine Werkstatt{PRODUCT_BROWSER_IS_TEST ? ' · Testumgebung' : ''}</p><h1>Artikel am PC verwalten</h1>
       <p>Dieselben Artikel wie in der App – mit Platz für Bilder, Texte und alle Details.</p></header>
     <p role="status" aria-live="polite" className="pm-message">{busy ? 'Wird verarbeitet …' : message}</p>
-    {!csrf ? <form className="pm-login" onSubmit={e => void login(e)}><h2>Mit App-Testzugang anmelden</h2>
-      <p>Die Anmeldung zur geschützten Testwebsite ersetzt diese Anmeldung nicht. Deine bestehenden App-Zugangsdaten bleiben unverändert.</p>
+    {!csrf ? <form className="pm-login" onSubmit={e => void login(e)}><h2>Mit App-Zugang anmelden</h2>
+      <p>Hier gelten die Zugangsdaten der Produktverwaltungs-App, nicht die des Shop-Admins. Deine bestehenden Zugangsdaten bleiben unverändert.</p>
       <label>Benutzername<input name="username" autoComplete="username" required maxLength={160} /></label>
       <label>Passwort<input name="password" type="password" autoComplete="current-password" required maxLength={1024} /></label>
       <button disabled={busy} type="submit">Anmelden</button></form> : <>
@@ -182,7 +182,7 @@ export function ProductManager() {
         <button disabled={busy} onClick={() => void run(async () => { await loadProducts(); setMessage('Artikelliste neu geladen. Geöffnete Eingaben bleiben erhalten.'); })}>Liste neu laden</button>
         <button disabled={busy} onClick={() => { if (mayDiscard()) void run(async () => { await productRequest('/logout', 'POST', {}, csrf); imageRecovery.current = null;
           setCsrf(''); setSelected(null); setProducts([]); setDirty(false); setMessage('Abgemeldet.'); }); }}>Abmelden</button></div>
-      <p className="pm-note">Nur Testdaten. Neue Artikel heißen in diesem geschützten Testfenster „HANDY-TEST …“. Speichern oder Veröffentlichen ändert keinen vorhandenen Bestand.</p>
+      <p className="pm-note">{PRODUCT_BROWSER_IS_TEST ? 'Nur Testdaten. Neue Artikel heißen in diesem geschützten Testfenster „HANDY-TEST …“. ' : ''}Speichern oder Veröffentlichen ändert keinen vorhandenen Bestand.</p>
       <ProductCalculator disabled={busy || !!imageRecovery.current} canApplyToCurrent={!!selected && !conflict} onApply={(fields, create) => {
         if (create) { if (!mayDiscard()) throw new Error('Übernahme abgebrochen. Vorhandene Eingaben bleiben erhalten.');
           imageRecovery.current = null; accept({...newProduct(), ...fields}); setDirty(true);
@@ -234,7 +234,7 @@ export function ProductManager() {
                 : selected.status === 'draft' ? <button onClick={() => void stock(true)}>Anfangsbestand vormerken</button> : null}
               <button onClick={() => void loadInventory(selected.productId)}>Bestand neu laden</button></fieldset>
             <p className="muted">Geprüfte Rückgaben werden weiterhin in der Bestellverwaltung wiedereingelagert. Eine Erstattung verändert den Bestand nicht.</p></section>
-        </div> : <div className="pm-empty"><h2>Wähle einen Artikel aus</h2><p>Oder lege einen neuen Testartikel an. Änderungen werden erst mit deiner Bestätigung gespeichert.</p></div>}
+        </div> : <div className="pm-empty"><h2>Wähle einen Artikel aus</h2><p>Oder lege einen neuen Artikel an. Änderungen werden erst mit deiner Bestätigung gespeichert.</p></div>}
       </div></>}
   </section>;
 }

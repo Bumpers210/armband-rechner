@@ -143,6 +143,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'productionPublishEnabled',
         'productApiV4WritesEnabled',
         'productApiV5WritesEnabled',
+        'productBrowserProductionEnabled',
         'inventoryCartEnabled',
         'shopCheckoutEnabled',
         'collectionCommerceEnabled',
@@ -215,6 +216,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
     $productApiV4WritesEnabled = $config['productApiV4WritesEnabled'] ?? false;
     $collectionCommerceEnabled = $config['collectionCommerceEnabled'] ?? false;
     $productApiV5WritesEnabled = $config['productApiV5WritesEnabled'] ?? false;
+    $productBrowserProductionEnabled = $config['productBrowserProductionEnabled'] ?? false;
     $inventoryCartEnabled = $config['inventoryCartEnabled'] ?? false;
     // Existing test contracts remain usable; production must opt in explicitly.
     $shopCheckoutEnabled = $config['shopCheckoutEnabled'] ?? ($environment === 'test');
@@ -225,6 +227,8 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         || !is_bool($productApiV4WritesEnabled)
         || !is_bool($collectionCommerceEnabled)
         || !is_bool($productApiV5WritesEnabled)
+        || !is_bool($productBrowserProductionEnabled)
+        || ($environment !== 'production' && $productBrowserProductionEnabled)
         || !is_bool($inventoryCartEnabled)
         || !is_bool($shopCheckoutEnabled)
         || ($productApiV5WritesEnabled && !$inventoryCartEnabled)
@@ -487,6 +491,7 @@ function carmaja_bootstrap_validate_config(array $config, string $configFile): a
         'productionPublishEnabled' => $productionPublishEnabled,
         'productApiV4WritesEnabled' => $productApiV4WritesEnabled,
         'productApiV5WritesEnabled' => $productApiV5WritesEnabled,
+        'productBrowserProductionEnabled' => $productBrowserProductionEnabled,
         'inventoryCartEnabled' => $inventoryCartEnabled,
         'shopCheckoutEnabled' => $shopCheckoutEnabled,
         'collectionCommerceEnabled' => $collectionCommerceEnabled,
@@ -745,6 +750,10 @@ function carmaja_bootstrap_route_request(): never
     }
 
     $shopApiVersion = (string) ($segments[1] ?? '');
+    if ($segments === ['product-browser', 'index.php']) {
+        require_once __DIR__ . '/product-browser-http.php';
+        carmaja_product_browser_production_http(carmaja_bootstrap_load_config());
+    }
     if (($segments[0] ?? '') === 'v5') {
         carmaja_api_v5_route($method, array_slice($segments, 1));
     }

@@ -1,5 +1,7 @@
+export const PRODUCT_BROWSER_IS_TEST = process.env.CARMAJA_SITE_TARGET === 'test';
 export const PRODUCT_BROWSER_API = process.env.CARMAJA_SITE_TARGET === 'test'
-  ? 'https://test-api.carmaja-perlen.de/product-browser/index.php' : '';
+  ? 'https://test-api.carmaja-perlen.de/product-browser/index.php'
+  : process.env.CARMAJA_SITE_TARGET === 'production' ? 'https://api.carmaja-perlen.de/product-browser/index.php' : '';
 export type TextSpan = {text: string; bold: boolean; italic: boolean; font: 'standard' | 'elegant'; size: 'small' | 'normal' | 'large'};
 export type DescriptionDocument = {version: 1; blocks: Array<{type: 'paragraph'; spans: TextSpan[]}>};
 export type ProductImage = {imageId: string; fileName: string; alt: string; width: number; height: number; isMain: boolean; uploaded?: boolean; blob?: Blob};
@@ -15,7 +17,7 @@ export class ProductBrowserError extends Error {
   constructor(public status: number, public code: string, message: string) { super(message); }
 }
 export function productBrowserUrl(route: string): string {
-  if (!PRODUCT_BROWSER_API) throw new Error('Artikelverwaltung ist nur in der Testumgebung verfügbar.');
+  if (!PRODUCT_BROWSER_API) throw new Error('Artikelverwaltung ist nicht konfiguriert.');
   if (!/^\/(?:session|login|logout|price-list|products(?:\/[A-Za-z0-9-]+(?:\/(?:images(?:\/[A-Za-z0-9-]+)?|publish|archive|restore|inventory|initial-inventory))?)?)$/.test(route)) throw new Error('Ungültiger Artikelweg.');
   return `${PRODUCT_BROWSER_API}?route=${encodeURIComponent(route)}`;
 }
@@ -32,9 +34,9 @@ export async function productRequest<T>(route: string, method = 'GET', body?: un
   if (!response.ok || json?.ok !== true) {
     const code = typeof json?.error?.code === 'string' ? json.error.code : 'request_failed';
     const message = response.status === 409 ? 'Inzwischen wurde dieser Artikel geändert. Deine Eingaben bleiben hier stehen. Bitte Serverstand neu laden und die Änderungen vergleichen.'
-      : response.status === 401 ? 'Bitte mit deinen App-Testzugangsdaten anmelden.'
+      : response.status === 401 ? 'Bitte mit deinen App-Zugangsdaten anmelden.'
       : response.status === 429 ? 'Zu viele Versuche. Bitte später erneut versuchen.'
-      : response.status >= 500 ? 'Testverwaltung derzeit nicht erreichbar. Es wurde kein Erfolg bestätigt.'
+      : response.status >= 500 ? 'Artikelverwaltung derzeit nicht erreichbar oder gesperrt. Es wurde kein Erfolg bestätigt.'
       : typeof json?.error?.message === 'string' ? json.error.message : 'Anfrage abgelehnt.';
     throw new ProductBrowserError(response.status, code, message);
   }
@@ -47,7 +49,7 @@ export async function productImageBlob(productId: string, imageId: string): Prom
 }
 export const newSpan = (text = ''): TextSpan => ({text, bold: false, italic: false, font: 'standard', size: 'normal'});
 export function newProduct(): ManagedProduct {
-  return {productId: crypto.randomUUID(), productVersion: 0, sourceHash: '', version: 0, status: 'draft', name: 'HANDY-TEST ',
+  return {productId: crypto.randomUUID(), productVersion: 0, sourceHash: '', version: 0, status: 'draft', name: PRODUCT_BROWSER_IS_TEST ? 'HANDY-TEST ' : '',
     descriptionDocument: {version: 1, blocks: [{type: 'paragraph', spans: [newSpan()]}]}, materials: [], metalElements: [],
     braceletSizeCm: 18, pearlSizeMm: 8, careInstructions: [], images: [], priceMinor: 2800, currency: 'eur', salesEnabled: false};
 }
