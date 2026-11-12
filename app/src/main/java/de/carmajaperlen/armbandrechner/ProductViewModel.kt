@@ -247,6 +247,10 @@ class ProductViewModel(
     fun login() {
         val state = _uiState.value
         val editor = state.loginEditor
+        editor.validationError()?.let { error ->
+            _uiState.value = state.copy(error = error)
+            return
+        }
         val deviceName = editor.deviceName.text.trim().ifBlank { "Android" }
         runBusy {
             val baseUrl = requireBaseUrl()

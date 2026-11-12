@@ -116,6 +116,13 @@ data class ProductLoginEditorState(
     val deviceName: TextFieldValue = editorValue("Android"),
     val rememberSession: Boolean = false,
 ) {
+    fun validationError(): String? = when {
+        username.text.isBlank() && password.text.isEmpty() -> "Bitte Benutzer und Passwort eingeben."
+        username.text.isBlank() -> "Bitte Benutzer eingeben."
+        password.text.isEmpty() -> "Bitte Passwort eingeben."
+        else -> null
+    }
+
     override fun toString(): String {
         return "ProductLoginEditorState(" +
             "username=$username, " +
