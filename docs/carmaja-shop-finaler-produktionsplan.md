@@ -1,5 +1,129 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Produktumstellung: privater Produktionsaufrufer lokal – 12. November 2026
+
+Der begrenzte Produktionsaufrufer ist lokal implementiert: ausdruecklich
+gebundene Einzelaktionen, saubere Release-/Aktivpaket-/Runtimebindung,
+Wartungs- und Drainpruefung, MySQL-8/TLS/UTC, getrennte Guardverbindung und
+authentifizierter Restorebeleg gegen die originalen Produktdaten. Keine
+konstanten Testfreigaben im produktiven Einstieg. Keine Aktivierung ueber
+HTTP, Bootstrap, Worker oder Deploymentworkflow. Das separate Werkzeugartefakt
+enthaelt nur Code und bleibt ohne sauberen Commit/Review nicht ausfuehrbar.
+
+389 kuenstliche lokale Callerpruefungen sowie die bestehenden 104 Vorbereitungs-
+und 421 Adapterpruefungen bestehen; Backupregression 10/10, Node 263,
+Produkt-/Bootstrap-/Warenkorbvertraege sowie lokaler Testbuild bestanden.
+Der neue Restorepruefer ist optional; bestehende Backup-CLI-Aufrufe behalten
+ihren Vertrag. Historische Migrationseintraege und Konfigurationen werden
+nicht umgeschrieben. Fehler/Abbruch oeffnen keine Kauf- oder Produktwege.
+
+**Noch keine Produktions- oder umfassende neue MySQL-Abnahme:** Die frueheren
+206 MySQL-/Linux-Pruefungen betreffen den Adapter. Vor Bereitstellung fehlen
+der isolierte praktische Nachweis des neuen Zwei-Verbindungs-Guards und
+Restore-Callbacks, sauberer Release/CI sowie gesonderte Bereitstellungs- und
+Ausfuehrungsfreigaben mit frischen privaten Nachweisen. Keine realen Daten,
+Server, Testprodukte oder bestehenden privaten Konfigurationen wurden in diesem
+Auftrag angefasst. Kein Commit, Push, Merge, Entsperren oder Cutover.
+
+Details: [Privater Produktionsaufrufer](../website/docs/product-model4-production-caller.md).
+Mengenzaehlung/-import, Legal-v7-Umschaltung, App-/Websitewechsel und Shopstart
+bleiben nachgelagerte Schritte; keine erfundenen Ist-Aufwaende oder Termine.
+Die folgenden Abschnitte dokumentieren die vorausgegangenen Zwischenstaende.
+
+## Produktumstellung: MySQL-8-/Linux-Nachweis bestanden – 12. November 2026
+
+Der separat beauftragte isolierte Nachweis ist mit 206 Pruefungen auf
+MySQL 8.0.36 / InnoDB und PHP 8.4.27 / Linux bestanden. Ausschliesslich das
+vorher leere, bekannte Restore-Testziel und neue kuenstliche Produktdateien
+wurden verwendet. Keine Verbindung zur Source-Testdatenbank oder Produktion;
+bestehende Testprodukte, Bestaende und private Konfigurationen bleiben erhalten.
+
+Bestanden sind echte Produkt-Schemadatentypen, sieben SIGKILL-/Wiederanlauf-
+punkte, InnoDB-Row-Lock-Timeout und Deadlock, eigener Verbindungsabbruch vor
+Commit, injizierter Rueckmeldungsverlust nach echtem Commit, zehn parallele
+Clients, POSIX-Rechte/Symlinkschutz, verweigerte Dateiumbenennung und exakter
+Dateirueckfall vor Commit. Nach DB-Commit bleibt Dateirueckfall gesperrt.
+Aktive TLS-Sitzungen sind Pflicht und bestaetigt; fehlende CA-/Hostpruefung
+bleibt akzeptiertes Restrisiko. Kein neuer MySQL-Backup-/Gesamtschemanachweis
+und kein Stromausfallnachweis aus diesen Tests ableiten.
+
+Cleanup unabhaengig bestaetigt: Restore-Testziel vollstaendig leer,
+Testsperre frei, temporaere Programme/Archive/Produktdateien und lokales
+Transferverzeichnis entfernt; private Konfiguration hashgleich und `0600`.
+Kein Commit, Push, Merge, oeffentliches Deployment oder Produktionszugriff.
+
+Naechster Gate-Schritt ist der begrenzte private Produktionsaufrufer mit
+echten Sicherheitspruefungen sowie Release-/Manifestbindung. Vor dessen
+Bereitstellung/Ausfuehrung bleiben aktueller Backup-/Restorebeleg und separate
+Produktionsschreibfreigabe erforderlich. Keine Bestandsuebernahme, Publikation,
+Rechtsbundle-Umschaltung, Entsperrung oder Shopoeffnung wurde freigegeben.
+
+Details und Grenzen:
+[Produktmodell 4: praktischer Nachweis](../website/docs/cart-model4-preparation.md).
+Die nachfolgenden Abschnitte dokumentieren die vorausgegangenen Zwischenstaende.
+
+## Produktumstellung: lokaler Abbruch-/Wiederanlaufnachweis – 12. November 2026
+
+Auf `codex/cart-model4-preparation`, weiterhin Basis main nach PR #97, ist der
+begrenzte Modell-4-Schreib-/Wiederanlaufadapter lokal implementiert. Ein privat
+gebundenes Manifest bestimmt Original-/Zielbytes, Bilder, Commerce-Zuordnungen
+und Zielidentitaet. Der unveraenderte schreibfreie Vorbereitungshelfer besitzt
+weiterhin keinen Applypfad. Kein CLI-, Runtime- oder Deploymentanschluss wurde
+aktiviert; dieser Auftrag enthielt keinen Serverzugriff.
+
+421 kuenstliche Adapterpruefungen einschliesslich sieben echter lokaler
+Prozessabbrueche bestehen. Dateiaustausch, SQL-Rollback, Wiederholung,
+Sperrkonflikte, Timeout, Manipulationsschutz und unterbrochener Rueckfall sind
+geprueft. Nach bestaetigtem DB-Abschluss ist kein Dateirueckfall erlaubt;
+stattdessen werden Journal/Audit sicher nachgeholt. Wartungssperren werden
+niemals automatisch aufgehoben. Bestands-, Bestell-, Legal- und private
+Konfigurationsdaten bleiben ausserhalb des Schreibumfangs.
+
+Die lokale Transaktionsfixture verwendet SQLite nur als Testwerkzeug.
+MySQL-8-/TLS-/Row-Lock-/Deadlock- und POSIX-Nachweise sind damit ausdruecklich
+noch nicht erbracht. Vor einer Bereitstellung fehlen der isolierte praktische
+Nachweis, ein real pruefender privater Produktionsaufrufer, Release-/Manifest-
+und separate Produktionsschreibfreigabe. `selectedProducts` bleibt leer und
+nicht freigegeben. v7-Registrierung, Mengenzaehlung/-import, App-/Websitewechsel
+und Shopoeffnung bleiben nachgelagerte, separat freizugebende Schritte.
+
+Vertrag, Testergebnisse und Grenzen:
+[Produktmodell 4: Vorbereitung und Wiederanlauf](../website/docs/cart-model4-preparation.md).
+Keine neuen Ist-Stunden oder Kalenderzusagen. Die folgenden Abschnitte bleiben
+historische Zwischenstaende und erweitern keine Freigabe.
+
+## Warenkorb bereitgestellt, Produktumstellung vorbereitet – 11. November 2026
+
+Aktueller Basis-/Releasecommit nach PR #97:
+`e5d9627ce0dfa7e2adaf33fa81367d2a5111ead5`.
+Das separat freigegebene private Warenkorbpaket samt API-Einstieg und der
+ausstehenden Migration `commerce-v3-cart-inventory` ist bereitgestellt.
+Die Datenbank enthaelt 38 Tabellen; historische Daten und Migrationseintraege
+sind unveraendert. Backup, Offsite-Abruf, Restorevergleich mit anschliessend
+leerem Restore-Ziel, Workerbetrieb und weiterhin geschlossene Kaufwege sind
+nachgewiesen. Keine Websitebereitstellung, Produkt-/Bestandsuebernahme,
+Entsperrung oder Shopaktivierung gehoerte zu diesem Schritt.
+
+Die anschliessende lokale Vorbereitung auf `codex/cart-model4-preparation`
+enthaelt nur einen schreibfreien Probelauf: 22 konsistente Modell-3-Quellen,
+neun passende Commerce-Bindungen und sechs unveraenderte oeffentliche
+Produktzuordnungen. Ein alter Entwurf bleibt erhalten; CP-2026-0008/-0009
+bleiben privat. Bestehende Produkte erhalten keine nachtraeglichen Hinweise.
+Rechtsbundle v7 liegt hashgeprueft approved vor, ist aber noch nicht
+registriert oder in der Runtime aktiviert. Die bestehende v5-Bindung bleibt
+unveraendert. Der Nur-Lese-Vergleich hat keine Produktionsdaten geschrieben.
+
+Der Restpfad lautet: lokal gepruefter, separat freizugebender Modell-4-
+Schreib-/Wiederanlaufadapter und additive v7-Registrierung; danach reale
+Mengenzaehlung, Manifestbindung, separat freigegebener Bestandsimport und
+kompatibler fail-closed App-/Websitewechsel; zuletzt gesonderte Shopoeffnung.
+`selectedProducts` bleibt leer/not_approved. Runtime, private Konfigurationen,
+Testprodukte und Sperren bleiben erhalten. Keine neuen Ist-Aufwaende oder
+Kalenderzusagen; die folgenden Abschnitte sind historische Zwischenstaende.
+
+Einzelnachweise, lokale Tests und unveraenderte Freigabegrenzen:
+[Produktmodell 4: schreibfreie Vorbereitung](../website/docs/cart-model4-preparation.md).
+
 ## Lokale Produktionsvorbereitung nach PR 96 am 11. November 2026
 
 PR #96 ist kontrolliert in main

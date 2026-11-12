@@ -440,7 +440,7 @@ final class CarmajaProductionBackup
         ];
     }
 
-    public function restoreDryRun(string $backupId): array
+    public function restoreDryRun(string $backupId, ?Closure $verifyRestoredSnapshot = null): array
     {
         $directory = $this->backupDirectory($backupId);
         $manifest = $this->loadManifest($directory);
@@ -482,6 +482,12 @@ final class CarmajaProductionBackup
                 throw new CarmajaProductionBackupException('backup_restore_product_compare_failed');
             }
             $this->verifyExtractedInventory($extract, json_decode($inventoryRaw, true, 64, JSON_THROW_ON_ERROR));
+            // Optional private migration proof: inspect the restored snapshot before
+            // the existing finally block clears it. Never inspect the live source
+            // as a substitute. Exceptions still run the full restore cleanup.
+            if ($verifyRestoredSnapshot !== null) {
+                $verifyRestoredSnapshot($this->restorePdo(), $extract);
+            }
             return ['status' => 'restored_and_compared', 'backupId' => $backupId];
         } finally {
             try {

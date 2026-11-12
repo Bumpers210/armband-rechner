@@ -1,0 +1,69 @@
+name: Model4 caller MySQL Linux proof
+
+on:
+  push:
+    branches: [codex/cart-model4-preparation]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'website/scripts/product-model4*'
+      - 'website/scripts/model4-caller*'
+      - 'website/test-api-private/program/production-backup.php'
+      - '.github/workflows/model4-caller-mysql.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: model4-proof-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  isolated-proof:
+    if: github.repository == 'Bumpers210/armband-rechner' && (github.ref == 'refs/heads/codex/cart-model4-preparation' || github.head_ref == 'codex/cart-model4-preparation')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, pdo_sqlite, sodium, zlib, mbstring, gd, exif, curl, openssl, intl, pcntl, posix
+          coverage: none
+      - name: Local contracts and clean code packages
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          node website/scripts/prepare-product-model4-tool.mjs "$RUNNER_TEMP/model4-tool"
+          node website/scripts/prepare-production-cart-package.mjs build "$RUNNER_TEMP/cart-package"
+          php -l website/scripts/model4-caller-mysql-ci.php
+          bash -n website/scripts/model4-caller-mysql-ci.sh
+          php website/tests/php/product-model4-production-test.php
+          php website/tests/php/product-model4-migration-test.php
+          php website/tests/php/product-model4-preparation-test.php
+          php website/tests/php/production-backup-test.php
+          node --test website/tests/node/product-model4-tool.test.mjs website/tests/node/model4-caller-mysql-workflow.test.mjs
+          git diff --check
+      - name: Install isolated runner dump and restore clients
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y mariadb-client
+          test -x /usr/bin/mysqldump && test -x /usr/bin/mysql
+      - name: Real TLS MySQL guard, crash and restore proof
+        run: bash website/scripts/model4-caller-mysql-ci.sh run
+      - name: Always remove owned ephemeral resources
+        if: always()
+        run: bash website/scripts/model4-caller-mysql-ci.sh cleanup
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Model4-MySQL8-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/model4-caller-report.json
+          if-no-files-found: error
+          retention-days: 14

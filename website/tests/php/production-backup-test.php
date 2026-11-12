@@ -283,6 +283,17 @@ $tests['mysql clients use utf8mb4'] = static function () use ($root, $key): void
     }
 };
 
+$tests['private restore verifier is optional and cannot precede backup validation'] = static function () use ($root, $key): void {
+    $method = new ReflectionMethod(CarmajaProductionBackup::class, 'restoreDryRun');
+    backup_test_assert($method->getNumberOfRequiredParameters() === 1 && $method->getNumberOfParameters() === 2, 'Existing CLI contract changed.');
+    $called = false;
+    $backup = new CarmajaProductionBackup(backup_test_config($root, $key), PHP_BINARY, PHP_BINARY, PHP_BINARY);
+    backup_test_throws(static function () use ($backup, &$called): void {
+        $backup->restoreDryRun('../not-an-id', static function () use (&$called): void { $called = true; });
+    }, 'backup_id_invalid');
+    backup_test_assert(!$called, 'Unverified snapshot reached verifier.');
+};
+
 $passed = 0;
 try {
     foreach ($tests as $name => $test) {
