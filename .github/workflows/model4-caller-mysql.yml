@@ -39,6 +39,7 @@ jobs:
       - name: Local contracts and clean code packages
         run: |
           set -euo pipefail
+          npm ci --prefix website --ignore-scripts
           test -z "$(git status --porcelain)"
           node website/scripts/prepare-product-model4-tool.mjs "$RUNNER_TEMP/model4-tool"
           node website/scripts/prepare-production-cart-package.mjs build "$RUNNER_TEMP/cart-package"
