@@ -15,6 +15,8 @@ test('private model4 tool is exact, deterministic, code-only and refuses overwri
     assert.equal(a.deploymentAuthorized, false);
     assert.equal(typeof a.workingTreeDirty, 'boolean');
     assert.match(a.sourceCommit, /^[0-9a-f]{40}$/);
+    assert.equal(Object.keys(a.toolFiles).length, 9);
+    assert.equal(toolSources['commerce-core.php'], 'test-api-private/program/commerce-core.php');
     assert.deepEqual(readdirSync(path.join(temporary, 'one')).sort(), [...Object.keys(toolSources), 'release.json'].sort());
     for (const [name, hash] of Object.entries(a.toolFiles)) {
       assert.equal(createHash('sha256').update(readFileSync(path.join(temporary, 'one', name))).digest('hex'), hash);
@@ -35,4 +37,7 @@ test('model4 caller stays outside active cart package, routes and workflows', ()
   assert.match(caller, /innodb_lock_wait_timeout = 3/);
   assert.match(caller, /MYSQL_ATTR_LOCAL_INFILE => false/);
   assert.doesNotMatch(caller, /shell_exec\(|proc_open\(|curl_|StripeClient|->create\(/);
+  const main = caller.slice(caller.indexOf('function cmj_m4p_main('));
+  assert.match(main, /cmj_m4p_load_dependencies\(\$paths\['tool'\], \$release\)/);
+  assert.ok(main.indexOf('cmj_m4p_load_dependencies(') < main.indexOf('$rawConfig ='));
 });

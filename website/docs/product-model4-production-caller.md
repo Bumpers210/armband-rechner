@@ -3,6 +3,47 @@
 Stand: 12. November 2026. **Lokal und isoliert auf MySQL 8/Linux mit kuenstlichen
 Daten bestanden. Keine Bereitstellungs-, Ausfuehrungs- oder Cutoverfreigabe.**
 
+## Paketkorrektur: isolierter Kaltstart vom 12. November 2026
+
+Der anschliessende Produktionsvorflug hat eine Luecke im Codeartefakt erkannt:
+`cart-contract.php` benoetigt `commerce-core.php`, das bisher nicht in der
+Werkzeug-Allowlist lag. Die bisherigen Adapter-/Callerfixtures luden diese
+Abhaengigkeit bereits aus dem Quellverzeichnis. Der fruehere MySQL-Nachweis
+belegt daher weiterhin die getesteten Fach-/Restorepfade, aber keinen
+eigenstaendigen Start des unvollstaendigen Acht-Dateien-Artefakts.
+
+Lokal ist `commerce-core.php` jetzt als neunte Datei in Builder und exaktem
+Hashvertrag enthalten. Der CLI und der neue Test verwenden denselben
+Abhaengigkeitslader; alle neun Dateien werden vor dem Laden weiterer
+Abhaengigkeiten oder einer Runtime geprueft. Pfad-, Freigabe-, TLS-, Runtime-
+und Schreibsperren bleiben unveraendert; keine neue CLI-Aktion oder Testumgehung.
+
+`tests/php/product-model4-package-start-test.php` startet frische PHP-Prozesse
+ausschliesslich gegen Kopien des gebauten Pakets: vollstaendiger Kaltstart,
+kuenstliche Modell-3/4-Kanonisierung, fehlende/manipulierte/nicht hashgebundene
+Commerce-Datei sowie Ablehnung des echten CLI ausserhalb seines freigegebenen
+Pfads. Alle Includes muessen aus dem Paket stammen. Es wird keine Runtime
+geladen und keine Datenbankverbindung aufgebaut. Die eigenen temporaeren
+Paketkopien werden abschliessend entfernt. Beide relevanten CI-Vertraege
+(regulaere PR-Paketpruefung und isolierter MySQL-Workflow) verlangen diesen Test.
+
+Die fuenf Kaltstart-/Negativfaelle und PHP-Lint aller neun Paketdateien bestehen
+lokal mit PHP 8.4.23. Vorbereitung 104, Migration 421, Caller 389 und Backup
+10/10 bestehen erneut, ebenso Produkt-API 59, Bootstrap 14, Admin-CLI 20,
+Commerce 23 sowie Warenkorb-/Backupvertraege. Dies ist **kein erneuter
+MySQL-/Linux- oder Produktions-Restorebeleg**. Lokales WSL besitzt kein PHP 8.4;
+die neuen PHP-Kaltstarts liefen unter Windows. Keine Serververbindung,
+Bereitstellung, Produktumstellung oder Freigabeaenderung wurde vorgenommen.
+269 Node-Tests, ESLint, Testbuild/Export (25 Seiten), die vorhandenen
+WSL-Shelltests, YAML-/Shellsyntax beider Workflowdateien, Diff- und eingegrenzte
+Geheimwertpruefung bestanden ebenfalls. Der optionale, in WSL mangels PHP
+ausgelassene Klickstatistiktest bestand separat mit lokalem PHP 8.4.
+Uncommittete Pakete bleiben `workingTreeDirty=true` und nicht ausfuehrbar.
+Commit, Push und PR-Pruefung auf `codex/model4-package-dependencies` sind danach
+separat beauftragt; dies ist noch kein CI- oder Bereitstellungsnachweis.
+Review/CI, korrigierte private Bereitstellung und danach frische Plan-/Restore-
+Bindung bleiben notwendig; ein alter Restorebeleg wird nicht umetikettiert.
+
 Der anschliessend freigegebene MySQL-/Linux-Integrationslauf ist als separater
 GitHub-hosted Test vorbereitet (`model4-caller-mysql.yml`). Zwei frische
 Loopback-Datenbanken, temporaere TLS-Zertifikate und ausschliesslich erzeugte
@@ -36,7 +77,7 @@ umgestellt. Es gibt keine HTTP-Route und keine automatische Aktivierung.
 
 ## Artefakt und private Pfade
 
-Der lokale Builder `scripts/prepare-product-model4-tool.mjs` erzeugt genau acht
+Der lokale Builder `scripts/prepare-product-model4-tool.mjs` erzeugt genau neun
 PHP-Dateien und `release.json` in einem **neuen** lokalen Verzeichnis. Er liest
 nur Repositorycode, niemals Laufzeitdaten oder Secrets. Wiederholung ergibt bei
 gleichem Stand identische Bytes; ein vorhandenes Ziel wird nicht ueberschrieben.

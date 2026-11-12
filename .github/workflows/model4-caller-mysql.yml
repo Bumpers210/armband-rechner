@@ -43,6 +43,7 @@ jobs:
           test -z "$(git status --porcelain)"
           node website/scripts/prepare-product-model4-tool.mjs "$RUNNER_TEMP/model4-tool"
           node website/scripts/prepare-production-cart-package.mjs build "$RUNNER_TEMP/cart-package"
+          php website/tests/php/product-model4-package-start-test.php "$RUNNER_TEMP/model4-tool"
           php -l website/scripts/model4-caller-mysql-ci.php
           bash -n website/scripts/model4-caller-mysql-ci.sh
           php website/tests/php/product-model4-production-test.php

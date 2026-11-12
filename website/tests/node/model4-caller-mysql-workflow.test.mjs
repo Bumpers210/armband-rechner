@@ -11,6 +11,7 @@ test('model4 MySQL proof is disposable, secret-free and not a deployment', () =>
   const php = read('scripts/model4-caller-mysql-ci.php');
   assert.match(workflow, /contents: read/);
   assert.match(workflow, /persist-credentials: false/);
+  assert.match(workflow, /php website\/tests\/php\/product-model4-package-start-test\.php "\$RUNNER_TEMP\/model4-tool"/);
   assert.match(workflow, /if: always\(\)/);
   assert.doesNotMatch(workflow, /secrets\.|environment:|ssh|sftp|deploy-/);
   assert.match(shell, /127\.0\.0\.1:13306:3306/);
@@ -34,4 +35,11 @@ test('real CLI and integration suite share the actual restore and guard ports', 
   assert.match(main, /cmj_m4p_quiesce\(/);
   assert.match(main, /private_cli_path_required/);
   assert.doesNotMatch(main, /getenv|RUNNER_TEMP|GITHUB_ACTIONS/);
+});
+
+test('regular PR package validation also requires the isolated model4 cold start', () => {
+  const workflow = read('../.github/workflows/production-cart-package.yml');
+  assert.match(workflow, /node website\/scripts\/prepare-product-model4-tool\.mjs "\$RUNNER_TEMP\/model4-cold-package"/);
+  assert.match(workflow, /php website\/tests\/php\/product-model4-package-start-test\.php "\$RUNNER_TEMP\/model4-cold-package"/);
+  assert.match(workflow, /\*\/product-model4-package-start-test\.php\) continue/);
 });

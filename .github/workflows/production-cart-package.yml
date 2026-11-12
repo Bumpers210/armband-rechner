@@ -58,10 +58,14 @@ jobs:
           sudo install -d -m 0700 -o "$(id -u)" -g "$(id -g)" "$fixture_root"
           trap 'sudo rmdir "$fixture_root"' EXIT
           test "$(realpath "$fixture_root")" = "$fixture_root"
+          node website/scripts/prepare-product-model4-tool.mjs "$RUNNER_TEMP/model4-cold-package"
+          php website/tests/php/product-model4-package-start-test.php "$RUNNER_TEMP/model4-cold-package"
           for test_file in website/tests/php/*-test.php; do
             # These two suites require the historical fixture prepared below.
             case "$test_file" in
               */product-maintenance-activation-test.php|*/product-maintenance-guard-test.php) continue ;;
+              # Already run in fresh processes against the generated artifact above.
+              */product-model4-package-start-test.php) continue ;;
             esac
             printf '\nPHP suite: %s\n' "$test_file"
             php "$test_file"
