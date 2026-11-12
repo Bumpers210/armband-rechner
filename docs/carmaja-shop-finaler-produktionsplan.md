@@ -29,7 +29,9 @@ Wechsel, abschliessend ausdrueckliche Shopaktivierung und Erstbestellung.
 Vor der Browseraktivierung Web-SAPI-Groessen, HTTPS, Authentifizierung und
 App-Abgleich pruefen. Keine neuen Ist-Stunden oder festen Termine behauptet.
 
-CI-/Review-Abschluss von Schritt 2 wird in dessen Abnahmedokument ergaenzt.
+Der verbindliche CI-/Integrationsnachweis von Schritt 2 ist [PR #99](https://github.com/Bumpers210/armband-rechner/pull/99),
+mit vollstaendiger Paket-, Website- und Androidpruefung vor Zusammenfuehrung.
+Stabil signierter Beta-Pruefbuild bestanden, Produktions-App-Auslieferung bleibt Schritt 3.
 Keine reale Migration, kein Produktionszugriff, kein Entsperren oder Cutover.
 
 ## Schritt 1: Produktionsaufrufer auf MySQL/Linux bestanden – 12. November 2026

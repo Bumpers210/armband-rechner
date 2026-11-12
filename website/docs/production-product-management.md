@@ -86,11 +86,27 @@ Anmeldung/Cookie, CORS, CSRF, GET/PUT, App-Ruecklesen, Idempotenz, Wartung,
 Runtimegates und Logout werden durch den echten Bootstrap geroutet.
 Alle kuenstlichen Dateien und der lokale HTTP-Prozess werden danach entfernt.
 
-Node-/Shell-Regression: 267 Tests, ESLint und Testexport bestanden. Der erste
+Node-/Shell-Regression: 267 Tests vor dem abschliessenden Exportversionsfall;
+sechs betroffene Bild-/Exporttests danach bestanden, vollstaendige Suite jetzt
+268 Tests. ESLint, Testexport und kuenstlicher Produktionsbuild bestanden. Der erste
 lokale Shellversuch wurde durch die Windows-Sandbox blockiert, die Wiederholung
-mit vorhandener WSL bestand ohne Codeumgehung. Kuenstlicher Produktionsbuild,
-vollstaendige PHP-/Paket-CI und signierter Beta-Pruefbuild sind vor Integration
-zusaetzlich erforderlich; der endgueltige Stand wird unten dokumentiert.
+mit vorhandener WSL bestand ohne Codeumgehung. 66 lokale Android-Unit-Tests und
+Lint bestanden; keine Fehler. Npm-Audit: null Sicherheitsbefunde.
+
+Der [stabil signierte Beta-Pruefbuild 43190403757](https://github.com/Bumpers210/armband-rechner/actions/runs/43190403757)
+auf `a7142a7ef81721b739fda65b99410d1c27f5c342` bestand Unit/Lint, `assembleBeta`,
+Paket-/Versions- und Zertifikatspruefung sowie anschliessendes Entfernen des
+temporaeren Signierschluessels. Artefakt:
+`Carmaja-Perlen-Produktverwaltung-Test-1.4.0-beta.4-code13`.
+Danach wurden nur Website-Export und Dokumentation geaendert, keine Appdatei.
+Dies ist ein Pruefbuild derselben Betaversion, kein neuer Produktionsrelease.
+
+Der verbindliche Integrationsnachweis wird in [PR #99](https://github.com/Bumpers210/armband-rechner/pull/99)
+gefuehrt: aktueller Websitebuild, vollstaendige PHP-/Node-/Paketregression,
+Android Unit/Lint, Compose-Emulator und unsignierter Produktions-APK-Vertrag.
+Zusammenfuehrung nur bei gruenen aktuellen Checks; Deployjobs muessen skipped
+bleiben. Ein neuer Codecommit entwertet nicht einfach fehlgeschlagene Tests:
+massgeblich ist immer dessen neuer vollstaendiger CI-Lauf.
 
 Verbleibend: separate Bereitstellung, Web-SAPI-/TLS-Smoke, freigegebene
 Produktumstellung, App-Release und kontrollierte Aktivierung. Keine geaenderte
