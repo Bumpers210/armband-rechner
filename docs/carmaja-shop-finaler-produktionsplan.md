@@ -1,5 +1,37 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Schritte 1/2: Integrationsstand vom 12. November 2026
+
+Schritt 1 ist mit [PR #98](https://github.com/Bumpers210/armband-rechner/pull/98)
+nach main integriert (`0273f5fa19c146a5c10fd0e54eb0f631defe7af7`). Isolierte
+MySQL-8-/Linux-Pruefung inklusive hartem Abbruch nach erster Produktdatei,
+Restore und Guards sowie Paket-CI vor und nach Merge bestanden. Kein Deployment.
+
+Schritt 2 ergaenzt produktionsfaehige PC-Artikelverwaltung und den gemeinsamen
+3200-Pixel-/5-MiB-Bildvertrag in App und API. Die Verwaltung nutzt die vorhandenen
+V5-Dienste und App-Benutzer, getrennte Cookies/CSRF und private Sitzungen.
+`productBrowserProductionEnabled` bleibt standardmaessig false; Publisher,
+Wartungs-, Produkt-, Bestands- und Checkoutgates bleiben unveraendert wirksam.
+Das private Paket enthaelt die Browserprogramme, niemals den Testadapter oder
+reale Laufzeitdateien. Details und Nachweise:
+[Produktions-Artikelverwaltung](../website/docs/production-product-management.md).
+
+Die frueheren Eintraege mit ausschliesslich testseitiger PC-Verwaltung und
+1600-Pixel-/1-MiB-Produktionsgrenze sind historische Staende. Fuer den neuen
+Releasekandidaten gilt dieser Nachtrag; er veraendert keine Serverkonfiguration.
+Bestehende Bilder werden nicht neu verarbeitet. App-Versionen/Signaturen,
+Produktdaten, Bestandswerte und sichtbare Produktauswahl bleiben unveraendert.
+
+Weitere Reihenfolge: Schritt 3 signierter Produktions-App-Release; danach separat
+freigegebene Bereitstellung/Produktumstellung mit frischem Backup/Restore,
+bestaetigte Mengen und Versions-/Hashvergleich, kontrollierter Website-/API-
+Wechsel, abschliessend ausdrueckliche Shopaktivierung und Erstbestellung.
+Vor der Browseraktivierung Web-SAPI-Groessen, HTTPS, Authentifizierung und
+App-Abgleich pruefen. Keine neuen Ist-Stunden oder festen Termine behauptet.
+
+CI-/Review-Abschluss von Schritt 2 wird in dessen Abnahmedokument ergaenzt.
+Keine reale Migration, kein Produktionszugriff, kein Entsperren oder Cutover.
+
 ## Schritt 1: Produktionsaufrufer auf MySQL/Linux bestanden – 12. November 2026
 
 Der isolierte GitHub-Lauf [43186534024](https://github.com/Bumpers210/armband-rechner/actions/runs/43186534024)
