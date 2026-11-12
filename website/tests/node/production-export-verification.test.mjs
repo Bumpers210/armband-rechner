@@ -58,3 +58,14 @@ test("Produktionsverifikation blockiert Test- und Abnahmetexte", async () => {
     await rm(current.root, { recursive: true, force: true });
   }
 });
+
+test("Produktionsverifikation akzeptiert Modell-4-Projektion, niemals unbekannte Versionen", async () => {
+  const current = await fixture();
+  try {
+    // New synthetic projection; no source product or image is modified.
+    await writeFile(current.sourceProductsPath, JSON.stringify({version: 4, products: []}));
+    await verifyProductionExport(current);
+    await writeFile(current.sourceProductsPath, JSON.stringify({version: 5, products: []}));
+    await assert.rejects(verifyProductionExport(current), /Version 2, 3 oder 4/);
+  } finally { await rm(current.root, {recursive: true, force: true}); }
+});

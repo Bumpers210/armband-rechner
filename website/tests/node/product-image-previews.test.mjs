@@ -9,11 +9,12 @@ import { generateProductPreviews } from "../../scripts/generate-product-previews
 
 const sourceHash = "a".repeat(64);
 const image = { src: "/images/products/CP-2026-0001/01.jpg", width: 3200, height: 2400 };
-test("Preview paths are bounded, versioned and test-only; public fields are not mutated", () => {
+test("Preview paths are bounded and identical for test/production; public fields are not mutated", () => {
   const product = { sourceHash, images: [image] };
   const copy = structuredClone(product);
-  assert.equal(withProductPreviews(product, "production"), product);
   const decorated = withProductPreviews(product, "test");
+  assert.deepEqual(withProductPreviews(product, "production"), decorated);
+  assert.throws(() => withProductPreviews(product, "unknown"));
   assert.equal(decorated.images[0].src, image.src);
   assert.match(decorated.images[0].previews[640], /01-640\.jpg$/);
   assert.deepEqual(product, copy);

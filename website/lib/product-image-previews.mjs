@@ -10,7 +10,7 @@ export function productPreviewPath(src, sourceHash, edge) {
 }
 
 export function withProductPreviews(product, target) {
-  if (target !== "test") return product;
+  if (!["test", "production"].includes(target)) throw new Error("Unbekanntes Bildziel.");
   return { ...product, images: product.images.map((image) => ({
     ...image,
     previews: Object.fromEntries(PREVIEW_EDGES.map((edge) =>

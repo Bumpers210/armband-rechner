@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readJpegDimensions } from '../lib/public-products.mjs';
+import { PREVIEW_EDGES, productPreviewPath } from '../lib/product-image-previews.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output = path.join(root, 'out');
@@ -39,8 +40,14 @@ try {
   writeFileSync(env.CARMAJA_PRODUCTS_FILE, JSON.stringify({ version: 4, products: [product] }));
   run([path.join(root, 'node_modules/next/dist/bin/next'), 'build']);
   run([path.join(root, 'scripts/copy-hosting-files.mjs')]);
-  cpSync(imageRoot, path.join(output, 'images/products'), { recursive: true });
   run([path.join(root, 'scripts/verify-export.mjs')]);
+  const detail = readFileSync(path.join(output, 'armbaender', product.slug, 'index.html'), 'utf8');
+  for (const edge of PREVIEW_EDGES) {
+    const preview = productPreviewPath(product.images[0].src, product.sourceHash, edge);
+    assert.ok(existsSync(path.join(output, preview.slice(1))));
+    assert.ok(detail.includes(preview));
+  }
+  assert.deepEqual(readFileSync(path.join(output, product.images[0].src.slice(1))), readFileSync(image));
   for (const page of ['warenkorb', 'shopbedingungen', 'datenschutz', 'widerruf', 'versand-und-zahlung']) {
     const html = readFileSync(path.join(output, page, 'index.html'), 'utf8');
     assert.doesNotMatch(html, /test-api\.carmaja|test\.carmaja|vinted\./i);

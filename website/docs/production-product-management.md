@@ -58,7 +58,11 @@ Test und Produktion: JPEG, hoechstens 3200 Pixel lange Kante und 5 MiB je Bild,
 weiterhin maximal fuenf Bilder. App und Browser skalieren nur nach unten;
 bestehende kleinere Originale werden nicht hochgerechnet oder erneut geschrieben.
 Serverseitige Neukodierung entfernt EXIF/Standortdaten und angehaengte Daten.
-Vorhandene kleine Website-Vorschaubilder bleiben getrennt vom Vergroesserungsbild.
+Website-Vorschaubilder mit 240/640/1200 Pixeln werden jetzt in beiden Builds
+erzeugt und bleiben getrennt vom unveraenderten Vergroesserungsbild. Pfade sind
+an Produkt-ID und Quellhash gebunden; der Exporttest prueft Dateien und Verweise.
+Die finale Produktions-Exportpruefung akzeptiert jetzt wie der strikte
+Produktleser die Projektionsversion 4; unbekannte Versionen bleiben gesperrt.
 Die Groessenvalidierung erfolgt vor der Bitmap-Decodierung.
 
 Vor spaeterer Bereitstellung PHP-Web-SAPI auf mindestens 5 MiB
