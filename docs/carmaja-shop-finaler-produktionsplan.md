@@ -1,5 +1,23 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Schritt 1: Produktionsaufrufer auf MySQL/Linux bestanden – 12. November 2026
+
+Der isolierte GitHub-Lauf [43186534024](https://github.com/Bumpers210/armband-rechner/actions/runs/43186534024)
+auf `3b163137ca8601aec2ece50722cc2c84d129a6eb` ist bestanden: PHP 8.4.27,
+MySQL 8.0.46, 46 Pruefpunkte und 64 Adapter-Assertions. Echte verschluesselte
+Sitzungen, Zwei-Verbindungs-Guard, Worker-/Adminsperren, Timeout, Guardverlust,
+SIGKILL/Wiederanlauf, authentifizierter Restore und Fehler-Cleanup sind belegt.
+Die zwei wegwerfbaren Datenbanken waren danach leer; alle Testressourcen wurden
+entfernt. Keine vorhandenen Testziele oder Produktionsdaten wurden verwendet.
+Die zuvor offene praktische Caller-Nachweisluecke ist geschlossen.
+
+Commit/Push/PR/CI und kontrollierte Integration fuer Schritte 1 und 2 sind im
+aktuellen Auftrag freigegeben. Schritt 2 schliesst danach die produktionsfaehige
+PC-Artikelverwaltung und den einheitlichen 3200-Pixel-Vertrag. Bereitstellung,
+reale Produktumstellung, Mengenzaehlung/-import, App-Auslieferung, Entsperrung und
+Shopstart bleiben getrennte Folgegates. Keine erfundenen Ist-Stunden oder Termine.
+Die folgenden Eintraege bleiben als historische Zwischenstaende erhalten.
+
 ## Produktumstellung: privater Produktionsaufrufer lokal – 12. November 2026
 
 Der begrenzte Produktionsaufrufer ist lokal implementiert: ausdruecklich

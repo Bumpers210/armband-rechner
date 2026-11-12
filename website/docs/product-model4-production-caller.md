@@ -1,7 +1,7 @@
 # Privater Modell-4-Produktionsaufrufer
 
-Stand: 12. November 2026. **Nur lokal implementiert und mit kuenstlichen Daten
-geprueft. Keine Bereitstellungs-, Ausfuehrungs- oder Cutoverfreigabe.**
+Stand: 12. November 2026. **Lokal und isoliert auf MySQL 8/Linux mit kuenstlichen
+Daten bestanden. Keine Bereitstellungs-, Ausfuehrungs- oder Cutoverfreigabe.**
 
 Der anschliessend freigegebene MySQL-/Linux-Integrationslauf ist als separater
 GitHub-hosted Test vorbereitet (`model4-caller-mysql.yml`). Zwei frische
@@ -11,6 +11,17 @@ Die echte CLI und der Testtreiber verwenden dieselben Restore-/Guardfunktionen.
 Ein lokales Ciphertext-Zweitziel ersetzt im Test die Offsiteablage, belegt aber
 keine neue OneDrive-Uebertragung. Erst ein erfolgreicher Lauf samt Cleanupbericht
 schliesst diesen Nachweis; Vorbereitung oder Commit allein sind keine Abnahme.
+
+Dieser Lauf ist jetzt bestanden: [GitHub-Nachweis 43186534024](https://github.com/Bumpers210/armband-rechner/actions/runs/43186534024),
+Commit `3b163137ca8601aec2ece50722cc2c84d129a6eb`, PHP 8.4.27 / MySQL 8.0.46.
+46 protokollierte Pruefpunkte plus 64 Adapter-Assertions: verifizierte TLS-Sitzungen,
+getrennte Datenbankrechte, echtes verschluesseltes Backup/Restore, Callbackfehler,
+Manipulation, leeres Restoreziel, Worker-/Admin-Row-/Range-Locks mit 1205,
+Guard-Verbindungsverlust, drei SIGKILL-Abbrueche, atomare SQL-Ergebnisse,
+idempotenter Wiederanlauf und Dateirueckfall. Alle anderen 37 Tabellen unveraendert.
+Beide kuenstlichen Datenbanken abschliessend leer; Container, Volume, temporaere
+Zugangsdaten und Dateien entfernt. Keine bestehenden Test- oder Produktionsziele
+kontaktiert. Der Bericht enthaelt nur technische Ergebnisse, keine Quelldaten.
 
 ## Eng begrenzter Zweck
 
@@ -239,17 +250,16 @@ unerwartete Ausgabe beim Runtime-Laden wird nicht an stdout weitergereicht.
   Windows-Cleanup. Der Test wurde korrigiert und die eigenen Restdateien entfernt;
   Wiederholung samt Cleanup bestanden. Keine vorhandenen Daten betroffen.
 
-**Nachweisgrenze:** Dieser Auftrag hat keine echte MySQL-/IONOS-Verbindung
-geoeffnet. Die frueheren 206 MySQL-/Linux-Adapterpruefungen bleiben gueltiger
-Adapterbeleg, beweisen aber nicht den neu hinzugekommenen Zwei-Verbindungs-Guard
-oder den neuen Restore-Callback im Zusammenspiel. Vor Bereitstellung ist dafuer
-ein isolierter kuenstlicher MySQL-/Linux-Nachweis erforderlich (einschliesslich
-Guard-Timeout/Verbindungsverlust, paralleler Worker/Admin und Callbackfehler mit
-vollstaendigem Restore-Cleanup). Windows ersetzt keine neue POSIX-Abnahme.
+**Nachweisgrenze:** Die lokale Abnahme oben wurde inzwischen um den eingangs
+verlinkten echten MySQL-/Linux-Lauf erweitert. Die 206 frueheren IONOS-Pruefungen
+bleiben der Adapterbeleg; der neue GitHub-Lauf schliesst die Luecke fuer den
+Zwei-Verbindungs-Guard und Restore-Callback. Er ersetzt weder einen frischen
+Produktionsvorflug noch einen aktuellen produktiven Backup-/Offsitebeleg.
 
 Danach: sauberer Review-/CI-Release, gesonderte private Bereitstellungsfreigabe,
 aktueller lesender Produktionsvorflug, wirklich freigegebener Plan samt
 Backup/Restore und ausdrueckliche eng begrenzte Ausfuehrungsfreigabe.
 Mengenzaehlung/-import, v7-Umschaltung, App-/Websitewechsel und Shopstart bleiben
-eigene nachgelagerte Gates. Kein Commit, Push, Merge oder Deployment in diesem
-lokalen Auftrag; Testprodukte, Bestaende und private Konfigurationen erhalten.
+eigene nachgelagerte Gates. Commit, Push und Review-/CI-Integration sind fuer
+Schritt 1 separat freigegeben; kein Deployment oder Produktionslauf.
+Testprodukte, Bestaende und private Konfigurationen bleiben erhalten.

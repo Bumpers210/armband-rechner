@@ -182,7 +182,7 @@ try {
         cp_need(str_starts_with($ff['paths']['product'], $root.'/'.$argv[2].'/') && $config['commerceDsn'] === $base['commerceDsn'], 'child_bound_target');
         $f = $ff + ['pdo'=>$source,'config'=>$config,'private'=>$ff['paths']['product']];
         cp_caller($f,static function(string $p) use($argv):void {
-            if ($p === $argv[3] || ($argv[3] === 'after_rename' && str_starts_with($p,'after_rename:'))) posix_kill(getmypid(),SIGKILL);
+            if ($p === $argv[3] || ($argv[3] === 'after_rename' && str_starts_with($p,'after_rename:source:'))) posix_kill(getmypid(),SIGKILL);
         })->run('apply'); exit(91);
     }
     cp_need($mode === 'test', 'test_mode');
@@ -268,7 +268,7 @@ try {
         cp_clear($source); m4t_cleanup($f['case'],$root); unset($f);
     }
     $phase='rollback'; $f=cp_fixture($root,'rollback',$base,$source); cp_caller($f)->run('verify-restore');
-    cp_reject(fn()=>cp_caller($f,static function(string $point):void{if(str_starts_with($point,'after_rename:'))throw new LogicException('artificial_precommit_stop');})->run('apply'),'precommit_stop','artificial_precommit_stop');
+    cp_reject(fn()=>cp_caller($f,static function(string $point):void{if(str_starts_with($point,'after_rename:source:'))throw new LogicException('artificial_precommit_stop');})->run('apply'),'precommit_stop','artificial_precommit_stop');
     cp_caller($f)->run('rollback-files'); m4t_original($f);
     cp_check(cp_caller($f)->run('rollback-files')['status']==='files_rolled_back','file_rollback_idempotent');
     cp_clear($source); m4t_cleanup($f['case'],$root); unset($f);
