@@ -27,6 +27,29 @@ $assert($missing['shippingAddress'] === []); // Billing never substitutes for sh
 $invalid = $map->invoke($worker, [...$session, 'collected_information' => ['shipping_details' => ['address' => []]],
     'shipping_details' => ['address' => $legacy]]);
 $assert($invalid['shippingAddress'] === []); // Do not mask invalid modern evidence.
+// Klarna may return a recipient but no optional customer/billing name.
+// All fixtures are artificial; shipping is not asserted to identify the payer.
+foreach ([null, '', '  '] as $emptyName) {
+    $named = $map->invoke($worker, [...$session,
+        'customer_details' => ['name' => $emptyName, 'email' => 'synthetic@example.invalid'],
+        'collected_information' => ['shipping_details' => ['name' => 'Artificial Recipient', 'address' => $address]]]);
+    $assert($named['customerName'] === 'Artificial Recipient');
+    $assert($named['shippingAddress'] === $address && $named['billingAddress'] === null);
+}
+$named = $map->invoke($worker, [...$session, 'customer_details' => ['name' => 'Artificial Buyer'],
+    'collected_information' => ['shipping_details' => ['name' => 'Artificial Recipient', 'address' => $address]]]);
+$assert($named['customerName'] === 'Artificial Buyer');
+$named = $map->invoke($worker, [...$session, 'shipping_details' => ['name' => 'Artificial Legacy Recipient', 'address' => $legacy]]);
+$assert($named['customerName'] === 'Artificial Legacy Recipient');
+foreach ([null, '', ' ', 123, []] as $invalidName) {
+    $named = $map->invoke($worker, [...$session,
+        'collected_information' => ['shipping_details' => ['name' => $invalidName, 'address' => $address]],
+        'shipping_details' => ['name' => 'Ignored Legacy Recipient', 'address' => $legacy]]);
+    $assert($named['customerName'] === null); // No missing-name or malformed-data bypass.
+}
+$named = $map->invoke($worker, [...$session, 'customer_details' => ['name' => []],
+    'collected_information' => ['shipping_details' => ['name' => 'Artificial Recipient', 'address' => $address]]]);
+$assert($named['customerName'] === []); // Malformed current evidence stays invalid.
 $failedIntent = ['id' => 'pi_artificial', 'status' => 'requires_payment_method', 'payment_method' => null,
     'last_payment_error' => ['payment_method' => ['type' => 'sepa_debit']]];
 $failed = $map->invoke($worker, [...$session, 'payment_intent' => $failedIntent]);

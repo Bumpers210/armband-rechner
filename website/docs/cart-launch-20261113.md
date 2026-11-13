@@ -41,6 +41,117 @@ Konfigurationen und Zugangsdaten sind nicht Bestandteil dieser Dokumentation.
   kollidierten am Next-Buildlock; die serielle Wiederholung bestand. Der
   historische Katalogausschlusstest erwartet jetzt ausdruecklich Modell 4
   und prueft weiterhin die ausgeschlossenen Produkte und Legacy-Felder.
+- PR #104 nach bestandenen Website- und vollstaendigen Paketpruefungen
+  integriert. Aktueller main-/Website-Stand:
+  `b3167b9babf27bdc9fa547cfbfcde8d0b3fb8e66`.
+- SHA-gepinntes manuelles Website-Deployment ausgefuehrt. Build und
+  Deployment-/Smoke-Job bestanden; Serverstatus `verified`. Unabhaengiger
+  Vollvergleich: 236 ausgelieferte Dateien und 169 gesicherte Rollbackdateien
+  stimmen mit ihren jeweiligen Manifesten ueberein.
+- 20 oeffentliche Seiten nach Deployment per HTTPS geprueft: Startseite,
+  Uebersicht, sechs Produktdetails, Warenkorb, Verwaltungs-/Adminhuelle,
+  Erfolgs-/Abbruch-/Fehlerseite, fuenf Rechtsseiten und Legal-v7-Archiv.
+  Produkt-IDs/-Versionen passen; keine Testdomain, Vinted-Verweise oder
+  ausgeschlossenen CP-2026-0008/-0009. Aktive Bedingungen ohne PayPal und
+  Archiv mit freigegebenem v7-Inhaltshash. HTTP-Pruefungen sind kein Ersatz
+  fuer die noch ausstehende echte Bestellung oder einen Verwaltungslogin.
+- Warenkorb-Lesevertrag produktiv vorbereitet (`inventoryCartEnabled=true`),
+  Kaufweg weiterhin geschlossen. Live-API fuer alle sechs Produkte,
+  Shopsitzung, sichere Cookies, CORS, Fremd-Origin-Ablehnung und `no-store`
+  geprueft. Checkoutversuch bleibt `503 checkout_maintenance`; keine neue
+  Session bei Stripe, Reservierung, Bestellung, Zahlung oder Mail.
+- Abschliessender lesender Servercheck: Checkout-/Produkt-Schreib-/Browser-/
+  Publishergates geschlossen, Wartungsmarker vorhanden, Runtime `0600`,
+  beide Datenbankverbindungen mit aktiver TLS-Sitzung, Restoreziel leer.
+  Geschaeftsdatensatzanzahlen unveraendert; weiterhin ausschliesslich eine
+  Inventarzeile fuer Ares mit vier Stueck und Inventarversion 1.
+- Eigene lokale Einmal-Steuerskripte und temporaere Paketkopie entfernt;
+  Abwesenheit kontrolliert. Private Serverkonfigurationen, Importaudit,
+  Restorebelege und Rollbacksicherungen bleiben absichtlich erhalten.
+  Es wurde kein temporaerer oeffentlicher Diagnoseendpunkt angelegt.
+
+## GitHub-Zugang erneuert und erste Produktfreigabe
+
+Fortsetzung am 13. November 2026: Der neueste, vom Betreiber bereitgestellte
+Fine-grained Token wurde in einer geschuetzten lokalen Eingabemaske verdeckt
+entgegengenommen. GET, PATCH auf ausschliesslich `false` und erneutes GET der
+Repository-Deployvariable bestanden mit genau diesem Token. Danach erfolgte
+die verschluesselte Ablage im Environment-Secret; dessen neuer Zeitstempel
+wurde bestaetigt. Kein Tokenwert in Datei, Chat, Argumenten oder Repository.
+Die Zeitstempel-Nachpruefung der ersten Eingabemaske hatte einen lokalen
+DateTime-Konvertierungsfehler; der behobene Wiederholungslauf mit dem neuesten
+Token bestand vollstaendig. Keine erneute Eingabe erforderlich.
+
+Die gezielte Wiederholung nur des artefaktfreien Schliessjobs startete kein
+Deployment. GitHub uebersprang ihn wegen des bereits geschlossenen Schalters;
+der Gesamtstatus ist dadurch `success`, **nicht** der Nachweis eines ausgefuehrten
+Resetjobs. Der tatsaechliche Schreibnachweis fuer den neuesten Token ist die
+oben beschriebene direkte API-Pruefung. Der urspruengliche HTTP-401-Lauf bleibt
+als Historie unten erhalten. Produktions-/Testdeploy und Publisher bleiben false.
+
+- Frisches verschluesseltes Backup `20261113T161214Z-fac672b1c97e` erzeugt,
+  OneDrive-Abruf/Dateivergleich/Quittierung bestanden. Eine aeltere lokale
+  Offsitekopie wurde durch die bestehende Aufbewahrungsregel entfernt;
+  eine Rueckholung aus dem OneDrive-Papierkorb wurde nicht geprueft.
+- Echter CLI-Restore: `restored_and_compared`; danach getrenntes Restoreziel
+  und private Entschluesselungsdateien leer. Der Backup-Programmvergleich
+  bestaetigte identischen Code; ausschliesslich CRLF/LF unterschieden sich,
+  kein Programm wurde dafuer ersetzt.
+- 99 autoritative Produkt-/Bilddateien unveraendert, aktive Programmdateien
+  gegen ihren Paketnachweis geprueft. Sechs oeffentliche Modell-4-Projektionen,
+  Versions-/Hash-/Preisbindung, Legal v7, 270 Cent Versand und ausschliesslich
+  Karte/Klarna/SEPA erneut bestaetigt. Stripe-Konto/Webhook und Brevo-Absender
+  ausschliesslich lesend geprueft; Worker gesund.
+- `shopCheckoutEnabled=true` und `productApiV5WritesEnabled=true` atomar
+  bereitgestellt, erst danach den gemeinsamen Wartungsmarker privat
+  rollbackfaehig verschoben. Produkt-/Inventarzeilen waren dabei kurz in
+  stabiler Reihenfolge gesperrt; keine Provideraufrufe unter Row-Locks.
+  Alle anderen Runtimewerte einschliesslich Geheimwerte blieben identisch.
+- Kaufbar ist ausschliesslich Ares CP-2026-0002 mit 4/0/4. Die weiteren fuenf
+  Produkte bleiben ohne Mengenimport nicht kaufbar. Keine Produkt-, Preis-,
+  Bestands- oder Verkaufsflagmutation durch die Aktivierung. Browserverwaltung,
+  Publisher und automatische Deployments bleiben gesperrt. Alte Produkt-
+  Schreibclients werden durch den V5-Versionsvertrag abgewehrt.
+- Live-Warenkorb fuer eine eigene anonyme Pruefsitzung: ein Ares, 2000 Cent
+  Artikelpreis, einmalig 270 Cent Versand, 2270 Cent gesamt, gueltiger
+  Checkoutkontext. Anschliessend ueber die API wieder geleert. Keine Stripe-
+  Session gestartet; kein neuer Checkout, keine Reservierung, Bestellung,
+  Zahlung oder Mail. Normale kurzlebige Sitzungs-/Idempotenzdaten unterliegen
+  ihrer bestehenden Aufbewahrung; fremde Sitzungen bleiben unangetastet.
+- Abschliessender lesender Vollvergleich bestaetigt historische Checkout-,
+  Reservierungs-, Zahlungs-, Bestell-, Inbox- und Outboxinhalte unveraendert,
+  Inventar weiterhin 4/0/4, nur die beiden beabsichtigten Runtimeflags anders,
+  Restoreziel und Runtime-Staging leer. Geschuetzte lokale Eingabemaske samt
+  Statusdatei und Einmal-Aktivierungsskript entfernt; private Nachweise und
+  Rollbackkopien auf dem Server bewusst erhalten.
+
+Sicherer Fortsetzungspunkt: Betreiber bestellt genau ein Ares ueber den echten
+Shop und bezahlt 22,70 EUR. Erst nach Webhook-/Worker-/Bestell-/Bestands-/
+Mailnachweis folgen die weiteren fuenf Mengen und die gesonderte PC-Verwaltung.
+Keine vollstaendige Startabnahme vor dieser notwendigen menschlichen Zahlung.
+
+## Historischer GitHub-Betriebsblocker vor der Erneuerung
+
+Der [Produktionslauf 43406404331](https://github.com/Bumpers210/armband-rechner/actions/runs/43406404331)
+ist insgesamt **nicht erfolgreich**: Nur der abschliessende Job
+`reset-production-deploy-gate` scheiterte mit HTTP 401 / `Bad credentials`.
+Das Environment-Secret `CARMAJA_PRODUCTION_VARIABLES_TOKEN` unter
+`carmaja-production` ist fuer diesen Aufruf nicht verwendbar. Ein Ablaufdatum
+wurde nicht nachgewiesen und wird nicht als Ursache behauptet.
+
+Der unabhaengige lokale Finally-Abschluss hat
+`CARMAJA_PRODUCTION_DEPLOY_ENABLED=false` erfolgreich gesetzt; der Endwert
+wurde anschliessend erneut ueber GitHub gelesen. Auch Publish- und Testdeploy-
+Schalter bleiben false. Die erfolgreiche Websitebereitstellung wird deshalb
+nicht zurueckgenommen, aber der Gesamtworkflow nicht als gruen dokumentiert.
+Kein erneutes Deployment nur zum Wiederholen des fehlgeschlagenen Resetjobs.
+
+Vor der Kaufweg-Aktivierung ist ein gueltiger, minimal berechtigter Zugang
+fuer das automatische Zuruecksetzen bereitzustellen und technisch zu pruefen.
+Keine Suche nach Ersatzsecrets und keine Wiederverwendung des persoenlichen
+CLI-Anmeldetokens als Workflow-Secret. Notwendige Benutzereingabe: neuer
+GitHub-Zugang mit Variables-Schreibrecht ausschliesslich fuer dieses Repository;
+Uebernahme nur privat, niemals im Chat oder Repository.
 
 ## Unveraenderte Daten und Grenzen
 
@@ -51,7 +162,7 @@ gebundenen Import. CP-2026-0008/-0009 bleiben ausserhalb des oeffentlichen
 Katalogs. Bestehende Testprodukte, Testbestaende und private Konfigurationen
 wurden nicht angefasst. Produktionsproduktdateien/Bilder bleiben unveraendert.
 
-Der neue lokale oeffentliche Katalog ist eine strikte Modell-4-Projektion
+Der nun ausgelieferte oeffentliche Katalog ist eine strikte Modell-4-Projektion
 derselben sechs bestehenden Produkte. Nur Modell-/Produktversion, Quellhash,
 Umstellungszeitpunkt und die leere Hinweiszuordnung werden abgeglichen. Preise,
 Texte, Messwerte, Bilder und Verkaufsflags aendern sich dadurch nicht.
@@ -60,16 +171,36 @@ Live-Verfuegbarkeit und die separaten Runtime-/Checkoutgates bleiben notwendig.
 
 ## Noch offene Freigabegates
 
-1. Aktuelle lokale/CI-Katalog- und Websitepruefung, sauberer main-Release.
-2. SHA-gepinntes Website-Deployment mit Backup/Rollback und anschliessendem
-   Zuruecksetzen des Deployschalters; Kaufweg bleibt dabei geschlossen.
-3. Live-Pruefung: Modell-4-/Shop-v3-Vertrag, Ares-Menge, restliche Modelle nicht
-   kaufbar, Legal-v7-Hashbindung, Card/Klarna/SEPA, CORS/No-Store und Worker.
-4. Begrenzte Aktivierung und kontrollierte echte Ares-Erstbestellung durch die
+### Erstzahlung: abgesicherte Klarna-Korrektur
+
+Die Betreiberin hat den kontrollierten Erstkauf abgeschlossen. Der lesende
+Providerabgleich bestaetigt eine echte Klarna-Zahlung von 2270 Cent, bezahlte
+Session, erfolgreichen PaymentIntent, AGB-Zustimmung und passende Checkout-/
+Snapshot-/Legal-Bindung. Der Worker stellte den Vorgang jedoch mit
+`cart_payment_verification_failed` in `manual_review`: Stripe lieferte einen
+Versandempfaengernamen, aber keinen optionalen Kunden-/Rechnungsnamen.
+Neue Checkouts wurden daraufhin atomar geschlossen; alle anderen Runtimewerte
+blieben identisch. Ein Stueck bleibt sicher reserviert, noch keine neue
+Bestellung oder Mail. Kein erneuter Kauf und keine zweite Zahlung erforderlich.
+
+Die eng begrenzte Worker-Korrektur nutzt bei fehlendem/leerem Kundennamen den
+von Stripe erfassten Versandempfaengernamen als Anzeigebezeichnung, nicht als
+Nachweis einer abweichenden Zahleridentitaet. Vorhandene Kundennamen bleiben
+vorrangig; fehlerhafte Datentypen werden nicht kaschiert. Keine erfundenen Namen,
+keine Ersetzung fehlender Lieferadressen durch Rechnungsadressen. Betrag,
+Zustimmung, Snapshot, Bestand und alle Finalisierungsgates bleiben unveraendert.
+
+Lokale PHP-8.4-Mappingregression: 34 Pruefungen; Stripe-, Warenkorb-,
+Transaktions-, SEPA- und Commerce-Suiten bestanden. 57 relevante Node-Pruefungen
+und Diffpruefung bestanden. CI, hashgebundene Bereitstellung und die erneute
+regulaere Zahlungsfinalisierung stehen fuer diesen Korrekturstand noch aus.
+Der Erstkauf gilt bis zum Bestell-/Bestands-/Mailnachweis nicht als abgenommen.
+
+1. Kontrollierte echte Ares-Erstbestellung durch die
    Betreiberin; Zahlung, atomare Bestellung/Abbuchung und Bestellmail nachweisen.
-5. Erst danach weitere bestaetigte Mengen mit frischem Versions-/Backup-/
+2. Erst danach weitere bestaetigte Mengen mit frischem Versions-/Backup-/
    Restorebezug importieren, schrittweise freigeben und beobachten.
-6. Gemeinsame App-/PC-Verwaltung gesondert pruefen und kontrolliert oeffnen.
+3. Gemeinsame App-/PC-Verwaltung gesondert pruefen und kontrolliert oeffnen.
    Publisher-/Deploymentautomatik nicht ohne passenden geprueften Vertrag aktivieren.
 
 Bei Preis-, Hash-, Bestands-, Zahlungs- oder Restorewiderspruch neue Checkouts
