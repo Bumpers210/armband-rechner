@@ -144,11 +144,20 @@ cp_check(count(cp_tables($source))===38,'inventory_full_38_table_schema');
 cp_check(ip_caller($f)->run('preflight')['status']==='preflight_passed','inventory_readonly_preflight');
 cp_check(cmj_icp_snapshot($source)===$f['snapshot'],'inventory_preflight_unchanged');
 // Diagnostic labels only: never output restored rows, file contents or hashes.
-(new CarmajaProductionBackup($f['config']))->restoreDryRun($f['approval']['backupId'],static function(PDO $db,string $extract) use($f):void {
+(new CarmajaProductionBackup($f['config']))->restoreDryRun($f['approval']['backupId'],static function(PDO $db,string $extract) use($f,$source):void {
     $db->exec("SET SESSION time_zone='+00:00'"); $actual=cmj_icp_snapshot($db);
     foreach($f['snapshot'] as $table=>$expected) {
-        foreach(['schema','count','content'] as $part) if(($actual[$table][$part]??null)!==$expected[$part])
+        foreach(['schema','count','content'] as $part) if(($actual[$table][$part]??null)!==$expected[$part]) {
+            if($part==='schema') {
+                // DDL only from these two freshly created synthetic CI schemas;
+                // no runtime values, rows, credentials or production connection.
+                $a=explode("\n",$source->query('SHOW CREATE TABLE `'.$table.'`')->fetch(PDO::FETCH_NUM)[1]);
+                $b=explode("\n",$db->query('SHOW CREATE TABLE `'.$table.'`')->fetch(PDO::FETCH_NUM)[1]);
+                echo 'ARTIFICIAL_SCHEMA_DIFFERENCE '.json_encode(['source'=>array_values(array_diff($a,$b)),
+                    'restore'=>array_values(array_diff($b,$a))],JSON_THROW_ON_ERROR)."\n";
+            }
             throw new LogicException('inventory_restore_difference_'.$table.'_'.$part);
+        }
     }
     foreach($f['sources'] as $relative=>$hash) if(hash_file('sha256',$extract.'/'.$relative)!==$hash)
         throw new LogicException('inventory_restore_file_difference');
