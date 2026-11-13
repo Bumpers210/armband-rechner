@@ -1,5 +1,39 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Restorevergleich: UTC-Korrektur vom 13. November 2026
+
+PR #101 ist nach main integriert (`94cb6b2b7fb88d6cc1aecd6da17275ee387cc205`).
+Das vollstaendige private Neun-Dateien-Werkzeug wurde anschliessend separat
+freigegeben und bereitgestellt. Frisches verschluesseltes Backup und gepruefte
+Offsite-Downloadquittierung liegen vor. Der manifestgebundene Restore wurde
+jedoch mit `backup_source_mismatch` abgebrochen; es entstand kein gueltiger
+Umstellungsbeleg. Restoreziel und temporaere Dateien wurden bereinigt.
+
+Ursache sind die MySQL-TIMESTAMP-Felder im zusaetzlichen Restorevergleich:
+Der Backupdienst uebergibt eine neue PDO-Verbindung mit Serverzeitzone,
+waehrend der Umstellungsplan UTC-Werte bindet. Die lokale Korrektur setzt und
+prueft UTC auf genau dieser Verbindung vor dem Lesen. Keine Datenkorrektur,
+keine Zeittoleranz, kein Entfernen von Vergleichsfeldern und keine Aenderung
+des bestehenden Backup-/Fingerprintformats. Scheitert die UTC-Einstellung
+oder deren Rueckpruefung, stoppt der Vergleich vor dem Lesen der Produktzeilen.
+
+Gezielte lokale PHP-8.4-Regression: 25 UTC-Protokollpruefungen, 389 Caller-,
+421 Migrations-, 104 Vorbereitungs- und 10 Backuptests bestanden; auch Paket-
+Kaltstart, API-/Bootstrap-/Adminregression, 270 Node-Tests und Testexport
+bestanden. Der bestehende isolierte MySQL-8-/Linux-Workflow ist fuer den
+Korrekturbranch `codex/model4-restore-utc` freigegeben: neuer Callback mit
+Serverdefault +02:00, positive/negative/halbstuendige Offsets, Tages-/Jahres-
+wechsel und Mikrosekunden, echte Inhaltsfehler sowie Restore-Cleanup.
+Ein CI-Ergebnis darf erst nach abgeschlossenem Lauf als bestanden gelten.
+
+Naechste Reihenfolge: PR/CI absichern, gesondert nach main integrieren, erst
+danach korrigiertes Werkzeug bereitstellen und einen frischen gebundenen
+Backup-/Restore-Nachweis ausfuehren. Der alte Fehlversuch wird nicht als
+gueltiger Beleg uebernommen. Produktumstellung, Bestandsimport, Entsperrung
+und Cutover bleiben gesperrt. Dieser Korrekturschritt veraendert keine Server,
+realen Produkte, Bestaende, privaten Konfigurationen oder Freigabeschalter.
+Keine neuen Ist-Arbeitsstunden oder garantierten Fertigstellungstermine.
+
 ## Umstellungswerkzeug: lokale Paketkorrektur vom 12. November 2026
 
 Der anschliessende lesende Vorflug fand die fehlende transitive Abhaengigkeit

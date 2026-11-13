@@ -156,6 +156,14 @@ function cmj_m4p_drained(PDO $pdo, bool $lock = false, ?float $deadline = null):
 
 function cmj_m4p_restore_snapshot(PDO $restore, string $extract, array $plan): void
 {
+    // restoreDryRun supplies a fresh PDO, not the caller's UTC lock connection.
+    // Normalize only this read session; do not rewrite timestamps or change the
+    // existing backup fingerprint format / strict manifest comparison.
+    if ($restore->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql') {
+        cmj_model4_require($restore->exec("SET SESSION time_zone = '+00:00'") !== false, 'utc_session_required');
+        $zone = $restore->query('SELECT @@session.time_zone');
+        cmj_model4_require($zone !== false && $zone->fetchColumn() === '+00:00', 'utc_session_required');
+    }
     cmj_model4_require(cmj_m4_rows($restore) === $plan['beforeRows'], 'backup_source_mismatch');
     $names = array_map('basename', glob($extract . '/drafts/*.json') ?: []);
     $expected = array_map(static fn ($s) => $s['id'] . '.json', $plan['sources']);

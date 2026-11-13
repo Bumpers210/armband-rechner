@@ -1,7 +1,50 @@
 # Privater Modell-4-Produktionsaufrufer
 
-Stand: 12. November 2026. **Lokal und isoliert auf MySQL 8/Linux mit kuenstlichen
-Daten bestanden. Keine Bereitstellungs-, Ausfuehrungs- oder Cutoverfreigabe.**
+Stand: 13. November 2026. **UTC-Korrektur lokal getestet; PR/CI-Nachweis folgt.
+Produktiver manifestgebundener Restore noch offen. Keine Umstellungsfreigabe.**
+
+## Aktueller Restoreblocker und UTC-Korrektur
+
+Die Paketkorrektur aus PR #101 wurde nach gesonderter Freigabe privat
+bereitgestellt. Beim anschliessenden echten Restore bestand der bisherige
+Backupvergleich, nicht aber der zusaetzliche Abgleich mit dem UTC-gebundenen
+Umstellungsplan: `synchronized_at` und `updated_at` wurden ueber eine neue
+Restore-PDO-Sitzung in Serverzeitzone gelesen. Der sichere Abbruch erzeugte
+keinen Restorebeleg; das getrennte Restoreziel und temporaere Daten wurden
+vollstaendig bereinigt. Produkte, Bestaende, Runtime und Sperren blieben erhalten.
+
+`cmj_m4p_restore_snapshot` stellt nun ausschliesslich auf der tatsaechlichen
+MySQL-Callbackverbindung `SET SESSION time_zone = '+00:00'` ein und prueft
+anschliessend `SELECT @@session.time_zone`. Erst danach folgt der unveraendert
+strikte Vergleich aller Commerce-Zeilen, Quelldateien und Bilder. Kein globales
+SET, keine Datenmutation, keine Toleranz und keine Umrechnung von Manifestbytes.
+Der allgemeine Backupdienst und sein historisches Fingerprintformat bleiben
+unveraendert. Eine fehlgeschlagene/ignorierte Einstellung oder fehlende
+Rueckpruefung ergibt `utc_session_required`; PDO-Fehler brechen ebenfalls ab.
+Der bestehende `finally`-Cleanup bleibt fuer jeden Callbackfehler wirksam.
+
+Die 25 lokalen UTC-Pruefungen reproduzieren zunaechst den alten Fehler und
+belegen danach Reihenfolge, positive/negative/halbstuendige Offsets,
+Mikrosekunden, Tages-/Jahreswechsel, NULL-Werte, Wiederholung und Fail-closed.
+Echte Inhalts-, Mikrosekunden- und Dateiaenderungen bleiben abgelehnt. Die
+SQLite-Callerfixtures bleiben ausdruecklich nur lokale Protokolltests.
+
+Der echte isolierte MySQL-Workflow startet seinen eigenen Container bewusst
+mit Serverdefault +02:00. Er prueft die abweichende frische Callbackverbindung,
+vergleicht anschliessend dieselben restaurierten Daten exakt in UTC und fuehrt
+weiterhin TLS-, Backup-, Manipulations-, Guard-, Crash-/Wiederanlauf- und
+Cleanupfaelle aus. Der einzige zusaetzlich erlaubte CI-Branch ist
+`codex/model4-restore-utc`; keine Secrets, IONOS-Verbindungen oder Deployments.
+Lokaler Stand: UTC 25, Caller 389, Migration 421, Vorbereitung 104, Backup 10,
+Paket-Kaltstart 5, API 59, Bootstrap 14, Admin 20, Node 270 und Testexport
+bestanden. CI bleibt bis zum tatsaechlichen Lauf offen; dessen Nachweis wird
+im zugehoerigen PR dokumentiert. Die folgenden Abschnitte sind historische
+Nachweise und der weiterhin gueltige Sicherheitsvertrag.
+
+Nach PR/CI und gesonderter Integration/Bereitstellung ist ein frischer,
+release-/plan-/backupgebundener Produktions-Restore erforderlich. Weder ein
+lokaler Test noch ein kuenstlicher CI-Lauf ersetzt ihn. Kein Apply, Entsperren
+oder Cutover ist durch diese Korrektur freigegeben.
 
 ## Paketkorrektur: isolierter Kaltstart vom 12. November 2026
 

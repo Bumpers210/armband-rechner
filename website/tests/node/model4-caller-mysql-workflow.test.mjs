@@ -16,6 +16,7 @@ test('model4 MySQL proof is disposable, secret-free and not a deployment', () =>
   assert.doesNotMatch(workflow, /secrets\.|environment:|ssh|sftp|deploy-/);
   assert.match(shell, /127\.0\.0\.1:13306:3306/);
   assert.match(shell, /require-secure-transport=ON/);
+  assert.match(shell, /--default-time-zone=\+02:00/);
   assert.match(shell, /carmaja\.ci-owner/);
   assert.match(shell, /realpath "\$root"/);
   assert.match(shell, /trap cleanup EXIT/);
@@ -23,7 +24,19 @@ test('model4 MySQL proof is disposable, secret-free and not a deployment', () =>
   assert.match(php, /cmj_m4p_restore_proof\(\.\.\.\)/);
   assert.match(php, /cmj_m4p_quiesce\(/);
   assert.match(php, /both_databases_finally_empty/);
+  assert.match(php, /fresh_callback_inherits_nonutc/);
+  assert.match(php, /microsecond_mismatch_still_rejected/);
   assert.doesNotMatch(php, /carmaja-private-shop\/config|shop-cart-test\.json|carmaja-production-ionos/);
+});
+
+test('UTC regression branch is explicitly allowed at every isolated CI boundary', () => {
+  for (const file of ['../.github/workflows/model4-caller-mysql.yml', 'scripts/model4-caller-mysql-ci.sh', 'scripts/model4-caller-mysql-ci.php']) {
+    const content = read(file);
+    assert.match(content, /refs\/heads\/codex\/model4-restore-utc/);
+    assert.match(content, /codex\/cart-model4-preparation/);
+    assert.match(content, /Bumpers210\/armband-rechner/);
+  }
+  assert.match(read('../.github/workflows/model4-caller-mysql.yml'), /php website\/tests\/php\/product-model4-restore-utc-test\.php/);
 });
 
 test('real CLI and integration suite share the actual restore and guard ports', () => {

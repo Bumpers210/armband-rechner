@@ -6,7 +6,8 @@ test "${GITHUB_ACTIONS:-}" = true
 test "${RUNNER_ENVIRONMENT:-}" = github-hosted
 test "${RUNNER_OS:-}" = Linux
 test "${GITHUB_REPOSITORY:-}" = Bumpers210/armband-rechner
-test "${GITHUB_REF:-}" = refs/heads/codex/cart-model4-preparation || test "${GITHUB_HEAD_REF:-}" = codex/cart-model4-preparation
+test "${GITHUB_REF:-}" = refs/heads/codex/cart-model4-preparation || test "${GITHUB_HEAD_REF:-}" = codex/cart-model4-preparation ||
+  test "${GITHUB_REF:-}" = refs/heads/codex/model4-restore-utc || test "${GITHUB_HEAD_REF:-}" = codex/model4-restore-utc
 [[ "${GITHUB_SHA:-}" =~ ^[a-f0-9]{40}$ ]]
 [[ "${GITHUB_RUN_ID:-}" =~ ^[0-9]+$ && "${GITHUB_RUN_ATTEMPT:-}" =~ ^[0-9]+$ ]]
 root="$RUNNER_TEMP/model4-caller-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
@@ -56,7 +57,7 @@ docker run --detach --name "$container" --label "carmaja.ci-owner=$GITHUB_RUN_ID
   --env MYSQL_ROOT_PASSWORD_FILE=/run/setup/root-password \
   mysql:8.0 --require-secure-transport=ON --ssl-ca=/run/tls/ca.pem \
   --ssl-cert=/run/tls/server-cert.pem --ssl-key=/run/tls/server-key.pem \
-  --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci >/dev/null
+  --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+02:00 >/dev/null
 ready=false
 for attempt in $(seq 1 60); do
   if docker exec "$container" mysql --defaults-extra-file=/run/setup/root.cnf --protocol=TCP --host=127.0.0.1 --ssl-mode=REQUIRED --batch --skip-column-names -e 'SELECT 1' >/dev/null 2>&1; then ready=true; break; fi
