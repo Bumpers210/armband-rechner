@@ -65,6 +65,26 @@ function cmj_icp_tables(PDO $db): array
     return array_column($rows, 'TABLE_NAME');
 }
 
+/** Canonicalize SHOW CREATE formatting, never SQL literals or identifiers. */
+function cmj_icp_schema_canonical(string $schema): string
+{
+    $parts = preg_split('/(\'(?:\'\'|\\\\.|[^\'\\\\])*\'|`(?:``|[^`])*`|"(?:""|\\\\.|[^"\\\\])*")/s',
+        $schema, -1, PREG_SPLIT_DELIM_CAPTURE);
+    cmj_model4_require(is_array($parts), 'schema_parse_failed');
+    foreach ($parts as $index => &$part) {
+        if ($index % 2 !== 0) continue;
+        // A named collation already fixes its character set. MySQL adds the
+        // redundant charset on dump/restore of formerly ALTERed ENUM columns.
+        // Only the exactly matching prefix is redundant; different charset,
+        // collation, column type/default and all constraints remain significant.
+        $part = preg_replace('/ CHARACTER SET ([a-z0-9_]+)(?= COLLATE \1_[a-z0-9_]+\b)/i', '', $part);
+        // Allocation counters can advance on rollback; they are not schema.
+        $part = preg_replace('/ AUTO_INCREMENT=\d+\b/', '', $part);
+    }
+    unset($part);
+    return implode('', $parts);
+}
+
 function cmj_icp_snapshot(PDO $db, bool $lock = false, ?Closure $tick = null): array
 {
     $result = [];
@@ -74,8 +94,7 @@ function cmj_icp_snapshot(PDO $db, bool $lock = false, ?Closure $tick = null): a
         $mysql = $db->getAttribute(PDO::ATTR_DRIVER_NAME) === 'mysql';
         if ($mysql) {
             $schema = $db->query('SHOW CREATE TABLE `' . $name . '`')->fetch(PDO::FETCH_NUM)[1];
-            // Allocation counters can advance on rollback; no schema/content field is ignored.
-            $schema = preg_replace('/ AUTO_INCREMENT=\d+\b/', '', $schema);
+            $schema = cmj_icp_schema_canonical($schema);
         } else {
             $query = $db->prepare("SELECT sql FROM sqlite_master WHERE name=? AND type='table'");
             $query->execute([$name]); $schema = $query->fetchColumn();

@@ -21,6 +21,14 @@ Datenbanken, kurzlebige Schluessel und Dateien werden immer entfernt; allein ein
 geheimwertfreier Ergebnisbericht wird hochgeladen. Ein Testfehler sperrt den
 Produktionsimport, auch wenn lokale DML-Doubles zuvor bestanden haben.
 
+Der erste native Restorelauf belegte eine reine MySQL-Darstellungsabweichung:
+bei zuvor per ALTER erweiterten ENUM-Spalten ergaenzt SHOW CREATE nach Restore
+ein redundantes `CHARACTER SET utf8mb4` vor `COLLATE utf8mb4_unicode_ci`.
+Der neue Vergleich kanonisiert nur diese durch die Collation bereits eindeutig
+festgelegte Zeichensatzangabe sowie den Allokationszaehler. SQL-Literale und
+Bezeichner bleiben bytegleich; andere Collation, Charset, Typ, Default, Constraints
+oder Daten werden nicht toleriert. 14 kuenstliche Strukturtests sichern dies ab.
+
 ## Gesicherter Mengenimport: lokaler Stand vom 13. November 2026
 
 Isolierter Branch `codex/cart-inventory-caller`, Basis
