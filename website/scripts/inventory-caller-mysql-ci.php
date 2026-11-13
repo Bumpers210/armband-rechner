@@ -143,6 +143,17 @@ $phase='inventory_normal'; $f=ip_fixture($root,'normal',$base,$source);
 cp_check(count(cp_tables($source))===38,'inventory_full_38_table_schema');
 cp_check(ip_caller($f)->run('preflight')['status']==='preflight_passed','inventory_readonly_preflight');
 cp_check(cmj_icp_snapshot($source)===$f['snapshot'],'inventory_preflight_unchanged');
+// Diagnostic labels only: never output restored rows, file contents or hashes.
+(new CarmajaProductionBackup($f['config']))->restoreDryRun($f['approval']['backupId'],static function(PDO $db,string $extract) use($f):void {
+    $db->exec("SET SESSION time_zone='+00:00'"); $actual=cmj_icp_snapshot($db);
+    foreach($f['snapshot'] as $table=>$expected) {
+        foreach(['schema','count','content'] as $part) if(($actual[$table][$part]??null)!==$expected[$part])
+            throw new LogicException('inventory_restore_difference_'.$table.'_'.$part);
+    }
+    foreach($f['sources'] as $relative=>$hash) if(hash_file('sha256',$extract.'/'.$relative)!==$hash)
+        throw new LogicException('inventory_restore_file_difference');
+});
+cp_check(true,'inventory_native_restored_schema_rows_files_exact');
 $bad=$f['snapshot']; $bad['commerce_products']['content']=str_repeat('0',64);
 cp_reject(fn()=>cmj_icp_restore($f['config'],$f['approval']['backupId'],$bad,$f['sources']),'inventory_restore_mismatch_rejected','backup_source_mismatch');
 cp_restore_empty($f,$restore);
