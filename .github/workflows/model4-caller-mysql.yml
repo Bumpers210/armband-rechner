@@ -8,6 +8,8 @@ on:
     paths:
       - 'website/scripts/product-model4*'
       - 'website/scripts/model4-caller*'
+      - 'website/tests/php/product-model4-restore-utc-test.php'
+      - 'website/tests/node/model4-caller-mysql-workflow.test.mjs'
       - 'website/test-api-private/program/production-backup.php'
       - '.github/workflows/model4-caller-mysql.yml'
   workflow_dispatch:
@@ -21,7 +23,7 @@ concurrency:
 
 jobs:
   isolated-proof:
-    if: github.repository == 'Bumpers210/armband-rechner' && (github.ref == 'refs/heads/codex/cart-model4-preparation' || github.head_ref == 'codex/cart-model4-preparation')
+    if: github.repository == 'Bumpers210/armband-rechner' && (github.ref == 'refs/heads/codex/cart-model4-preparation' || github.head_ref == 'codex/cart-model4-preparation' || github.ref == 'refs/heads/codex/model4-restore-utc' || github.head_ref == 'codex/model4-restore-utc')
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -47,6 +49,7 @@ jobs:
           php -l website/scripts/model4-caller-mysql-ci.php
           bash -n website/scripts/model4-caller-mysql-ci.sh
           php website/tests/php/product-model4-production-test.php
+          php website/tests/php/product-model4-restore-utc-test.php
           php website/tests/php/product-model4-migration-test.php
           php website/tests/php/product-model4-preparation-test.php
           php website/tests/php/production-backup-test.php

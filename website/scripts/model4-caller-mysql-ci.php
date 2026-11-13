@@ -59,6 +59,8 @@ function cp_fixture(string $root, string $name, array $base, PDO $source): array
     $columns = array_keys($seed[0]);
     $insert = $source->prepare('INSERT INTO commerce_products (' . implode(',', $columns) . ') VALUES (' . implode(',', array_fill(0, count($columns), '?')) . ')');
     foreach ($seed as $row) $insert->execute(array_values($row));
+    // Fixed UTC instants cross day/year boundaries and retain microseconds.
+    $source->exec("UPDATE commerce_products SET synchronized_at='2026-12-31 23:45:12.123456', updated_at='2026-01-01 00:15:43.654321'");
     $source->exec("INSERT INTO worker_leases(worker_name) VALUES ('ci-idle-worker')");
     $source->exec("INSERT INTO commerce_inventory(product_id,on_hand,inventory_version) SELECT product_id,3,7 FROM commerce_products");
     $source->exec("INSERT INTO legal_bundles(legal_bundle_id,terms_version,privacy_version,withdrawal_version,shipping_version,merchant_version,bundle_hash,status) VALUES ('artificial-historical','old','old','old','old','old',REPEAT('a',64),'retired')");
@@ -139,7 +141,8 @@ function cp_timeout(callable $action, string $label): void
 try {
     cp_need(getenv('GITHUB_ACTIONS') === 'true' && getenv('RUNNER_ENVIRONMENT') === 'github-hosted'
         && getenv('RUNNER_OS') === 'Linux' && getenv('GITHUB_REPOSITORY') === 'Bumpers210/armband-rechner'
-        && (getenv('GITHUB_REF') === 'refs/heads/codex/cart-model4-preparation' || getenv('GITHUB_HEAD_REF') === 'codex/cart-model4-preparation')
+        && (getenv('GITHUB_REF') === 'refs/heads/codex/cart-model4-preparation' || getenv('GITHUB_HEAD_REF') === 'codex/cart-model4-preparation'
+            || getenv('GITHUB_REF') === 'refs/heads/codex/model4-restore-utc' || getenv('GITHUB_HEAD_REF') === 'codex/model4-restore-utc')
         && preg_match('/^[a-f0-9]{40}$/D', (string)getenv('GITHUB_SHA')) === 1
         && preg_match('/^[0-9]+$/D', (string)getenv('GITHUB_RUN_ID')) === 1
         && preg_match('/^[0-9]+$/D', (string)getenv('GITHUB_RUN_ATTEMPT')) === 1, 'isolated_github_only');
@@ -190,6 +193,8 @@ try {
     cmj_m4p_empty_restore($source); cmj_m4p_empty_restore($restore);
     cp_check(true,'both_disposable_databases_initially_empty');
     cp_check((int)$source->query('SELECT @@require_secure_transport')->fetchColumn() === 1,'server_requires_tls');
+    cp_check($source->query('SELECT @@global.time_zone')->fetchColumn() === '+02:00'
+        && $source->query('SELECT @@session.time_zone')->fetchColumn() === '+00:00', 'nonutc_server_utc_source');
     cp_check(true,'mysql8_php84_linux_tls_both_sessions_verified_ca');
     cp_reject(fn()=>new PDO($base['commerceDsn'],$base['commerceUser'],$base['commercePassword'],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]),'plaintext_rejected');
     $restore->exec('CREATE TABLE ci_guard(id INT PRIMARY KEY) ENGINE=InnoDB');
@@ -200,6 +205,22 @@ try {
     cp_check(count(cp_tables($source)) === 38,'actual_full_38_table_schema_five_migrations');
     $before=cp_fingerprint($source); $backup=new CarmajaProductionBackup($f['config']);
     cp_reject(fn()=>cp_caller($f)->run('preflight'),'missing_restore_proof_rejected');
+    // The real backup callback receives a new PDO with the server default, not
+    // the independent lock session's UTC setting. Prove the original mismatch
+    // and then compare the exact same restored rows through the corrected path.
+    $backup->restoreDryRun($f['approval']['backupId'], static function(PDO $db, string $extract) use ($f): void {
+        cp_check($db->query('SELECT @@session.time_zone')->fetchColumn() === '+02:00', 'fresh_callback_inherits_nonutc');
+        foreach (['+02:00', '-07:00', '+05:30'] as $zone) {
+            $db->exec("SET SESSION time_zone='$zone'");
+            cp_check(cmj_m4_rows($db) !== $f['plan']['beforeRows'], 'raw_nonutc_snapshot_mismatch_' . $zone);
+            cmj_m4p_restore_snapshot($db, $extract, $f['plan']);
+            cp_check($db->query('SELECT @@session.time_zone')->fetchColumn() === '+00:00'
+                && cmj_m4_rows($db) === $f['plan']['beforeRows'], 'callback_utc_exact_match_' . $zone);
+        }
+        $badTime = $f['plan']; $badTime['beforeRows'][0]['updated_at'] = '2026-01-01 00:15:43.654322';
+        cp_reject(fn () => cmj_m4p_restore_snapshot($db, $extract, $badTime), 'microsecond_mismatch_still_rejected', 'backup_source_mismatch');
+    });
+    cp_restore_empty($f, $restore);
     // Actual restore callback mismatch: compare the restored DB, not the live source.
     $bad=$f['plan']; $bad['beforeRows'][0]['name']='WRONG ARTIFICIAL BEFORE IMAGE';
     cp_reject(fn()=>cp_caller($f,null,static fn($c,$id,$plan)=>cmj_m4p_restore_proof($c,$id,$bad))->run('verify-restore'),'restore_callback_mismatch','backup_source_mismatch');
