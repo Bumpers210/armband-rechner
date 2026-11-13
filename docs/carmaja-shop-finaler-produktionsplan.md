@@ -25,17 +25,32 @@ mit vier Stueck atomar importiert und vollstaendig verglichen. Wiederholung
 bestaetigt den bereits abgeschlossenen Import ohne weitere Buchung.
 Produktdateien, Bilder und die uebrigen Bestaende wurden nicht veraendert.
 
-Der lokale Websitekatalog wird nun ausschliesslich fuer die bisherigen sechs
+Der Websitekatalog ist ausschliesslich fuer die bisherigen sechs
 oeffentlichen Produkte an die autoritativen Modell-4-Versionen und Hashes
 angeglichen. Texte, Preise, Bilder und Verkaufsflags bleiben identisch;
 Bestehende erhalten keine nachtraeglichen Hinweise. CP-2026-0008/-0009 bleiben
-ausgeschlossen. Der lokale Katalogabgleich ist noch kein Website-Deployment.
+ausgeschlossen. PR #104 wurde nach gruener CI integriert; main und der
+bereitgestellte Websiteexport stehen auf
+`b3167b9babf27bdc9fa547cfbfcde8d0b3fb8e66`. 236 ausgelieferte Dateien und
+169 Rollbackdateien wurden vollstaendig hashgeprueft, 20 Seiten per HTTPS
+geprueft. Der Serverstatus ist `verified`. Warenkorb-Lesevertrag aktiv,
+Checkout und Produkt-/Browser-Schreibwege weiterhin gesperrt.
 
-Naechste Reihenfolge: Katalog-/Website-Regression und PR/CI, kontrolliertes
-Website-Deployment bei geschlossenem Kaufweg, Laufzeit-/Provider-/Legal-Smoke,
-erster kontrollierter Kauf ausschliesslich von Ares, anschliessend die weiteren
-fuenf bestaetigten Mengen und schrittweise Freigabe. Der erste echte Kauf bleibt
-eine Benutzereingabe. Keine pauschale Gesamtabnahme vor diesem Nachweis.
+Der manuelle Websiteworkflow `43406404331` ist trotz erfolgreichem Build und
+Deployment insgesamt fehlgeschlagen: Der abschliessende automatische
+Deploygate-Reset erhielt HTTP 401 / `Bad credentials` fuer das Environment-
+Secret `CARMAJA_PRODUCTION_VARIABLES_TOKEN`. Der unabhaengige lokale
+Finally-Abschluss setzte den Schalter erfolgreich auf false; dies wurde
+anschliessend lesend bestaetigt. Keine offene Deployfreigabe, kein erneuter
+Deployversuch und keine Umdeutung des Gesamtlaufs in einen Erfolg.
+
+Naechste Reihenfolge: benoetigten GitHub-Zugang privat erneuern und Reset ohne
+Deployment nachweisen; aktuelle Backup-/Restore-/Betriebsgates bestaetigen;
+erster kontrollierter Kauf ausschliesslich von Ares; anschliessend die weiteren
+fuenf bestaetigten Mengen und schrittweise Freigabe sowie App-/PC-Verwaltung.
+Der erste echte Kauf bleibt eine Benutzereingabe. Keine pauschale Gesamtabnahme
+vor diesem Nachweis. Aktuelle Details und sichere Fortsetzung stehen im
+[Shopstart-Nachweis](../website/docs/cart-launch-20261113.md).
 Die unten dokumentierten frueheren Freigabegrenzen sind historische Staende;
 Produktionssperren bleiben bis zum jeweils bestandenen Aktivierungsgate erhalten.
 

@@ -41,6 +41,57 @@ Konfigurationen und Zugangsdaten sind nicht Bestandteil dieser Dokumentation.
   kollidierten am Next-Buildlock; die serielle Wiederholung bestand. Der
   historische Katalogausschlusstest erwartet jetzt ausdruecklich Modell 4
   und prueft weiterhin die ausgeschlossenen Produkte und Legacy-Felder.
+- PR #104 nach bestandenen Website- und vollstaendigen Paketpruefungen
+  integriert. Aktueller main-/Website-Stand:
+  `b3167b9babf27bdc9fa547cfbfcde8d0b3fb8e66`.
+- SHA-gepinntes manuelles Website-Deployment ausgefuehrt. Build und
+  Deployment-/Smoke-Job bestanden; Serverstatus `verified`. Unabhaengiger
+  Vollvergleich: 236 ausgelieferte Dateien und 169 gesicherte Rollbackdateien
+  stimmen mit ihren jeweiligen Manifesten ueberein.
+- 20 oeffentliche Seiten nach Deployment per HTTPS geprueft: Startseite,
+  Uebersicht, sechs Produktdetails, Warenkorb, Verwaltungs-/Adminhuelle,
+  Erfolgs-/Abbruch-/Fehlerseite, fuenf Rechtsseiten und Legal-v7-Archiv.
+  Produkt-IDs/-Versionen passen; keine Testdomain, Vinted-Verweise oder
+  ausgeschlossenen CP-2026-0008/-0009. Aktive Bedingungen ohne PayPal und
+  Archiv mit freigegebenem v7-Inhaltshash. HTTP-Pruefungen sind kein Ersatz
+  fuer die noch ausstehende echte Bestellung oder einen Verwaltungslogin.
+- Warenkorb-Lesevertrag produktiv vorbereitet (`inventoryCartEnabled=true`),
+  Kaufweg weiterhin geschlossen. Live-API fuer alle sechs Produkte,
+  Shopsitzung, sichere Cookies, CORS, Fremd-Origin-Ablehnung und `no-store`
+  geprueft. Checkoutversuch bleibt `503 checkout_maintenance`; keine neue
+  Session bei Stripe, Reservierung, Bestellung, Zahlung oder Mail.
+- Abschliessender lesender Servercheck: Checkout-/Produkt-Schreib-/Browser-/
+  Publishergates geschlossen, Wartungsmarker vorhanden, Runtime `0600`,
+  beide Datenbankverbindungen mit aktiver TLS-Sitzung, Restoreziel leer.
+  Geschaeftsdatensatzanzahlen unveraendert; weiterhin ausschliesslich eine
+  Inventarzeile fuer Ares mit vier Stueck und Inventarversion 1.
+- Eigene lokale Einmal-Steuerskripte und temporaere Paketkopie entfernt;
+  Abwesenheit kontrolliert. Private Serverkonfigurationen, Importaudit,
+  Restorebelege und Rollbacksicherungen bleiben absichtlich erhalten.
+  Es wurde kein temporaerer oeffentlicher Diagnoseendpunkt angelegt.
+
+## Offener GitHub-Betriebsblocker
+
+Der [Produktionslauf 43406404331](https://github.com/Bumpers210/armband-rechner/actions/runs/43406404331)
+ist insgesamt **nicht erfolgreich**: Nur der abschliessende Job
+`reset-production-deploy-gate` scheiterte mit HTTP 401 / `Bad credentials`.
+Das Environment-Secret `CARMAJA_PRODUCTION_VARIABLES_TOKEN` unter
+`carmaja-production` ist fuer diesen Aufruf nicht verwendbar. Ein Ablaufdatum
+wurde nicht nachgewiesen und wird nicht als Ursache behauptet.
+
+Der unabhaengige lokale Finally-Abschluss hat
+`CARMAJA_PRODUCTION_DEPLOY_ENABLED=false` erfolgreich gesetzt; der Endwert
+wurde anschliessend erneut ueber GitHub gelesen. Auch Publish- und Testdeploy-
+Schalter bleiben false. Die erfolgreiche Websitebereitstellung wird deshalb
+nicht zurueckgenommen, aber der Gesamtworkflow nicht als gruen dokumentiert.
+Kein erneutes Deployment nur zum Wiederholen des fehlgeschlagenen Resetjobs.
+
+Vor der Kaufweg-Aktivierung ist ein gueltiger, minimal berechtigter Zugang
+fuer das automatische Zuruecksetzen bereitzustellen und technisch zu pruefen.
+Keine Suche nach Ersatzsecrets und keine Wiederverwendung des persoenlichen
+CLI-Anmeldetokens als Workflow-Secret. Notwendige Benutzereingabe: neuer
+GitHub-Zugang mit Variables-Schreibrecht ausschliesslich fuer dieses Repository;
+Uebernahme nur privat, niemals im Chat oder Repository.
 
 ## Unveraenderte Daten und Grenzen
 
@@ -51,7 +102,7 @@ gebundenen Import. CP-2026-0008/-0009 bleiben ausserhalb des oeffentlichen
 Katalogs. Bestehende Testprodukte, Testbestaende und private Konfigurationen
 wurden nicht angefasst. Produktionsproduktdateien/Bilder bleiben unveraendert.
 
-Der neue lokale oeffentliche Katalog ist eine strikte Modell-4-Projektion
+Der nun ausgelieferte oeffentliche Katalog ist eine strikte Modell-4-Projektion
 derselben sechs bestehenden Produkte. Nur Modell-/Produktversion, Quellhash,
 Umstellungszeitpunkt und die leere Hinweiszuordnung werden abgeglichen. Preise,
 Texte, Messwerte, Bilder und Verkaufsflags aendern sich dadurch nicht.
@@ -60,16 +111,15 @@ Live-Verfuegbarkeit und die separaten Runtime-/Checkoutgates bleiben notwendig.
 
 ## Noch offene Freigabegates
 
-1. Aktuelle lokale/CI-Katalog- und Websitepruefung, sauberer main-Release.
-2. SHA-gepinntes Website-Deployment mit Backup/Rollback und anschliessendem
-   Zuruecksetzen des Deployschalters; Kaufweg bleibt dabei geschlossen.
-3. Live-Pruefung: Modell-4-/Shop-v3-Vertrag, Ares-Menge, restliche Modelle nicht
-   kaufbar, Legal-v7-Hashbindung, Card/Klarna/SEPA, CORS/No-Store und Worker.
-4. Begrenzte Aktivierung und kontrollierte echte Ares-Erstbestellung durch die
+1. Ungueltigen GitHub-Zugang fuer den automatischen Deploygate-Reset erneuern
+   und das Schliessen mit genau diesem Zugang ohne neues Deployment pruefen.
+2. Unmittelbar vor Aktivierung aktuellen Backup-/Restore-/Offsitebezug,
+   Worker und alle unveraenderten Produkt-/Preis-/Legal-/Bestandsgates pruefen.
+3. Begrenzte Aktivierung und kontrollierte echte Ares-Erstbestellung durch die
    Betreiberin; Zahlung, atomare Bestellung/Abbuchung und Bestellmail nachweisen.
-5. Erst danach weitere bestaetigte Mengen mit frischem Versions-/Backup-/
+4. Erst danach weitere bestaetigte Mengen mit frischem Versions-/Backup-/
    Restorebezug importieren, schrittweise freigeben und beobachten.
-6. Gemeinsame App-/PC-Verwaltung gesondert pruefen und kontrolliert oeffnen.
+5. Gemeinsame App-/PC-Verwaltung gesondert pruefen und kontrolliert oeffnen.
    Publisher-/Deploymentautomatik nicht ohne passenden geprueften Vertrag aktivieren.
 
 Bei Preis-, Hash-, Bestands-, Zahlungs- oder Restorewiderspruch neue Checkouts
