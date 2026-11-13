@@ -169,7 +169,7 @@ Texte, Messwerte, Bilder und Verkaufsflags aendern sich dadurch nicht.
 Ein Verkaufsflag allein ist keine Kaufbarkeit: bestaetigter Commerce-Bestand,
 Live-Verfuegbarkeit und die separaten Runtime-/Checkoutgates bleiben notwendig.
 
-## Noch offene Freigabegates
+## Historischer Erstzahlungsblocker vor PR #105
 
 ### Erstzahlung: abgesicherte Klarna-Korrektur
 
@@ -192,19 +192,245 @@ Zustimmung, Snapshot, Bestand und alle Finalisierungsgates bleiben unveraendert.
 
 Lokale PHP-8.4-Mappingregression: 34 Pruefungen; Stripe-, Warenkorb-,
 Transaktions-, SEPA- und Commerce-Suiten bestanden. 57 relevante Node-Pruefungen
-und Diffpruefung bestanden. CI, hashgebundene Bereitstellung und die erneute
-regulaere Zahlungsfinalisierung stehen fuer diesen Korrekturstand noch aus.
-Der Erstkauf gilt bis zum Bestell-/Bestands-/Mailnachweis nicht als abgenommen.
+und Diffpruefung bestanden. [PR #105](https://github.com/Bumpers210/armband-rechner/pull/105)
+enthaelt Commit `93716db886e0200d72587c1992976bdef1f6d554`.
+Die [vollstaendige Paket-CI](https://github.com/Bumpers210/armband-rechner/actions/runs/43467890773)
+bestand einschliesslich PHP-/Node-/Shellregression, Sicherheitspruefung,
+kuenstlichem Produktionsbuild und Artefaktvalidierung.
 
-1. Kontrollierte echte Ares-Erstbestellung durch die
-   Betreiberin; Zahlung, atomare Bestellung/Abbuchung und Bestellmail nachweisen.
-2. Erst danach weitere bestaetigte Mengen mit frischem Versions-/Backup-/
-   Restorebezug importieren, schrittweise freigeben und beobachten.
-3. Gemeinsame App-/PC-Verwaltung gesondert pruefen und kontrolliert oeffnen.
-   Publisher-/Deploymentautomatik nicht ohne passenden geprueften Vertrag aktivieren.
+Frisches verschluesseltes Backup `20261113T165745Z-1cf0edeed395`, gepruefter
+OneDrive-Abruf/Quittierung und echter Restore `restored_and_compared` bestanden.
+Restoreziel und temporaere Entschluesselungsdateien sind wieder leer. Der
+abschliessende lesende Stand um 17:03 UTC: Zahlung weiterhin im Prueffall,
+Inventar 4/1/3, keine neue Bestellung und keine Bestell-/Betreibermail.
+
+Die Sicherheitspruefung lehnte den angeforderten main-Merge wegen fehlender
+ausdruecklicher aktueller Mergefreigabe ab. Kein Umgehungsversuch, kein Merge
+und keine Workerbereitstellung. Main bleibt `b3167b9babf27bdc9fa547cfbfcde8d0b3fb8e66`,
+PR #105 offen/gruen, alle Deploygates geschlossen. Die einzige Produktions-
+Runtimeaenderung dieses Schritts ist `shopCheckoutEnabled=false`; sonstige
+Konfigurationen, Produktdateien und Testbereiche bleiben erhalten.
+
+Dieser historische Wartepunkt wurde anschliessend durch die ausdrueckliche
+Merge-/Workerfreigabe aufgehoben; siehe den aktuellen Nachweis unten.
+
+## PR #105, regulaere Erstbestellung und administrativer Abschluss
+
+- PR #105 kontrolliert integriert: main
+  `54243f1f27ca22df870a163e4989818a459fe82c`. Vollstaendige Paket-CI vor dem
+  Merge sowie [main-Lauf 43471345482](https://github.com/Bumpers210/armband-rechner/actions/runs/43471345482)
+  bestanden. Alle automatischen Deploy-/Publishgates false.
+- Ausschliesslich `ap3-worker.php` aus diesem main-SHA privat hashgeprueft,
+  mit PHP 8.4 gelintet und atomar aktiviert. Altes Programm und Paketmanifest
+  privat rollbackfaehig erhalten; Paketprovenienz um den Ein-Datei-Patch ergaenzt.
+  Keine Website-/Appbereitstellung und keine sonstige Programm-/Secretmutation.
+- Der regulaere Worker finalisierte die vorhandene Klarna-Zahlung von
+  2270 Cent inklusive einmalig 270 Cent Versand. CMJ-00000002 ist confirmed;
+  Snapshot, Legal-Zustimmung und Providerstatus verifiziert. Genau ein
+  shop_sale-Audit: Ares von 4 auf 3, Inventarversion 2, keine Reservierung mehr.
+- Bestell- und Betreibermail jeweils sent mit genau einem Versuch und
+  passendem Snapshot. Brevo bestaetigt beide mit delivered. Kein Nachweis
+  menschlichen Lesens, kein manueller Neuversand. Metadaten-Outbox sent,
+  Abschlusswebhook processed. Wiederholung erzeugte keine Doppelbuchung.
+- Erneuter Nachweis um 17:45 UTC mit frischem verschluesseltem Backup
+  `20261113T174552Z-2f3195841dc8` und echtem Restore im getrennten Ziel bestanden.
+- Adminanmeldung bestaetigt. Die bestehende Oberflaeche hat jedoch keine
+  Statusaktion fuer Prueffaelle. Der ausdruecklich beauftragte Abschluss des
+  einzigen behobenen Falls erfolgte daher als eng begrenzte private SSH-Wartung:
+  open -> investigating -> resolved -> closed, atomar mit drei Auditereignissen,
+  admin_id NULL und gekennzeichnetem Wartungsakteur statt nachgebildeter
+  Benutzeridentitaet. Urspruenglicher Grund und Details bleiben erhalten.
+- Eine erste Transaktion wurde wegen des automatisch aktualisierten
+  updated_at vollstaendig zurueckgerollt; die korrekt begrenzte Wiederholung
+  um 17:48 UTC bestand. Zahlungs-, Checkout-, Bestell-, Positions-, Bestands-,
+  Versand- und Maildaten sowie Runtime vollstaendig unveraendert.
+  Worker danach processed=0, Monitor recovered. Kein Versand als erfolgt markiert.
+
+## Fuenf weitere Mengen und kontrollierte Kaufweg-Freigabe
+
+- Nach geschlossenem Prueffall wurden die vorhandenen V5-Schreib- und
+  Warenkorbgates temporaer geschlossen sowie der private Wartungsmarker gesetzt.
+  Alle anderen Runtimewerte und Zugangsdaten blieben erhalten; keine neue
+  Programm- oder Websitebereitstellung.
+- Ausgewaehlt ausschliesslich CP-2026-0003 bis CP-2026-0007, jeweils vier
+  bestaetigte Stuecke und Inventarversion 0 vor Import. Variantenbindung:
+  18 cm, Artemis/Athena 8 mm und die drei weiteren Modelle 6 mm.
+  Aktuelle autoritative Versionen und Hashes stimmen mit dem bestehenden
+  oeffentlichen Katalog ueberein. Ares sowie CP-2026-0008/-0009 ausgeschlossen.
+- Die erste Vorbereitung hielt wegen eines regulaeren Worker-Lease-Updates
+  sicher mit database_changed an; kein Import. Keine Vergleichsausnahme:
+  neuer isolierter Nachweissatz und frisches Backup zwischen Workerlaeufen.
+- Backup `20261113T175446Z-262c802b8301`, Offsite-Quittierung und echter
+  Restore bestanden. Gepruefter CLI-Aufrufer meldete
+  inventory_imported_and_compared fuer fuenf Produkte; die direkte lesende
+  Wiederholung already_imported. Vollvergleich erhielt historische Daten,
+  bestehende Audits, nicht ausgewaehlte Produkte und alle Produktdateien.
+- Ergebnis: Ares 3/0/3 mit Version 2, alle weiteren fuenf Modelle 4/0/4 mit
+  Version 1, insgesamt 23 Stuecke. Kein zweites shop_sale, keine doppelte
+  Erstzaehlung. Restoreziel und Entschluesselungsdateien bereinigt.
+- Frisches Backup nach Import `20261113T175700Z-2b8773ad8be8`, gepruefter
+  OneDrive-Pull und CLI-Restore restored_and_compared bestanden.
+- Zunaechst ausschliesslich Warenkorb-Lesebetrieb geoeffnet. Sechs Livepreise/
+  Versionen, Verfuegbarkeitssperre, no-store, Cookieeigenschaften, CSRF und CORS
+  bestanden. Lokale Pruefskript-Annahmen wurden korrigiert: PowerShell behaelt
+  benutzerdefinierte Header in WebSession; fuer die negative CSRF-Probe werden
+  diese nun geleert. Fehlender Header ist vertraglich 422/header_required,
+  ungueltiger Token 403/context_invalid. Keine API-Aenderung erforderlich.
+- Um 18:02 UTC Kaufweg, V5-App-Schreibzugang und getrennten PC-Zugang atomar
+  geoeffnet, dann Wartungsmarker privat archiviert. Warenkorb bleibt aktiviert;
+  Publisher, GitHub-Adapter, Legacy-V4-Schreiben, alter Kollektionenbetrieb und
+  automatische Deployments bleiben gesperrt. Sonstige Runtimewerte erhalten.
+- Live-Smoke nach Oeffnung bestanden: alle sechs Produkte verfuegbar mit
+  korrekten EUR-Preisen und Versionen; eigener Zwei-Positions-Warenkorb 42,20 EUR
+  inklusive einmalig 2,70 EUR Versand; frischer GET-Checkoutkontext vorhanden;
+  CSRF-Ablehnung, CORS-Preflight, Fremd-Origin-Ablehnung und no-store korrekt.
+  Der Pruefwarenkorb wurde geleert, keine Stripe-Session gestartet. Normale
+  kurzlebige Sitzungs-/Idempotenz-/Ratelimitdaten unterliegen der vorhandenen
+  Aufbewahrung; fremde Sitzungen und Bestellungen werden nicht bereinigt.
+- Worker processed=0 und monitorStatus=ok. PC-Verwaltung ohne Anmeldung
+  korrekt 401/authentication_required, no-store und exakter Produktions-Origin.
+  Loginseite sichtbar; sie benoetigt den bestehenden Produktverwaltungs-App-
+  Zugang, nicht die separaten Shop-Admin-Zugangsdaten.
+- Abschliessender lesender Nachweis um 18:05 UTC: genau eine neue Bestellung,
+  beide zugehoerigen Mails sent/Versuch 1, geschlossener Prueffall mit drei
+  auditierten Uebergaengen, sechs Inventare/23 Stuecke/keine Reservierung,
+  alle 99 gebundenen Produkt-/Bilddateien identisch. Runtime weiterhin 0600;
+  ausser den beabsichtigten Freigabeschaltern alle Werte unveraendert.
+  Getrenntes Restoreziel und Entschluesselungsstaging leer, keine Monitorwarnung.
+- Repository-Deploy-, Publish-, Statistik- und Testdeployschalter sowie der
+  Environment-API-Deployschalter abschliessend false; main unveraendert auf
+  54243f1f27ca22df870a163e4989818a459fe82c. In dieser Fortsetzung kein Commit,
+  Push, Merge oder Programm-/Website-Deployment. Ausschliesslich die beiden
+  Plan-/Nachweisdateien lokal aktualisiert; git diff --check bestanden.
+- Vier eigene lokale Einmal-Pruefskripte und der exakt gepruefte temporaere
+  Worker-Paketordner entfernt; Abwesenheit bestaetigt. Private Runtime,
+  Schluessel, Import-/Abschlussaudit und Rollbacksicherungen bleiben erhalten.
+  Keine Testprodukte oder privaten Testkonfigurationen angefasst.
+
+## Lesender App-/PC- und Shop-Abgleich
+
+Fortsetzung am 13. November 2026, Servernachweis um 18:32 UTC:
+
+- Der gesondert freigegebene Passwortreset fuer die bestehende
+  Produktions-Produktverwaltung wurde ueber verdeckte lokale Eingabe
+  abgeschlossen. Konto erhalten, Anmeldung und Produktlesen technisch
+  bestaetigt, eigene Probesitzung abgemeldet. Kein Passwort in Chat,
+  Repository oder Log; die privaten Einmal-Eingabe-/Statusartefakte sind
+  entfernt. Shop-Adminzugang, Produkte, Bilder, Bestände und Runtime erhalten.
+- Produktive PC-Verwaltung erfolgreich angemeldet. Alle sechs Shopmodelle
+  ausschliesslich geoeffnet und gelesen, nichts gespeichert, veroeffentlicht
+  oder im Bestand bestaetigt. Preise, Messwerte, Versionen und alle 16 Bilder
+  sichtbar; Ares 3/0/3, die weiteren fuenf Modelle jeweils 4/0/4. Keine
+  automatischen Hinweise nachtraeglich an bestehende Produkte angehaengt.
+- Read-only-Transaktion: kanonische autoritative Produkte, Versions-/Hashbindung,
+  Commerce-Produktlesemodell, oeffentliche Projektion und Bilddateien stimmen
+  fuer genau die sechs freigegebenen Produkte ueberein. 16 oeffentliche Bilder
+  bytegleich zu ihren privaten Quelldateien. CP-2026-0008/-0009 nicht ergaenzt.
+  Beide MySQL-Verbindungen mit aktiver TLS-Sitzung; Restoreziel leer.
+- CMJ-00000002 weiterhin confirmed, Klarna succeeded, einmalige Ares-Abbuchung,
+  keine Reservierung. Bestell- und Betreibermail jeweils sent/Versuch 1;
+  der zuvor bestaetigte Brevo-Zustellnachweis bleibt gueltig. Kein Neuversand.
+  Versand ready, nicht shipped. Keine offenen Prueffaelle oder unerledigten
+  Eintraege in Webhook-Inbox, Mail- und Stripe-Metadaten-Outbox.
+- Regulaere Workerlaeufe erfolgreich, Monitor ohne Issue-Codes. Backupstatus
+  ok; weder Serverbackup noch Offsiteabruf ueberfaellig. Kein neuer Restore
+  oder manuell ausgeloester Worker in diesem lesenden Abnahmeschritt.
+- Aktives Legal Bundle cmj-production-legal-2026-10-25-v7 approved und
+  inhaltsgleich zum freigegebenen Repositoryvertrag. Die Pruefhilfe wurde auf
+  den tatsaechlichen Runtime-Schluessel activeLegalBundleId korrigiert;
+  keine Runtime- oder Legal-Aenderung war notwendig.
+- 18 oeffentliche Seiten erneut mit HTTP 200 geprueft: Start, Uebersicht,
+  sechs Details, Warenkorb, fuenf Rechtsseiten, success/cancel/error und
+  Legal-v7-Archiv. Keine Testdomain oder Vinted-Verweise im HTML.
+  Alle sechs Live-Produkte erreichbar und verfuegbar, exakter Website-Origin
+  in CORS und no-store. Keine neue Shop-/Stripe-Session oder Warenkorbmutation.
+- Lokale PHP-8.4.23-Suiten product-browser-production, product-browser-http,
+  cart-sales-permission, cart-quantity-limit, cart-worker-mapping und
+  cart-contract bestanden. Vier zugehoerige Node-Dateien mit 42/42 bestandenen
+  Tests: Browserverwaltung, Mengenvertrag, Mengenlimit-UI und Legal-Limit.
+  Tests ausschliesslich mit kuenstlichen lokalen Daten.
+- Signierter Produktions-App-Lauf
+  [43249178666](https://github.com/Bumpers210/armband-rechner/actions/runs/43249178666)
+  erfolgreich, Artefakt weiterhin vorhanden: Version 1.4.0 / Code 8,
+  Produktionspaket de.carmajaperlen.armbandrechner und Produktions-API.
+  Unit-, Lint-, Offline-Compose-, Release- und Signaturpruefschritte bestanden.
+  App-/Gradle-/Releaseworkflow-Diff zwischen dessen Quellcommit
+  261564aef3f62be759bc3efc0251b019a9bdd354 und main
+  54243f1f27ca22df870a163e4989818a459fe82c ist leer. Kein neuer Build gestartet.
+  CI-/Emulatornachweise ersetzen keine Bestaetigung auf dem echten Handy.
+- Keine Geschaeftsdaten-, Bestands-, Programm- oder Runtimeaenderung durch
+  diese Pruefung. Testprodukte und private Konfigurationen erhalten. Kein
+  Commit, Push, Merge oder Deployment; GitHub-Deploy-/Publishschalter bleiben
+  false. Nur dieser Nachweis und der Produktionsplan werden lokal ergaenzt.
+- Eigene lokale Read-only-Pruefhilfe entfernt, Abwesenheit bestaetigt.
+  Kein temporaeres Serverprogramm oder oeffentlicher Endpunkt angelegt.
+  Abschliessendes git diff --check bestanden.
+
+## Abschliessende Shop-Abnahme und Betriebshandover
+
+**Technische Shop-Abnahme bestanden am 13. November 2026.** Die Betreiberin
+bestaetigt den angeforderten abschliessenden Lesetest auf dem echten Handy:
+"Produktions-App: Ares korrekt, Bestand 3 / 0 / 3". Die Bestaetigung bezieht
+sich auf Produktions-App 1.4.0 / Code 8, 20,00 EUR, 18 cm, 8 mm und drei Bilder.
+Dieser Nachweis stammt von der Betreiberin, nicht von einer automatisierten
+Bedienung ihres Telefons. Er schliesst den letzten App-/PC-Abgleich.
+
+| Abschlussgate | Ergebnis / Nachweis |
+| --- | --- |
+| Mengenmigration, Datenerhalt und Wiederherstellung | bestanden; gebundener Import, Wiederholung ohne Doppelbuchung, Offsite-/Restorebeleg nach Import |
+| Oeffentlicher Shop, Legal v7, Warenkorb und Sicherheitsvertrag | bestanden; sechs freigegebene Modelle, 18 Seiten und Live-API/CORS/no-store nachgeprueft |
+| Echte Zahlung bis Bestellung, Bestand und Bestellmail | bestanden; CMJ-00000002, 2270 Cent, eine Ares-Abbuchung, zwei einmalige Mails; Brevo-Zustellnachweis vorhanden |
+| Produktverwaltung am PC | bestanden; sechs Modelle, Preise, Messwerte, Versionen und 16 Bilder lesend abgeglichen |
+| Signierte Produktions-App und echter Handyabgleich | bestanden; CI-/Signaturvertrag unveraendert, manueller Ares-Lesetest bestaetigt |
+| Worker, Monitoring, Backup und Offsite | erneute lesende Betriebspruefung 18:57 UTC bestanden; keine Warnung oder ueberfaellige Sicherung |
+| Rechts-, Datenschutz- und Versandfreigabe | versioniert dokumentierte externe Freigabe; aktives v7 approved, keine eigene Rechtsfreigabe durch den Agenten |
+
+Die erneute read-only-Transaktion um 18:57:51 UTC bestaetigt sechs Inventare
+mit insgesamt 23 Stueck und null blockierenden Reservierungen: Ares 3/0/3,
+die anderen fuenf Modelle jeweils 4/0/4. Bestellung confirmed, Zahlung
+succeeded/verified; beide Mails sent mit attempt_count=1. Keine offenen
+Prueffaelle, keine unerledigten Eintraege in Webhook-Inbox, Stripe-Metadaten-
+oder Mail-Outbox. Beide regulaeren Worker waren um 18:57:35 UTC erfolgreich,
+jeweils unter einer Sekunde; Monitor zur selben Zeit ohne Issue-Codes.
+Beide MySQL-Verbindungen pruefen aktive TLS-Sitzungen, Restoreziel leer.
+Runtime vor/nach der Pruefung identisch und weiterhin 0600.
+
+Backupstatus ok: letztes fertiges Serverbackup 18:18:02 UTC, letzter
+bestaetigter Download 18:38:16 UTC, keine Ueberfaelligkeit. In diesem Schritt
+kein neuer Backup-/Restorelauf und keine Provideraktion. Der zuvor bestandene
+Restore des Nachimport-Backups bleibt der Wiederherstellungsnachweis.
+
+main und bestehende Paket-CI erneut gelesen: SHA
+54243f1f27ca22df870a163e4989818a459fe82c, Run 43471345482 success.
+Repository-Produktionsdeploy, Publisher, Statistikdeploy, Testdeploy und
+Environment-API-Deploy bleiben false. Laufzeit-Kaufweg, V5-App und PC-Zugang
+bleiben offen; Publisher/GitHub-Adapter und alter Kollektionenbetrieb bleiben
+bewusst deaktiviert. Kein erneutes Oeffnen oder Aendern dieser Schalter.
+
+### Verbleibende Betreiberaufgaben, keine technische Start-Sperre
+
+- CMJ-00000002 tatsaechlich verpacken und versenden. Der Versandstatus ist
+  weiterhin ready, nicht shipped; erst nach realem Versand im Shop-Admin
+  bestaetigen. Kein erfundener Versand- oder Versandmailnachweis.
+- Normale Betriebsueberwachung, stuendliche Serverbackups und regelmaessigen
+  OneDrive-Pull aufrechterhalten; monatlichen Restoretest und Wiederherstellung
+  vor weiteren relevanten Produktionsaenderungen nach dem Betriebsvertrag pruefen.
+- Maximal zehn Armbaender und einmalig 2,70 EUR Versand, Karte/Wallets, Klarna
+  und SEPA bleiben unveraendert. PayPal bleibt deaktiviert. Fehlende MySQL-
+  CA-/Hostidentitaetspruefung und das Klarna-/Zustellrisiko ohne Tracking bleiben
+  die bereits akzeptierten Restrisiken, keine neu geschlossenen Nachweise.
+- Publisher-/Deploymentautomatik nicht nebenbei aktivieren. CP-2026-0008/-0009
+  bleiben ausserhalb des oeffentlichen Katalogs; neue Produkte benoetigen ihren
+  eigenen vollstaendigen Produkt-, Bestands- und Veroeffentlichungsweg.
+
+Durch diesen Abschluss keine Produkt-, Bild-, Bestands-, Kunden-, Bestell-,
+Konfigurations- oder Testdaten geaendert. Keine temporaere Datei oder
+Serverroute angelegt; nur lesende Pruefungen und lokale Dokumentation.
+Kein Commit, Push, Merge oder Deployment. Vorhandene fremde Aenderungen erhalten.
 
 Bei Preis-, Hash-, Bestands-, Zahlungs- oder Restorewiderspruch neue Checkouts
 sofort schliessen; bestehende Zahlungen und Bestellungen weiter verarbeiten.
 Nach erster bestandswirksamer Zahlung kein Rueckwechsel zum unbegrenzten
-Kollektionenverkauf. Noch keine vollstaendige Shopstart-Abnahme und keine
-erfundenen Ist-Stunden oder garantierten Termine.
+Kollektionenverkauf. Technischer Shopstart abgenommen; die laufende Erfuellung
+realer Bestellungen und wiederkehrende Betriebspruefungen bleiben erforderlich.
+Keine erfundenen Ist-Stunden oder garantierten Termine.
