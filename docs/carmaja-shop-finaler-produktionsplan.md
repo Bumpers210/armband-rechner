@@ -1,17 +1,97 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Aktueller Abschluss: Warenkorb-Shop und App/PC am 13. November 2026
+
+**Die technische Shop-Abnahme einschliesslich des produktiven App-/PC-Abgleichs
+ist bestanden.** Der freigegebene Warenkorb-Shop ist mit sechs bestehenden
+Modellen live. Dieser aktuelle Abschluss ersetzt die weiter unten datierten
+historischen Wartepunkte, nicht die weiterhin geltenden Sicherheitsregeln.
+
+Die Betreiberin hat den abschliessenden Lesetest in der Produktions-App
+1.4.0 / Code 8 bestaetigt: Ares mit 20,00 EUR, 18 cm, 8 mm, drei Bildern und
+Bestand 3/0/3. Der PC-/API-/Katalogvergleich aller sechs Modelle ist bereits
+bestanden. Am 13. November um 18:57 UTC erneut ausschliesslich lesend bestaetigt:
+Ares 3/0/3, fuenf weitere Modelle jeweils 4/0/4; CMJ-00000002 confirmed,
+Zahlung succeeded/verified, Bestell- und Betreibermail jeweils einmal sent,
+keine offenen Prueffaelle oder unerledigten Inbox-/Outboxeintraege. Worker und
+Monitor gesund, aktive MySQL-TLS-Sitzungen, Restoreziel leer und Backupstatus ok.
+Letztes Serverbackup 18:18 UTC, letzter bestaetigter Offsiteabruf 18:38 UTC;
+der vollstaendige Restore nach Mengenimport ist im Startnachweis dokumentiert.
+
+main bleibt `54243f1f27ca22df870a163e4989818a459fe82c`, bestehende main-Paket-CI
+success. Produktiver Kaufweg, App und PC-Verwaltung sind geoeffnet;
+Publisher, GitHub-Adapter und automatische Deployments bleiben absichtlich
+deaktiviert. CP-2026-0008/-0009 bleiben ausserhalb des oeffentlichen Katalogs.
+Keine weitere Aktivierung oder Provideraktion ist fuer diesen Abschluss noetig.
+
+Offen im normalen Bestellbetrieb ist der tatsaechliche Versand von
+CMJ-00000002; der Status bleibt bis zur realen Versendung ready.
+Es wird weder eine erfolgte Versendung noch ein Versandmailnachweis behauptet.
+Dies ist keine technische Shopstart-Sperre. Akzeptierte Restrisiken bleiben
+unveraendert: fehlender CA-/Hostidentitaetsnachweis bei zwingend aktiver TLS-
+Sitzung sowie Klarna-/Zustellnachweisrisiko des Maxibriefs ohne Tracking.
+Regulaere Ueberwachung, Offsiteabruf und monatlicher Restoretest bleiben Pflicht.
+
+Nachweise und Betriebshandover:
+[Shopstart-Abnahme](../website/docs/cart-launch-20261113.md#abschliessende-shop-abnahme-und-betriebshandover).
+In diesem Abschluss nur lokale Dokumentation geaendert; keine Produkt-,
+Bestands-, Runtime-, Server- oder Testdatenmutation, kein Commit, Push, Merge
+oder Deployment. Keine erfundenen Ist-Stunden oder erneute Komplettregression
+fuer reine Dokumentationsaenderungen.
+
 ## Erstkauf-Fortsetzung: Klarna-Prueffall am 13. November 2026
 
-Die echte Erstzahlung ueber 22,70 EUR ist bei Stripe bezahlt; Zustimmung,
-Betrag und Snapshots passen. Ein fehlender optionaler Kundenname trotz
-vorhandenen Versandempfaengernamens fuehrte im Worker zu `manual_review`.
-Neue Checkouts sind vorsorglich wieder geschlossen; die Reservierung bleibt
-blockierend, keine zweite Zahlung anfordern. Die Namenszuordnung wird lokal
-eng begrenzt korrigiert und kuenstlich geprueft, anschliessend ueber PR/CI und
-hashgebundene Bereitstellung abgesichert. Zahlungs-/Bestandspruefungen werden
-nicht abgeschwaecht. Erst nach regulaerer Finalisierung, genau einer
-Bestandsabbuchung und Mailnachweis folgen die weiteren fuenf Produkte.
+Die echte Klarna-Erstzahlung ueber 22,70 EUR ist regulaer durch den Worker
+finalisiert: Bestellung CMJ-00000002 bestaetigt, genau eine Ares-Abbuchung,
+Bestand 3/0/3. Bestell- und Betreibermail wurden jeweils einmal gesendet;
+Brevo bestaetigt beide als zugestellt, nicht als vom Menschen gelesen.
+Der fehlende optionale Kundenname bei vorhandenem Versandempfaengernamen
+ist durch die eng begrenzte PR-105-Korrektur behoben. Zahlungs-, Zustimmungs-,
+Snapshot- und Bestandspruefungen bleiben unveraendert. Keine zweite Zahlung.
 Details: [Shopstart-Nachweis](../website/docs/cart-launch-20261113.md).
+
+Nach ausdruecklicher Freigabe ist PR #105 integriert: main
+`54243f1f27ca22df870a163e4989818a459fe82c`. Paket-CI vor und nach dem Merge
+bestanden; nur der private Worker wurde hashgebunden atomar aktualisiert,
+kein Website-Deployment. Der obsolete Prueffall ist am 13. November um
+17:48 UTC kontrolliert open -> investigating -> resolved -> closed;
+drei Auditereignisse kennzeichnen die ausdruecklich autorisierte SSH-Wartung
+ohne nachgebildete Adminidentitaet. Bestellung, Zahlung, Bestand, Mails und
+Versand blieben dabei identisch. Worker anschliessend ohne Fachmutation,
+Monitor wieder gesund. Die Adminoberflaeche zeigt Prueffaelle bisher nur an.
+Danach sind die fuenf weiteren gezaehlten Modelle mit jeweils vier Stueck
+ueber den geprueften Aufrufer atomar importiert und vollstaendig verglichen.
+Ares bleibt 3/0/3; insgesamt sechs Mengeninventare und 23 verfuegbare Stuecke.
+Frisches verschluesseltes Backup nach Import, OneDrive-Abgleich und Restore
+bestanden. Seit 18:02 UTC sind Kaufweg, V5-App-Schreibzugang und die weiterhin
+authentifizierungspflichtige PC-Verwaltung kontrolliert geoeffnet. Publisher
+und automatische Deployments bleiben false. Live-Warenkorb-/CSRF-/CORS-/
+No-Store-Pruefungen bestanden, keine weitere Zahlung oder Reservierung
+ausgeloest. Der Worker meldet ok.
+
+Fortsetzung am 13. November 2026: Der ausdruecklich freigegebene App-Passwortreset
+ist ueber eine geschuetzte lokale Eingabe abgeschlossen; Zugangsdaten wurden
+nicht dokumentiert. Produktdaten, Bilder, Bestände und Runtime blieben erhalten.
+Die produktive PC-Anmeldung und der lesende Abgleich aller sechs Shopartikel
+sind bestanden: Preise, Messwerte, Bilder, Versionen und Mengen stimmen mit
+der autoritativen Quelle, dem Commerce-Lesemodell und dem oeffentlichen Katalog
+ueberein. Alle 16 oeffentlichen Bilder sind bytegleich zur Quelle. Legal v7
+ist approved und an den freigegebenen Inhaltsnachweis gebunden. Der lesende
+Servernachweis um 18:32 UTC bestaetigt aktive TLS-Sitzungen fuer beide Ziele,
+leeres Restoreziel, keine offenen Prueffaelle oder faelligen Arbeitsrueckstaende
+und einen gesunden Monitor. Erneut 18 oeffentliche Seiten sowie sechs
+Live-Produktantworten mit CORS und no-store bestanden.
+
+Sechs gezielte PHP-8.4-Suiten und 42 Node-Pruefungen bestanden. Die signiert
+gepruefte Produktions-App 1.4.0 / Code 8 aus
+[Build 43249178666](https://github.com/Bumpers210/armband-rechner/actions/runs/43249178666)
+hat gegen den aktuellen main-Stand unveraenderten App-/Gradle-/Releasevertrag.
+Dieser CI-Nachweis ersetzt keinen realen Handytest. Der danach angeforderte
+Lesetest wurde anschliessend durch die Betreiberin ausdruecklich bestaetigt:
+Ares korrekt, Bestand 3/0/3. Damit ist auch der zuvor offene geraeteseitige
+App-/PC-Nachweis geschlossen; siehe aktuellen Abschluss oben.
+Keine erneute Bestellung, Veroeffentlichung oder Bestandsaenderung erforderlich.
+Der reale Versand der Erstbestellung bleibt eine separate Betreiberhandlung.
 
 ## Autonomer Veroeffentlichungsauftrag: 13. November 2026
 

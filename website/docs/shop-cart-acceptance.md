@@ -1,6 +1,23 @@
 # Mengenbestand und Warenkorb – Entwicklungs- und Abnahmestand
 
-Stand: 25. Oktober 2026. **In Umsetzung, nicht vollständig abgenommen.**
+## Aktueller Abschluss vom 13. November 2026
+
+**Warenkorb-Erweiterung und technischer Produktions-Shopstart abgenommen.**
+Die nachfolgenden datierten Entwicklungsstaende und damaligen offenen Gates
+bleiben als Historie erhalten. Massgeblich fuer den aktuellen Abschluss ist
+der [Shopstart-Nachweis](cart-launch-20261113.md#abschliessende-shop-abnahme-und-betriebshandover):
+MySQL-/Mengenimport und Restore bestanden, sechs bestehende Modelle kontrolliert
+aktiviert, echte Erstbestellung samt einmaliger Bestandsabbuchung und Mails
+nachgewiesen, PC-Verwaltung gelesen und Produktions-App 1.4.0 / Code 8 durch
+den manuellen Handyabgleich bestaetigt. Erneuter lesender Betriebscheck
+13. November 2026, 18:57 UTC ohne offene Prueffaelle oder Betriebswarnungen.
+Der noch ausstehende reale Versand der Erstbestellung ist eine Betreiberaufgabe,
+kein behaupteter Versandnachweis. Testprodukte, Bestaende und private
+Konfigurationen wurden durch diesen Abschluss nicht veraendert.
+
+Historischer Ausgangsstand: 25. Oktober 2026, damals in Umsetzung und nicht
+vollstaendig abgenommen. Spaetere Belege unten und der aktuelle Startnachweis
+schliessen die damaligen Wartepunkte; Sicherheits- und Wiederanlaufregeln bleiben.
 
 Isolierter Worktree: `G:\BS-Stein-Hart-shop-cart`, Branch
 `codex/shop-inventory-cart`, Basis `68a308a3cbbd9d6ed0d496d115b2582ac7419ef5`.
