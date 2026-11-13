@@ -9,9 +9,15 @@ test("der entfernte Alt-Produktdatensatz und seine Bilder sind nicht mehr vorhan
   const productsPath = path.join(websiteDirectory, "content", "products.json");
   const products = JSON.parse(await readFile(productsPath, "utf8"));
 
-  assert.equal(products.version, 3);
+  assert.equal(products.version, 4);
   assert.equal(Array.isArray(products.products), true);
   assert.equal(JSON.stringify(products).includes("CP-2026-0001"), false);
+  for (const product of products.products) {
+    assert.equal(product.productModelVersion, 4);
+    assert.equal(Object.hasOwn(product, "stock"), false);
+    assert.equal(Object.hasOwn(product, "vintedUrl"), false);
+    assert.equal(["CP-2026-0008", "CP-2026-0009"].includes(product.sku), false);
+  }
 
   for (const fileName of ["01.jpg", "02.jpg"]) {
     await assert.rejects(

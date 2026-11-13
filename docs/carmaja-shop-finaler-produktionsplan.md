@@ -10,14 +10,36 @@ fertige verkaufsfaehige Armbänder (gesamt 24). CP-2026-0008/-0009 bleiben von d
 oeffentlichen Auswahl ausgeschlossen. Eine erforderliche echte Erstzahlung,
 Anmeldung oder andere nicht automatisierbare Benutzereingabe bleibt interaktiv.
 
-Aktuell laeuft die Vorbereitung des isolierten MySQL-/Linux-Nachweises fuer den
-neuen Mengenimportaufrufer. Erst nach bestandenem Nachweis und CI folgen sauberer
-Release, frischer Offsite-/Restorebezug, gebundener Mengenimport und vollstaendiger
-Vergleich. Danach kontrollierte Aktivierung zuerst eines Produkts und Beobachtung.
+Der isolierte MySQL-8-/Linux-Nachweis des Mengenimportaufrufers ist mit 36
+Pruefpunkten bestanden; PR #103 ist nach gruenen aktuellen Checks integriert.
+Basis: `7900bc35715b3f4c77e0ccdf5c2bb5e3d7c3992f`. Auch der erneute vollstaendige
+Paketlauf auf main ist bestanden. Native Row-Locks, Deadlock/Timeout, SIGKILL,
+Wiederanlauf, verschluesselter Restore und Cleanup sind praktisch nachgewiesen.
+
+Das private Werkzeug ist hashgeprueft bereitgestellt. Legal Bundle v7 ist als
+approved registriert und in der Runtime ausgewaehlt; der Browser-Schreibzugang
+ist ausdruecklich false. Alle anderen Zugangsdaten und Einstellungen blieben
+erhalten. Nach frischem verschluesseltem Backup, geprueftem OneDrive-Download
+und echtem Restore im getrennten Ziel wurde ausschliesslich Ares (CP-2026-0002)
+mit vier Stueck atomar importiert und vollstaendig verglichen. Wiederholung
+bestaetigt den bereits abgeschlossenen Import ohne weitere Buchung.
+Produktdateien, Bilder und die uebrigen Bestaende wurden nicht veraendert.
+
+Der lokale Websitekatalog wird nun ausschliesslich fuer die bisherigen sechs
+oeffentlichen Produkte an die autoritativen Modell-4-Versionen und Hashes
+angeglichen. Texte, Preise, Bilder und Verkaufsflags bleiben identisch;
+Bestehende erhalten keine nachtraeglichen Hinweise. CP-2026-0008/-0009 bleiben
+ausgeschlossen. Der lokale Katalogabgleich ist noch kein Website-Deployment.
+
+Naechste Reihenfolge: Katalog-/Website-Regression und PR/CI, kontrolliertes
+Website-Deployment bei geschlossenem Kaufweg, Laufzeit-/Provider-/Legal-Smoke,
+erster kontrollierter Kauf ausschliesslich von Ares, anschliessend die weiteren
+fuenf bestaetigten Mengen und schrittweise Freigabe. Der erste echte Kauf bleibt
+eine Benutzereingabe. Keine pauschale Gesamtabnahme vor diesem Nachweis.
 Die unten dokumentierten frueheren Freigabegrenzen sind historische Staende;
 Produktionssperren bleiben bis zum jeweils bestandenen Aktivierungsgate erhalten.
 
-## Mengenimport vorbereiten: Stand vom 13. November 2026
+## Historische Mengenimport-Vorbereitung vom 13. November 2026
 
 Der zuvor separat freigegebene Modell-4-Umstellungsnachweis ist nach Integration
 von PR #102 abgeschlossen. Die untenstehenden aelteren Restore-/Umstellungs-
