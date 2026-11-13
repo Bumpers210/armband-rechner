@@ -70,7 +70,67 @@ Konfigurationen und Zugangsdaten sind nicht Bestandteil dieser Dokumentation.
   Restorebelege und Rollbacksicherungen bleiben absichtlich erhalten.
   Es wurde kein temporaerer oeffentlicher Diagnoseendpunkt angelegt.
 
-## Offener GitHub-Betriebsblocker
+## GitHub-Zugang erneuert und erste Produktfreigabe
+
+Fortsetzung am 13. November 2026: Der neueste, vom Betreiber bereitgestellte
+Fine-grained Token wurde in einer geschuetzten lokalen Eingabemaske verdeckt
+entgegengenommen. GET, PATCH auf ausschliesslich `false` und erneutes GET der
+Repository-Deployvariable bestanden mit genau diesem Token. Danach erfolgte
+die verschluesselte Ablage im Environment-Secret; dessen neuer Zeitstempel
+wurde bestaetigt. Kein Tokenwert in Datei, Chat, Argumenten oder Repository.
+Die Zeitstempel-Nachpruefung der ersten Eingabemaske hatte einen lokalen
+DateTime-Konvertierungsfehler; der behobene Wiederholungslauf mit dem neuesten
+Token bestand vollstaendig. Keine erneute Eingabe erforderlich.
+
+Die gezielte Wiederholung nur des artefaktfreien Schliessjobs startete kein
+Deployment. GitHub uebersprang ihn wegen des bereits geschlossenen Schalters;
+der Gesamtstatus ist dadurch `success`, **nicht** der Nachweis eines ausgefuehrten
+Resetjobs. Der tatsaechliche Schreibnachweis fuer den neuesten Token ist die
+oben beschriebene direkte API-Pruefung. Der urspruengliche HTTP-401-Lauf bleibt
+als Historie unten erhalten. Produktions-/Testdeploy und Publisher bleiben false.
+
+- Frisches verschluesseltes Backup `20261113T161214Z-fac672b1c97e` erzeugt,
+  OneDrive-Abruf/Dateivergleich/Quittierung bestanden. Eine aeltere lokale
+  Offsitekopie wurde durch die bestehende Aufbewahrungsregel entfernt;
+  eine Rueckholung aus dem OneDrive-Papierkorb wurde nicht geprueft.
+- Echter CLI-Restore: `restored_and_compared`; danach getrenntes Restoreziel
+  und private Entschluesselungsdateien leer. Der Backup-Programmvergleich
+  bestaetigte identischen Code; ausschliesslich CRLF/LF unterschieden sich,
+  kein Programm wurde dafuer ersetzt.
+- 99 autoritative Produkt-/Bilddateien unveraendert, aktive Programmdateien
+  gegen ihren Paketnachweis geprueft. Sechs oeffentliche Modell-4-Projektionen,
+  Versions-/Hash-/Preisbindung, Legal v7, 270 Cent Versand und ausschliesslich
+  Karte/Klarna/SEPA erneut bestaetigt. Stripe-Konto/Webhook und Brevo-Absender
+  ausschliesslich lesend geprueft; Worker gesund.
+- `shopCheckoutEnabled=true` und `productApiV5WritesEnabled=true` atomar
+  bereitgestellt, erst danach den gemeinsamen Wartungsmarker privat
+  rollbackfaehig verschoben. Produkt-/Inventarzeilen waren dabei kurz in
+  stabiler Reihenfolge gesperrt; keine Provideraufrufe unter Row-Locks.
+  Alle anderen Runtimewerte einschliesslich Geheimwerte blieben identisch.
+- Kaufbar ist ausschliesslich Ares CP-2026-0002 mit 4/0/4. Die weiteren fuenf
+  Produkte bleiben ohne Mengenimport nicht kaufbar. Keine Produkt-, Preis-,
+  Bestands- oder Verkaufsflagmutation durch die Aktivierung. Browserverwaltung,
+  Publisher und automatische Deployments bleiben gesperrt. Alte Produkt-
+  Schreibclients werden durch den V5-Versionsvertrag abgewehrt.
+- Live-Warenkorb fuer eine eigene anonyme Pruefsitzung: ein Ares, 2000 Cent
+  Artikelpreis, einmalig 270 Cent Versand, 2270 Cent gesamt, gueltiger
+  Checkoutkontext. Anschliessend ueber die API wieder geleert. Keine Stripe-
+  Session gestartet; kein neuer Checkout, keine Reservierung, Bestellung,
+  Zahlung oder Mail. Normale kurzlebige Sitzungs-/Idempotenzdaten unterliegen
+  ihrer bestehenden Aufbewahrung; fremde Sitzungen bleiben unangetastet.
+- Abschliessender lesender Vollvergleich bestaetigt historische Checkout-,
+  Reservierungs-, Zahlungs-, Bestell-, Inbox- und Outboxinhalte unveraendert,
+  Inventar weiterhin 4/0/4, nur die beiden beabsichtigten Runtimeflags anders,
+  Restoreziel und Runtime-Staging leer. Geschuetzte lokale Eingabemaske samt
+  Statusdatei und Einmal-Aktivierungsskript entfernt; private Nachweise und
+  Rollbackkopien auf dem Server bewusst erhalten.
+
+Sicherer Fortsetzungspunkt: Betreiber bestellt genau ein Ares ueber den echten
+Shop und bezahlt 22,70 EUR. Erst nach Webhook-/Worker-/Bestell-/Bestands-/
+Mailnachweis folgen die weiteren fuenf Mengen und die gesonderte PC-Verwaltung.
+Keine vollstaendige Startabnahme vor dieser notwendigen menschlichen Zahlung.
+
+## Historischer GitHub-Betriebsblocker vor der Erneuerung
 
 Der [Produktionslauf 43406404331](https://github.com/Bumpers210/armband-rechner/actions/runs/43406404331)
 ist insgesamt **nicht erfolgreich**: Nur der abschliessende Job
@@ -111,15 +171,11 @@ Live-Verfuegbarkeit und die separaten Runtime-/Checkoutgates bleiben notwendig.
 
 ## Noch offene Freigabegates
 
-1. Ungueltigen GitHub-Zugang fuer den automatischen Deploygate-Reset erneuern
-   und das Schliessen mit genau diesem Zugang ohne neues Deployment pruefen.
-2. Unmittelbar vor Aktivierung aktuellen Backup-/Restore-/Offsitebezug,
-   Worker und alle unveraenderten Produkt-/Preis-/Legal-/Bestandsgates pruefen.
-3. Begrenzte Aktivierung und kontrollierte echte Ares-Erstbestellung durch die
+1. Kontrollierte echte Ares-Erstbestellung durch die
    Betreiberin; Zahlung, atomare Bestellung/Abbuchung und Bestellmail nachweisen.
-4. Erst danach weitere bestaetigte Mengen mit frischem Versions-/Backup-/
+2. Erst danach weitere bestaetigte Mengen mit frischem Versions-/Backup-/
    Restorebezug importieren, schrittweise freigeben und beobachten.
-5. Gemeinsame App-/PC-Verwaltung gesondert pruefen und kontrolliert oeffnen.
+3. Gemeinsame App-/PC-Verwaltung gesondert pruefen und kontrolliert oeffnen.
    Publisher-/Deploymentautomatik nicht ohne passenden geprueften Vertrag aktivieren.
 
 Bei Preis-, Hash-, Bestands-, Zahlungs- oder Restorewiderspruch neue Checkouts

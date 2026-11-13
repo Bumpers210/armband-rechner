@@ -34,7 +34,7 @@ bereitgestellte Websiteexport stehen auf
 `b3167b9babf27bdc9fa547cfbfcde8d0b3fb8e66`. 236 ausgelieferte Dateien und
 169 Rollbackdateien wurden vollstaendig hashgeprueft, 20 Seiten per HTTPS
 geprueft. Der Serverstatus ist `verified`. Warenkorb-Lesevertrag aktiv,
-Checkout und Produkt-/Browser-Schreibwege weiterhin gesperrt.
+Checkout und Produkt-/Browser-Schreibwege waren dabei weiterhin gesperrt.
 
 Der manuelle Websiteworkflow `43406404331` ist trotz erfolgreichem Build und
 Deployment insgesamt fehlgeschlagen: Der abschliessende automatische
@@ -44,9 +44,26 @@ Finally-Abschluss setzte den Schalter erfolgreich auf false; dies wurde
 anschliessend lesend bestaetigt. Keine offene Deployfreigabe, kein erneuter
 Deployversuch und keine Umdeutung des Gesamtlaufs in einen Erfolg.
 
-Naechste Reihenfolge: benoetigten GitHub-Zugang privat erneuern und Reset ohne
-Deployment nachweisen; aktuelle Backup-/Restore-/Betriebsgates bestaetigen;
-erster kontrollierter Kauf ausschliesslich von Ares; anschliessend die weiteren
+Fortsetzung am selben Tag: Der neueste GitHub-Token wurde verdeckt per lokalem
+Skript erfasst, mit GET/PATCH-false/GET technisch geprueft und verschluesselt
+im richtigen Environment-Secret hinterlegt. Kein Tokenwert gespeichert oder
+ausgegeben. Eine gezielte Wiederholung nur des Schliessjobs wurde wegen des
+bereits falschen Deployschalters uebersprungen; kein erneutes Deployment und
+kein behaupteter Job-Ausfuehrungsnachweis. Alle Deploy-/Publishschalter false.
+
+Frisches Backup `20261113T161214Z-fac672b1c97e`, gepruefter OneDrive-Abruf und
+echter Restore mit vollstaendigem Vergleich bestanden; Restoreziel bereinigt.
+Danach wurden ausschliesslich die Checkout- und V5-App-Schreibgates geoeffnet
+und der Wartungsmarker privat rollbackfaehig verschoben. Alle sonstigen
+Runtimewerte, Produktdaten und Bestaende blieben erhalten. Browserverwaltung
+und Publisher bleiben gesperrt. Kaufbar ist ausschliesslich Ares mit vier
+Stueck; der Live-Pruefwarenkorb ergab 20,00 EUR plus 2,70 EUR Versand und wurde
+wieder geleert. Keine Stripe-Session, Zahlung, Bestellung oder Reservierung
+dabei erzeugt. Die weiteren fuenf Modelle bleiben noch nicht kaufbar.
+
+Naechste Reihenfolge: erster kontrollierter Kauf ausschliesslich von Ares
+durch die Betreiberin (22,70 EUR); serverseitiger Zahlungs-/Bestell-/Bestands-
+und Mailnachweis; anschliessend die weiteren
 fuenf bestaetigten Mengen und schrittweise Freigabe sowie App-/PC-Verwaltung.
 Der erste echte Kauf bleibt eine Benutzereingabe. Keine pauschale Gesamtabnahme
 vor diesem Nachweis. Aktuelle Details und sichere Fortsetzung stehen im
