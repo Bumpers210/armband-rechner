@@ -1,5 +1,151 @@
 # Lokales Produktionspaket: Mengenbestand und Warenkorb
 
+## Aktueller Auftrag und isolierter CI-Nachweis
+
+Am 13. November 2026 wurde die autonome Fortsetzung bis zur Veroeffentlichung
+beauftragt. Vorherige Einzel-Freigabewartepunkte sind damit ersetzt; Restore,
+Hashbindung, Datenvergleich, geschlossene Gates waehrend des Imports und der
+kontrollierte Erstkauf bleiben Pflicht. Noch kein Produktionsimport durch diesen
+lokalen Stand. Bestaetigte Zaehlung: sechs bestehende oeffentliche Modelle mit
+je vier Stueck; keine automatische Aufnahme privater Produkte.
+
+`Inventory caller MySQL Linux proof` verwendet ausschliesslich einen kurzlebigen
+MySQL-8-Container auf einem GitHub-Runner. Der vorhandene isolierte Modell-4-
+Testaufbau wird um ein explizit branchgebundenes Inventory-Szenario erweitert.
+Es benutzt die echten 38 Tabellen, den echten verschluesselten Backup-/Restoreweg,
+native Row-/Range-Locks, Deadlock/Timeout, SIGKILL vor/nach Commit und Wiederanlauf.
+Beide TLS-Verbindungen pruefen die eigens erzeugte Test-CA. Ein nicht-UTC-Server
+prueft die UTC-Normalisierung im Restorecallback. Die Offsitekopie ist hier nur
+eine kuenstliche lokale Kopie, kein behaupteter OneDrive-Nachweis. Container,
+Datenbanken, kurzlebige Schluessel und Dateien werden immer entfernt; allein ein
+geheimwertfreier Ergebnisbericht wird hochgeladen. Ein Testfehler sperrt den
+Produktionsimport, auch wenn lokale DML-Doubles zuvor bestanden haben.
+
+## Gesicherter Mengenimport: lokaler Stand vom 13. November 2026
+
+Isolierter Branch `codex/cart-inventory-caller`, Basis
+`1c770fca788f0feb5dde92fdcdd6624ecbda7060`. Die vorherige Modell-4-Umstellung
+ist abgeschlossen; die vom Betreiber bestaetigte Zaehlung ist noch **keine
+Import-, Entsperrungs- oder Verkaufsfreigabe**. Dieser lokale Schritt liest
+weder Produktions- noch Testserver. Reale Zaehllisten, Produktquellen,
+Verbindungsdaten und Freigabedateien werden nicht ins Repository uebernommen.
+
+### Separates CLI-Artefakt
+
+`scripts/prepare-inventory-count-tool.mjs` erzeugt zwoelf private Programme
+plus `release.json`. Es enthaelt keine Laufzeitkonfiguration, keine Daten,
+keine Freigabe und keine Deploymentaktion. Der neue Aufrufer
+`scripts/inventory-count-production.php` bleibt ausserhalb von API-Routing,
+Worker und automatischen Workflows. Sein spaeterer, separat bereitzustellender
+Pfad ist `/home/www/carmaja-private-shop/inventory-tool/`.
+Ein schmutziger Arbeitsstand ist ausdruecklich kein freigabefaehiger Release.
+
+Der CLI erlaubt nur `preflight`, `apply` oder `inspect`, eine private
+Operationskennung `inventory-...` und den gebundenen Freigabedigest. Kein
+freier Runtime-/Datenbank-/Produktpfad und keine Secrets als Argumente.
+Er startet nur mit PHP 8.4 unter Linux am festen privaten Ort. Fehlerausgaben
+enthalten weder Ausnahmeinhalte, Datenbanknamen, Produkthinhalte noch Secrets.
+
+### Vorbedingungen und Freigabedokumente
+
+Ein gesondert genehmigter privater Vorgang unter
+`/home/www/carmaja-private-production/audit/inventory-.../` bindet:
+
+- `approval.json` (0600): ausdrueckliche Mengenimportfreigabe,
+  `checkoutActivation=false`, `publicationAllowed=false`, erlaubte Aktionen,
+  eindeutiges Ziel, saubere Werkzeugversion und hoechstens 24 Stunden Gueltigkeit;
+- `release.json` und `active-package.json`: exakte Dateimengen und SHA-256,
+  aktive private Programme, oeffentlicher API-Einstieg und Worker;
+- `counts.json`: V3-Importvertrag mit `targetOnHand`, erwarteter Produkt- und
+  Bestandsversion, Quellhash, eindeutiger Operationskennung, Betreiberkennung
+  und Zaehlbestaetigungszeit. Die Datei bleibt `not_approved`, der Restorehash
+  bleibt null. Nur nach separater Freigabe und echtem Restore baut der Aufrufer
+  den bereits vorhandenen Adaptervertrag im Speicher;
+- `source-files.json`, `public-reference.json`, `before-database.json` und
+  `preserved-rows.json`: Originaldateien/Bilder, komplette Entwurfsmenge,
+  ausschliesslich schon oeffentliche ausgewaehlte Produktidentitaeten,
+  Schema-/Inhaltspruefsummen aller Tabellen, nicht ausgewaehlte Zeilen und
+  unveraenderliche historische Audits;
+- unveraenderte Runtime, getrennte Schluesseldatei und Wartungsmarker;
+  vorhandener privater `import.lock`, vorhandene Entwurfssperren und Backuplock.
+
+Alle sieben Produktionssperren und `productBrowserProductionEnabled` bleiben
+false. MySQL 8, InnoDB, UTC, aktive TLS-Sitzung und getrennte Restorekennung
+bleiben Pflicht. Der zuvor genehmigte TLS-Restvorbehalt ohne CA-/Hostnachweis
+bleibt unveraendert; mit bereitgestellter CA wird deren Pruefung erzwungen.
+Keine offenen/unklaren Zahlungen, blockierenden Reservierungen, belegten
+Worker-Leases oder unerledigten Inbox-/Outboxeintraege. Das richtige v7-Bundle
+muss bereits separat als approved registriert sein; dieser Aufrufer registriert
+keine Rechtstexte und veraendert keine Migrationseintraege.
+
+### Ausfuehrung, Vergleich und Wiederanlauf
+
+`preflight` liest nur und verifiziert auch Backupmanifest-HMAC, Ready-Marker,
+Ciphertextgroessen/-hashes und Offsite-Downloadquittierung. Er behauptet keinen
+bereits bestandenen Restore. `apply` fuehrt zuerst den echten bestehenden
+Backup-Restoreweg in einem leeren getrennten Ziel aus, vergleicht Schema,
+Inhalt und Produktdateien mit dem gebundenen Vorherstand und prueft Cleanup.
+Der Restorecallback liest nach ausdruecklicher UTC-Setzung. Backup und Nachweis
+duerfen beim Import nicht aelter als 90 Minuten sein. Ein authentifizierter,
+privater Restorebeleg wird atomar gespeichert; er ist keine Shopfreigabe.
+
+Erst danach beginnt die kurze REPEATABLE-READ-Transaktion, mit einem
+40-Sekunden-Budget und den vorhandenen begrenzten Deadlock-/Timeout-Retries.
+Die zusaetzlichen Guards laufen auf **derselben** Verbindung wie der Import,
+nicht auf einer konkurrierenden Bestands-Lockverbindung. Alle Tabellen werden
+in fester Reihenfolge geprueft und per Row-/Range-Locks gegen Rennen gesichert;
+der bestehende Import verarbeitet Produkte nach Produkt-ID. Restore-, Provider-
+und sonstige externe Aufrufe erfolgen nicht unter diesen SQL-Sperren.
+
+Nur erstmalige Zaehlimpulse mit Bestandsversion 0 sind zulaessig. Vorherige
+Mengen, ausstehende Initialisierungen, abweichende Versionen/Hashes und unklare
+Teilergebnisse blockieren. Projektion, Mengen und Audits werden vollstaendig
+innerhalb derselben Transaktion verglichen, einschliesslich nicht ausgewaehlter
+Produkte, historischer Nachweise und aller anderen Tabellen. Schema bleibt
+identisch; nur ein ggf. weitergelaufener AUTO_INCREMENT-Allokationszaehler
+ist kein Schemaunterschied. Produktdateien, Bilder, Salesflags und Publisher
+werden nicht geschrieben. Erst dann Commit: alle Positionen oder keine.
+
+Nach einem Absturz vor Commit kann derselbe gebundene Aufruf erneut pruefen
+und importieren. Nach Commit erkennt `inspect`/Wiederholung die bestehenden
+Idempotenz- und Auditnachweise und schreibt nichts. Spaeter veraenderte Mengen
+werden nie zurueckgesetzt; der Aufrufer stoppt stattdessen. Fremde Aenderungen,
+auch neue Workerzeitstempel seit dem gebundenen Vorherstand, werden nicht
+stillschweigend ausgeblendet. Dafuer ist gegebenenfalls ein neuer stillstehender
+Vorher-/Backupbezug noetig, niemals eine automatische Lockerung der Pruefung.
+
+### Nachweisgrenze
+
+Lokale PHP-8.4-Protokoll-/Transaktionstests verwenden ausschliesslich neue,
+kuenstliche SQLite-Dateien als DML-Testadapter. Sie pruefen Abbruch, Rollback,
+simulierten Deadlock, Zeitbudget, Wiederholung, unklare Commitgrenze,
+Freigabe-/Versions-/Hashmanipulation, geschlossene Gates, Restorefehler,
+parallele Aenderung zwischen Restore und Import, unveraenderte fremde Zeilen
+und Cleanup. Die beiden neuen Paketsuites pruefen deterministische Dateimenge,
+Kaltstart in frischen Prozessen, fehlende/manipulierte Abhaengigkeiten,
+Standortschutz und geheimewertfreie CLI-Ablehnung.
+
+Lokaler Abschlussnachweis: 213 Callerpruefungen und fuenf neue Paketkaltstart-/
+Negativfaelle bestanden. 46 regulaere PHP-Suites im Sammellauf, bestehender
+Modell-4-Paketkaltstart sowie beide Wartungspaket-/Aktivierungspruefungen
+bestanden. PHP 8.4.23 mit prozesslokalen Erweiterungen; geaenderte PHP-Dateien
+lintfrei. Node 269/272 unter Windows/Git-Bash; die drei unveraenderten,
+Unix-Dateirechte benoetigenden Shellsuites bestanden separat unter WSL/Linux.
+Auch die restliche Deployment-Shellregression bestand dort. Deren optionaler
+PHP-Klickstatistikteil wurde mangels Linux-PHP uebersprungen; die zugehoerige
+PHP-Suite bestand separat unter Windows. Website-Lint, Testexport mit 25 Seiten,
+Diffpruefung und gezielte Geheimwertmustersuche bestanden. Alle kuenstlichen
+Testdatenbanken, Paketkopien und Testreceipts wurden von den Tests bereinigt.
+Keine Android-Aenderung; daher kein neuer Android-Build in diesem Schritt.
+
+**Noch offen:** echter isolierter MySQL-8-/Linux-Test dieses Aufrufers inklusive
+TLS, Row-/Range-Locks, nativer Deadlocks/Timeouts, hartem Prozessabbruch,
+verschluesseltem Backup/Restore und Nachweis mit laufendem Worker. Die lokalen
+Doubles ersetzen diese Abnahme nicht. Danach separat Commit/PR/CI und Integration,
+Freigabe des sauberen privaten Artefakts, aktueller Backup-/Restorebezug sowie
+explizite Freigabe des Mengenimports. Ein Import allein erlaubt weiterhin
+weder Entsperrung noch die Aktivierung aller gezaehlten Produkte.
+
 ## Produktionsverwaltung vorbereitet am 12. November 2026
 
 Der aktuelle Schritt-2-Kandidat ergaenzt drei private Browserprogramme:

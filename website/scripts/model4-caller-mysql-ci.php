@@ -142,7 +142,9 @@ try {
     cp_need(getenv('GITHUB_ACTIONS') === 'true' && getenv('RUNNER_ENVIRONMENT') === 'github-hosted'
         && getenv('RUNNER_OS') === 'Linux' && getenv('GITHUB_REPOSITORY') === 'Bumpers210/armband-rechner'
         && (getenv('GITHUB_REF') === 'refs/heads/codex/cart-model4-preparation' || getenv('GITHUB_HEAD_REF') === 'codex/cart-model4-preparation'
-            || getenv('GITHUB_REF') === 'refs/heads/codex/model4-restore-utc' || getenv('GITHUB_HEAD_REF') === 'codex/model4-restore-utc')
+            || getenv('GITHUB_REF') === 'refs/heads/codex/model4-restore-utc' || getenv('GITHUB_HEAD_REF') === 'codex/model4-restore-utc'
+            || (getenv('CMJ_CI_SCENARIO') === 'inventory' && (getenv('GITHUB_REF') === 'refs/heads/codex/cart-inventory-caller'
+                || getenv('GITHUB_HEAD_REF') === 'codex/cart-inventory-caller')))
         && preg_match('/^[a-f0-9]{40}$/D', (string)getenv('GITHUB_SHA')) === 1
         && preg_match('/^[0-9]+$/D', (string)getenv('GITHUB_RUN_ID')) === 1
         && preg_match('/^[0-9]+$/D', (string)getenv('GITHUB_RUN_ATTEMPT')) === 1, 'isolated_github_only');
@@ -178,6 +180,10 @@ try {
         cp_need($base[$prefix.'Dsn'] === "mysql:host=127.0.0.1;port=13306;dbname=$db;charset=utf8mb4", 'loopback_only');
     }
     $source = cmj_m4p_connect($base); $restore = cmj_m4p_connect($base,true);
+    if (getenv('CMJ_CI_SCENARIO') === 'inventory') {
+        require __DIR__ . '/inventory-caller-mysql-ci.php';
+        exit;
+    }
     if ($mode === 'crash-child') {
         cp_need(preg_match('/^crash-[0-9]+$/D', $argv[2] ?? '') === 1, 'child_case');
         $ff = json_decode(file_get_contents($root.'/'.$argv[2].'/fixture.json'), true,128,JSON_THROW_ON_ERROR);

@@ -1,0 +1,74 @@
+name: Inventory caller MySQL Linux proof
+
+on:
+  push:
+    branches: [codex/cart-inventory-caller]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'website/scripts/*inventory*'
+      - 'website/scripts/model4-caller*'
+      - 'website/test-api-private/program/production-cart-cutover.php'
+      - 'website/tests/php/inventory-*'
+      - 'website/tests/node/inventory-*'
+      - '.github/workflows/inventory-caller-mysql.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: inventory-proof-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  isolated-inventory-proof:
+    if: github.repository == 'Bumpers210/armband-rechner' && (github.ref == 'refs/heads/codex/cart-inventory-caller' || github.head_ref == 'codex/cart-inventory-caller')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CMJ_CI_SCENARIO: inventory
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.16.0'
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, pdo_sqlite, sodium, zlib, mbstring, gd, exif, curl, openssl, intl, pcntl, posix
+          coverage: none
+      - name: Local contracts and clean code packages
+        run: |
+          set -euo pipefail
+          npm ci --prefix website --ignore-scripts
+          test -z "$(git status --porcelain)"
+          node website/scripts/prepare-product-model4-tool.mjs "$RUNNER_TEMP/model4-tool"
+          node website/scripts/prepare-production-cart-package.mjs build "$RUNNER_TEMP/cart-package"
+          node website/scripts/prepare-inventory-count-tool.mjs "$RUNNER_TEMP/inventory-tool"
+          php -l website/scripts/inventory-caller-mysql-ci.php
+          php -l website/scripts/model4-caller-mysql-ci.php
+          bash -n website/scripts/model4-caller-mysql-ci.sh
+          php website/tests/php/inventory-count-production-test.php
+          php website/tests/php/inventory-count-package-start-test.php
+          node --test website/tests/node/inventory-count-tool.test.mjs website/tests/node/inventory-caller-mysql-workflow.test.mjs
+          git diff --check
+      - name: Install disposable runner dump and restore clients
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y mariadb-client
+          test -x /usr/bin/mysqldump && test -x /usr/bin/mysql
+      - name: Native TLS MySQL inventory, crash, retry and restore proof
+        run: bash website/scripts/model4-caller-mysql-ci.sh run
+      - name: Always remove owned ephemeral resources
+        if: always()
+        run: bash website/scripts/model4-caller-mysql-ci.sh cleanup
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Inventory-MySQL8-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/model4-caller-report.json
+          if-no-files-found: error
+          retention-days: 14

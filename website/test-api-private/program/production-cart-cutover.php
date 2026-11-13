@@ -154,7 +154,7 @@ final class CarmajaCartCutover
     }
 
     /** Caller holds the private maintenance lock, with app/publisher writes off. */
-    public static function importCounts(PDO $pdo, array $config, array $manifest, array $products, array $release): array
+    public static function importCounts(PDO $pdo, array $config, array $manifest, array $products, array $release, ?Closure $guard = null): array
     {
         self::require(!$pdo->inTransaction(), 'unexpected_transaction');
         self::requireMaintenance($config);
@@ -163,7 +163,11 @@ final class CarmajaCartCutover
         self::assertJournal($pdo, $release, true);
         self::assertDrained($pdo);
         $commerce = new CarmajaCartCommerce($pdo);
-        return $commerce->transaction(static function () use ($pdo, $commerce, $plan, $manifest): array {
+        return $commerce->transaction(static function () use ($pdo, $commerce, $plan, $manifest, $guard): array {
+            // Optional private caller guard uses THIS transaction/connection. No
+            // provider/backup I/O, independent inventory lock connection or commit.
+            // It is repeated in full after a deadlock/timeout rollback.
+            if ($guard !== null) $guard('before_import', $pdo);
             $legal = $pdo->prepare('SELECT status,bundle_hash FROM legal_bundles WHERE legal_bundle_id=? FOR UPDATE');
             $legal->execute([self::LEGAL_ID]); $bundle = $legal->fetch(PDO::FETCH_ASSOC);
             self::require(is_array($bundle) && $bundle['status'] === 'approved'
@@ -181,6 +185,7 @@ final class CarmajaCartCutover
                 // authoritative data writes or automatic checkout activation.
                 $result[] = $commerce->adjustInventory($adjustment, $manifest['actorId']);
             }
+            if ($guard !== null) $guard('before_commit', $pdo);
             return ['importedProducts' => count($result), 'checkoutActivation' => false];
         });
     }
