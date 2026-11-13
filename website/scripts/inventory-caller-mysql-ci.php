@@ -51,7 +51,7 @@ function ip_fixture(string $root, string $name, array $base, PDO $db): array
     $config = $f['config']; $config['productBrowserProductionEnabled'] = false;
     $config['backupEncryptionKeyFile'] = $paths['shop'] . '/config/backup-key.php';
     cp_write($config['backupEncryptionKeyFile'], '<?php return ' . var_export([
-        'backupEncryptionKey'=>$config['backupEncryptionKey'],'backupEncryptionKeyId'=>$config['backupEncryptionKeyId']], true) . ';');
+        'key'=>$config['backupEncryptionKey'],'keyId'=>$config['backupEncryptionKeyId']], true) . ';');
     $raw = $config; unset($raw['backupEncryptionKey']);
     cp_write($paths['runtime'], '<?php return ' . var_export($raw, true) . ';');
     cp_need(CarmajaProductionBackup::loadRuntime($paths['runtime'])['backupEncryptionKey'] === $config['backupEncryptionKey'], 'private_key_file_loaded');
