@@ -171,6 +171,31 @@ Live-Verfuegbarkeit und die separaten Runtime-/Checkoutgates bleiben notwendig.
 
 ## Noch offene Freigabegates
 
+### Erstzahlung: abgesicherte Klarna-Korrektur
+
+Die Betreiberin hat den kontrollierten Erstkauf abgeschlossen. Der lesende
+Providerabgleich bestaetigt eine echte Klarna-Zahlung von 2270 Cent, bezahlte
+Session, erfolgreichen PaymentIntent, AGB-Zustimmung und passende Checkout-/
+Snapshot-/Legal-Bindung. Der Worker stellte den Vorgang jedoch mit
+`cart_payment_verification_failed` in `manual_review`: Stripe lieferte einen
+Versandempfaengernamen, aber keinen optionalen Kunden-/Rechnungsnamen.
+Neue Checkouts wurden daraufhin atomar geschlossen; alle anderen Runtimewerte
+blieben identisch. Ein Stueck bleibt sicher reserviert, noch keine neue
+Bestellung oder Mail. Kein erneuter Kauf und keine zweite Zahlung erforderlich.
+
+Die eng begrenzte Worker-Korrektur nutzt bei fehlendem/leerem Kundennamen den
+von Stripe erfassten Versandempfaengernamen als Anzeigebezeichnung, nicht als
+Nachweis einer abweichenden Zahleridentitaet. Vorhandene Kundennamen bleiben
+vorrangig; fehlerhafte Datentypen werden nicht kaschiert. Keine erfundenen Namen,
+keine Ersetzung fehlender Lieferadressen durch Rechnungsadressen. Betrag,
+Zustimmung, Snapshot, Bestand und alle Finalisierungsgates bleiben unveraendert.
+
+Lokale PHP-8.4-Mappingregression: 34 Pruefungen; Stripe-, Warenkorb-,
+Transaktions-, SEPA- und Commerce-Suiten bestanden. 57 relevante Node-Pruefungen
+und Diffpruefung bestanden. CI, hashgebundene Bereitstellung und die erneute
+regulaere Zahlungsfinalisierung stehen fuer diesen Korrekturstand noch aus.
+Der Erstkauf gilt bis zum Bestell-/Bestands-/Mailnachweis nicht als abgenommen.
+
 1. Kontrollierte echte Ares-Erstbestellung durch die
    Betreiberin; Zahlung, atomare Bestellung/Abbuchung und Bestellmail nachweisen.
 2. Erst danach weitere bestaetigte Mengen mit frischem Versions-/Backup-/

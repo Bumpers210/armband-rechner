@@ -1,5 +1,18 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Erstkauf-Fortsetzung: Klarna-Prueffall am 13. November 2026
+
+Die echte Erstzahlung ueber 22,70 EUR ist bei Stripe bezahlt; Zustimmung,
+Betrag und Snapshots passen. Ein fehlender optionaler Kundenname trotz
+vorhandenen Versandempfaengernamens fuehrte im Worker zu `manual_review`.
+Neue Checkouts sind vorsorglich wieder geschlossen; die Reservierung bleibt
+blockierend, keine zweite Zahlung anfordern. Die Namenszuordnung wird lokal
+eng begrenzt korrigiert und kuenstlich geprueft, anschliessend ueber PR/CI und
+hashgebundene Bereitstellung abgesichert. Zahlungs-/Bestandspruefungen werden
+nicht abgeschwaecht. Erst nach regulaerer Finalisierung, genau einer
+Bestandsabbuchung und Mailnachweis folgen die weiteren fuenf Produkte.
+Details: [Shopstart-Nachweis](../website/docs/cart-launch-20261113.md).
+
 ## Autonomer Veroeffentlichungsauftrag: 13. November 2026
 
 Der Betreiber hat die weiteren Schritte bis zur Veroeffentlichung beauftragt.

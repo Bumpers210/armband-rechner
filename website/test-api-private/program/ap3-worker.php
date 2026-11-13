@@ -260,6 +260,14 @@ final class CarmajaAp3Worker
         // snapshots, but never substitute billing for a missing shipping address.
         $shipping = $session['collected_information']['shipping_details']
             ?? $session['shipping_details'] ?? [];
+        // Some completed Klarna sessions omit the optional billing/customer
+        // name. Use the provider-collected recipient name for display only;
+        // do not invent a payer identity or change either address snapshot.
+        $customerName = $session['customer_details']['name'] ?? null;
+        if ($customerName === null || (is_string($customerName) && trim($customerName) === '')) {
+            $recipientName = $shipping['name'] ?? null;
+            $customerName = is_string($recipientName) && trim($recipientName) !== '' ? $recipientName : null;
+        }
 
         return [
             'checkoutId' => (string) ($metadata['checkoutId'] ?? $fallbackCheckoutId ?? ''),
@@ -273,7 +281,7 @@ final class CarmajaAp3Worker
             'legalBundleId' => $metadata['legalBundleId'] ?? null,
             'termsAccepted' => ($session['consent']['terms_of_service'] ?? null) === 'accepted',
             'customerEmail' => $session['customer_details']['email'] ?? null,
-            'customerName' => $session['customer_details']['name'] ?? null,
+            'customerName' => $customerName,
             'shippingAddress' => $shipping['address'] ?? [],
             'billingAddress' => $session['customer_details']['address'] ?? null,
             'stripePaymentIntentId' => $paymentIntentId,
