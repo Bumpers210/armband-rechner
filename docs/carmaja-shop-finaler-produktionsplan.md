@@ -1,5 +1,53 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Autonomer Veroeffentlichungsauftrag: 13. November 2026
+
+Der Betreiber hat die weiteren Schritte bis zur Veroeffentlichung beauftragt.
+Das ersetzt die bisherigen einzelnen Wartepunkte fuer Commit, Push, Integration
+und kontrollierte Bereitstellung, **nicht** die technischen Sicherheitsgates.
+Die bestaetigte Zaehlung lautet fuer CP-2026-0002 bis CP-2026-0007 jeweils vier
+fertige verkaufsfaehige Armbänder (gesamt 24). CP-2026-0008/-0009 bleiben von der
+oeffentlichen Auswahl ausgeschlossen. Eine erforderliche echte Erstzahlung,
+Anmeldung oder andere nicht automatisierbare Benutzereingabe bleibt interaktiv.
+
+Aktuell laeuft die Vorbereitung des isolierten MySQL-/Linux-Nachweises fuer den
+neuen Mengenimportaufrufer. Erst nach bestandenem Nachweis und CI folgen sauberer
+Release, frischer Offsite-/Restorebezug, gebundener Mengenimport und vollstaendiger
+Vergleich. Danach kontrollierte Aktivierung zuerst eines Produkts und Beobachtung.
+Die unten dokumentierten frueheren Freigabegrenzen sind historische Staende;
+Produktionssperren bleiben bis zum jeweils bestandenen Aktivierungsgate erhalten.
+
+## Mengenimport vorbereiten: Stand vom 13. November 2026
+
+Der zuvor separat freigegebene Modell-4-Umstellungsnachweis ist nach Integration
+von PR #102 abgeschlossen. Die untenstehenden aelteren Restore-/Umstellungs-
+Blocker sind historische Zustaende. Aktuelle lokale Basis:
+`1c770fca788f0feb5dde92fdcdd6624ecbda7060`. Die Bestandszaehlung wurde vom
+Betreiber bestaetigt, aber noch nicht importiert. Daraus folgt keine Verkaufs-
+oder Cutoverfreigabe; private Konfigurationen und bestehende Sperren bleiben.
+
+Der isolierte Branch `codex/cart-inventory-caller` ergaenzt einen privaten,
+datei-/versions-/hashgebundenen Mengenimportaufrufer. Er verlangt eine eigene
+Freigabe, unveraenderte Produktquellen, geschlossene Produktions-/Browsergates,
+freigegebenes v7-Bundle, leere Arbeitswarteschlangen sowie einen aktuellen
+Offsite-/Restorebeleg. Alle Mengen und Audits werden atomar importiert und
+vor Commit vollstaendig verglichen. Wiederholungen buchen nicht erneut.
+Keine HTTP-Route, kein automatisches Deployment und keine Shopaktivierung.
+
+Vertrag, lokale Nachweise und Grenzen stehen im
+[Produktionspaket](../website/docs/cart-production-package.md#gesicherter-mengenimport-lokaler-stand-vom-13-november-2026).
+Der echte MySQL-8-/Linux-Nachweis des neuen Aufrufers bleibt offen; vorherige
+Modell-4- oder Warenkorbtests gelten nicht als Ersatz. Keine Produktions-
+oder Testserveraktion in diesem lokalen Arbeitsschritt, kein Commit/Push/Merge.
+
+Naechste Reihenfolge: isolierter MySQL-/Crash-/Restoretest, gesonderte
+Commit-/PR-/CI- und Integrationsfreigabe, sauberes privates Werkzeug,
+v7-Registrierung und aktueller gebundener Backup-/Restorevorflug, ausdruecklich
+freigegebener Mengenimport mit Vergleich, danach erst gesonderter kontrollierter
+Shopstart mit einem Produkt und schrittweiser Erweiterung. CP-2026-0008/-0009
+werden nicht automatisch oeffentlich hinzugefuegt. Keine erfundenen
+Ist-Stunden oder garantierten Termine; offene externe Gates bestimmen den Termin.
+
 ## Restorevergleich: UTC-Korrektur vom 13. November 2026
 
 PR #101 ist nach main integriert (`94cb6b2b7fb88d6cc1aecd6da17275ee387cc205`).

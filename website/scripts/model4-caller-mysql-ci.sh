@@ -7,7 +7,8 @@ test "${RUNNER_ENVIRONMENT:-}" = github-hosted
 test "${RUNNER_OS:-}" = Linux
 test "${GITHUB_REPOSITORY:-}" = Bumpers210/armband-rechner
 test "${GITHUB_REF:-}" = refs/heads/codex/cart-model4-preparation || test "${GITHUB_HEAD_REF:-}" = codex/cart-model4-preparation ||
-  test "${GITHUB_REF:-}" = refs/heads/codex/model4-restore-utc || test "${GITHUB_HEAD_REF:-}" = codex/model4-restore-utc
+  test "${GITHUB_REF:-}" = refs/heads/codex/model4-restore-utc || test "${GITHUB_HEAD_REF:-}" = codex/model4-restore-utc ||
+  { test "${CMJ_CI_SCENARIO:-}" = inventory && { test "${GITHUB_REF:-}" = refs/heads/codex/cart-inventory-caller || test "${GITHUB_HEAD_REF:-}" = codex/cart-inventory-caller; }; }
 [[ "${GITHUB_SHA:-}" =~ ^[a-f0-9]{40}$ ]]
 [[ "${GITHUB_RUN_ID:-}" =~ ^[0-9]+$ && "${GITHUB_RUN_ATTEMPT:-}" =~ ^[0-9]+$ ]]
 root="$RUNNER_TEMP/model4-caller-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
