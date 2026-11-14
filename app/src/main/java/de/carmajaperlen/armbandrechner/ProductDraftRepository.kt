@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
+import android.util.AtomicFile
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.math.BigDecimal
@@ -28,10 +29,13 @@ class ProductDraftRepository(
         clearTemporaryImages()
         draftsDirectory.mkdirs()
         draftsDirectory
-            .listFiles { file -> file.extension == "json" }
+            .listFiles { file -> !file.name.startsWith(".") &&
+                (file.extension == "json" || file.name.endsWith(".json.bak")) }
             .orEmpty()
+            .map { if (it.name.endsWith(".bak")) File(it.parentFile, it.name.removeSuffix(".bak")) else it }
+            .distinctBy { it.name }
             .mapNotNull { file ->
-                runCatching { decodeDraft(JSONObject(file.readText())) }.getOrNull()
+                runCatching { decodeDraft(JSONObject(AtomicFile(file).readFully().toString(Charsets.UTF_8))) }.getOrNull()
             }
             .sortedByDescending { it.updatedAtMillis }
     }
@@ -39,18 +43,65 @@ class ProductDraftRepository(
     suspend fun saveDraft(draft: ProductDraft): ProductDraft = withContext(Dispatchers.IO) {
         draftsDirectory.mkdirs()
         val updated = promoteTemporaryImages(draft).copy(updatedAtMillis = currentTimeMillis())
-        draftFile(updated.draftId).writeText(encodeDraft(updated).toString(2))
+        val atomic = AtomicFile(draftFile(updated.draftId))
+        val output = atomic.startWrite()
+        try {
+            output.write(encodeDraft(updated).toString(2).toByteArray(Charsets.UTF_8))
+            atomic.finishWrite(output)
+        } catch (error: Throwable) {
+            atomic.failWrite(output)
+            throw error
+        }
         updated
     }
 
     suspend fun importServerDraft(
         update: ProductServerUpdate,
         imagePayloads: Map<String, ByteArray>,
+    ): ProductDraft = writeServerDraft(update, imagePayloads, null)
+
+    internal suspend fun replaceWithReviewedServerDraft(
+        local: ProductDraft,
+        update: ProductServerUpdate,
+        imagePayloads: Map<String, ByteArray>,
+    ): ProductDraft {
+        require(local.draftId == update.draftId)
+        return writeServerDraft(update, imagePayloads, local)
+    }
+
+    /** Private, durable recovery copy; no new product ID and no automatic upload. */
+    internal suspend fun preserveConflictDraft(draft: ProductDraft) = withContext(Dispatchers.IO) {
+        val directory = File(context.filesDir, "product-conflicts/${draft.draftId}")
+        check(directory.mkdirs() || directory.isDirectory)
+        val id = UUID.randomUUID().toString()
+        val staged = File(directory, ".$id")
+        val target = File(directory, id)
+        check(staged.mkdir())
+        try {
+            val images = draft.images.mapIndexed { index, image ->
+                val source = File(image.localPath)
+                require(source.isFile) { "Lokales Bild fehlt; der Entwurf wurde nicht ersetzt." }
+                val fileName = "%02d.jpg".format(index + 1)
+                source.copyTo(File(staged, fileName), overwrite = false)
+                image.copy(localPath = File(target, fileName).absolutePath)
+            }
+            File(staged, "draft.json").writeText(encodeDraft(draft.copy(images = images)).toString(2))
+            check(staged.renameTo(target)) { "Lokale Sicherung fehlgeschlagen; Entwurf bleibt unverändert." }
+        } catch (error: Throwable) {
+            staged.deleteRecursively()
+            throw error
+        }
+    }
+
+    private suspend fun writeServerDraft(
+        update: ProductServerUpdate,
+        imagePayloads: Map<String, ByteArray>,
+        previous: ProductDraft?,
     ): ProductDraft = withContext(Dispatchers.IO) {
         draftsDirectory.mkdirs()
         imagesDirectory.mkdirs()
         val existingDraftFile = draftFile(update.draftId)
-        if (existingDraftFile.isFile) {
+        if (existingDraftFile.isFile && previous == null) {
             return@withContext decodeDraft(JSONObject(existingDraftFile.readText()))
         }
 
@@ -68,11 +119,9 @@ class ProductDraftRepository(
         }
 
         val stagingDirectory = File(imagesDirectory, ".${update.draftId}-${UUID.randomUUID()}")
-        val targetDirectory = File(imagesDirectory, update.draftId)
-        val temporaryDraftFile = File(
-            draftsDirectory,
-            ".${update.draftId}-${UUID.randomUUID()}.json",
-        )
+        // Never overwrite existing local image files, including those in recovery copies.
+        val targetDirectory = File(imagesDirectory, if (previous == null) update.draftId
+            else "${update.draftId}-server-${UUID.randomUUID()}")
         var promotedImages = false
         try {
             require(!targetDirectory.exists()) {
@@ -143,7 +192,7 @@ class ProductDraftRepository(
                 priceMinor = update.priceMinor,
                 currency = update.currency.lowercase(),
                 salesEnabled = update.salesEnabled,
-                internalCalculation = CalculationSnapshot(
+                internalCalculation = previous?.internalCalculation ?: CalculationSnapshot(
                     quantities = emptyMap(),
                     workMinutes = "0",
                     hourlyRate = "0",
@@ -159,17 +208,23 @@ class ProductDraftRepository(
                     createdAtMillis = now,
                 ),
                 images = images,
-                createdAtMillis = now,
+                createdAtMillis = previous?.createdAtMillis ?: now,
                 updatedAtMillis = now,
                 serverUpdatedAt = update.updatedAt,
+                pendingInitialOnHand = previous?.pendingInitialOnHand,
+                pendingInitialInventoryOperationId = previous?.pendingInitialInventoryOperationId,
             )
-            temporaryDraftFile.writeText(encodeDraft(imported).toString(2))
-            check(temporaryDraftFile.renameTo(existingDraftFile)) {
-                "Kollektion konnte nicht atomar gespeichert werden."
+            val atomic = AtomicFile(existingDraftFile)
+            val output = atomic.startWrite()
+            try {
+                output.write(encodeDraft(imported).toString(2).toByteArray(Charsets.UTF_8))
+                atomic.finishWrite(output)
+            } catch (error: Throwable) {
+                atomic.failWrite(output)
+                throw error
             }
             imported
         } catch (error: Throwable) {
-            temporaryDraftFile.delete()
             stagingDirectory.deleteRecursively()
             if (promotedImages) targetDirectory.deleteRecursively()
             throw error

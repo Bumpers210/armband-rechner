@@ -72,6 +72,9 @@ data class ProductUiActions(
     val onLogin: () -> Unit = {},
     val onLogout: () -> Unit = {},
     val onRefreshProducts: () -> Unit = {},
+    val onCompareServer: () -> Unit = {},
+    val onDismissConflict: () -> Unit = {},
+    val onResolveConflict: (ProductConflictChoice) -> Unit = {},
     val onEdit: () -> Unit = {},
     val onArchive: () -> Unit = {},
     val onRestore: () -> Unit = {},
@@ -309,6 +312,12 @@ internal fun ProductManagementSection(
         val draft = state.selectedDraft
         val editor = state.selectedEditor
         if (draft != null && editor != null) {
+            if (draft.productVersion > 0 || draft.version > 0) {
+                OutlinedButton(onClick = actions.onCompareServer, enabled = !state.busy,
+                    modifier = Modifier.fillMaxWidth().testTag("compare-server-product")) {
+                    Text("Serverstand vergleichen")
+                }
+            }
             key("inventory-" + draft.draftId) {
                 var target by remember { mutableStateOf("") }
                 Text("Bestand (separat von Produktdaten)", fontWeight = FontWeight.Bold)
@@ -1033,7 +1042,7 @@ internal fun ProductPublicationPreviewScreen(
                 )
             },
             text = if (confirmation == null) {
-                { Text("$error\n\nDer Ausgang ist nicht bestätigt. Bitte prüfe die Verbindung oder den Serverstand, bevor du es erneut versuchst.") }
+                { Text(publicationFailureMessage(error.orEmpty())) }
             } else null,
             confirmButton = {
                 TextButton(onClick = acknowledge, modifier = Modifier.testTag("publication-feedback-confirm")) {

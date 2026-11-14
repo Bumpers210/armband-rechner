@@ -282,7 +282,7 @@ open class ProductApiClient {
                 "source_hash_missing",
                 message = "Kollektion muss vor dieser Aktion vollständig synchronisiert sein.",
             )
-        val response = requestJson(
+        val response = try { requestJson(
             baseUrl = baseUrl,
             path = "v5/products/${draft.draftId}/$action",
             method = "POST",
@@ -292,7 +292,10 @@ open class ProductApiClient {
                 .put("expectedSourceHash", sourceHash)
                 .put("operationId", operationId),
             headers = mapOf(APP_VERSION_CODE_HEADER to BuildConfig.VERSION_CODE.toString()),
-        )
+        ) } catch (conflict: ProductConflictException) {
+            if (conflict.errorCode !in setOf("product_version_conflict", "version_conflict", "source_hash_conflict")) throw conflict
+            throw ProductSynchronizationConflictException(draft, getDraft(baseUrl, token, draft.draftId), conflict)
+        }
         val publication = response.getJSONObject("publication")
         val product = response.getJSONObject("product").toServerUpdate()
         return PublishResult(

@@ -101,6 +101,9 @@ class MainActivity : ComponentActivity() {
                     onLogin = productViewModel::login,
                     onLogout = productViewModel::logout,
                     onRefreshProducts = productViewModel::refreshServerProducts,
+                    onCompareServer = productViewModel::compareSelectedWithServer,
+                    onDismissConflict = productViewModel::dismissConflictReview,
+                    onResolveConflict = productViewModel::resolveConflict,
                     onEdit = productViewModel::beginEditingSelected,
                     onArchive = productViewModel::archiveSelected,
                     onRestore = productViewModel::restoreSelected,
@@ -152,6 +155,9 @@ class MainActivity : ComponentActivity() {
                     onMessageShown = productViewModel::consumeMessage,
                 )
                 if (productState.authenticated) {
+                    productState.conflictReview?.let { review ->
+                        ProductConflictDialog(review, productState.busy, productActions)
+                    }
                     val preview = productState.publicationPreview
                     if (preview != null) {
                         ProductPublicationPreviewScreen(
