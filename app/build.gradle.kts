@@ -6,8 +6,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val productionVersionCode = 8
-val productionVersionName = "1.4.0"
+val productionVersionCode = 9
+val productionVersionName = "1.4.1"
 val betaVersionCode = 13
 val betaVersionName = "1.4.0-beta.4"
 val betaApplicationId = "de.steinhart.armbandrechner.test"
