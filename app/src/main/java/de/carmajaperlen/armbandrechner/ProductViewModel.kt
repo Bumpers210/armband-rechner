@@ -32,6 +32,7 @@ data class ProductUiState(
     val error: String? = null,
     val fieldErrors: Map<String, String> = emptyMap(),
     val conflict: ProductSyncConflictState? = null,
+    val conflictReview: ProductConflictReview? = null,
     val publicationPreview: ProductDraft? = null,
     val publicationConfirmation: String? = null,
     val inventory: ProductInventory? = null,
@@ -298,10 +299,67 @@ class ProductViewModel(
             val imported = importMissingServerProducts()
             _uiState.value = _uiState.value.copy(
                 message = if (imported == 0) {
-                    "Alle Server-Kollektionen sind bereits auf diesem Gerät vorhanden."
+                    "Alle Artikel sind vorhanden. Lokale Entwürfe bleiben unverändert; nutze am Artikel ‚Serverstand vergleichen‘."
                 } else {
                     "$imported Kollektion(en) vom Server geladen."
                 },
+            )
+        }
+    }
+
+    fun compareSelectedWithServer() {
+        val draft = selectedDraftSnapshot() ?: return
+        runBusy {
+            val server = withContext(Dispatchers.IO) {
+                apiClient.getDraft(requireBaseUrl(), requireToken(), draft.draftId)
+            }
+            _uiState.value = _uiState.value.copy(conflictReview = ProductConflictReview(draft, server))
+        }
+    }
+
+    fun dismissConflictReview() {
+        if (_uiState.value.busy) return
+        _uiState.value = _uiState.value.copy(conflictReview = null, error = null)
+    }
+
+    fun resolveConflict(choice: ProductConflictChoice) {
+        val review = _uiState.value.conflictReview ?: return
+        val current = selectedDraftSnapshot() ?: return
+        if (current != review.local) {
+            _uiState.value = _uiState.value.copy(
+                conflictReview = null,
+                error = "Der lokale Entwurf wurde geändert. Bitte den Serverstand erneut vergleichen.",
+            )
+            return
+        }
+        runBusy {
+            val resolver = ProductConflictResolver(
+                readServer = { id -> withContext(Dispatchers.IO) {
+                    apiClient.getDraft(requireBaseUrl(), requireToken(), id)
+                } },
+                preserveLocal = { repository.preserveConflictDraft(it) },
+                loadServerLocally = { local, server ->
+                    val images = withContext(Dispatchers.IO) {
+                        server.images.associate { image -> image.imageId to apiClient.downloadImage(
+                            requireBaseUrl(), requireToken(), server.draftId, image.imageId,
+                        ) }
+                    }
+                    repository.replaceWithReviewedServerDraft(local, server, images)
+                },
+                saveLocal = { repository.saveDraft(it) },
+            )
+            val resolved = resolver.resolve(review, choice)
+            markSavedAndReplace(resolved)
+            _uiState.value = _uiState.value.copy(
+                conflict = null, conflictReview = null, publicationPreview = null,
+                publicationConfirmation = null, fieldErrors = emptyMap(),
+                editingDraftId = resolved.draftId,
+                message = "Lokale Fassung mit Bildern gesichert. " +
+                    if (choice == ProductConflictChoice.LoadServer) {
+                        "Serverstand geladen. Es wurde nichts hochgeladen oder veröffentlicht."
+                    } else {
+                        "Eigene Fassung zur Bearbeitung behalten. Bitte vor dem Speichern alle Felder prüfen. Es wurde nichts hochgeladen."
+                    },
             )
         }
     }
@@ -325,6 +383,7 @@ class ProductViewModel(
             error = null,
             fieldErrors = emptyMap(),
             conflict = null,
+            conflictReview = null,
         )
     }
 
@@ -723,6 +782,9 @@ class ProductViewModel(
                         .orEmpty()
                     val conflict = (error as? ProductSynchronizationConflictException)
                         ?.toState()
+                    val review = (error as? ProductSynchronizationConflictException)
+                        ?.takeIf { it.errorCode in setOf("product_version_conflict", "version_conflict", "source_hash_conflict") }
+                        ?.let { ProductConflictReview(it.localDraft, it.serverUpdate) }
                     _uiState.value = _uiState.value.copy(
                         error = readableError(error),
                         busy = false,
@@ -732,6 +794,8 @@ class ProductViewModel(
                             _uiState.value.authenticated
                         },
                         conflict = conflict ?: _uiState.value.conflict,
+                        conflictReview = if (authenticationFailed) null else review ?: _uiState.value.conflictReview,
+                        publicationPreview = if (review != null) null else _uiState.value.publicationPreview,
                         fieldErrors = if (fieldErrors.isEmpty()) {
                             _uiState.value.fieldErrors
                         } else {
@@ -749,7 +813,7 @@ class ProductViewModel(
         return when (error) {
             is ProductSynchronizationConflictException ->
                 "HTTP 409 · ${error.errorCode}: ${error.message} " +
-                    "Serverversion ${error.serverUpdate.version}; lokaler Entwurf bleibt erhalten."
+                    "Produktversion auf dem Server: ${error.serverUpdate.productVersion}; lokaler Entwurf bleibt erhalten."
             is ProductConflictException ->
                 "HTTP 409 · ${error.errorCode}: ${error.message}"
             is ProductTargetMismatchException ->

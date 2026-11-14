@@ -59,6 +59,12 @@ internal class ProductSynchronizer(
         }
 
         val verified = api.getDraft(current.draftId)
+        if (verified.productVersion != current.productVersion || verified.version != current.version ||
+            verified.sourceHash != current.sourceHash) {
+            throw ProductSynchronizationConflictException(current, verified,
+                ProductConflictException("product_version_conflict", emptyMap(),
+                    "Der Artikel wurde während der Synchronisierung auf einem anderen Gerät geändert."))
+        }
         current = persist(applyServerUpdate(current, verified))
         verifyComplete(current, verified, desiredImageIds)
         return current
@@ -91,6 +97,11 @@ internal class ProductSynchronizer(
             )
         } catch (conflict: ProductConflictException) {
             val server = api.getDraft(draft.draftId)
+
+            // A confirmed image alone does not prove that another device changed no fields.
+            if (!server.matchesMetadata(draft)) {
+                throw ProductSynchronizationConflictException(draft, server, conflict)
+            }
 
             if (server.images.any { it.imageId == image.imageId }) {
                 return persist(applyServerUpdate(draft, server))

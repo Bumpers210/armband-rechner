@@ -45,6 +45,9 @@ class ProductDraftRepositoryTest {
         File(context.cacheDir, "product-draft-images/$draftId").deleteRecursively()
         File(context.filesDir, "product-drafts/$draftId.json").delete()
         File(context.filesDir, "product-images/$draftId").deleteRecursively()
+        File(context.filesDir, "product-images").listFiles()
+            ?.filter { it.name.startsWith("$draftId-server-") }?.forEach { it.deleteRecursively() }
+        File(context.filesDir, "product-conflicts/$draftId").deleteRecursively()
     }
 
     @Test
@@ -206,6 +209,85 @@ class ProductDraftRepositoryTest {
         assertEquals("CP-2026-0001", reloaded.sku)
         assertEquals(imageId, reloaded.images.single().serverImageId)
         assertTrue(File(reloaded.images.single().localPath).isFile)
+    }
+
+    @Test
+    fun explicitServerReplacementKeepsLocalDraftAndImagesRecoverableAcrossRestart() = runBlocking {
+        val local = repository.saveDraft(repository.storeTemporaryImages(
+            testDraft().copy(name = "Meine Amazonit-Fassung", productVersion = 7, version = 70,
+                pendingInitialOnHand = 3, pendingInitialInventoryOperationId = "inventory-pending"),
+            listOf(Uri.fromFile(sourceImage)),
+        ))
+        val oldBytes = File(local.images.single().localPath).readBytes()
+        val server = ProductServerUpdate(
+            draftId = draftId, productModelVersion = 4, version = 90, productVersion = 8,
+            sourceHash = "b".repeat(64), sku = "CP-TEST", slug = "test-amazonit",
+            status = ProductStatus.Published, updatedAt = "2026-11-14T10:00:00Z", name = "Server-Amazonit",
+            materials = listOf("Amazonit"), metalElements = emptyList(), braceletSizeCm = "18", pearlSizeMm = "8",
+            shortDescription = "Servertext", descriptionDocument = DescriptionDocument.fromPlainText("Servertext"),
+            notices = listOf("Serverhinweis"), careInstructions = listOf("Trocken halten"),
+            priceMinor = 3250, currency = "eur", available = false, salesEnabled = false,
+            images = listOf(ProductServerImage("server-image", "01.jpg", true, "Serverfoto", 24, 24)),
+        )
+        repository.preserveConflictDraft(local)
+        repository.replaceWithReviewedServerDraft(local, server, mapOf("server-image" to oldBytes))
+        val restarted = ProductDraftRepository(context).loadDrafts().single()
+        assertEquals("Server-Amazonit", restarted.name)
+        assertEquals(8, restarted.productVersion)
+        assertEquals(90, restarted.version)
+        assertEquals(3250, restarted.priceMinor)
+        assertFalse(restarted.salesEnabled)
+        assertEquals(local.internalCalculation, restarted.internalCalculation)
+        assertEquals(local.pendingInitialOnHand, restarted.pendingInitialOnHand)
+        assertEquals(local.pendingInitialInventoryOperationId, restarted.pendingInitialInventoryOperationId)
+        assertTrue(File(local.images.single().localPath).readBytes().contentEquals(oldBytes))
+        val recovery = File(context.filesDir, "product-conflicts/$draftId").listFiles()!!.single()
+        val saved = JSONObject(File(recovery, "draft.json").readText())
+        assertEquals(local.name, saved.getString("name"))
+        assertEquals(7, saved.getInt("productVersion"))
+        assertEquals(local.priceMinor, saved.getInt("priceMinor"))
+        val recoveryImage = File(saved.getJSONArray("images").getJSONObject(0).getString("localPath"))
+        assertTrue(recoveryImage.readBytes().contentEquals(oldBytes))
+        assertTrue(recoveryImage.canonicalPath.startsWith(recovery.canonicalPath))
+    }
+
+    @Test
+    fun invalidDownloadedImageLeavesCurrentDraftAndOriginalImagesUntouched() = runBlocking {
+        val local = repository.saveDraft(testDraft())
+        val server = ProductServerUpdate(
+            draftId = draftId, version = 2, productVersion = 2, sourceHash = "b".repeat(64), sku = null, slug = null,
+            status = ProductStatus.Draft, updatedAt = null, name = "Remote", materials = emptyList(),
+            metalElements = emptyList(), braceletSizeCm = "18", pearlSizeMm = "8", shortDescription = "Test",
+            careInstructions = emptyList(), priceMinor = 2000, currency = "eur", available = false,
+            images = listOf(ProductServerImage("remote", "01.jpg", true)),
+        )
+        repository.preserveConflictDraft(local)
+        try {
+            repository.replaceWithReviewedServerDraft(local, server, mapOf("remote" to byteArrayOf(1, 2, 3)))
+            throw AssertionError("Invalid image must abort")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals(local, ProductDraftRepository(context).loadDrafts().single())
+        assertTrue(File(context.filesDir, "product-conflicts/$draftId").listFiles()!!.isNotEmpty())
+    }
+
+    @Test
+    fun interruptedAtomicWriteRestoresBackupAndIgnoresIncompleteStaging() = runBlocking {
+        val original = repository.saveDraft(testDraft())
+        val file = File(context.filesDir, "product-drafts/$draftId.json")
+        val backup = File(file.parentFile, "${file.name}.bak")
+        val staging = File(file.parentFile, ".$draftId.json")
+        val fresh = File(file.parentFile, "${file.name}.new")
+        try {
+            file.copyTo(backup)
+            file.writeText("{truncated")
+            staging.writeText("{unfinished")
+            fresh.writeText("{unfinished")
+            assertEquals(original, repository.loadDrafts().single())
+            assertFalse(backup.exists())
+            assertEquals(original, repository.loadDrafts().single())
+        } finally {
+            backup.delete(); staging.delete(); fresh.delete()
+        }
     }
 
     private fun testDraft(): ProductDraft {
