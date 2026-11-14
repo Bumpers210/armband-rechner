@@ -1,43 +1,72 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
-## Aktueller Abschluss: Warenkorb-Shop und App/PC am 13. November 2026
+## Aktueller Abschluss: Warenkorb-Shop und App-Release, Stand 14. November 2026
 
 **Die technische Shop-Abnahme einschliesslich des produktiven App-/PC-Abgleichs
 ist bestanden.** Der freigegebene Warenkorb-Shop ist mit sechs bestehenden
-Modellen live. Dieser aktuelle Abschluss ersetzt die weiter unten datierten
+Modellen live; die Produktions-App ist als stabiles GitHub-Release verfuegbar.
+Die technische Abnahme erfolgte am 13. November 2026. Dieser am 14. November
+aktualisierte Dokumentationsstand ersetzt die weiter unten datierten
 historischen Wartepunkte, nicht die weiterhin geltenden Sicherheitsregeln.
 
 Die Betreiberin hat den abschliessenden Lesetest in der Produktions-App
 1.4.0 / Code 8 bestaetigt: Ares mit 20,00 EUR, 18 cm, 8 mm, drei Bildern und
 Bestand 3/0/3. Der PC-/API-/Katalogvergleich aller sechs Modelle ist bereits
-bestanden. Am 13. November um 18:57 UTC erneut ausschliesslich lesend bestaetigt:
+bestanden. Letzter lesender Produktionsnachweis: 13. November, 19:36 UTC:
 Ares 3/0/3, fuenf weitere Modelle jeweils 4/0/4; CMJ-00000002 confirmed,
 Zahlung succeeded/verified, Bestell- und Betreibermail jeweils einmal sent,
 keine offenen Prueffaelle oder unerledigten Inbox-/Outboxeintraege. Worker und
-Monitor gesund, aktive MySQL-TLS-Sitzungen, Restoreziel leer und Backupstatus ok.
-Letztes Serverbackup 18:18 UTC, letzter bestaetigter Offsiteabruf 18:38 UTC;
-der vollstaendige Restore nach Mengenimport ist im Startnachweis dokumentiert.
+Monitor gesund, aktive Commerce-MySQL-TLS-Sitzung und Backupstatus ok.
+Letztes Serverbackup damals 19:18 UTC, letzter bestaetigter Offsiteabruf
+18:38 UTC. Der vollstaendige Restore nach Mengenimport und das um 18:57 UTC
+erneut leere Restoreziel bleiben separat im Startnachweis dokumentiert.
+Am 14. November wurde fuer diese Dokumentationspflege kein neuer
+Produktions-, Zahlungs-, Backup- oder Restorelauf durchgefuehrt.
 
-main bleibt `54243f1f27ca22df870a163e4989818a459fe82c`, bestehende main-Paket-CI
-success. Produktiver Kaufweg, App und PC-Verwaltung sind geoeffnet;
+Aktueller main-SHA, am 14. November lesend bestaetigt:
+`3a605f9f2568a266b4fcc8cf64d0b436196c7351` nach
+[PR #106](https://github.com/Bumpers210/armband-rechner/pull/106).
+Die [main-Paket-CI 43490737279](https://github.com/Bumpers210/armband-rechner/actions/runs/43490737279)
+ist success. Dieser Dokumentationsmerge ist kein neues Produktionsdeployment:
+Websitebasis bleibt `b3167b9babf27bdc9fa547cfbfcde8d0b3fb8e66`, der zuletzt
+bereitgestellte private Workerpatch stammt aus
+`54243f1f27ca22df870a163e4989818a459fe82c`.
+
+Produktions-App **1.4.0 / Code 8**: stabiles
+[Release product-management-v1.4.0](https://github.com/Bumpers210/armband-rechner/releases/tag/product-management-v1.4.0),
+veroeffentlicht am 13. November 2026 um 19:30:45 UTC, kein Entwurf und keine
+Vorabversion. Release-Tag und unveraenderte signierte APK gehoeren zum
+Buildquellcommit `261564aef3f62be759bc3efc0251b019a9bdd354`, nicht zum spaeteren
+Dokumentationsmerge. App-/Gradle-/Releaseworkflow-Eingaben sind gegen den
+aktuellen main-SHA unveraendert; Signatur- und Downloadnachweis siehe
+[Release-Abnahme](../website/docs/cart-launch-20261113.md#main-und-app-release-stand-vom-14-november-2026).
+Kein neuer App-Build, keine Versionsanhebung und keine Play-Store-Freigabe.
+
+Produktiver Kaufweg, App und PC-Verwaltung sind gemaess letztem Betriebsnachweis geoeffnet;
 Publisher, GitHub-Adapter und automatische Deployments bleiben absichtlich
 deaktiviert. CP-2026-0008/-0009 bleiben ausserhalb des oeffentlichen Katalogs.
 Keine weitere Aktivierung oder Provideraktion ist fuer diesen Abschluss noetig.
 
-Offen im normalen Bestellbetrieb ist der tatsaechliche Versand von
-CMJ-00000002; der Status bleibt bis zur realen Versendung ready.
+Offen im normalen Bestellbetrieb ist der Versandnachweis fuer CMJ-00000002;
+zuletzt wurde ready gelesen. Erst nach realer Versendung im Admin bestaetigen.
 Es wird weder eine erfolgte Versendung noch ein Versandmailnachweis behauptet.
 Dies ist keine technische Shopstart-Sperre. Akzeptierte Restrisiken bleiben
 unveraendert: fehlender CA-/Hostidentitaetsnachweis bei zwingend aktiver TLS-
 Sitzung sowie Klarna-/Zustellnachweisrisiko des Maxibriefs ohne Tracking.
 Regulaere Ueberwachung, Offsiteabruf und monatlicher Restoretest bleiben Pflicht.
+Die Adminoberflaeche zeigt Prueffaelle bisher nur an; eine Statusbearbeitung
+dort bleibt eine moegliche gesonderte Verbesserung, kein als erledigt
+markierter Funktionsumfang. Neue Artikel benoetigen weiterhin ihren
+kontrollierten Veroeffentlichungsweg; die Publisherautomatik bleibt gesperrt.
 
 Nachweise und Betriebshandover:
 [Shopstart-Abnahme](../website/docs/cart-launch-20261113.md#abschliessende-shop-abnahme-und-betriebshandover).
-In diesem Abschluss nur lokale Dokumentation geaendert; keine Produkt-,
-Bestands-, Runtime-, Server- oder Testdatenmutation, kein Commit, Push, Merge
-oder Deployment. Keine erfundenen Ist-Stunden oder erneute Komplettregression
-fuer reine Dokumentationsaenderungen.
+Aenderungsvermerk 14. November: ausschliesslich main-/CI-/Releasebezug und
+den bereits erhobenen lesenden Abschlussnachweis nachgetragen; historische
+Freigaben, Regeln und Nachweise erhalten. Nur lokale Dokumentation geaendert,
+keine Produkt-, Bestands-, Runtime-, Server- oder Testdatenmutation; kein neuer
+Commit, Push, Merge oder Deployment. Keine erfundenen Ist-Stunden oder erneute
+Komplettregression fuer reine Dokumentationsaenderungen.
 
 ## Erstkauf-Fortsetzung: Klarna-Prueffall am 13. November 2026
 
