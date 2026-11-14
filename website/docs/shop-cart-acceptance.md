@@ -1,6 +1,6 @@
 # Mengenbestand und Warenkorb – Entwicklungs- und Abnahmestand
 
-## Aktueller Abschluss vom 13. November 2026
+## Aktueller Abschluss, Dokumentationsstand 14. November 2026
 
 **Warenkorb-Erweiterung und technischer Produktions-Shopstart abgenommen.**
 Die nachfolgenden datierten Entwicklungsstaende und damaligen offenen Gates
@@ -9,11 +9,28 @@ der [Shopstart-Nachweis](cart-launch-20261113.md#abschliessende-shop-abnahme-und
 MySQL-/Mengenimport und Restore bestanden, sechs bestehende Modelle kontrolliert
 aktiviert, echte Erstbestellung samt einmaliger Bestandsabbuchung und Mails
 nachgewiesen, PC-Verwaltung gelesen und Produktions-App 1.4.0 / Code 8 durch
-den manuellen Handyabgleich bestaetigt. Erneuter lesender Betriebscheck
-13. November 2026, 18:57 UTC ohne offene Prueffaelle oder Betriebswarnungen.
-Der noch ausstehende reale Versand der Erstbestellung ist eine Betreiberaufgabe,
-kein behaupteter Versandnachweis. Testprodukte, Bestaende und private
+den manuellen Handyabgleich bestaetigt. Letzter lesender Betriebscheck:
+13. November 2026, 19:36 UTC ohne offene Prueffaelle oder Betriebswarnungen.
+Der noch ausstehende Versandnachweis der Erstbestellung ist eine Betreiberaufgabe,
+kein technischer Veroeffentlichungsblocker. Testprodukte, Bestaende und private
 Konfigurationen wurden durch diesen Abschluss nicht veraendert.
+
+Die Shop-Abnahmedokumentation vom 13. November ist seit
+[PR #106](https://github.com/Bumpers210/armband-rechner/pull/106) in main
+`3a605f9f2568a266b4fcc8cf64d0b436196c7351` integriert;
+[Paket-CI 43490737279](https://github.com/Bumpers210/armband-rechner/actions/runs/43490737279)
+success. Die Produktions-App **1.4.0 / Code 8** ist als stabiles
+[GitHub-Release product-management-v1.4.0](https://github.com/Bumpers210/armband-rechner/releases/tag/product-management-v1.4.0)
+mit signierter APK und SHA256SUMS.txt veroeffentlicht. Release-Tag und APK
+stammen aus `261564aef3f62be759bc3efc0251b019a9bdd354`; die App-/Build-Eingaben
+sind gegen den aktuellen main-Stand identisch. Kein neuer Build oder
+Play-Store-Release. Details und getrennte Nachweiszeitpunkte:
+[Release- und Abschlussnachtrag](cart-launch-20261113.md#main-und-app-release-stand-vom-14-november-2026).
+
+Aenderungsvermerk 14. November: GitHub-/main-/Releasebelege lesend bestaetigt
+und Dokumentation aktualisiert; keine erneute Produktionspruefung oder
+Komplettregression, kein Commit, Push, Merge oder Deployment. Wiederkehrende
+Betriebspruefungen und die dokumentierten Restrisiken bleiben bestehen.
 
 Historischer Ausgangsstand: 25. Oktober 2026, damals in Umsetzung und nicht
 vollstaendig abgenommen. Spaetere Belege unten und der aktuelle Startnachweis
