@@ -2279,19 +2279,19 @@
         {
             "productModelVersion": 4,
             "productId": "614955fb-8c66-4d41-b899-503cba4e58aa",
-            "productVersion": 6,
-            "sourceHash": "bbace1731e3bc90d09d10b265d9ad35a4a46f01b4cdc169765aaa9fe9f5148e0",
+            "productVersion": 8,
+            "sourceHash": "3d5f777b4e399c4cbf40dcd9b48ed8b1e0e5140fe12ddd8ad76d77edf6964034",
             "sku": "CP-2026-0022",
             "slug": "cp-2026-0022-technische-prufkollektion-nicht-kaufbar",
-            "title": "Technische Prüfkollektion – aktualisiert",
-            "description": "Technische Funktionskontrolle: Beschreibung und Bild wurden erfolgreich aktualisiert. Kein Verkaufsangebot.",
+            "title": "Technische Prüfkollektion PC – nicht kaufbar",
+            "description": "Direkter PC-Oberflächentest: Diese Angaben wurden in der Artikelverwaltung bearbeitet. Kein Verkaufsangebot.",
             "materials": [
                 "Technische Funktionskontrolle"
             ],
             "metalElements": [],
-            "braceletSizeCm": 18.5,
-            "pearlSizeMm": 6,
-            "priceMinor": 2345,
+            "braceletSizeCm": 19,
+            "pearlSizeMm": 8,
+            "priceMinor": 2456,
             "currency": "eur",
             "salesEnabled": false,
             "images": [
@@ -2305,7 +2305,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-15T13:15:59+00:00",
+            "updatedAt": "2026-11-15T13:22:44+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -2313,7 +2313,7 @@
                         "type": "paragraph",
                         "spans": [
                             {
-                                "text": "Technische Funktionskontrolle: Beschreibung und Bild wurden erfolgreich aktualisiert. Kein Verkaufsangebot.",
+                                "text": "Direkter PC-Oberflächentest: Diese Angaben wurden in der Artikelverwaltung bearbeitet. Kein Verkaufsangebot.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
