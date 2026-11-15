@@ -65,7 +65,7 @@ test('Package verification rejects modified, extra, missing files and overwrite'
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
-test('Production runtime, release contract and reviewed legal texts agree while all gates remain closed', () => {
+test('Production runtime and legal contract stay gated except for the approved static product publisher', () => {
   const contract = JSON.parse(readFileSync(path.join(websiteRoot, 'config/production-shop-deployment.json')));
   const template = JSON.parse(readFileSync(path.join(websiteRoot, 'config/production-cart-cutover-manifest.v3.json')));
   const legal = approvedLegalBundle();
@@ -74,13 +74,14 @@ test('Production runtime, release contract and reviewed legal texts agree while 
   assert.equal(legal.contentHash, 'ed7713ce8d6c9f16b320f1376303df7f38c306177793a9c5beeb548b9455d752');
   assert.equal(template.status, 'not_approved');
   assert.deepEqual(template.selectedProducts, []);
-  assert.ok(Object.values(contract.guards).every(flag => flag === false));
+  const publisherFlags = new Set(['publisherEnabled', 'automaticWebsiteDeployment']);
+  assert.ok(Object.entries(contract.guards).every(([name, flag]) => flag === publisherFlags.has(name)));
   assert.equal(contract.shop.apiVersion, 3);
   assert.equal(contract.shop.productApiVersion, 5);
   assert.equal(contract.shop.maxOrderQuantity, 10);
 });
 
-test('CI only builds and verifies; old API deployment and automatic publisher path are blocked', () => {
+test('Package CI only builds; old API deployment stays blocked and product auto-deploy stays guarded', () => {
   const workflows = path.resolve(websiteRoot, '../.github/workflows');
   const build = readFileSync(path.join(workflows, 'production-cart-package.yml'), 'utf8');
   assert.match(build, /workflow_dispatch:/);

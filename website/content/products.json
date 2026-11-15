@@ -1,865 +1,2280 @@
 {
-    "version": 4,
-    "products": [
+  "version": 4,
+  "products": [
+    {
+      "productModelVersion": 4,
+      "productId": "9ee50dfe-09f3-4ac1-b47b-3bbb78d47e93",
+      "productVersion": 9,
+      "sourceHash": "bed34503fe009244bf454f91de6d5f4b74d51d33ab760851f5a27eadf651fd6a",
+      "sku": "CP-2026-0010",
+      "slug": "cp-2026-0010-amazonit-armband",
+      "title": "Amazonit Armband",
+      "description": "Amazonit Armband\n\nBunt, fröhlich und leicht\n\nTrost - Geduld - Harmonie\n\nAmazonit wartet mit Farben von grau über braun bis zu blau auf und erinnert damit an Wärme, Leichtigkeit und Frohsinn.\nIn der modernen Steinheilkunde gilt er auch als \"Troststein\", da er bei tiefer Trauer und Kummer lindernd wirken soll. Er soll auch die Geduld und Gelassenheit fördern und innere Widersprüche und Konflikte durch Harmonisierung des Verstand mindern. \n\nPerlengröße: ca. 8 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Amazonit frosted 8 mm"
+      ],
+      "metalElements": [],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 8,
+      "priceMinor": 2850,
+      "currency": "eur",
+      "salesEnabled": false,
+      "images": [
         {
-            "productModelVersion": 4,
-            "productId": "3da76a24-3213-4e8f-b9aa-336ea95e4aa3",
-            "productVersion": 7,
-            "sourceHash": "b5874cf8ee45019f74a69329d2ceb8b4b00bfa6c906d368ce231db0085e2de90",
-            "sku": "CP-2026-0002",
-            "slug": "cp-2026-0002-ares",
-            "title": "Ares",
-            "description": "Warm, erdig und ausdrucksstark.\n\nAres verbindet die charakteristische Zeichnung des Tigerauges mit roségold galvanisierten Lavasteinperlen. Die warmen Braun-, Rot- und Goldtöne verleihen dem Armband einen kraftvollen, zugleich natürlichen Charakter.\n\nTigerauge und seine Symbolik\n\nDem Tigerauge werden traditionell Kraft, Mut, Klarheit und Erdung zugeschrieben. Seine warme Farbgebung und der charakteristische Schimmereffekt machen den Stein zugleich zu einem markanten Schmuckstein.",
-            "materials": [
-                "Tigerauge",
-                "Rosegold galvanisierte Lavaperlen"
-            ],
-            "metalElements": [],
-            "braceletSizeCm": 18,
-            "pearlSizeMm": 8,
-            "priceMinor": 2000,
-            "currency": "eur",
-            "salesEnabled": true,
-            "images": [
-                {
-                    "imageId": "ba1182af-29b6-458d-a355-241696b3f212",
-                    "fileName": "01.jpg",
-                    "src": "/images/products/CP-2026-0002/01.jpg",
-                    "alt": "Ares",
-                    "width": 900,
-                    "height": 1600,
-                    "isMain": true
-                },
-                {
-                    "imageId": "3e84073b-d4ca-4dfd-9586-eb7ee874dc25",
-                    "fileName": "02.jpg",
-                    "src": "/images/products/CP-2026-0002/02.jpg",
-                    "alt": "Ares",
-                    "width": 900,
-                    "height": 1600,
-                    "isMain": false
-                },
-                {
-                    "imageId": "1a568a67-5097-4944-b5c9-0484f4130fb7",
-                    "fileName": "03.jpg",
-                    "src": "/images/products/CP-2026-0002/03.jpg",
-                    "alt": "Ares",
-                    "width": 900,
-                    "height": 1600,
-                    "isMain": false
-                }
-            ],
-            "updatedAt": "2026-11-13T06:42:29Z",
-            "descriptionDocument": {
-                "version": 1,
-                "blocks": [
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Warm, erdig und ausdrucksstark.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Ares verbindet die charakteristische Zeichnung des Tigerauges mit roségold galvanisierten Lavasteinperlen. Die warmen Braun-, Rot- und Goldtöne verleihen dem Armband einen kraftvollen, zugleich natürlichen Charakter.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Tigerauge und seine Symbolik",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Dem Tigerauge werden traditionell Kraft, Mut, Klarheit und Erdung zugeschrieben. Seine warme Farbgebung und der charakteristische Schimmereffekt machen den Stein zugleich zu einem markanten Schmuckstein.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    }
-                ]
-            },
-            "noticePolicyId": null,
-            "notices": []
+          "imageId": "156e1e26-ba4c-4dab-a5f0-751ac8422d1a",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0010/01.jpg",
+          "alt": "Amazonit Armband",
+          "width": 1199,
+          "height": 1600,
+          "isMain": true
         },
         {
-            "productModelVersion": 4,
-            "productId": "9299c3cc-1fdd-4d60-a6be-015d1578e0d2",
-            "productVersion": 5,
-            "sourceHash": "13134a3d4f51c311aeb8d9dd612d6428c0a7323aad3cd41d426b9e2f41bf37b1",
-            "sku": "CP-2026-0003",
-            "slug": "cp-2026-0003-persephone",
-            "title": "Persephone",
-            "description": "Persephone \n\nWachstum, Lebensfreude, Erneuerung \n\nDie individuelle Zeichnungen des afrikanischen Türkis zusammen mit den gold galvanisierten Lavasteinen als Eye-Catcher verleihen Persephone einen unvergleichlichen Charme. Mit seinen Grün-, Blau- und Brauntönen wirkt es natürlich und unaufdringlich.\n\nAfrikanischer Türkis gilt als \"Stein der Evolution\". Er soll die persönliche Entwicklung fördern, beim Annehmen von Veränderungen und beim Ablegen alter Gewohnheiten helfen.\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-            "materials": [
-                "Afrikanischer Türkis"
-            ],
-            "metalElements": [
-                "keine Edelstahl"
-            ],
-            "braceletSizeCm": 18,
-            "pearlSizeMm": 6,
-            "priceMinor": 1950,
-            "currency": "eur",
-            "salesEnabled": true,
-            "images": [
-                {
-                    "imageId": "0163b4c0-a958-4163-95e7-1b2f8090b1d1",
-                    "fileName": "01.jpg",
-                    "src": "/images/products/CP-2026-0003/01.jpg",
-                    "alt": "Persephone",
-                    "width": 900,
-                    "height": 1600,
-                    "isMain": true
-                },
-                {
-                    "imageId": "4d4b1c49-3b69-454d-9043-74bb5cf5440e",
-                    "fileName": "02.jpg",
-                    "src": "/images/products/CP-2026-0003/02.jpg",
-                    "alt": "Persephone",
-                    "width": 1200,
-                    "height": 1600,
-                    "isMain": false
-                },
-                {
-                    "imageId": "3260aa8f-29bb-4d43-bdb2-c3f9cace31ed",
-                    "fileName": "03.jpg",
-                    "src": "/images/products/CP-2026-0003/03.jpg",
-                    "alt": "Persephone",
-                    "width": 1600,
-                    "height": 1200,
-                    "isMain": false
-                }
-            ],
-            "updatedAt": "2026-11-13T06:42:29Z",
-            "descriptionDocument": {
-                "version": 1,
-                "blocks": [
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Persephone ",
-                                "bold": true,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Wachstum, Lebensfreude, Erneuerung ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Die individuelle Zeichnungen des afrikanischen Türkis zusammen mit den gold galvanisierten Lavasteinen als Eye-Catcher verleihen Persephone einen unvergleichlichen Charme. Mit seinen Grün-, Blau- und Brauntönen wirkt es natürlich und unaufdringlich.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Afrikanischer Türkis gilt als \"Stein der Evolution\". Er soll die persönliche Entwicklung fördern, beim Annehmen von Veränderungen und beim Ablegen alter Gewohnheiten helfen.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    }
-                ]
-            },
-            "noticePolicyId": null,
-            "notices": []
+          "imageId": "62597579-c7ba-4faf-979a-974bc4003519",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0010/02.jpg",
+          "alt": "Amazonit Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
         },
         {
-            "productModelVersion": 4,
-            "productId": "15289192-a35c-43f1-8407-a9e387ae08ac",
-            "productVersion": 4,
-            "sourceHash": "31e025b333634941c08d03c0be1fa5db28bfbbfce853239fa75602b779cfdfd9",
-            "sku": "CP-2026-0004",
-            "slug": "cp-2026-0004-artemis",
-            "title": "Artemis",
-            "description": "Artemis \n\nFreiheit, Selbstbestimmung, Harmonie \n\nDieses Armband aus gefrosteten Amazonitperlen wirkt durch die natürliche Farbgebung des Steines, die über Blau-, Grau-, Grün- bis hin zu Gelb- und Rottönen reicht besonders natürlich, leicht und erinnert an einen Sommertag am Strand. \n\nDer Amazonit soll beruhigend, ausgleichend und krampflösend wirken, er soll von innere Unruhe, Nervosität und Sorgen befreien. Er gilt als „Stein der Kommunikation“, der die ehrliche und freie Meinungsäußerung stärkt und somit die Selbstbestimmung unterstützt. Außerdem soll er helfen, bei Trauer oder Zerrissenheit wieder innere Balance (Harmonie) zu finden.\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-            "materials": [
-                "Amazonit"
-            ],
-            "metalElements": [],
-            "braceletSizeCm": 18,
-            "pearlSizeMm": 8,
-            "priceMinor": 1750,
-            "currency": "eur",
-            "salesEnabled": true,
-            "images": [
-                {
-                    "imageId": "e8a278b8-d6e8-4383-b6a3-33645b745fd8",
-                    "fileName": "01.jpg",
-                    "src": "/images/products/CP-2026-0004/01.jpg",
-                    "alt": "Artemis",
-                    "width": 900,
-                    "height": 1600,
-                    "isMain": true
-                },
-                {
-                    "imageId": "06af3ab5-d495-4df5-bcc0-c99c59036887",
-                    "fileName": "02.jpg",
-                    "src": "/images/products/CP-2026-0004/02.jpg",
-                    "alt": "Artemis",
-                    "width": 1600,
-                    "height": 900,
-                    "isMain": false
-                },
-                {
-                    "imageId": "7d080514-4c45-4502-8f28-d9cadea5ffd1",
-                    "fileName": "03.jpg",
-                    "src": "/images/products/CP-2026-0004/03.jpg",
-                    "alt": "Artemis",
-                    "width": 1600,
-                    "height": 1200,
-                    "isMain": false
-                }
-            ],
-            "updatedAt": "2026-11-13T06:42:29Z",
-            "descriptionDocument": {
-                "version": 1,
-                "blocks": [
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Artemis ",
-                                "bold": true,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Freiheit, Selbstbestimmung, Harmonie ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Dieses Armband aus gefrosteten Amazonitperlen wirkt durch die natürliche Farbgebung des Steines, die über Blau-, Grau-, Grün- bis hin zu Gelb- und Rottönen reicht besonders natürlich, leicht und erinnert an einen Sommertag am Strand. ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Der Amazonit soll beruhigend, ausgleichend und krampflösend wirken, er soll von innere Unruhe, Nervosität und Sorgen befreien. Er gilt als „Stein der Kommunikation“, der die ehrliche und freie Meinungsäußerung stärkt und somit die Selbstbestimmung unterstützt. Außerdem soll er helfen, bei Trauer oder Zerrissenheit wieder innere Balance (Harmonie) zu finden.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    }
-                ]
-            },
-            "noticePolicyId": null,
-            "notices": []
+          "imageId": "58781586-1686-43ce-b99a-7704760e7b0a",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0010/03.jpg",
+          "alt": "Amazonit Armband",
+          "width": 1600,
+          "height": 1200,
+          "isMain": false
         },
         {
-            "productModelVersion": 4,
-            "productId": "827962bf-8d04-4761-975c-9828758df708",
-            "productVersion": 6,
-            "sourceHash": "c3a2f84f5d95195e662d5a78f3285b9e30367de8188e75d952903235537c11a7",
-            "sku": "CP-2026-0005",
-            "slug": "cp-2026-0005-asklepios",
-            "title": "Asklepios",
-            "description": "Asklepios \n\nHeilung, Klarheit, Balance \n\nDas\"Glamour-Highligt\" der Kollektion. Durch die gecrackten Bergkristall-Perlen, in denen sich das glitzernd das Licht bricht und die funkelnden Strasselemente wird dieses Armband zu einem funkelnden Hingucker und glamourösen Begleiter. Die silber galvanisierten Lavaperlen runden den eleganten Look gekonnt ab. \n\nBergkristall gilt als der Heilstein schlechthin und soll emotionale Unruhe beruhigen sowie innere Balance, Ausgeglichenheit und Klarheit unterstützen. Außerdem wird er mit Vitalität und Regeneration verbunden. Lavasteine stehen traditionell für Erdung, Schutz und Neubeginn.\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-            "materials": [
-                "Bergkristall",
-                "Lavaperlen"
-            ],
-            "metalElements": [
-                "Strasspacer Edelstahl"
-            ],
-            "braceletSizeCm": 18,
-            "pearlSizeMm": 6,
-            "priceMinor": 2450,
-            "currency": "eur",
-            "salesEnabled": true,
-            "images": [
-                {
-                    "imageId": "28b1d7b9-5bba-4d5c-a68d-a0f093864c8a",
-                    "fileName": "01.jpg",
-                    "src": "/images/products/CP-2026-0005/01.jpg",
-                    "alt": "Asklepios",
-                    "width": 900,
-                    "height": 1600,
-                    "isMain": true
-                },
-                {
-                    "imageId": "1f9cbe5d-588a-406d-8ea4-e4297d6bbb97",
-                    "fileName": "02.jpg",
-                    "src": "/images/products/CP-2026-0005/02.jpg",
-                    "alt": "Asklepios",
-                    "width": 1600,
-                    "height": 900,
-                    "isMain": false
-                }
-            ],
-            "updatedAt": "2026-11-13T06:42:29Z",
-            "descriptionDocument": {
-                "version": 1,
-                "blocks": [
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Asklepios ",
-                                "bold": true,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Heilung, Klarheit, Balance ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Das\"Glamour-Highligt\" der Kollektion. Durch die gecrackten Bergkristall-Perlen, in denen sich das glitzernd das Licht bricht und die funkelnden Strasselemente wird dieses Armband zu einem funkelnden Hingucker und glamourösen Begleiter. Die silber galvanisierten Lavaperlen runden den eleganten Look gekonnt ab. ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Bergkristall gilt als der Heilstein schlechthin und soll emotionale Unruhe beruhigen sowie innere Balance, Ausgeglichenheit und Klarheit unterstützen. Außerdem wird er mit Vitalität und Regeneration verbunden. Lavasteine stehen traditionell für Erdung, Schutz und Neubeginn.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    }
-                ]
-            },
-            "noticePolicyId": null,
-            "notices": []
-        },
-        {
-            "productModelVersion": 4,
-            "productId": "425f83ba-90c6-4b70-931a-b3575020b836",
-            "productVersion": 4,
-            "sourceHash": "597dfd9fc76385c60b1709078cdda8a2bb4f5f315ac401ff7d23b57704d0d4f7",
-            "sku": "CP-2026-0006",
-            "slug": "cp-2026-0006-athena",
-            "title": "Athena",
-            "description": "Athena\n\nKlarheit, Schutz und innere Stärke \n\nDie verschiedenen Blautöne, die je nach Lichteinfall in ihrer Stärke variieren kombiniert mit den glitzerenden Effekten der Strassspacer machen dieses Armband zu einem außergewöhnlich schönen und gleichzeitig eleganten Blickfang. \n\nDas Falkenauge gilt zudem als  Schutzstein. Er soll vor negativen Energien, Intrigen, Neid und dem „bösen Blick\" schützen. Er soll außerdem zu einem besseren Überblick verhelfen,  Entscheidungshilfe sein und Selbsterkenntnis sowie innere Ruhe fördern. \n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-            "materials": [
-                "blaues Tigerauge (Falkenauge)"
-            ],
-            "metalElements": [
-                "Strasspacer Edelstahl"
-            ],
-            "braceletSizeCm": 18,
-            "pearlSizeMm": 8,
-            "priceMinor": 2150,
-            "currency": "eur",
-            "salesEnabled": true,
-            "images": [
-                {
-                    "imageId": "38a50bb6-8abf-4813-8c1a-ccd4b7e86168",
-                    "fileName": "01.jpg",
-                    "src": "/images/products/CP-2026-0006/01.jpg",
-                    "alt": "Athena",
-                    "width": 900,
-                    "height": 1600,
-                    "isMain": true
-                },
-                {
-                    "imageId": "53e9e0ea-6d54-4b13-b34f-0c6c8016f5fb",
-                    "fileName": "02.jpg",
-                    "src": "/images/products/CP-2026-0006/02.jpg",
-                    "alt": "Athena",
-                    "width": 1600,
-                    "height": 900,
-                    "isMain": false
-                }
-            ],
-            "updatedAt": "2026-11-13T06:42:29Z",
-            "descriptionDocument": {
-                "version": 1,
-                "blocks": [
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Athena",
-                                "bold": true,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Klarheit, Schutz und innere Stärke ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Die verschiedenen Blautöne, die je nach Lichteinfall in ihrer Stärke variieren kombiniert mit den glitzerenden Effekten der Strassspacer machen dieses Armband zu einem außergewöhnlich schönen und gleichzeitig eleganten Blickfang. ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Das Falkenauge gilt zudem als  Schutzstein. Er soll vor negativen Energien, Intrigen, Neid und dem „bösen Blick\" schützen. Er soll außerdem zu einem besseren Überblick verhelfen,  Entscheidungshilfe sein und Selbsterkenntnis sowie innere Ruhe fördern. ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    }
-                ]
-            },
-            "noticePolicyId": null,
-            "notices": []
-        },
-        {
-            "productModelVersion": 4,
-            "productId": "5a3c86ea-a1e8-4391-bcc0-22f28cb197ef",
-            "productVersion": 4,
-            "sourceHash": "13c5b671cfa761b0abd1d26c62307b93cfcc51410995e6c416f5df81b98a3bad",
-            "sku": "CP-2026-0007",
-            "slug": "cp-2026-0007-helios",
-            "title": "Helios",
-            "description": "Helios \n\nLebensfreude, Zuversicht, innere Stärke \n\nMit den verschiedenen Facetten des Sonnensteins und den roségold galvanisierten Lavaperlen wirkt dieses Armband warm und \"cosy\". Genau das, was den Sonnenstein ausmacht.\n\nDenn Sonnenstein gilt als Stein der Lebensfreude. Er soll negative Gedanken, Melancholie und Ängste vertreiben sowie neuen Optimismus schenken.bDer Stein wird oft als „Stein der Führung“ bezeichnet und soll die Eigeninitiative sowie das Selbstbewusstsein stärken. Außerdem soll er helfen, emotionale Blockaden zu lösen und Leichtigkeit und Zuversicht in den Alltag zu bringen. \nLavasteine stehen traditionell für Erdung, Schutz und Neubeginn.\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-            "materials": [
-                "Sonnenstein",
-                "Lavaperlen"
-            ],
-            "metalElements": [],
-            "braceletSizeCm": 18,
-            "pearlSizeMm": 6,
-            "priceMinor": 2350,
-            "currency": "eur",
-            "salesEnabled": true,
-            "images": [
-                {
-                    "imageId": "e4265476-836a-4546-94fc-b8ab313a9129",
-                    "fileName": "01.jpg",
-                    "src": "/images/products/CP-2026-0007/01.jpg",
-                    "alt": "Hekios",
-                    "width": 900,
-                    "height": 1600,
-                    "isMain": true
-                },
-                {
-                    "imageId": "1463d425-7280-4e25-b9fe-d328190e395b",
-                    "fileName": "02.jpg",
-                    "src": "/images/products/CP-2026-0007/02.jpg",
-                    "alt": "Hekios",
-                    "width": 1600,
-                    "height": 900,
-                    "isMain": false
-                },
-                {
-                    "imageId": "9b34c663-0aba-46d8-a8f7-0f590b25095f",
-                    "fileName": "03.jpg",
-                    "src": "/images/products/CP-2026-0007/03.jpg",
-                    "alt": "Hekios",
-                    "width": 1600,
-                    "height": 1200,
-                    "isMain": false
-                }
-            ],
-            "updatedAt": "2026-11-13T06:42:29Z",
-            "descriptionDocument": {
-                "version": 1,
-                "blocks": [
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Helios ",
-                                "bold": true,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Lebensfreude, Zuversicht, innere Stärke ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Mit den verschiedenen Facetten des Sonnensteins und den roségold galvanisierten Lavaperlen wirkt dieses Armband warm und \"cosy\". Genau das, was den Sonnenstein ausmacht.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Denn Sonnenstein gilt als Stein der Lebensfreude. Er soll negative Gedanken, Melancholie und Ängste vertreiben sowie neuen Optimismus schenken.bDer Stein wird oft als „Stein der Führung“ bezeichnet und soll die Eigeninitiative sowie das Selbstbewusstsein stärken. Außerdem soll er helfen, emotionale Blockaden zu lösen und Leichtigkeit und Zuversicht in den Alltag zu bringen. \nLavasteine stehen traditionell für Erdung, Schutz und Neubeginn.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Die Farbgebung und Maserungen der Perlen aus denen die Armbänder gemacht werden können (und sollen) sich von denen auf dem Bild unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    }
-                ]
-            },
-            "noticePolicyId": null,
-            "notices": []
-        },
-        {
-            "productModelVersion": 4,
-            "productId": "9ee50dfe-09f3-4ac1-b47b-3bbb78d47e93",
-            "productVersion": 7,
-            "sourceHash": "ee6cc7b97b61be94f608a9bb640c0e5d6833a0a99c7faa930d2e859b3ec832e0",
-            "sku": "CP-2026-0010",
-            "slug": "cp-2026-0010-amazonit-armband",
-            "title": "Amazonit Armband",
-            "description": "Amazonit Armband\n\nBunt, fröhlich und leicht\n\nTrost - Geduld - Harmonie\n\nAmazonit wartet mit Farben von grau über braun bis zu blau auf und erinnert damit an Wärme, Leichtigkeit und Frohsinn.\nIn der modernen Steinheilkunde gilt er auch als \"Troststein\", da er bei tiefer Trauer und Kummer lindern wirken soll. Er soll auch die Geduld und Gelassenheit fördern und innere Widersprüche und Konflikt durch Harmonisierung des Verstand mindern. \n\nPerlengröße: ca. 8 mm\nUmfang: ca. 18,5 cm",
-            "materials": [
-                "Amazonit frosted 8 mm"
-            ],
-            "metalElements": [],
-            "braceletSizeCm": 18.5,
-            "pearlSizeMm": 8,
-            "priceMinor": 3650,
-            "currency": "eur",
-            "salesEnabled": false,
-            "images": [
-                {
-                    "imageId": "156e1e26-ba4c-4dab-a5f0-751ac8422d1a",
-                    "fileName": "01.jpg",
-                    "src": "/images/products/CP-2026-0010/01.jpg",
-                    "alt": "Amazonit Armband",
-                    "width": 1199,
-                    "height": 1600,
-                    "isMain": true
-                },
-                {
-                    "imageId": "62597579-c7ba-4faf-979a-974bc4003519",
-                    "fileName": "02.jpg",
-                    "src": "/images/products/CP-2026-0010/02.jpg",
-                    "alt": "Amazonit Armband",
-                    "width": 1200,
-                    "height": 1600,
-                    "isMain": false
-                },
-                {
-                    "imageId": "58781586-1686-43ce-b99a-7704760e7b0a",
-                    "fileName": "03.jpg",
-                    "src": "/images/products/CP-2026-0010/03.jpg",
-                    "alt": "Amazonit Armband",
-                    "width": 1600,
-                    "height": 1200,
-                    "isMain": false
-                },
-                {
-                    "imageId": "fbfcdb20-fe34-4900-9690-04f6080a64f4",
-                    "fileName": "04.jpg",
-                    "src": "/images/products/CP-2026-0010/04.jpg",
-                    "alt": "Amazonit Armband",
-                    "width": 1200,
-                    "height": 1600,
-                    "isMain": false
-                }
-            ],
-            "updatedAt": "2026-11-15T08:16:24+00:00",
-            "descriptionDocument": {
-                "version": 1,
-                "blocks": [
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Amazonit Armband",
-                                "bold": true,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Bunt, fröhlich und leicht",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Trost - Geduld - Harmonie",
-                                "bold": false,
-                                "italic": true,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Amazonit wartet mit Farben von grau über braun bis zu blau auf und erinnert damit an Wärme, Leichtigkeit und Frohsinn.\nIn der modernen Steinheilkunde gilt er auch als \"Troststein\", da er bei tiefer Trauer und Kummer lindern wirken soll. Er soll auch die Geduld und Gelassenheit fördern und innere Widersprüche und Konflikt durch Harmonisierung des Verstand mindern. ",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "paragraph",
-                        "spans": [
-                            {
-                                "text": "Perlengröße: ca. 8 mm\nUmfang: ca. 18,5 cm",
-                                "bold": false,
-                                "italic": false,
-                                "font": "standard",
-                                "size": "normal"
-                            }
-                        ]
-                    }
-                ]
-            },
-            "noticePolicyId": null,
-            "notices": []
+          "imageId": "fbfcdb20-fe34-4900-9690-04f6080a64f4",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0010/04.jpg",
+          "alt": "Amazonit Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
         }
-    ]
+      ],
+      "updatedAt": "2026-11-15T10:35:02+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Amazonit Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Bunt, fröhlich und leicht",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Trost - Geduld - Harmonie",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Amazonit wartet mit Farben von grau über braun bis zu blau auf und erinnert damit an Wärme, Leichtigkeit und Frohsinn.\nIn der modernen Steinheilkunde gilt er auch als \"Troststein\", da er bei tiefer Trauer und Kummer lindernd wirken soll. Er soll auch die Geduld und Gelassenheit fördern und innere Widersprüche und Konflikte durch Harmonisierung des Verstand mindern. ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 8 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "b325bbfd-d3b8-4da1-a316-c2f411c03867",
+      "productVersion": 10,
+      "sourceHash": "2020dd40f295c65d3274600c652606a8a18027cb1695e50ea7fcbe4f8be2ef06",
+      "sku": "CP-2026-0009",
+      "slug": "cp-2026-0009-sodalith-armband",
+      "title": "Sodalith Armband",
+      "description": "Sodalith Armband\n\nEin Traum aus tiefem Blau\n\nSelbstbewusstsein - Inspiration - Kreativität \n\nLaut der modernen Steinheilkunde hilft Sodalith dabei, sich selbst treu zu bleiben. Er steigert das Selbstbewusstsein und verstärkt die Sehnsucht nach Freiheit und Unabhängigkeit.\nAußerdem soll er Inspiration und Kreativität fördern. \n\nDie Strass- und Rundspacer sind aus hautfreundlichen und langlebigem Edelstahl.\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Sodalith"
+      ],
+      "metalElements": [
+        "Strasspacer Edelstahl",
+        "Edelstahlspacer"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 6,
+      "priceMinor": 3050,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "b9012835-9555-4f2e-a4e5-51885d30f804",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0009/01.jpg",
+          "alt": "Sodalith Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "a8e39ae9-4726-4da6-92e7-f70273979a17",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0009/02.jpg",
+          "alt": "Sodalith Armband",
+          "width": 1199,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "dded60dd-3d20-4620-a1ea-cb96ccefe682",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0009/03.jpg",
+          "alt": "Sodalith Armband",
+          "width": 1600,
+          "height": 1200,
+          "isMain": false
+        },
+        {
+          "imageId": "efb645b9-01ef-4186-bb29-4e1f9765e3eb",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0009/04.jpg",
+          "alt": "Sodalith Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:45:23+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Sodalith Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Ein Traum aus tiefem Blau",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Selbstbewusstsein - Inspiration - Kreativität ",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Laut der modernen Steinheilkunde hilft Sodalith dabei, sich selbst treu zu bleiben. Er steigert das Selbstbewusstsein und verstärkt die Sehnsucht nach Freiheit und Unabhängigkeit.\nAußerdem soll er Inspiration und Kreativität fördern. ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Strass- und Rundspacer sind aus hautfreundlichen und langlebigem Edelstahl.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "14bcad03-99de-4522-944e-c079de319e33",
+      "productVersion": 10,
+      "sourceHash": "b7c709a9d59ec3cbb827f431895988610b76a277b25654e1481944f6c25917cb",
+      "sku": "CP-2026-0008",
+      "slug": "cp-2026-0008-flourit-armband",
+      "title": "Flourit Armband",
+      "description": "Fluorit Armband\n\nLeuchtende Farben treffen auf faszinierende Transparenz \n\nKonzentration - Ordnung - Klarheit\n\nGrün, blau, lila und sämtliche Töne dazwischen, dazu elegante Transparenz - das ist der faszinierend schöne Fluorit. \nLaut der modernen Steinheilkunde soll er die Konzentration fördern und dabei helfen den Geist zu ordnen und zu strukturieren. Damit soll er dabei helfen den Überblick zu bewahren und Entscheidungen mit mehr Klarheit treffen zu können.\n\nVerziert wird das Armband mit Strassspacern aus hautfreundlichem und langlebigem Edelstahl. \n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Fluorit"
+      ],
+      "metalElements": [
+        "Strasspacer Edelstahl"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 6,
+      "priceMinor": 3350,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "efd312a3-7f53-4458-89ab-12f0c082f03b",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0008/01.jpg",
+          "alt": "Flourit Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "d90b4e49-c51b-44e0-a84b-5da93b34cdc3",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0008/02.jpg",
+          "alt": "Flourit Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "d90f620c-718c-4365-b270-21e91a2e7f62",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0008/03.jpg",
+          "alt": "Flourit Armband",
+          "width": 1600,
+          "height": 1200,
+          "isMain": false
+        },
+        {
+          "imageId": "f02d5110-5b63-4bb0-aac8-baa866234d12",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0008/04.jpg",
+          "alt": "Flourit Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:35:33+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Fluorit Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Leuchtende Farben treffen auf faszinierende Transparenz ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Konzentration - Ordnung - Klarheit",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Grün, blau, lila und sämtliche Töne dazwischen, dazu elegante Transparenz - das ist der faszinierend schöne Fluorit. \nLaut der modernen Steinheilkunde soll er die Konzentration fördern und dabei helfen den Geist zu ordnen und zu strukturieren. Damit soll er dabei helfen den Überblick zu bewahren und Entscheidungen mit mehr Klarheit treffen zu können.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Verziert wird das Armband mit Strassspacern aus hautfreundlichem und langlebigem Edelstahl. ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "3a74a650-a2ff-44e4-9d51-becd14ef5db2",
+      "productVersion": 6,
+      "sourceHash": "5bcca36e36ff123f3b435c076143f704f0e3cba953a43035380ecfe686da54d6",
+      "sku": "CP-2026-0011",
+      "slug": "cp-2026-0011-tigerauge-falkenauge-armband",
+      "title": "Tigerauge/Falkenauge Armband",
+      "description": "Tigerauge/Falkenauge Armband\n\nFarbenvielfalt vereint in einem Stein\n\nSelbstvertrauen - Willenskraft - Weitsicht \n\nTigerauge und Falkenauge in einem? Wie soll das gehen? \nGanz einfach: Falkenauge ist im Grunde genommen die gräulich blaue Vorstufe zum Tigerauge. Die typische goldbraune Färbung entsteht nämlich erst durch Oxidation (Sauerstoff und Eisen). \nGenau aus diesem Grund ist in diesem Armband die gesamte Farbpalette von Tiger- und Falkenauge enthalten, was es erst recht zu einem Hingucker macht. Vor allem im Sonnenlicht kommen die verschiedenen Färbungen und die Individualität einer jeden Perle besonders zur Geltung.\nDer modernen Steinheilkunde zu Folge sollen die beiden Steine das Selbstvertrauen und die Willenskraft stärken und die Weitsicht unterstützen.\n\nDie Strassspacer sind aus hautfreundlichem und langlebigem Edelstahl.\n\nPerlengröße: ca. 8 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Tigerauge-Falkenauge"
+      ],
+      "metalElements": [
+        "Strasspacer Edelstahl"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 8,
+      "priceMinor": 3500,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "96d866eb-ed1b-43af-95e9-f3517365a75f",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0011/01.jpg",
+          "alt": "Tigerauge/Falkenauge Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "3ebfd5c5-77c5-43c4-9ff5-2d97fd51faff",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0011/02.jpg",
+          "alt": "Tigerauge/Falkenauge Armband",
+          "width": 1199,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "2e781b1f-ce5e-4d9e-94ba-558d5bbe0930",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0011/03.jpg",
+          "alt": "Tigerauge/Falkenauge Armband",
+          "width": 854,
+          "height": 1138,
+          "isMain": false
+        },
+        {
+          "imageId": "e54bfd94-94ee-4edf-b684-e5f33c799261",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0011/04.jpg",
+          "alt": "Tigerauge/Falkenauge Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:36:35+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Tigerauge/Falkenauge Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Farbenvielfalt vereint in einem Stein",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Selbstvertrauen - Willenskraft - Weitsicht ",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Tigerauge und Falkenauge in einem? Wie soll das gehen? \nGanz einfach: Falkenauge ist im Grunde genommen die gräulich blaue Vorstufe zum Tigerauge. Die typische goldbraune Färbung entsteht nämlich erst durch Oxidation (Sauerstoff und Eisen). \nGenau aus diesem Grund ist in diesem Armband die gesamte Farbpalette von Tiger- und Falkenauge enthalten, was es erst recht zu einem Hingucker macht. Vor allem im Sonnenlicht kommen die verschiedenen Färbungen und die Individualität einer jeden Perle besonders zur Geltung.\nDer modernen Steinheilkunde zu Folge sollen die beiden Steine das Selbstvertrauen und die Willenskraft stärken und die Weitsicht unterstützen.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Strassspacer sind aus hautfreundlichem und langlebigem Edelstahl.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 8 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "ea3136ce-c4b3-414c-a8eb-e03b764638a1",
+      "productVersion": 7,
+      "sourceHash": "a8698c892569c16d3ac8f4c5e8aeb44200ec9a81baab1776963c48223cc7da52",
+      "sku": "CP-2026-0012",
+      "slug": "cp-2026-0012-karneol-armband",
+      "title": "Karneol Armband",
+      "description": "Karneol Armband\n\nIntensiv, leuchtend und lebensfroh\n\nLebensmut - Tatkraft - Selbstvertrauen\n\nSeine kräftige Farbe macht den Karneol zu einem absoluten Blickfang. Dazu ist er leicht transparent, was besonders im Sonnenlicht auffällt.\nLaut Steinheilkunde soll der Karneol gute Laune und Lebensmut fördern. Es heißt er hilft das Schöne zu genießen und dabei bodenständig zu bleiben. Er soll Energie und Schwung geben und dadurch die Tatkraft steigern und zudem das Selbstvertrauen unterstützen.\n\nAbgerundet wird das Armband mit goldfarbenen, echten Lavaperlen und goldfarbenen Spacern aus hautfreundlichem und langlebigem Edelstahl.\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Lavaperlen",
+        "Carneol (gebrannt/gefärbt)"
+      ],
+      "metalElements": [
+        "Goldene Tibet-Spacer Edelstahl"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 6,
+      "priceMinor": 3000,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "dbc5d001-21bf-4ccb-9fc3-b6a666b91894",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0012/01.jpg",
+          "alt": "Karneol Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "ff8deaa4-6dce-470b-8ac8-c152917a9e9a",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0012/02.jpg",
+          "alt": "Karneol Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "fcb8504b-fc6f-4c07-a422-257548205dbc",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0012/03.jpg",
+          "alt": "Karneol Armband",
+          "width": 1600,
+          "height": 1199,
+          "isMain": false
+        },
+        {
+          "imageId": "ceb49477-671d-47dc-8264-c46c2f7150bc",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0012/04.jpg",
+          "alt": "Karneol Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:37:20+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Karneol Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Intensiv, leuchtend und lebensfroh",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Lebensmut - Tatkraft - Selbstvertrauen",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Seine kräftige Farbe macht den Karneol zu einem absoluten Blickfang. Dazu ist er leicht transparent, was besonders im Sonnenlicht auffällt.\nLaut Steinheilkunde soll der Karneol gute Laune und Lebensmut fördern. Es heißt er hilft das Schöne zu genießen und dabei bodenständig zu bleiben. Er soll Energie und Schwung geben und dadurch die Tatkraft steigern und zudem das Selbstvertrauen unterstützen.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Abgerundet wird das Armband mit goldfarbenen, echten Lavaperlen und goldfarbenen Spacern aus hautfreundlichem und langlebigem Edelstahl.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "7da2904f-09c2-486b-b0a8-568f0ba8c024",
+      "productVersion": 6,
+      "sourceHash": "b07fdc77c5341b139bd48daa7ed1eaad2f221d7cfe06f6703d62a42c65c7d357",
+      "sku": "CP-2026-0013",
+      "slug": "cp-2026-0013-schneeflockenobsidian-armband",
+      "title": "Schneeflockenobsidian Armband",
+      "description": "Schneeflockenobsidian Arband\n\nDie Schönheit des Kontrasts \n\nLoslassen - Erdung - Klarheit\n\nSchneeflockenobsidian bildet mit seinem tiefem schwarz und den hellen, flockenartigen Einschlüssen einen wunderschönen Kontrast in jeder einzelnen Perle.\nLaut Steinheilkunde soll er helfen alte Gewohnheiten und belastende Gedanken loszulassen und wird zudem als Stein der Erdung und inneren Stabilität genannt. Er soll die Klarheit des Verstandes schärfen und dabei unterstüzten aus alten Fehlern zu lernen.\n\nAbgerundet wird das Armband mit runden Spacern aus hautfreundlichem und langlebigem Edelstahl.\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Schneeflocken-Obsidian matt"
+      ],
+      "metalElements": [
+        "Edelstahlspacer"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 6,
+      "priceMinor": 3000,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "565bb32c-4a93-4206-8ed5-2c352ab4b66e",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0013/01.jpg",
+          "alt": "Schneeflockenobsidian Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "27ea0735-bd6d-479f-825c-2b84f8b7370a",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0013/02.jpg",
+          "alt": "Schneeflockenobsidian Armband",
+          "width": 1199,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "e04856fb-b175-4e4b-9569-e9f64f4af0cf",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0013/03.jpg",
+          "alt": "Schneeflockenobsidian Armband",
+          "width": 1600,
+          "height": 1199,
+          "isMain": false
+        },
+        {
+          "imageId": "ee346ae0-58f6-4ec9-849e-5c5771c2407e",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0013/04.jpg",
+          "alt": "Schneeflockenobsidian Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:37:59+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Schneeflockenobsidian Arband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Schönheit des Kontrasts ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Loslassen - Erdung - Klarheit",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Schneeflockenobsidian bildet mit seinem tiefem schwarz und den hellen, flockenartigen Einschlüssen einen wunderschönen Kontrast in jeder einzelnen Perle.\nLaut Steinheilkunde soll er helfen alte Gewohnheiten und belastende Gedanken loszulassen und wird zudem als Stein der Erdung und inneren Stabilität genannt. Er soll die Klarheit des Verstandes schärfen und dabei unterstüzten aus alten Fehlern zu lernen.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Abgerundet wird das Armband mit runden Spacern aus hautfreundlichem und langlebigem Edelstahl.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "d22ff939-3805-4c36-bc15-86d2b2dd5f16",
+      "productVersion": 8,
+      "sourceHash": "0ca9f47bf3e9c0ed150e0c4f85b588caa9d948a6533d4039281767879cf2b6d9",
+      "sku": "CP-2026-0014",
+      "slug": "cp-2026-0014-amnethyst-armband",
+      "title": "Amnethyst Armband",
+      "description": "Amnethyst Armband\n\nMystisch, intensiv und prunkvoll\n\ninnerer Frieden - Intuition - Ausgeglichenheit\n\nMit seinem tiefem Violett fasziniert der Amnethyst mit jeder einzelnen Perle.\nDiesem Stein wird laut Steinheilkunde innerer Frieden, Intution und Ausgeglichenheit zugeschrieben. Er steht sinnbildlich dafür, innezuhalten und den eigenen Gedanken Raum zu geben und auf sein eigenes Bauchgefühl zu vertrauen. \n\nDazu kommen goldfarbene, echte Lavaperlen und goldfarbene Spacer aus hautfreundlichem und langlebigem Edelstahl.\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Lavaperlen",
+        "Amethyst"
+      ],
+      "metalElements": [
+        "Goldene Tibet-Spacer Edelstahl"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 6,
+      "priceMinor": 3300,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "4ca82385-f890-4547-bded-cdccc762489c",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0014/01.jpg",
+          "alt": "Amnethyst Armband",
+          "width": 1199,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "983d3a41-c61f-4ac5-af11-fe41ae88269f",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0014/02.jpg",
+          "alt": "Amnethyst Armband",
+          "width": 1199,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "2178eea3-ca1a-4a90-b786-5391076d41c0",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0014/03.jpg",
+          "alt": "Amnethyst Armband",
+          "width": 1600,
+          "height": 1199,
+          "isMain": false
+        },
+        {
+          "imageId": "9a402279-9738-4ec5-a6a4-efce45c81689",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0014/04.jpg",
+          "alt": "Amnethyst Armband",
+          "width": 1199,
+          "height": 1599,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:38:35+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Amnethyst Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Mystisch, intensiv und prunkvoll",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "innerer Frieden - Intuition - Ausgeglichenheit",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Mit seinem tiefem Violett fasziniert der Amnethyst mit jeder einzelnen Perle.\nDiesem Stein wird laut Steinheilkunde innerer Frieden, Intution und Ausgeglichenheit zugeschrieben. Er steht sinnbildlich dafür, innezuhalten und den eigenen Gedanken Raum zu geben und auf sein eigenes Bauchgefühl zu vertrauen. ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Dazu kommen goldfarbene, echte Lavaperlen und goldfarbene Spacer aus hautfreundlichem und langlebigem Edelstahl.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "4c6d4228-de7e-44ed-8b73-1cb8940a1474",
+      "productVersion": 7,
+      "sourceHash": "b8a3941308062b5e2dfdd3d9e12d739c1498a5decccd1123d289034e9ddd0cc2",
+      "sku": "CP-2026-0015",
+      "slug": "cp-2026-0015-afrikanischer-turkis-armband",
+      "title": "Afrikanischer Türkis Armband",
+      "description": "Afrikanischer Türkis Armband\n\nNuanciert, individuell und lebhaft\n\nWandel - Balance - Selbstentfaltung\n\nVon tiefgrün bis zu mintfarben und dabei verschiedene Zeichungen auf jeder Perle - das macht afrikanischen Türkis so wunderschön und individuell. \nIhm wird laut Steinheilkunde nachgesagt den persönlichen Wandel und Neubeginn zu unterstützen und offen für Veränderungen, neue Möglichkeiten und neue Lebensabschnitte zu sein. Er soll außerdem die innere Gelassenheit und Balance verbessern, insbesondere zu Zeiten der Veränderung. Außerdem wird er mit dem Mut verbunden, sich selbst zu entfalten, eigene Entscheidungen zu treffen und neue Wege einzuschlagen.\n\nDazu kommen goldfarbene, echte Lavaperlen und goldfarbene Spacer aus hautfreundlichem und langlebigem Edelstahl.\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Lavaperlen",
+        "Chrysocoll-Diorit"
+      ],
+      "metalElements": [
+        "Goldene Tibet-Spacer Edelstahl"
+      ],
+      "braceletSizeCm": 18,
+      "pearlSizeMm": 6,
+      "priceMinor": 3200,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "6d2b5a86-261a-44ed-9fca-561540b2375a",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0015/01.jpg",
+          "alt": "Afrikanischer Türkis Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "e5759751-7404-4b82-bf5b-1896d0d14190",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0015/02.jpg",
+          "alt": "Afrikanischer Türkis Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "974610c0-a21c-46bc-bb58-8ae0c25cc00e",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0015/03.jpg",
+          "alt": "Afrikanischer Türkis Armband",
+          "width": 1600,
+          "height": 1199,
+          "isMain": false
+        },
+        {
+          "imageId": "e203470d-f6a4-410d-abbe-8ec3d699aaa6",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0015/04.jpg",
+          "alt": "Afrikanischer Türkis Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:39:33+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Afrikanischer Türkis Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Nuanciert, individuell und lebhaft",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Wandel - Balance - Selbstentfaltung",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Von tiefgrün bis zu mintfarben und dabei verschiedene Zeichungen auf jeder Perle - das macht afrikanischen Türkis so wunderschön und individuell. \nIhm wird laut Steinheilkunde nachgesagt den persönlichen Wandel und Neubeginn zu unterstützen und offen für Veränderungen, neue Möglichkeiten und neue Lebensabschnitte zu sein. Er soll außerdem die innere Gelassenheit und Balance verbessern, insbesondere zu Zeiten der Veränderung. Außerdem wird er mit dem Mut verbunden, sich selbst zu entfalten, eigene Entscheidungen zu treffen und neue Wege einzuschlagen.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Dazu kommen goldfarbene, echte Lavaperlen und goldfarbene Spacer aus hautfreundlichem und langlebigem Edelstahl.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "f73a2e83-f133-481c-ba14-85e3d550b062",
+      "productVersion": 6,
+      "sourceHash": "63e1cb5405490926ba8086a43365164f1441023d7098cd2af5aec0159d551184",
+      "sku": "CP-2026-0016",
+      "slug": "cp-2026-0016-serpentit-armband",
+      "title": "Serpentit Armband",
+      "description": "Serpentit Armband\n\nFrisch und natürlich\n\nStimmungsausgleich - Beruhigung - Schutz\n\nDie helle, freundliche Farbe dieses Steines macht die Welt gleich ein bisschen bunter. Ihm wird laut moderner Steinheilkunde auch die Kraft nachgesagt Stimmungunsschwangkungen ausgleichen zu können. Außerdem soll er innerer Unruhe, Stress und Nervösität entgegenwirken und dem Träger dabei helfen sich gegen negative Energien und emotionale Angriffe von außen abzugrenzen. \n\nDie Strassspacer sind aus hautfreundlichem und langlebigem Edelstahl\n\nPerlengröße: ca. 6,5 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Serpentin"
+      ],
+      "metalElements": [
+        "Strasspacer Edelstahl"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 6,
+      "priceMinor": 3150,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "e1e60c46-fcc3-46b5-860c-d40c0801e668",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0016/01.jpg",
+          "alt": "Serpentit Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "c3719c94-58db-4e86-9de6-1183b1b27ebf",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0016/02.jpg",
+          "alt": "Serpentit Armband",
+          "width": 1199,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "3a1337bb-d082-4c10-95b5-215246fa1a59",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0016/03.jpg",
+          "alt": "Serpentit Armband",
+          "width": 1600,
+          "height": 1200,
+          "isMain": false
+        },
+        {
+          "imageId": "d4984784-4cf6-40b5-b195-d8a152aef530",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0016/04.jpg",
+          "alt": "Serpentit Armband",
+          "width": 1165,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:40:13+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Serpentit Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Frisch und natürlich",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Stimmungsausgleich - Beruhigung - Schutz",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die helle, freundliche Farbe dieses Steines macht die Welt gleich ein bisschen bunter. Ihm wird laut moderner Steinheilkunde auch die Kraft nachgesagt Stimmungunsschwangkungen ausgleichen zu können. Außerdem soll er innerer Unruhe, Stress und Nervösität entgegenwirken und dem Träger dabei helfen sich gegen negative Energien und emotionale Angriffe von außen abzugrenzen. ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Strassspacer sind aus hautfreundlichem und langlebigem Edelstahl",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6,5 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "992dcfc2-a36d-408f-a3ed-8fa516c1710f",
+      "productVersion": 6,
+      "sourceHash": "beb904ca9bd0a0dbcdab7c5227b99cfae3f722e91f6c3ae9d15a5079214ebeb9",
+      "sku": "CP-2026-0017",
+      "slug": "cp-2026-0017-labradorit-armband",
+      "title": "Labradorit Armband",
+      "description": "Labradorit Armband\n\nPerlen wie kleine Galaxien\n\nSchutz - Intuition - emotionaler Ausgleich\n\nTypisch für Labradorit ist das bläuliche Schimmern, das sich je nach Lichteinfall deutlich auf den einzelnen Perlen abzeichnet. Es wirkt ein wenig, als würde jeder Perle eine eigene Galaxie innewohnen. Bekannt ist der Stein laut moderner Steilheilkunde für seine Schutzwirkung. Er soll gegen negative Energien schützen. Zudem soll er die Intuition fördern und außerdem emotional ausgleichend wirken indem er Ängste lindert, emotionale Blockaden löst und das Gemüt beruhigt. \n\nDie Strassspacer sind aus hautfreundlichem und langlebigem Edelstahl\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Labradorit dunkel"
+      ],
+      "metalElements": [
+        "Edelstahlspacer"
+      ],
+      "braceletSizeCm": 18,
+      "pearlSizeMm": 6,
+      "priceMinor": 3800,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "293a59de-ded8-4459-9912-306187c3afd7",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0017/01.jpg",
+          "alt": "Labradorit Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "2bd35e15-1eac-47a5-9306-43b2607d9b16",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0017/02.jpg",
+          "alt": "Labradorit Armband",
+          "width": 1200,
+          "height": 1599,
+          "isMain": false
+        },
+        {
+          "imageId": "eda8e0d7-1eb4-4e3c-8235-9d1356943846",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0017/03.jpg",
+          "alt": "Labradorit Armband",
+          "width": 1600,
+          "height": 1200,
+          "isMain": false
+        },
+        {
+          "imageId": "82431784-e7d8-41ee-af0b-4029877ea207",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0017/04.jpg",
+          "alt": "Labradorit Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:40:54+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Labradorit Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlen wie kleine Galaxien",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Schutz - Intuition - emotionaler Ausgleich",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Typisch für Labradorit ist das bläuliche Schimmern, das sich je nach Lichteinfall deutlich auf den einzelnen Perlen abzeichnet. Es wirkt ein wenig, als würde jeder Perle eine eigene Galaxie innewohnen. Bekannt ist der Stein laut moderner Steilheilkunde für seine Schutzwirkung. Er soll gegen negative Energien schützen. Zudem soll er die Intuition fördern und außerdem emotional ausgleichend wirken indem er Ängste lindert, emotionale Blockaden löst und das Gemüt beruhigt. ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Strassspacer sind aus hautfreundlichem und langlebigem Edelstahl",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "c0d0eab1-6203-47aa-b2a4-2b680756eb42",
+      "productVersion": 6,
+      "sourceHash": "5b71c21c5e28ef6cfe25a7e8b3434f266e740706b577ab6996f1fbd9a8f199ca",
+      "sku": "CP-2026-0018",
+      "slug": "cp-2026-0018-bergkristall-armband",
+      "title": "Bergkristall Armband",
+      "description": "Bergkristall Armband\n\nKlar, hell und glamurös\n\nReinheit - Fokus - Selbsterkenntnis\n\nDieses Armband besteht aus gecracktem Bergkristall; hierzu wird der Stein erst erhitzt und dann kalt abgeschreckt. Dadurch entstehen in seinem Inneren viele Risse, die für ein wunderschönes Lichtspiel in den einzelnen Perlen sorgen. Nach der modernen Steinheilkunde soll Bergkristall negative Einflüsse abwehren und den Geist von Ballast reinigen. Er gilt als Energieverstärker, der die Wirkungen anderer Heilsteine verstärken kann. Zudem solle er die Wahrnehmung schärfen und dabei hilfreich sein sich bei innerer Unruhe oder Entscheidungsschwierigkeiten besser fokussieren zu können. \n\nDazu kommen in diesem Armand silberfarbene, echte Lavasteine und Strassspacer aus hautfreundlichem und langlebigem Edelstahl zum Einsatz.\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Lavaperlen",
+        "Crashed Crystall"
+      ],
+      "metalElements": [
+        "Strasspacer Edelstahl"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 6,
+      "priceMinor": 3200,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "22a3a8ab-da94-492b-a6ee-8313e406f946",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0018/01.jpg",
+          "alt": "Bergkristall Armband",
+          "width": 1264,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "edb2f643-9461-4c94-b669-e45f0c9db65f",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0018/02.jpg",
+          "alt": "Bergkristall Armband",
+          "width": 1199,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "86d05f9c-7116-4f33-a7f2-7a1c5d0205a1",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0018/03.jpg",
+          "alt": "Bergkristall Armband",
+          "width": 1600,
+          "height": 1199,
+          "isMain": false
+        },
+        {
+          "imageId": "d0685f19-b3d6-43be-946f-c1eb3d0d9f9d",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0018/04.jpg",
+          "alt": "Bergkristall Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:41:29+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Bergkristall Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Klar, hell und glamurös",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Reinheit - Fokus - Selbsterkenntnis",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Dieses Armband besteht aus gecracktem Bergkristall; hierzu wird der Stein erst erhitzt und dann kalt abgeschreckt. Dadurch entstehen in seinem Inneren viele Risse, die für ein wunderschönes Lichtspiel in den einzelnen Perlen sorgen. Nach der modernen Steinheilkunde soll Bergkristall negative Einflüsse abwehren und den Geist von Ballast reinigen. Er gilt als Energieverstärker, der die Wirkungen anderer Heilsteine verstärken kann. Zudem solle er die Wahrnehmung schärfen und dabei hilfreich sein sich bei innerer Unruhe oder Entscheidungsschwierigkeiten besser fokussieren zu können. ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Dazu kommen in diesem Armand silberfarbene, echte Lavasteine und Strassspacer aus hautfreundlichem und langlebigem Edelstahl zum Einsatz.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "590ed43e-9b31-4f89-ab5d-9632107e4e4b",
+      "productVersion": 7,
+      "sourceHash": "22f9e26495d145821dc6c811b446b344475859d495a7a2b1a6c2c321efd5e8ac",
+      "sku": "CP-2026-0019",
+      "slug": "cp-2026-0019-rosenquarz-armband",
+      "title": "Rosenquarz Armband",
+      "description": "Rosenquarz Armband\n\nElegant, feminin und chic\n\nSelbstliebe - Mitgefühl - emotionale Heilung\n\nRosenquarz - bekannt als der Liebesstein schlechthin.\nLaut moderner Steinheilkunde soll er die Sehnsucht nach Romantik, Zärtlichkeit und Vergebung stärken sowie Liebeskummer mildern. In sehr frühen Zeiten galt er unter anderem auch als Stein der Liebe, Harmonie und Fruchtbarkeit.\nWarum er matt ist? Für mein Rosenquarz Armband habe ich mattierte Perlen verwendet, da der Pastellton dadurch besser zu Geltung kommt. \n\nAbgerundet wird das Gesamtbild mit silberfarbenen, echten Lavasteinen und Strassspacern aus hautfreundlichem und langlebigem Edelstahl.\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Lavaperlen",
+        "Rosenquarz mattiert"
+      ],
+      "metalElements": [
+        "Edelstahlspacer"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 6,
+      "priceMinor": 3000,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "af3a006f-e087-47f1-9856-bb1f194aa2ff",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0019/01.jpg",
+          "alt": "Rosenquarz Armband",
+          "width": 1200,
+          "height": 1599,
+          "isMain": true
+        },
+        {
+          "imageId": "133f6167-c8d4-42f9-a49c-67144d23390a",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0019/02.jpg",
+          "alt": "Rosenquarz Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "0a65cbb1-5822-4126-be5d-df96fe423ea6",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0019/03.jpg",
+          "alt": "Rosenquarz Armband",
+          "width": 1600,
+          "height": 1200,
+          "isMain": false
+        },
+        {
+          "imageId": "44436168-15ac-4c17-bb7d-77d038f5f6e5",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0019/04.jpg",
+          "alt": "Rosenquarz Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:42:24+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Rosenquarz Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Elegant, feminin und chic",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Selbstliebe - Mitgefühl - emotionale Heilung",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Rosenquarz - bekannt als der Liebesstein schlechthin.\nLaut moderner Steinheilkunde soll er die Sehnsucht nach Romantik, Zärtlichkeit und Vergebung stärken sowie Liebeskummer mildern. In sehr frühen Zeiten galt er unter anderem auch als Stein der Liebe, Harmonie und Fruchtbarkeit.\nWarum er matt ist? Für mein Rosenquarz Armband habe ich mattierte Perlen verwendet, da der Pastellton dadurch besser zu Geltung kommt. ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Abgerundet wird das Gesamtbild mit silberfarbenen, echten Lavasteinen und Strassspacern aus hautfreundlichem und langlebigem Edelstahl.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "7d68573d-79d8-4f30-b520-30e06f8c0ff6",
+      "productVersion": 6,
+      "sourceHash": "ccc2f633e766cb271c0fcd5e9fce8a7e14f76eaee4cd71f2ac2c982f0388510b",
+      "sku": "CP-2026-0020",
+      "slug": "cp-2026-0020-tigerauge-falkenauge-armband-gold",
+      "title": "Tigerauge/Falkenauge Armband Gold",
+      "description": "Tigerauge/Falkenauge Armband Gold\n\nFarbenvielfalt vereint in einem Stein\n\nSelbstvertrauen - Willenskraft - Weitsicht \n\nTigerauge und Falkenauge in einem? Wie soll das gehen? \nGanz einfach: Falkenauge ist im Grunde genommen die gräulich blaue Vorstufe zum Tigerauge. Die typische goldbraune Färbung entsteht nämlich erst durch Oxidation (Sauerstoff und Eisen). \nGenau aus diesem Grund ist in diesem Armband die gesamte Farbpalette von Tiger- und Falkenauge enthalten, was es erst recht zu einem Hingucker macht. Vor allem im Sonnenlicht kommen die verschiedenen Färbungen und die Individualität einer jeden Perle besonders zur Geltung. \nDer modernen Steinheilkunde zu Folge sollen die beiden Steine das Selbstvertrauen und die Willenskraft stärken und die Weitsicht unterstützen.\n\nDie goldfarbenen Spacer sind aus hautfreundlichem und langlebigem Edelstahl.\n\nPerlengröße: ca. 8 mm\nUmfang: ca. 18 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Tigerauge-Falkenauge"
+      ],
+      "metalElements": [
+        "Goldene Tibet-Spacer Edelstahl"
+      ],
+      "braceletSizeCm": 18,
+      "pearlSizeMm": 8,
+      "priceMinor": 3500,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "5cf31945-ba2d-4f99-a065-935571592a0b",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0020/01.jpg",
+          "alt": "Tigerauge/Falkenauge Armband Gold",
+          "width": 1199,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "5023cb82-ddb9-47ef-a3e8-76fab20b7406",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0020/02.jpg",
+          "alt": "Tigerauge/Falkenauge Armband Gold",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "6cc53e42-a1aa-4e26-b587-8423cca29b70",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0020/03.jpg",
+          "alt": "Tigerauge/Falkenauge Armband Gold",
+          "width": 1600,
+          "height": 1199,
+          "isMain": false
+        },
+        {
+          "imageId": "2056ea50-7ba0-47c7-b160-4c2cabf4d5af",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0020/04.jpg",
+          "alt": "Tigerauge/Falkenauge Armband Gold",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:44:08+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Tigerauge/Falkenauge Armband Gold",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Farbenvielfalt vereint in einem Stein",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Selbstvertrauen - Willenskraft - Weitsicht ",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Tigerauge und Falkenauge in einem? Wie soll das gehen? \nGanz einfach: Falkenauge ist im Grunde genommen die gräulich blaue Vorstufe zum Tigerauge. Die typische goldbraune Färbung entsteht nämlich erst durch Oxidation (Sauerstoff und Eisen). \nGenau aus diesem Grund ist in diesem Armband die gesamte Farbpalette von Tiger- und Falkenauge enthalten, was es erst recht zu einem Hingucker macht. Vor allem im Sonnenlicht kommen die verschiedenen Färbungen und die Individualität einer jeden Perle besonders zur Geltung. \nDer modernen Steinheilkunde zu Folge sollen die beiden Steine das Selbstvertrauen und die Willenskraft stärken und die Weitsicht unterstützen.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die goldfarbenen Spacer sind aus hautfreundlichem und langlebigem Edelstahl.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 8 mm\nUmfang: ca. 18 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    },
+    {
+      "productModelVersion": 4,
+      "productId": "c80f0a00-a9aa-4b75-80e1-d768d8c5b3f5",
+      "productVersion": 6,
+      "sourceHash": "0da1b6129cbfdb76cddced932ae1cd1cdcb9ef58c5072460dc671faccc410066",
+      "sku": "CP-2026-0021",
+      "slug": "cp-2026-0021-sonnenstein-armband",
+      "title": "Sonnenstein Armband",
+      "description": "Sonnenstein Armband\n\nGute Laune \"to go\"\n\nGute Laune - Optimismus - Gelassenheit\n\nSonnenstein gilt laut der modernen Steinheilkunde als absoluter \"Gute Laune\" Stein. Er fördert Optimismus, hilft den Blick auf die eigenen \"Sonnenseiten\" zu lenken und kann dazu beitragen Ängste und schlechte Laune schneller zu überwinden. Zudem soll er dem Träger heitere Gelassenheit bescheren.\n\nDazu kommen roségoldfarbene echte Lavasteine und Rundspacer aus hautfreundlichem und langlebigem Edelstahl. \n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+      "materials": [
+        "Lavaperlen",
+        "Sonnenstein A"
+      ],
+      "metalElements": [
+        "Edelstahlspacer"
+      ],
+      "braceletSizeCm": 18.5,
+      "pearlSizeMm": 6,
+      "priceMinor": 3450,
+      "currency": "eur",
+      "salesEnabled": true,
+      "images": [
+        {
+          "imageId": "6b528abb-4141-4309-b672-7bd5ff97d7ec",
+          "fileName": "01.jpg",
+          "src": "/images/products/CP-2026-0021/01.jpg",
+          "alt": "Sonnenstein Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": true
+        },
+        {
+          "imageId": "6ac83d76-7a26-473f-8667-785b6b857d04",
+          "fileName": "02.jpg",
+          "src": "/images/products/CP-2026-0021/02.jpg",
+          "alt": "Sonnenstein Armband",
+          "width": 1199,
+          "height": 1600,
+          "isMain": false
+        },
+        {
+          "imageId": "0f01b796-5e79-4477-9196-96bd2db916b9",
+          "fileName": "03.jpg",
+          "src": "/images/products/CP-2026-0021/03.jpg",
+          "alt": "Sonnenstein Armband",
+          "width": 1600,
+          "height": 1200,
+          "isMain": false
+        },
+        {
+          "imageId": "3411a492-ba3a-4df0-a2fa-acde094e8f30",
+          "fileName": "04.jpg",
+          "src": "/images/products/CP-2026-0021/04.jpg",
+          "alt": "Sonnenstein Armband",
+          "width": 1200,
+          "height": 1600,
+          "isMain": false
+        }
+      ],
+      "updatedAt": "2026-11-15T10:44:45+00:00",
+      "descriptionDocument": {
+        "version": 1,
+        "blocks": [
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Sonnenstein Armband",
+                "bold": true,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Gute Laune \"to go\"",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Gute Laune - Optimismus - Gelassenheit",
+                "bold": false,
+                "italic": true,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Sonnenstein gilt laut der modernen Steinheilkunde als absoluter \"Gute Laune\" Stein. Er fördert Optimismus, hilft den Blick auf die eigenen \"Sonnenseiten\" zu lenken und kann dazu beitragen Ängste und schlechte Laune schneller zu überwinden. Zudem soll er dem Träger heitere Gelassenheit bescheren.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Dazu kommen roségoldfarbene echte Lavasteine und Rundspacer aus hautfreundlichem und langlebigem Edelstahl. ",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Perlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Hinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "spans": [
+              {
+                "text": "Die Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+                "bold": false,
+                "italic": false,
+                "font": "standard",
+                "size": "normal"
+              }
+            ]
+          }
+        ]
+      },
+      "noticePolicyId": null,
+      "notices": []
+    }
+  ]
 }

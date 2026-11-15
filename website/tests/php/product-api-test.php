@@ -3487,6 +3487,113 @@ carmaja_api_test('V5 bewahrt Verkaufsfreigabe bei Speichern, Upload, Publish, Re
     } finally { unset($GLOBALS['CARMAJA_API_COLLECTION_PROJECTION_V4']); }
 });
 
+carmaja_api_test('Modell-4-Publisher übernimmt Anlage, Änderung und Archivierung ohne fremde Daten zu ändern', static function (): void {
+    $fixture = carmaja_api_test_fixture();
+    carmaja_api_test_use_target($fixture, 'production');
+    putenv('CARMAJA_GITHUB_ADAPTER_ENABLED=true');
+    putenv('CARMAJA_PRODUCTION_PUBLISH_ENABLED=true');
+    putenv('CARMAJA_GITHUB_REPOSITORY=' . CARMAJA_PRODUCTION_REPOSITORY);
+    putenv('CARMAJA_GITHUB_BRANCH=' . CARMAJA_PRODUCTION_BRANCH);
+    $source = carmaja_api_path('artificial-publisher.jpg');
+    carmaja_api_test_create_jpeg($source, 120, 80);
+    $sku = 'CP-2099-0042';
+    $product = [
+        'productModelVersion' => 4, 'productId' => '11111111-1111-4111-8111-111111111142',
+        'productVersion' => 1, 'sourceHash' => str_repeat('1', 64), 'sku' => $sku,
+        'slug' => 'cp-2099-0042-kuenstliche-kollektion', 'title' => 'Künstliche Kollektion',
+        'description' => 'Erste Beschreibung.',
+        'descriptionDocument' => ['version' => 1, 'blocks' => [['type' => 'paragraph', 'spans' => [[
+            'text' => 'Erste Beschreibung.', 'bold' => false, 'italic' => false, 'font' => 'standard', 'size' => 'normal',
+        ]]]]],
+        'materials' => ['Künstliches Material'], 'metalElements' => [], 'braceletSizeCm' => 18,
+        'pearlSizeMm' => 8, 'priceMinor' => 2800, 'currency' => 'eur', 'salesEnabled' => false,
+        'noticePolicyId' => 'natural-stones-v1', 'notices' => CARMAJA_PRODUCT_NOTICES,
+        'images' => [], 'updatedAt' => '2026-11-15T12:00:00+00:00', '_imageBlobs' => [],
+    ];
+    foreach (['01', '02'] as $index) {
+        $product['images'][] = ['imageId' => '22222222-2222-4222-8222-2222222222' . $index,
+            'fileName' => $index . '.jpg', 'src' => '/images/products/' . $sku . '/' . $index . '.jpg',
+            'alt' => 'Künstliche Kollektion', 'width' => 120, 'height' => 80, 'isMain' => $index === '01'];
+        $product['_imageBlobs'][] = ['_sourcePath' => $source,
+            '_repoPath' => 'website/public/images/products/' . $sku . '/' . $index . '.jpg'];
+    }
+    $other = array_diff_key($product, ['_imageBlobs' => true]);
+    $other['productId'] = '33333333-3333-4333-8333-333333333333';
+    $other['sku'] = 'CP-2099-0043';
+    $other['slug'] = 'cp-2099-0043-unberuehrt';
+    foreach ($other['images'] as &$image) { $image['src'] = str_replace($sku, $other['sku'], $image['src']); }
+    unset($image);
+    $document = ['version' => 4, 'products' => [$other]];
+    $head = str_repeat('a', 40);
+    $pending = $tree = $commit = [];
+    $calls = 0;
+    $commits = 0;
+    // Every GitHub request is intercepted. This test cannot access GitHub or a database.
+    $GLOBALS['CARMAJA_API_GITHUB_REQUEST_ADAPTER'] = static function (string $method, string $path, ?array $body)
+        use (&$document, &$head, &$pending, &$tree, &$commit, &$calls, &$commits, $sku): array {
+        $calls++;
+        carmaja_api_test_assert(str_starts_with($path, '/repos/' . CARMAJA_PRODUCTION_REPOSITORY . '/'), 'Fremdes Repository.');
+        if ($method === 'GET' && str_ends_with($path, '/git/ref/heads/main')) return ['object' => ['sha' => $head]];
+        if ($method === 'GET' && str_contains($path, '/git/commits/')) return ['tree' => ['sha' => str_repeat('b', 40)]];
+        if ($method === 'GET' && str_ends_with($path, '/contents/website/content/products.json?ref=main')) {
+            return ['content' => base64_encode(json_encode($document, JSON_THROW_ON_ERROR))];
+        }
+        if ($method === 'POST' && str_ends_with($path, '/git/blobs')) return ['sha' => hash('sha1', $body['content'])];
+        if ($method === 'POST' && str_ends_with($path, '/git/trees')) {
+            $tree = $body['tree'];
+            $pending = [];
+            foreach ($tree as $entry) {
+                if ($entry['path'] === 'website/content/products.json') {
+                    $pending = json_decode($entry['content'], true, 512, JSON_THROW_ON_ERROR);
+                } else {
+                    carmaja_api_test_assert(str_starts_with($entry['path'], 'website/public/images/products/' . $sku . '/'), 'Fremdes Bild verändert.');
+                }
+            }
+            return ['sha' => str_repeat('c', 40)];
+        }
+        if ($method === 'POST' && str_ends_with($path, '/git/commits')) {
+            $commit = $body;
+            carmaja_api_test_same([$head], $body['parents'], 'Kein direkter Folgecommit.');
+            return ['sha' => hash('sha1', 'artificial-commit-' . ++$commits)];
+        }
+        if ($method === 'PATCH' && str_ends_with($path, '/git/refs/heads/main')) {
+            carmaja_api_test_same(false, $body['force'], 'Force-Push angefordert.');
+            $head = $body['sha']; $document = $pending;
+            return ['object' => ['sha' => $head]];
+        }
+        throw new CarmajaApiTestFailure('Unerwarteter Publisheraufruf im isolierten Test.');
+    };
+    foreach (['publish', 'update', 'archive', 'restore'] as $step) {
+        if ($step === 'update') {
+            $product['productVersion'] = 2; $product['sourceHash'] = str_repeat('2', 64);
+            $product['title'] = 'Geänderte Kollektion'; $product['priceMinor'] = 3100;
+            $product['description'] = 'Geänderte Beschreibung.';
+            $product['descriptionDocument']['blocks'][0]['spans'][0]['text'] = $product['description'];
+            $product['images'] = [$product['images'][0]]; $product['_imageBlobs'] = [$product['_imageBlobs'][0]];
+        }
+        $action = $step === 'update' ? 'publish' : $step;
+        $payload = [...$product, '_removePublic' => $step === 'archive'];
+        $operation = ['operationId' => 'artificial-model4-' . $step, 'requestHash' => hash('sha256', $step), 'lifecycleAction' => $action];
+        $result = carmaja_api_github_publish_adapter($payload, $operation);
+        $beforeReplay = $calls;
+        carmaja_api_test_same($result, carmaja_api_github_publish_adapter($payload, $operation), 'Replay änderte Ergebnis.');
+        carmaja_api_test_same($beforeReplay, $calls, 'Replay erzeugte weitere GitHub-Anfragen.');
+        carmaja_api_test_same('queued', $result['deploymentStatus'], 'Deployment darf nicht vorab als bestanden gelten.');
+        carmaja_api_test_same($other, $document['products'][0], 'Unbeteiligtes Produkt verändert.');
+        carmaja_api_test_same(4, $document['version'], 'Projektionsversion verändert.');
+        carmaja_api_test_assert(str_starts_with($commit['message'], 'Carmaja collection ' . $action . ' ' . $sku . "\n"), 'Workflowkennzeichnung falsch.');
+        $own = array_values(array_filter($document['products'], static fn (array $p): bool => $p['sku'] === $sku));
+        carmaja_api_test_same($step === 'archive' ? [] : [array_diff_key($product, ['_imageBlobs' => true])], $own, 'Öffentlicher Inhalt weicht ab.');
+        if ($step === 'archive' || $step === 'update') {
+            $expectedDeleted = 'website/public/images/products/' . $sku . '/' . ($step === 'archive' ? '01' : '02') . '.jpg';
+            carmaja_api_test_assert(count(array_filter($tree, static fn (array $entry): bool =>
+                $entry['path'] === $expectedDeleted && array_key_exists('sha', $entry) && $entry['sha'] === null)) === 1,
+                'Veraltetes öffentliches Bild blieb erhalten.');
+        }
+    }
+    carmaja_api_test_same(4, $commits, 'Nicht exakt ein Commit je Änderung.');
+});
+
 $failures = 0;
 
 try {

@@ -11,7 +11,7 @@ async function text(relativePath) {
   return readFile(path.join(repositoryRoot, relativePath), "utf8");
 }
 
-test("Produktionsdeployment bleibt trotz automatischer Produktprüfung manuell und fail-closed", async () => {
+test("Produktionsdeployment erlaubt nur geprüfte Publisher-Pushes oder explizite manuelle Freigabe", async () => {
   const workflow = await text(".github/workflows/deploy-website.yml");
   const entry = await text("website/production-shop-api-public/index.php");
   const apache = await text("website/production-shop-api-public/.htaccess");
@@ -20,7 +20,14 @@ test("Produktionsdeployment bleibt trotz automatischer Produktprüfung manuell u
   assert.match(workflow, /website\/content\/products\.json/);
   assert.match(workflow, /website\/public\/images\/products\/\*\*/);
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /deploy-production-site:[\s\S]*if: \$\{\{ github\.event_name == 'workflow_dispatch'/);
+  const deployCondition = workflow.match(/  deploy-production-site:\r?\n[\s\S]*?\r?\n    if: (.+)/)?.[1];
+  assert.ok(deployCondition);
+  assert.match(deployCondition, /needs\.build-production-site\.result == 'success'/);
+  assert.match(deployCondition, /github\.event_name == 'workflow_dispatch'/);
+  assert.match(deployCondition, /needs\.validate-manual-production-deploy\.result == 'success'/);
+  assert.match(deployCondition, /vars\.CARMAJA_PRODUCTION_DEPLOY_ENABLED == 'true'/);
+  assert.match(deployCondition, /github\.event_name == 'push'/);
+  assert.match(deployCondition, /needs\.validate-automatic-collection-publish\.result == 'success'/);
   assert.match(workflow, /CARMAJA_PRODUCTION_DEPLOY_ENABLED/);
   assert.match(workflow, /DEPLOY-CARMAJA-PRODUCTION/);
   assert.match(workflow, /environment:\s*\n\s+name: carmaja-production/);
@@ -73,9 +80,9 @@ test("Produktionsvertrag bindet Worker, Versand, Legal Bundle und drei Zahlungsa
   assert.match(runtime, /'commerceRestoreRequireTls'\s*=>\s*true/);
   assert.match(runtime, /'backupDirectory'\s*=>\s*'\/home\/www\/carmaja-private-shop\/backups'/);
   assert.match(runtime, /'backupOffsiteTarget'\s*=>\s*'onedrive-pull:\/\/carmaja-production\/Carmaja-Perlen\/Backups'/);
-  assert.equal(deployment.guards.publisherEnabled, false);
+  assert.equal(deployment.guards.publisherEnabled, true);
   assert.equal(deployment.guards.automaticApiDeployment, false);
-  assert.equal(deployment.guards.automaticWebsiteDeployment, false);
+  assert.equal(deployment.guards.automaticWebsiteDeployment, true);
   assert.equal(deployment.guards.productApiV4WritesEnabled, false);
   assert.equal(deployment.guards.collectionCommerceEnabled, false);
   assert.equal(deployment.guards.shopCheckoutEnabled, false);

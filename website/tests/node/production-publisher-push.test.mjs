@@ -94,6 +94,27 @@ test("Projektion 4 bindet serverseitige Version, Hash und unveränderbare Hinwei
   assert.equal(validatePublisherPush(fixture({productsDocument: {version: 4, products: [{...product, noticePolicyId: null, notices: []}]}})).action, "publish");
 });
 
+test("Modell-4-Archivierung verlangt Entfernung; Wiederherstellung erteilt keine Verkaufsfreigabe", () => {
+  function lifecycle(action, products) {
+    return fixture({
+      commitMessage: `Carmaja collection ${action} ${sku}\n\n`
+        + "Carmaja-Publisher: collection-v4\n"
+        + `Carmaja-Operation: production-collection-${action}-0042\n`
+        + `Carmaja-Request-SHA256: ${requestHash}`,
+      changedFiles: [{status: "M", path: "website/content/products.json"}],
+      productsDocument: {version: 4, products},
+    });
+  }
+  const product = {...publishedProduct(), productModelVersion: 4, productVersion: 3,
+    sourceHash: "a".repeat(64), priceMinor: 2800, currency: "eur",
+    salesEnabled: false, noticePolicyId: null, notices: []};
+  assert.equal(validatePublisherPush(lifecycle("archive", [])).action, "archive");
+  assert.throws(() => validatePublisherPush(lifecycle("archive", [product])), /weiterhin öffentlich/);
+  assert.equal(validatePublisherPush(lifecycle("restore", [product])).action, "restore");
+  assert.equal(product.salesEnabled, false);
+  assert.throws(() => validatePublisherPush(lifecycle("restore", [])), /fehlt/);
+});
+
 for (const [name, overrides] of [
   ["falscher Akteur", { actor: "someone-else" }],
   ["Force-Push", { forced: "true" }],

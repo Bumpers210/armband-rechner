@@ -16,7 +16,8 @@ test("der entfernte Alt-Produktdatensatz und seine Bilder sind nicht mehr vorhan
     assert.equal(product.productModelVersion, 4);
     assert.equal(Object.hasOwn(product, "stock"), false);
     assert.equal(Object.hasOwn(product, "vintedUrl"), false);
-    assert.equal(["CP-2026-0008", "CP-2026-0009"].includes(product.sku), false);
+    // SKUs 0008/0009 now identify verified real production products. Their
+    // former use by isolated fixtures must not block legitimate publication.
   }
 
   for (const fileName of ["01.jpg", "02.jpg"]) {
