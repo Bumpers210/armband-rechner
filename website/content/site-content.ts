@@ -272,14 +272,15 @@ export const siteContent: SiteContent = {
       "Quarzperlen",
       "Lavasteine",
       "Edelstahlelemente",
+      "Elastikband",
     ],
   },
   care: {
     title: "Pflege",
     items: [
-      "Vor dem Duschen und Baden ablegen",
-      "Kontakt mit Parfüm und Cremes vermeiden",
-      "Nicht stark auseinanderziehen",
+      "Vor Kontakt mit Wasser schützen (nicht beim Duschen und Baden tragen).",
+      "Kontakt mit Cremes, Parfüm und dergleichen vermeiden, dadurch kann die Oberfläche der Steine angegriffen werden.",
+      "Das Band nicht zu stark und ständig dehnen, da es sonst ausleiern oder reißen kann.",
     ],
   },
   closing: {
