@@ -4,8 +4,8 @@
         {
             "productModelVersion": 4,
             "productId": "9ee50dfe-09f3-4ac1-b47b-3bbb78d47e93",
-            "productVersion": 9,
-            "sourceHash": "bed34503fe009244bf454f91de6d5f4b74d51d33ab760851f5a27eadf651fd6a",
+            "productVersion": 12,
+            "sourceHash": "63121feb4f25f68ae38b78857a38dc960507ade7f2526b3e36a8d2d2d7071a2d",
             "sku": "CP-2026-0010",
             "slug": "cp-2026-0010-amazonit-armband",
             "title": "Amazonit Armband",
@@ -18,7 +18,7 @@
             "pearlSizeMm": 8,
             "priceMinor": 2850,
             "currency": "eur",
-            "salesEnabled": false,
+            "salesEnabled": true,
             "images": [
                 {
                     "imageId": "156e1e26-ba4c-4dab-a5f0-751ac8422d1a",
@@ -57,7 +57,7 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-11-15T10:35:02+00:00",
+            "updatedAt": "2026-11-15T20:15:37+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
