@@ -735,6 +735,131 @@
             },
             "noticePolicyId": null,
             "notices": []
+        },
+        {
+            "productModelVersion": 4,
+            "productId": "9ee50dfe-09f3-4ac1-b47b-3bbb78d47e93",
+            "productVersion": 7,
+            "sourceHash": "ee6cc7b97b61be94f608a9bb640c0e5d6833a0a99c7faa930d2e859b3ec832e0",
+            "sku": "CP-2026-0010",
+            "slug": "cp-2026-0010-amazonit-armband",
+            "title": "Amazonit Armband",
+            "description": "Amazonit Armband\n\nBunt, fröhlich und leicht\n\nTrost - Geduld - Harmonie\n\nAmazonit wartet mit Farben von grau über braun bis zu blau auf und erinnert damit an Wärme, Leichtigkeit und Frohsinn.\nIn der modernen Steinheilkunde gilt er auch als \"Troststein\", da er bei tiefer Trauer und Kummer lindern wirken soll. Er soll auch die Geduld und Gelassenheit fördern und innere Widersprüche und Konflikt durch Harmonisierung des Verstand mindern. \n\nPerlengröße: ca. 8 mm\nUmfang: ca. 18,5 cm",
+            "materials": [
+                "Amazonit frosted 8 mm"
+            ],
+            "metalElements": [],
+            "braceletSizeCm": 18.5,
+            "pearlSizeMm": 8,
+            "priceMinor": 3650,
+            "currency": "eur",
+            "salesEnabled": false,
+            "images": [
+                {
+                    "imageId": "156e1e26-ba4c-4dab-a5f0-751ac8422d1a",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0010/01.jpg",
+                    "alt": "Amazonit Armband",
+                    "width": 1199,
+                    "height": 1600,
+                    "isMain": true
+                },
+                {
+                    "imageId": "62597579-c7ba-4faf-979a-974bc4003519",
+                    "fileName": "02.jpg",
+                    "src": "/images/products/CP-2026-0010/02.jpg",
+                    "alt": "Amazonit Armband",
+                    "width": 1200,
+                    "height": 1600,
+                    "isMain": false
+                },
+                {
+                    "imageId": "58781586-1686-43ce-b99a-7704760e7b0a",
+                    "fileName": "03.jpg",
+                    "src": "/images/products/CP-2026-0010/03.jpg",
+                    "alt": "Amazonit Armband",
+                    "width": 1600,
+                    "height": 1200,
+                    "isMain": false
+                },
+                {
+                    "imageId": "fbfcdb20-fe34-4900-9690-04f6080a64f4",
+                    "fileName": "04.jpg",
+                    "src": "/images/products/CP-2026-0010/04.jpg",
+                    "alt": "Amazonit Armband",
+                    "width": 1200,
+                    "height": 1600,
+                    "isMain": false
+                }
+            ],
+            "updatedAt": "2026-11-15T08:16:24+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Amazonit Armband",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bunt, fröhlich und leicht",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Trost - Geduld - Harmonie",
+                                "bold": false,
+                                "italic": true,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Amazonit wartet mit Farben von grau über braun bis zu blau auf und erinnert damit an Wärme, Leichtigkeit und Frohsinn.\nIn der modernen Steinheilkunde gilt er auch als \"Troststein\", da er bei tiefer Trauer und Kummer lindern wirken soll. Er soll auch die Geduld und Gelassenheit fördern und innere Widersprüche und Konflikt durch Harmonisierung des Verstand mindern. ",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Perlengröße: ca. 8 mm\nUmfang: ca. 18,5 cm",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "noticePolicyId": null,
+            "notices": []
         }
     ]
 }
