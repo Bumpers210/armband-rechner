@@ -9,6 +9,17 @@ async function source(relativePath) {
   return readFile(path.join(projectRoot, relativePath), "utf8");
 }
 
+test("Karten bieten höhere Hochformatvorschauen ohne feste Pixelhöhe", async () => {
+  const css = await source("app/site.css");
+  const mediaRules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selectors]) => selectors.split(",").some((selector) => selector.trim() === ".v2-page .product-card-media"))
+    .map(([, , body]) => body);
+  assert.equal(mediaRules.length, 1, "Vorschauformat bleibt an allen Breakpoints konsistent");
+  assert.match(mediaRules[0], /aspect-ratio:\s*3\s*\/\s*4\s*;/);
+  assert.match(mediaRules[0], /width:\s*100%\s*;/);
+  assert.doesNotMatch(mediaRules[0], /(?:^|;)\s*(?:(?:min|max)-)?height\s*:/);
+});
+
 test("Produktvorschauen zeigen das vollständige Foto zentriert statt es zuzuschneiden", async () => {
   const css = await source("app/site.css");
   for (const className of ["product-card-image", "product-detail-image", "product-detail-thumb"]) {
