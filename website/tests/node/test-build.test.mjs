@@ -259,9 +259,34 @@ test(
       );
       assert.ok(detailHtml.includes('href="/material-pflege/"'));
       assert.ok(detailHtml.includes("Hinweise zu Material &amp; Pflege"));
-      assert.ok(!detailHtml.includes("Vor dem Duschen und Baden ablegen"));
-      assert.ok(!detailHtml.includes("Kontakt mit Parfüm und Cremes vermeiden"));
-      assert.ok(!detailHtml.includes("Nicht stark auseinanderziehen"));
+      const materialsAndCareHtml = await readFile(
+        path.join(projectRoot, "out-test", "material-pflege", "index.html"),
+        "utf8",
+      );
+      for (const material of [
+        "Natursteinperlen",
+        "Quarzperlen",
+        "Lavasteine",
+        "Edelstahlelemente",
+        "Elastikband",
+      ]) {
+        assert.ok(materialsAndCareHtml.includes(`<li>${material}</li>`));
+      }
+      for (const careText of [
+        "Vor Kontakt mit Wasser schützen (nicht beim Duschen und Baden tragen).",
+        "Kontakt mit Cremes, Parfüm und dergleichen vermeiden, dadurch kann die Oberfläche der Steine angegriffen werden.",
+        "Das Band nicht zu stark und ständig dehnen, da es sonst ausleiern oder reißen kann.",
+      ]) {
+        assert.equal(materialsAndCareHtml.split(`<li>${careText}</li>`).length - 1, 1);
+        assert.ok(!detailHtml.includes(careText));
+      }
+      for (const previousCareText of [
+        "Vor dem Duschen und Baden ablegen",
+        "Kontakt mit Parfüm und Cremes vermeiden",
+        "Nicht stark auseinanderziehen",
+      ]) {
+        assert.ok(!materialsAndCareHtml.includes(previousCareText));
+      }
       assert.equal(
         [...detailHtml.matchAll(/data-lightbox-open="/g)].length,
         products[0].images.length,
