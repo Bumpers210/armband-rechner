@@ -2275,6 +2275,59 @@
             },
             "noticePolicyId": null,
             "notices": []
+        },
+        {
+            "productModelVersion": 4,
+            "productId": "614955fb-8c66-4d41-b899-503cba4e58aa",
+            "productVersion": 6,
+            "sourceHash": "bbace1731e3bc90d09d10b265d9ad35a4a46f01b4cdc169765aaa9fe9f5148e0",
+            "sku": "CP-2026-0022",
+            "slug": "cp-2026-0022-technische-prufkollektion-nicht-kaufbar",
+            "title": "Technische Prüfkollektion – aktualisiert",
+            "description": "Technische Funktionskontrolle: Beschreibung und Bild wurden erfolgreich aktualisiert. Kein Verkaufsangebot.",
+            "materials": [
+                "Technische Funktionskontrolle"
+            ],
+            "metalElements": [],
+            "braceletSizeCm": 18.5,
+            "pearlSizeMm": 6,
+            "priceMinor": 2345,
+            "currency": "eur",
+            "salesEnabled": false,
+            "images": [
+                {
+                    "imageId": "62a6c0e2-a8ad-414a-bc14-cfbd180f3324",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0022/01.jpg",
+                    "alt": "Technische Prüfkollektion – nicht kaufbar",
+                    "width": 640,
+                    "height": 480,
+                    "isMain": true
+                }
+            ],
+            "updatedAt": "2026-11-15T13:15:59+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Technische Funktionskontrolle: Beschreibung und Bild wurden erfolgreich aktualisiert. Kein Verkaufsangebot.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "noticePolicyId": "natural-stones-v1",
+            "notices": [
+                "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+                "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
+            ]
         }
     ]
 }
