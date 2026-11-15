@@ -803,7 +803,8 @@
 .v2-page .product-detail-thumb {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 
 .v2-page .product-card-image-count {

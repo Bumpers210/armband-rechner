@@ -29,7 +29,7 @@ test("3200px and legacy photos produce small deterministic JPEGs without modifyi
   const root = await mkdtemp(path.join(os.tmpdir(), "carmaja-image-preview-"));
   try {
     await mkdir(path.join(root, "images/products/CP-2026-0001"), { recursive: true });
-    for (const [width, height] of [[3200, 2400], [1506, 1600], [100, 80]]) {
+    for (const [width, height] of [[3200, 2400], [2400, 3200], [1600, 1600], [1506, 1600], [100, 80]]) {
       const bytes = await sharp({ create: { width, height, channels: 3, background: "#b58271" } })
         .withExif({ IFD0: { Artist: "private synthetic metadata" } }).jpeg().toBuffer();
       await writeFile(path.join(root, image.src.slice(1)), bytes);
@@ -44,6 +44,9 @@ test("3200px and legacy photos produce small deterministic JPEGs without modifyi
         assert.equal(meta.exif, undefined);
         assert.equal(Math.max(meta.width, meta.height), Math.min(edge, Math.max(width, height)));
         assert.ok(meta.width <= width && meta.height <= height);
+        const scale = Math.min(1, edge / Math.max(width, height));
+        assert.equal(meta.width, Math.round(width * scale), "Preview must retain the full source width");
+        assert.equal(meta.height, Math.round(height * scale), "Preview must retain the full source height");
         assert.ok(output.length < bytes.length || width < 240);
       }
       await generateProductPreviews([product], root);
