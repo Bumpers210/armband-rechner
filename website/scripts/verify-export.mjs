@@ -198,7 +198,7 @@ const sitemapLocations = [
 const products = Array.isArray(productsJson.products)
   ? productsJson.products
   : [];
-const publishedProducts = products.filter((product) => product.salesEnabled);
+const publishedProducts = products;
 const unavailableProducts = products.filter((product) => !product.salesEnabled);
 const publicProductsPayload = JSON.stringify(productsJson).toLowerCase();
 for (const forbiddenProductField of [
@@ -233,12 +233,6 @@ assert(
     ),
   "Die Sitemap enthält nicht exakt die freigegebenen öffentlichen Produktseiten.",
 );
-for (const product of unavailableProducts) {
-  assert(
-    !sitemapLocations.includes(`${siteUrl}armbaender/${product.slug}/`),
-    `Nicht veröffentlichte Produktseite steht in der Sitemap: ${product.slug}`,
-  );
-}
 
 assert(
   imprintHead.includes("<title>Impressum | Carmaja-Perlen</title>") &&
@@ -294,6 +288,10 @@ for (const product of publishedProducts) {
   const detailHtml = await readOutputFile(`armbaender/${product.slug}/index.html`);
 
   assert(
+    productsOverviewHtml.includes(`href="/armbaender/${product.slug}/"`),
+    `Veröffentlichtes Produkt fehlt in der Übersicht: ${product.slug}`,
+  );
+  assert(
     detailHtml.includes(product.publicTitle) &&
       detailHtml.includes(`data-product-id="${product.productId}"`) &&
       detailHtml.includes(`data-product-version="${product.productVersion}"`) &&
@@ -301,15 +299,24 @@ for (const product of publishedProducts) {
       !detailHtml.toLowerCase().includes("materialkosten"),
     `Die veröffentlichte Produktdetailseite ist unvollständig: ${product.slug}`,
   );
+  assert(
+    readHead(detailHtml).includes('name="robots" content="index, follow"'),
+    `Veröffentlichte Produktdetailseite muss indexierbar sein: ${product.slug}`,
+  );
 }
 
 for (const product of unavailableProducts) {
   const detailHtml = await readOutputFile(`armbaender/${product.slug}/index.html`);
+  const productCard = [...productsOverviewHtml.matchAll(/<article\b[^>]*>[\s\S]*?<\/article>/g)]
+    .map((match) => match[0])
+    .find((card) => card.includes(`href="/armbaender/${product.slug}/"`));
 
   assert(
-    detailHtml.includes("Nicht verfügbar") &&
-      detailHtml.includes('name="robots" content="noindex, follow"'),
-    `Nicht verfügbare Produkte müssen als noindex Detailseite erscheinen: ${product.slug}`,
+    productCard?.includes("Nicht verfügbar") &&
+      detailHtml.includes("Nicht verfügbar") &&
+      !detailHtml.includes('class="shop-buy-now"') &&
+      !detailHtml.includes("In den Warenkorb"),
+    `Nicht verfügbare Produkte müssen sichtbar, aber ohne Kaufmöglichkeit sein: ${product.slug}`,
   );
 }
 

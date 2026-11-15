@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
+import ts from "typescript";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const websiteDirectory = path.resolve(testDirectory, "..", "..");
@@ -11,22 +13,70 @@ async function source(relativePath) {
   return readFile(path.join(websiteDirectory, relativePath), "utf8");
 }
 
-test("oeffentliche Routen behandeln nur freigegebene Produkte der Modelle 2 und 3", async () => {
+test("oeffentliche Routen trennen Veroeffentlichung von Verkaufsfreigabe", async () => {
   const products = await source("content/products.ts");
   const overview = await source("app/armbaender/page.tsx");
   const detail = await source("app/armbaender/[slug]/page.tsx");
   const sitemap = await source("app/sitemap.ts");
 
   assert.match(products, /loadPublicProductsV2/);
-  assert.match(products, /product\.salesEnabled/);
+  assert.doesNotMatch(products, /product\.salesEnabled/);
   assert.doesNotMatch(products, /product\.status/);
   assert.match(overview, /visibleProducts/);
   assert.match(detail, /detailProducts/);
   assert.match(detail, /notFound\(\)/);
   assert.match(detail, /!product\.salesEnabled/);
+  assert.match(detail, /product\.salesEnabled\s*\?\s*\(\s*<ShopBuyNow/);
   assert.match(detail, /index: false/);
   assert.match(sitemap, /visibleProducts/);
 });
+
+async function evaluateModule(relativePath, dependencies, environment = {}) {
+  const { outputText } = ts.transpileModule(await source(relativePath), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
+  });
+  const exports = {};
+  vm.runInNewContext(outputText, {
+    exports,
+    URL,
+    process: { cwd: () => websiteDirectory, env: environment },
+    require(name) {
+      assert.ok(name in dependencies, `Unerwartete Abhängigkeit: ${name}`);
+      return dependencies[name];
+    },
+  });
+  return exports;
+}
+
+for (const target of ["production", "test"]) {
+  test(`${target}: veröffentlichte Produkte ohne Verkaufsfreigabe bleiben in Übersicht und Sitemap`, async () => {
+    const projected = Object.freeze([
+      Object.freeze({ productId: "published-enabled", slug: "enabled", salesEnabled: true, updatedAt: "2026-11-01T00:00:00Z" }),
+      Object.freeze({ productId: "published-disabled", slug: "disabled", salesEnabled: false, updatedAt: "2026-11-15T00:00:00Z" }),
+    ]);
+    const before = JSON.stringify(projected);
+    const products = await evaluateModule("content/products.ts", {
+      "node:path": path,
+      "@/lib/public-products-v2.mjs": { loadPublicProductsV2: () => ({ products: projected }) },
+      "@/lib/product-image-previews.mjs": { withProductPreviews: (product) => product },
+    }, { CARMAJA_SITE_TARGET: target });
+    assert.deepEqual(Array.from(products.visibleProducts, (product) => product.productId),
+      ["published-disabled", "published-enabled"]);
+    assert.equal(products.findDetailProduct("disabled").salesEnabled, false);
+    assert.equal(products.findDetailProduct("unpublished"), undefined);
+    assert.equal(products.findDetailProduct("archived"), undefined);
+    assert.equal(JSON.stringify(projected), before);
+
+    const baseUrl = target === "test" ? "https://test.carmaja-perlen.de" : "https://www.carmaja-perlen.de";
+    const sitemap = await evaluateModule("app/sitemap.ts", {
+      "@/content/products": products,
+      "@/content/site-content": { siteContent: { metadata: { siteUrl: baseUrl } } },
+    });
+    const entries = sitemap.default();
+    assert.deepEqual(Array.from(entries.filter((entry) => entry.lastModified), (entry) => entry.url),
+      [`${baseUrl}/armbaender/disabled/`, `${baseUrl}/armbaender/enabled/`]);
+  });
+}
 
 test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async () => {
   const publicProducts = await source("lib/public-products-v2.mjs");

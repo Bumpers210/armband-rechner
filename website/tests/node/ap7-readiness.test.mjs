@@ -102,7 +102,7 @@ test("Website und v2-Publisher besitzen keinen produktiven Legacy-Verkaufsweg", 
 
   assert.match(products, /loadPublicProductsV2/);
   assert.doesNotMatch(products, /loadPublicProducts,/);
-  assert.match(products, /product\.salesEnabled/);
+  assert.match(detail, /product\.salesEnabled\s*\?\s*\(\s*<ShopBuyNow/);
   assert.match(detail, /productId=\{product\.productId\}/);
   assert.match(publisher, /product_v2_published/);
   assert.match(publisher, /array_key_exists\('stock'/);
