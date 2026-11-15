@@ -36,17 +36,12 @@ export const publicProducts = productsData.products.map((product) =>
   withProductPreviews(product, process.env.CARMAJA_SITE_TARGET),
 );
 
-const includeUnavailableTestProducts =
-  process.env.CARMAJA_SITE_TARGET === "test";
-
-export const visibleProducts = publicProducts
-  .filter(
-    (product) => product.salesEnabled || includeUnavailableTestProducts,
-  )
+// The public projection already determines publication. Sales permission only
+// controls purchasing, not visibility in the catalogue or sitemap.
+export const visibleProducts = [...publicProducts]
   .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 
-export const detailProducts = publicProducts
-  .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+export const detailProducts = visibleProducts;
 
 export function findDetailProduct(slug: string): PublicProduct | undefined {
   return detailProducts.find((product) => product.slug === slug);

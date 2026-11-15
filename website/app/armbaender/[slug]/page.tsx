@@ -121,15 +121,10 @@ export async function generateMetadata({
           follow: false,
           noimageindex: true,
         }
-      : !product.salesEnabled
-        ? {
-            index: false,
-            follow: true,
-          }
-        : {
-            index: true,
-            follow: true,
-          },
+      : {
+          index: true,
+          follow: true,
+        },
     openGraph: image
       ? {
           title: product.publicTitle,
