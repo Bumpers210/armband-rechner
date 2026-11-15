@@ -9,6 +9,18 @@ async function source(relativePath) {
   return readFile(path.join(projectRoot, relativePath), "utf8");
 }
 
+test("Produktvorschauen zeigen das vollständige Foto zentriert statt es zuzuschneiden", async () => {
+  const css = await source("app/site.css");
+  for (const className of ["product-card-image", "product-detail-image", "product-detail-thumb"]) {
+    const declarations = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selectors]) => selectors.split(",").some((selector) => selector.trim() === `.v2-page .${className}`))
+      .map(([, , body]) => body).join("\n");
+    assert.match(declarations, /object-fit:\s*contain\s*;/, className);
+    assert.match(declarations, /object-position:\s*center\s*;/, className);
+    assert.doesNotMatch(declarations, /object-fit:\s*(?:cover|fill)\s*;/, className);
+  }
+});
+
 test("Lightbox unterstützt Maus, Touch, Tastatur und Fokusführung", async () => {
   const component = await source("components/product-image-gallery.tsx");
 
