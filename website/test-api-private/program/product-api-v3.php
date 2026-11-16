@@ -592,7 +592,7 @@ function carmaja_api_local_publish_adapter_v3(array $publicProduct, array $opera
         '_removePublic' => true,
     ]);
     return carmaja_api_with_lock(
-        'publish-adapter-v3-' . hash('sha256', $operationId),
+        'catalog-projection',
         function () use (
             $operationId,
             $requestHash,
@@ -601,6 +601,7 @@ function carmaja_api_local_publish_adapter_v3(array $publicProduct, array $opera
             $publicForJson,
             $isRemoval
         ): array {
+            if (function_exists('carmaja_product_maintenance_assert')) carmaja_product_maintenance_assert('publisher');
             if (is_file($adapterPath)) {
                 $stored = carmaja_api_read_target_json($adapterPath, [], 'v3-Publishstatus');
                 if (($stored['requestHash'] ?? null) !== $requestHash) {

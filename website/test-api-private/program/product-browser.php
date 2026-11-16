@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require_once __DIR__ . '/product-price-list.php';
+require_once __DIR__ . '/product-catalog-order.php';
 
 /** Explicitly gated browser boundary. Uses the same V5 services/users as Android. */
 final class CarmajaProductBrowser
@@ -164,6 +165,12 @@ final class CarmajaProductBrowser
                 throw new CarmajaApiException(503, 'Produktbearbeitung derzeit gesperrt.', [], 'product_v5_not_enabled');
             }
             $key = carmaja_api_v2_validate_idempotency_key($key);
+        }
+        if ($parts === ['catalog-order']) {
+            $remote = ($this->config['publishTarget'] ?? null) === 'production';
+            if ($method === 'GET') return CarmajaCatalogOrder::read($remote);
+            if ($method === 'PUT') return CarmajaCatalogOrder::save($remote, $body, $actor, $key, $this->guard);
+            throw new CarmajaApiException(405, 'Methode nicht erlaubt.', [], 'method_invalid');
         }
         if ($parts === ['products'] && $method === 'GET') {
             $products = [];

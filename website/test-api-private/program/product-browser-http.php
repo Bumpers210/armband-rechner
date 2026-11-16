@@ -30,7 +30,7 @@ function carmaja_product_browser_production_request(array $config, array $server
         }
     }
     $route = $query['route'] ?? '';
-    if (!is_string($route) || preg_match('#^/(?:session|login|logout|price-list|products(?:/[A-Za-z0-9-]+(?:/(?:images(?:/[A-Za-z0-9-]+)?|publish|archive|restore|inventory|initial-inventory))?)?)$#D', $route) !== 1) {
+    if (!is_string($route) || preg_match('#^/(?:session|login|logout|price-list|catalog-order|products(?:/[A-Za-z0-9-]+(?:/(?:images(?:/[A-Za-z0-9-]+)?|publish|archive|restore|inventory|initial-inventory))?)?)$#D', $route) !== 1) {
         throw new CarmajaApiException(404, 'Endpunkt fehlt.', [], 'endpoint_not_found');
     }
     $multipart = $method === 'POST' && str_ends_with($route, '/images');

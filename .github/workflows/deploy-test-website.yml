@@ -10,6 +10,7 @@ on:
       - "website/components/**"
       - "website/config/**"
       - "website/content/products.json"
+      - "website/content/product-order.json"
       - "website/content/products.ts"
       - "website/content/site-content.ts"
       - "website/hosting-test/**"

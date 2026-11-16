@@ -18,7 +18,7 @@ export class ProductBrowserError extends Error {
 }
 export function productBrowserUrl(route: string): string {
   if (!PRODUCT_BROWSER_API) throw new Error('Artikelverwaltung ist nicht konfiguriert.');
-  if (!/^\/(?:session|login|logout|price-list|products(?:\/[A-Za-z0-9-]+(?:\/(?:images(?:\/[A-Za-z0-9-]+)?|publish|archive|restore|inventory|initial-inventory))?)?)$/.test(route)) throw new Error('Ungültiger Artikelweg.');
+  if (!/^\/(?:session|login|logout|price-list|catalog-order|products(?:\/[A-Za-z0-9-]+(?:\/(?:images(?:\/[A-Za-z0-9-]+)?|publish|archive|restore|inventory|initial-inventory))?)?)$/.test(route)) throw new Error('Ungültiger Artikelweg.');
   return `${PRODUCT_BROWSER_API}?route=${encodeURIComponent(route)}`;
 }
 export async function productRequest<T>(route: string, method = 'GET', body?: unknown, csrf = '', key?: string): Promise<T> {
@@ -33,7 +33,8 @@ export async function productRequest<T>(route: string, method = 'GET', body?: un
   const json = await response.json().catch(() => null);
   if (!response.ok || json?.ok !== true) {
     const code = typeof json?.error?.code === 'string' ? json.error.code : 'request_failed';
-    const message = response.status === 409 ? 'Inzwischen wurde dieser Artikel geändert. Deine Eingaben bleiben hier stehen. Bitte Serverstand neu laden und die Änderungen vergleichen.'
+    const message = response.status === 409 && route === '/catalog-order' ? 'Der Katalog wurde inzwischen geändert. Deine Reihenfolge bleibt hier stehen. Bitte neu laden und vergleichen.'
+      : response.status === 409 ? 'Inzwischen wurde dieser Artikel geändert. Deine Eingaben bleiben hier stehen. Bitte Serverstand neu laden und die Änderungen vergleichen.'
       : response.status === 401 ? 'Bitte mit deinen App-Zugangsdaten anmelden.'
       : response.status === 429 ? 'Zu viele Versuche. Bitte später erneut versuchen.'
       : response.status >= 500 ? 'Artikelverwaltung derzeit nicht erreichbar oder gesperrt. Es wurde kein Erfolg bestätigt.'

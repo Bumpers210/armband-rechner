@@ -1,5 +1,20 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Erweiterung am 16. November 2026: manuelle Katalogreihenfolge
+
+Die Betreiberin legt die Website-Reihenfolge künftig ausschließlich in der
+PC-Artikelverwaltung fest: Nach oben/unten verschieben, ausdrücklich speichern.
+Die Reihenfolge ist von Produktdaten und Commerce getrennt; spätere Bearbeitungen
+verschieben keine Artikel, neue Veröffentlichungen werden angefügt. Vorschaubilder,
+Verkaufsfreigaben, Versionen/Hashes, Bilder und Bestände bleiben unverändert.
+Implementierung und künstliche Nachweise erfolgen isoliert auf
+`codex/product-manual-order`. Lokale Abnahme bestanden; die Betreiberin hat die
+kontrollierte Live-Bereitstellung beauftragt. PR-/Paket-CI und gemeinsame
+API-/Websiteprüfung bleiben Voraussetzung. Die bisherige Reihenfolge bleibt
+bis zur ersten ausdrücklichen Speicherung erhalten; kein Produkt-/Bestandsimport.
+Vertrag, Prüfungen und spätere Bereitstellungsgrenzen:
+[Manuelle Katalogreihenfolge](../website/docs/product-catalog-order.md).
+
 ## Aktueller Abschluss: Warenkorb-Shop und App/PC am 13. November 2026
 
 **Die technische Shop-Abnahme einschliesslich des produktiven App-/PC-Abgleichs

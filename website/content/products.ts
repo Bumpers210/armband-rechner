@@ -1,4 +1,5 @@
 import path from "node:path";
+import { loadCatalogOrder, orderCatalog } from "@/lib/product-catalog-order.mjs";
 import { withProductPreviews } from "@/lib/product-image-previews.mjs";
 
 import {
@@ -38,8 +39,8 @@ export const publicProducts = productsData.products.map((product) =>
 
 // The public projection already determines publication. Sales permission only
 // controls purchasing, not visibility in the catalogue or sitemap.
-export const visibleProducts = [...publicProducts]
-  .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+export const visibleProducts = orderCatalog(publicProducts,
+  loadCatalogOrder(path.join(path.dirname(productsFile), "product-order.json")));
 
 export const detailProducts = visibleProducts;
 

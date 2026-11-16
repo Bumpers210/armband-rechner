@@ -34,6 +34,11 @@ Vorgänger, Committext, Produktmodell und Pfade vor jedem Serverzugriff. Für
 Code- oder allgemeine Websiteänderungen bleibt der manuelle Deployweg
 unverändert.
 
+Lokal vorbereitet ist außerdem die [manuelle Katalogreihenfolge](docs/product-catalog-order.md)
+in der PC-Artikelverwaltung. Deren eigener, streng geprüfter Publishercommit
+ändert ausschließlich `content/product-order.json`, niemals Produkt- oder
+Bestandsdaten. Die Funktion ist noch nicht bereitgestellt.
+
 Das Paket enthaelt nur den geprueften statischen Export, ein SHA-256-gebundenes Manifest und die Archivpruefsumme. `website/hosting/**`, PHP-Dateien und geschuetzte Serverbereiche werden nicht paketiert. Beim ersten Produktivlauf verweigert der Aktivierer jede Kollision mit einer nicht bereits im serverseitigen Baseline-Manifest verwalteten Datei. Dieses Manifest ist vor der ersten Aktivierung nach einer manuellen Bestandsaufnahme zu erstellen und freizugeben.
 
 ## Oeffentliche Produktdaten
