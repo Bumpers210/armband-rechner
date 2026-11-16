@@ -1,8 +1,14 @@
 # Kontrollierter Warenkorb-Shopstart
 
-Stand: 13. November 2026. Auftrag: autonome Schritte bis zur Veroeffentlichung,
+Dokumentationsstand: 14. November 2026; Shop-Abnahme und App-Veroeffentlichung:
+13. November 2026. Auftrag: autonome Schritte bis zur Veroeffentlichung,
 ohne Sicherheitsgates zu umgehen. Personenbezogene Nachweisinhalte, private
 Konfigurationen und Zugangsdaten sind nicht Bestandteil dieser Dokumentation.
+
+Aktueller main-, CI- und Releasebezug:
+[Nachtrag vom 14. November](#main-und-app-release-stand-vom-14-november-2026).
+Die folgenden datierten Zwischenstaende bleiben unveraenderte Historie und
+sind keine Behauptung einer erneuten Produktionspruefung am 14. November.
 
 ## Bestaetigte Schritte
 
@@ -434,3 +440,86 @@ Nach erster bestandswirksamer Zahlung kein Rueckwechsel zum unbegrenzten
 Kollektionenverkauf. Technischer Shopstart abgenommen; die laufende Erfuellung
 realer Bestellungen und wiederkehrende Betriebspruefungen bleiben erforderlich.
 Keine erfundenen Ist-Stunden oder garantierten Termine.
+
+## Main und App-Release-Stand vom 14. November 2026
+
+Aenderungsvermerk: main-/Releasebezug und den bereits am 13. November
+erhobenen lesenden Abschlussnachweis ergaenzt. Keine Fachregel, Freigabe,
+Produktionsdatei oder Konfiguration geaendert. Historische Build-, Deploy-
+und Abnahmezeitpunkte bleiben getrennt; ein neuer main-SHA bedeutet nicht,
+dass alle Produktionsprogramme erneut bereitgestellt wurden.
+
+| Gegenstand | Verifizierter Bezug |
+| --- | --- |
+| Aktueller main | `3a605f9f2568a266b4fcc8cf64d0b436196c7351`; [PR #106](https://github.com/Bumpers210/armband-rechner/pull/106) am 13. November 2026, 19:17:02 UTC integriert |
+| Bestehende main-CI | [43490737279](https://github.com/Bumpers210/armband-rechner/actions/runs/43490737279), Validate production cart package: completed/success |
+| Bereits bereitgestellte Websitebasis | `b3167b9babf27bdc9fa547cfbfcde8d0b3fb8e66`; kein Website-Deployment durch PR #106 oder das App-Release |
+| Zuletzt bereitgestellter privater Workerpatch | `ap3-worker.php` aus `54243f1f27ca22df870a163e4989818a459fe82c`, Nachweis zu PR #105 oben; keine erneute Bereitstellung |
+| Produktions-App | 1.4.0 / Code 8, Paket `de.carmajaperlen.armbandrechner`, ausschliesslich Produktions-API |
+| App-Quellcommit und Release-Tag | `261564aef3f62be759bc3efc0251b019a9bdd354`; Tag `product-management-v1.4.0` verweist auf genau diesen Buildquellcommit |
+| Signierter App-Build | [43249178666](https://github.com/Bumpers210/armband-rechner/actions/runs/43249178666), completed/success; Unit-, Lint-, Offline-Compose-, Release- und Signaturpruefungen bestanden |
+| Veroeffentlichtes Release | [Carmaja-Perlen Produktverwaltung 1.4.0](https://github.com/Bumpers210/armband-rechner/releases/tag/product-management-v1.4.0), seit 13. November 2026, 19:30:45 UTC; latest, nicht draft, nicht prerelease |
+
+Release-Dateien:
+
+- [Carmaja-Perlen-Produktverwaltung-1.4.0-signed.apk](https://github.com/Bumpers210/armband-rechner/releases/download/product-management-v1.4.0/Carmaja-Perlen-Produktverwaltung-1.4.0-signed.apk), 9.237.225 Byte.
+- [SHA256SUMS.txt](https://github.com/Bumpers210/armband-rechner/releases/download/product-management-v1.4.0/SHA256SUMS.txt), Pruefsumme fuer die APK unter ihrem Download-Dateinamen.
+
+Bei Veroeffentlichung wurde die unveraenderte APK aus dem bestehenden
+signierten Lauf erneut lokal auf Paket, Version, nicht gesetztes Debugflag,
+stabile Produktionssignatur, Produktions-API und fehlende Test-/Beta-Verweise
+geprueft. Upload-Digests und anschliessender Release-Download stimmten mit
+den geprueften Dateien ueberein; lokale Transferkopien wurden bereinigt.
+Am 14. November wurden Release-Metadaten, Tagziel, CI und der Vergleich
+App/Gradle/Wrapper/Releaseworkflow gegen main erneut lesend bestaetigt:
+keine geaenderten App-Build-Eingaben. Kein neuer APK-Build oder erneuter
+Geraetetest. Wer 1.4.0 / Code 8 bereits verwendet, benoetigt deshalb keine
+Neuinstallation. Die APK ist fuer die Shop-Produktverwaltung bestimmt;
+eine Play-Store-Veroeffentlichung ist nicht Teil dieses Abschlusses.
+
+### Letzter lesender Produktionsnachweis vom 13. November
+
+- 20 oeffentliche Seiten einschliesslich Warenkorb, Verwaltungs-/Adminhuelle,
+  Rechtsseiten, Rueckkehrseiten und Legal-v7-Archiv mit HTTP 200; keine
+  Testdomains, Vinted-/Marktplatzlinks oder CP-2026-0008/-0009 im geprueften HTML.
+- Sechs Live-Produkte mit passenden Preisen und Mengen, exaktem CORS-Origin
+  und no-store. Ares verfuegbar mit drei Stueck, die weiteren fuenf mit je vier.
+- Read-only-Datenbankpruefung 19:36:36 UTC: sechs Inventare mit 23 Stueck,
+  null blockierende Reservierungen, keine offenen Prueffaelle und keine
+  queued/processing/Fehlereintraege in den drei geprueften Inbox-/Outboxen.
+  Eine zuerst fehlerhafte reine Leseabfrage der berechneten Reservierungsmenge
+  wurde zurueckgerollt und anhand des vorhandenen Schemas korrigiert wiederholt;
+  keine Programm- oder Datenkorrektur war dafuer erforderlich.
+- CMJ-00000002 confirmed, Zahlung succeeded/verified, Versand ready.
+  Bestell- und Betreibermail jeweils sent mit attempt_count=1. Kein neuer
+  Zahlungsvorgang, Versand oder Mailversand ausgeloest.
+- Beide Worker zuletzt 19:32:36 UTC erfolgreich, ohne Fehler; Monitor zur
+  selben Zeit ohne Issue-Codes. Aktive Commerce-TLS-Sitzung bestaetigt.
+- Backupstatus ok: Serverbackup 19:18:03 UTC, Offsite-Quittierung 18:38:16 UTC,
+  keine Ueberfaelligkeit zum Pruefzeitpunkt. Kein neuer Restore in dieser
+  Lesepruefung; der vorherige erfolgreiche Restorebeleg bleibt massgeblich.
+- Runtime vor/nach identisch, Modus 0600; Kaufweg, Warenkorb, V5-App-Schreiben,
+  PC-Zugang und Monitoring aktiv. Publisher und GitHub-Adapter bleiben false.
+
+Am 14. November wurden nur lokale Dokumente und GitHub-Belege gelesen bzw.
+die Dokumente aktualisiert, nicht die Produktion erneut aufgerufen. Alle fuenf
+GitHub-Deploy-/Publishschalter wurden dabei erneut als false bestaetigt.
+Keine neue Komplettregression fuer diese reine Dokumentationspflege; die
+bestehenden CI-, APK- und Betriebsnachweise werden nicht als neue Tests ausgegeben.
+
+### Verbleibender Betrieb und getrennte Verbesserungen
+
+Der Versandnachweis fuer die Erstbestellung fehlt nach dem letzten gelesenen
+Stand weiterhin; kein spaeterer Versand wird ohne Nachweis angenommen.
+Monitoring, regelmaessiger OneDrive-Pull, monatlicher Restoretest und die
+bereits dokumentierten TLS-/Klarna-Versandrestrisiken bleiben bestehen.
+Die Adminoberflaeche zeigt Prueffaelle nur an; ihre Statusbearbeitung ist eine
+moegliche separat zu beauftragende Verbesserung, keine bereits gelieferte
+Funktion. Publisherautomatik und automatische Deployments bleiben bewusst
+deaktiviert. Neue Artikel benoetigen den kontrollierten Veroeffentlichungsweg;
+die ausgeschlossenen Produkte werden nicht automatisch hinzugefuegt.
+
+Urteil: Shop und App im freigegebenen Umfang veroeffentlicht; kein aus den
+vorliegenden Nachweisen offener technischer Veroeffentlichungsblocker.
+Diese Aktualisierung umfasst ausschliesslich drei Dokumentationsdateien;
+kein Commit, Push, Merge, Deployment oder Produktionszugriff.
