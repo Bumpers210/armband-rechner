@@ -113,7 +113,7 @@ function uiHarness({rejectSave = false, confirmResult = true} = {}) {
   const testModule={exports:{}}; const jsx=(type,props)=>({type,props});
   vm.runInNewContext(ts.transpileModule(source('components/product-manager.tsx'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,
     {module:testModule,exports:testModule.exports,Intl,crypto:{randomUUID:()=> 'browser-ui-test-op'},window:{confirm:()=>confirmResult},
-      require(name){if(name==='react')return react;if(name==='react/jsx-runtime')return {jsx,jsxs:jsx};if(name==='@/components/product-calculator')return {ProductCalculator:'Calculator'};if(name==='@/lib/product-browser-client')return {...c,productRequest:request};throw Error('Unexpected import');}});
+      require(name){if(name==='react')return react;if(name==='react/jsx-runtime')return {jsx,jsxs:jsx};if(name==='@/components/product-calculator')return {ProductCalculator:'Calculator'};if(name==='@/components/product-catalog-order')return {ProductCatalogOrder:'CatalogOrder'};if(name==='@/lib/product-browser-client')return {...c,productRequest:request};throw Error('Unexpected import');}});
   return {calls,states,render(){cursor=0;return testModule.exports.ProductManager();}};
 }
 function nodes(node,predicate){if(Array.isArray(node))return node.flatMap(n=>nodes(n,predicate));if(!node||typeof node!=='object')return [];return [...(predicate(node)?[node]:[]),...nodes(node.props?.children,predicate)];}

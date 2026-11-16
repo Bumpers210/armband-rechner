@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/deploy-website.yml"
       - "website/content/products.json"
+      - "website/content/product-order.json"
       - "website/public/images/products/**"
       - "website/scripts/validate-production-publisher-push.mjs"
   pull_request:
@@ -19,6 +20,7 @@ on:
       - "website/config/**"
       - "website/content/products.json"
       - "website/content/products.ts"
+      - "website/content/product-order.json"
       - "website/content/site-content.ts"
       - "website/lib/**"
       - "website/public/**"

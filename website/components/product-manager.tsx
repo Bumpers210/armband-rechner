@@ -2,6 +2,7 @@
 
 import {FormEvent, useEffect, useRef, useState} from 'react';
 import {ProductCalculator} from '@/components/product-calculator';
+import {ProductCatalogOrder} from '@/components/product-catalog-order';
 import {DescriptionDocument, editingProduct, ManagedInventory, ManagedProduct, newProduct, newSpan, prepareProductImage,
   priceFromInput, PRODUCT_BROWSER_IS_TEST, ProductBrowserError, ProductImage, productImageBlob, productPayload, productRequest, TextSpan} from '@/lib/product-browser-client';
 
@@ -53,6 +54,8 @@ export function ProductManager() {
   const pending = useRef(new Map<string, {signature: string; key: string}>()); const busyRef = useRef(false);
   const imageRecovery = useRef<null | {productId: string; images: ProductImage[]; version: number; next: number}>(null);
   const selectedId = useRef('');
+  const [orderDirty, setOrderDirty] = useState(false);
+  const [orderBusy, setOrderBusy] = useState(false);
   function keyFor(action: string, body: unknown) {
     const signature = JSON.stringify(body); const old = pending.current.get(action);
     if (old?.signature === signature) return old.key;
@@ -79,9 +82,9 @@ export function ProductManager() {
     return () => { active = false; };
   }, []);
   useEffect(() => {
-    const leave = (e: BeforeUnloadEvent) => { if (dirty || imageRecovery.current) { e.preventDefault(); e.returnValue = ''; } };
+    const leave = (e: BeforeUnloadEvent) => { if (dirty || orderDirty || orderBusy || imageRecovery.current) { e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('beforeunload', leave); return () => window.removeEventListener('beforeunload', leave);
-  }, [dirty]);
+  }, [dirty, orderDirty, orderBusy]);
   async function loadInventory(id: string) {
     setInventory(null); setInventoryMessage('Bestand wird geladen …');
     try { const data = await productRequest<{inventory: ManagedInventory}>(`/products/${id}/inventory`);
@@ -180,9 +183,10 @@ export function ProductManager() {
       <button disabled={busy} type="submit">Anmelden</button></form> : <>
       <div className="pm-toolbar"><button disabled={busy} onClick={() => { if (mayDiscard()) { imageRecovery.current = null; accept(newProduct()); setDirty(true); } }}>Neuer Artikel</button>
         <button disabled={busy} onClick={() => void run(async () => { await loadProducts(); setMessage('Artikelliste neu geladen. Geöffnete Eingaben bleiben erhalten.'); })}>Liste neu laden</button>
-        <button disabled={busy} onClick={() => { if (mayDiscard()) void run(async () => { await productRequest('/logout', 'POST', {}, csrf); imageRecovery.current = null;
+        <button disabled={busy || orderBusy} onClick={() => { if (mayDiscard() && (!orderDirty || window.confirm('Ungespeicherte Reihenfolge verwerfen und abmelden?'))) void run(async () => { await productRequest('/logout', 'POST', {}, csrf); imageRecovery.current = null; setOrderDirty(false);
           setCsrf(''); setSelected(null); setProducts([]); setDirty(false); setMessage('Abgemeldet.'); }); }}>Abmelden</button></div>
       <p className="pm-note">{PRODUCT_BROWSER_IS_TEST ? 'Nur Testdaten. Neue Artikel heißen in diesem geschützten Testfenster „HANDY-TEST …“. ' : ''}Speichern oder Veröffentlichen ändert keinen vorhandenen Bestand.</p>
+      <ProductCatalogOrder csrf={csrf} disabled={busy} onDirtyChange={setOrderDirty} onBusyChange={setOrderBusy} />
       <ProductCalculator disabled={busy || !!imageRecovery.current} canApplyToCurrent={!!selected && !conflict} onApply={(fields, create) => {
         if (create) { if (!mayDiscard()) throw new Error('Übernahme abgebrochen. Vorhandene Eingaben bleiben erhalten.');
           imageRecovery.current = null; accept({...newProduct(), ...fields}); setDirty(true);

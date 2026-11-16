@@ -5,6 +5,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
+import {orderCatalog} from '../../lib/product-catalog-order.mjs';
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const websiteDirectory = path.resolve(testDirectory, "..", "..");
@@ -49,6 +50,28 @@ async function evaluateModule(relativePath, dependencies, environment = {}) {
 }
 
 for (const target of ["production", "test"]) {
+  test(`${target}: manuelle Reihenfolge erreicht Übersicht und Sitemap ohne Verkaufsaktivierung`, async () => {
+    const a = '99999999-9999-4999-8999-999999999991';
+    const b = '99999999-9999-4999-8999-999999999992';
+    const projected = [
+      {productId:a, slug:'first', salesEnabled:false, updatedAt:'2026-11-01T00:00:00Z'},
+      {productId:b, slug:'second', salesEnabled:false, updatedAt:'2026-11-16T00:00:00Z'},
+    ];
+    const products = await evaluateModule('content/products.ts', {
+      'node:path':path,
+      '@/lib/product-catalog-order.mjs':{orderCatalog, loadCatalogOrder:()=>({version:1,productIds:[a,b]})},
+      '@/lib/public-products-v2.mjs':{loadPublicProductsV2:()=>({products:projected})},
+      '@/lib/product-image-previews.mjs':{withProductPreviews:p=>p},
+    }, {CARMAJA_SITE_TARGET:target});
+    assert.deepEqual(Array.from(products.visibleProducts, p=>p.productId),[a,b]);
+    assert.equal(products.visibleProducts.every(p=>p.salesEnabled===false),true);
+    const sitemap=await evaluateModule('app/sitemap.ts',{
+      '@/content/products':products,
+      '@/content/site-content':{siteContent:{metadata:{siteUrl:'https://example.invalid'}}},
+    });
+    assert.deepEqual(Array.from(sitemap.default().filter(e=>e.lastModified),e=>e.url),
+      ['https://example.invalid/armbaender/first/','https://example.invalid/armbaender/second/']);
+  });
   test(`${target}: veröffentlichte Produkte ohne Verkaufsfreigabe bleiben in Übersicht und Sitemap`, async () => {
     const projected = Object.freeze([
       Object.freeze({ productId: "published-enabled", slug: "enabled", salesEnabled: true, updatedAt: "2026-11-01T00:00:00Z" }),
@@ -57,6 +80,7 @@ for (const target of ["production", "test"]) {
     const before = JSON.stringify(projected);
     const products = await evaluateModule("content/products.ts", {
       "node:path": path,
+      "@/lib/product-catalog-order.mjs": {orderCatalog, loadCatalogOrder: () => ({version: 1, productIds: null})},
       "@/lib/public-products-v2.mjs": { loadPublicProductsV2: () => ({ products: projected }) },
       "@/lib/product-image-previews.mjs": { withProductPreviews: (product) => product },
     }, { CARMAJA_SITE_TARGET: target });

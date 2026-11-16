@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { validateCatalogOrder } from "../lib/product-catalog-order.mjs";
 
 const EXPECTED_REPOSITORY = "Bumpers210/armband-rechner";
 const EXPECTED_REF = "refs/heads/main";
@@ -18,6 +19,8 @@ function fail(message) {
 
 function parseCommitMessage(message) {
   const normalized = message.replaceAll("\r\n", "\n").replace(/\n+$/, "");
+  const reorder = normalized.match(/^Carmaja collection reorder\n\nCarmaja-Publisher: catalog-order-v1\nCarmaja-Operation: (catalog-[0-9a-f]{64})\nCarmaja-Request-SHA256: ([0-9a-f]{64})$/);
+  if (reorder) return {action: 'reorder', operationId: reorder[1], requestHash: reorder[2]};
   const match = normalized.match(
     /^Carmaja collection (publish|archive|restore) (CP-\d{4}-\d{4})\n\nCarmaja-Publisher: collection-v4\nCarmaja-Operation: ([A-Za-z0-9._:-]{8,100})\nCarmaja-Request-SHA256: ([0-9a-f]{64})$/,
   );
@@ -118,6 +121,7 @@ export function validatePublisherPush({
   commitMessage,
   changedFiles,
   productsDocument,
+  orderDocument,
 }) {
   if (repository !== EXPECTED_REPOSITORY || eventName !== "push" || ref !== EXPECTED_REF || branch !== EXPECTED_BRANCH) {
     fail("Repository, Ereignis oder Branch ist nicht das feste Produktionsziel.");
@@ -132,6 +136,18 @@ export function validatePublisherPush({
     fail("Es ist nur ein direkter, nicht zusammengeführter Folgecommit zulässig.");
   }
   const metadata = parseCommitMessage(commitMessage);
+  if (metadata.action === 'reorder') {
+    if (!Array.isArray(changedFiles) || changedFiles.length !== 1 || changedFiles[0]?.status !== 'M'
+      || changedFiles[0]?.path !== 'website/content/product-order.json') fail('Sortierung darf ausschließlich die bestehende Reihenfolgedatei ändern.');
+    try { validateCatalogOrder(orderDocument); } catch { fail('Reihenfolgedatei ungültig.'); }
+    if (!productsDocument || ![3, 4].includes(productsDocument.version) || !Array.isArray(productsDocument.products)
+      || !Array.isArray(orderDocument.productIds)) fail('Öffentliche Produktzuordnung fehlt.');
+    const ids = productsDocument.products.map(p => p?.productId);
+    if (new Set(ids).size !== ids.length || JSON.stringify([...ids].sort()) !== JSON.stringify([...orderDocument.productIds].sort())) {
+      fail('Sortierung muss alle aktuell veröffentlichten Produkte genau einmal enthalten.');
+    }
+    return metadata;
+  }
   validateChangedFiles(changedFiles, metadata.sku);
   validateProductProjection(productsDocument, metadata.action, metadata.sku);
   return metadata;
@@ -172,6 +188,7 @@ export function runPublisherPushValidation() {
   }
   const parentShas = git("show", "-s", "--format=%P", headSha).split(/\s+/).filter(Boolean);
   const commitMessage = git("show", "-s", "--format=%B", headSha);
+  const isReorder = commitMessage.startsWith('Carmaja collection reorder\n');
   const productsDocument = JSON.parse(readFileSync("website/content/products.json", "utf8"));
   const metadata = validatePublisherPush({
     repository: requiredEnvironment("GITHUB_REPOSITORY"),
@@ -187,6 +204,7 @@ export function runPublisherPushValidation() {
     commitMessage,
     changedFiles: readChangedFiles(beforeSha, headSha),
     productsDocument,
+    orderDocument: isReorder ? JSON.parse(readFileSync('website/content/product-order.json', 'utf8')) : undefined,
   });
   process.stdout.write(`AUTOMATIC_COLLECTION_PUBLISH_VALID action=${metadata.action} sku=${metadata.sku}\n`);
 }

@@ -64,6 +64,7 @@ try {
         return ['status'=>(int)($match[1]??0),'headers'=>implode("\n",$responseHeaders),'raw'=>$text,'json'=>json_decode((string)$text,true)];
     };
     $response = $http('/products'); $assert($response['status']===401,'anonymous_denied');
+    $assert($http('/catalog-order')['status']===401,'catalog_anonymous_denied');
     $assert(str_contains($response['headers'],'Cache-Control: no-store'),'no_store');
     $assert(str_contains($response['headers'],'Access-Control-Allow-Origin: https://www.carmaja-perlen.de'),'exact_cors');
     $response=$http('/products','OPTIONS',null,['Access-Control-Request-Method: PUT','Access-Control-Request-Headers: X-CSRF-Token, Idempotency-Key, Content-Type']);
@@ -76,6 +77,11 @@ try {
     $assert(!str_contains(strtolower($response['headers']),'domain='),'host_only');
     $assert(!str_contains($response['raw'],'secret')&&!isset($response['json']['data']['cookie']),'login_redacted');
     $auth=['Cookie: '.$cookie,'X-CSRF-Token: '.$csrf,'Idempotency-Key: browser-http-create-0001'];
+    $orderBody=['expectedRevision'=>str_repeat('a',64),'productIds'=>[]];
+    $assert($http('/catalog-order','PUT',$orderBody,['Cookie: '.$cookie])['status']===403,'catalog_csrf_required');
+    $assert($http('/catalog-order','PUT',$orderBody,['Cookie: '.$cookie,'X-CSRF-Token: '.$csrf])['status']===422,'catalog_idempotency_required');
+    $assert($http('/catalog-order','PUT',$orderBody,$auth)['status']===503,'catalog_publisher_gate');
+    $assert($http('/catalog-order','GET',null,['Cookie: '.$cookie])['status']===503,'catalog_no_remote_without_publisher');
     $id='99999999-9999-4999-8999-999999999995';
     $body=['expectedProductVersion'=>0,'name'=>'Artificial browser HTTP product','descriptionDocument'=>['version'=>1,'blocks'=>[
         ['type'=>'paragraph','spans'=>[['text'=>'Artificial only','bold'=>false,'italic'=>false,'font'=>'standard','size'=>'normal']]]]],
@@ -94,6 +100,7 @@ try {
     // A real maintenance marker in the packaged runtime must block all writes.
     mkdir($root.'/package/private/maintenance',0700); file_put_contents($root.'/package/private/maintenance/product-cleanup.lock','artificial');
     $assert($http('/products/'.$id,'PUT',[...$body,'expectedProductVersion'=>1],$auth)['status']===503,'maintenance_denies');
+    $assert($http('/catalog-order','PUT',$orderBody,$auth)['status']===503,'catalog_maintenance_denies');
     $assert($http('/products/'.$id,'GET',null,['Cookie: '.$cookie])['status']===200,'maintenance_reads_continue');
     unlink($root.'/package/private/maintenance/product-cleanup.lock');
     $writeConfig([...$config,'productApiV5WritesEnabled'=>false]);
