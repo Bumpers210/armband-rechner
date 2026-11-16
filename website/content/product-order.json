@@ -1,4 +1,20 @@
 {
-  "version": 1,
-  "productIds": null
+    "version": 1,
+    "productIds": [
+        "9ee50dfe-09f3-4ac1-b47b-3bbb78d47e93",
+        "b325bbfd-d3b8-4da1-a316-c2f411c03867",
+        "c80f0a00-a9aa-4b75-80e1-d768d8c5b3f5",
+        "7d68573d-79d8-4f30-b520-30e06f8c0ff6",
+        "590ed43e-9b31-4f89-ab5d-9632107e4e4b",
+        "c0d0eab1-6203-47aa-b2a4-2b680756eb42",
+        "992dcfc2-a36d-408f-a3ed-8fa516c1710f",
+        "f73a2e83-f133-481c-ba14-85e3d550b062",
+        "4c6d4228-de7e-44ed-8b73-1cb8940a1474",
+        "d22ff939-3805-4c36-bc15-86d2b2dd5f16",
+        "7da2904f-09c2-486b-b0a8-568f0ba8c024",
+        "ea3136ce-c4b3-414c-a8eb-e03b764638a1",
+        "3a74a650-a2ff-44e4-9d51-becd14ef5db2",
+        "14bcad03-99de-4522-944e-c079de319e33",
+        "a6ff01f8-29a3-45c2-bea2-55a5f08fa2eb"
+    ]
 }
