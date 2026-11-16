@@ -2275,6 +2275,59 @@
             },
             "noticePolicyId": null,
             "notices": []
+        },
+        {
+            "productModelVersion": 4,
+            "productId": "a6ff01f8-29a3-45c2-bea2-55a5f08fa2eb",
+            "productVersion": 3,
+            "sourceHash": "372ac62bebdf16ae0032776e9ea5dffd03f97b5a5ef5c1334f9fba779c2ad208",
+            "sku": "CP-2026-0023",
+            "slug": "cp-2026-0023-dein-wunscharmband",
+            "title": "Dein Wunscharmband",
+            "description": "Du liebst Edelsteinarmbänder, hast aber nichts passendes gefunden? Kein Problem, ich fertige gerne auch auf Wunsch. Schreib deine Vorstellungen einfach an kontakt@carmaja-perlen.de und wir können gemeinsam gucken was machbar ist 😉",
+            "materials": [
+                "nach Wunsch"
+            ],
+            "metalElements": [],
+            "braceletSizeCm": 18.5,
+            "pearlSizeMm": 6,
+            "priceMinor": 4000,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "4b044439-b221-42b2-b9d7-f2883de3e6b8",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0023/01.jpg",
+                    "alt": "Dein Wunscharmband",
+                    "width": 2400,
+                    "height": 3200,
+                    "isMain": true
+                }
+            ],
+            "updatedAt": "2026-11-16T06:58:54+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Du liebst Edelsteinarmbänder, hast aber nichts passendes gefunden? Kein Problem, ich fertige gerne auch auf Wunsch. Schreib deine Vorstellungen einfach an kontakt@carmaja-perlen.de und wir können gemeinsam gucken was machbar ist 😉",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "noticePolicyId": "natural-stones-v1",
+            "notices": [
+                "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+                "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
+            ]
         }
     ]
 }
