@@ -295,7 +295,7 @@ test("Produktions-Lint und Paketierung schliessen Hosting-Dateien aus", async ()
   const packageJson = JSON.parse(await readRepositoryFile("website/package.json"));
   const lintCommand = packageJson.scripts.lint;
 
-  assert.match(lintCommand, /^eslint /);
+  assert.match(lintCommand, /^oxlint /);
   assert.doesNotMatch(lintCommand, /hosting/);
   assert.match(packageJson.scripts.test, /test:deployment-shell/);
   assert.match(packageJson.scripts["prepare:production-deploy"], /prepare-production-deploy/);

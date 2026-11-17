@@ -27,8 +27,7 @@ function harness(quantities = [6, 4], rejectPut = false, productPreviews = []) {
     if (url.includes('/products/')) return response({ product: { priceMinor: 2800, available: true, availableQuantity: 50 } });
     throw new Error('Unexpected network action');
   };
-  let client;
-  function load(file) {
+ function load(file) {
     const testModule = { exports: {} };
     const code = ts.transpileModule(readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8'), {
       compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
@@ -48,7 +47,7 @@ function harness(quantities = [6, 4], rejectPut = false, productPreviews = []) {
     });
     return testModule.exports;
   }
-  client = load('lib/cart-client.ts');
+  const client = load('lib/cart-client.ts');
   const component = load('components/shop-cart.tsx');
   return { client, calls, redirects, states, get cart() { return cart; },
     render() { cursor = 0; return component.ShopCart({ productPreviews }); },

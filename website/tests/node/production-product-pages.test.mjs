@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { withProductEditorial } from "../../lib/product-editorial.mjs";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import ts from "typescript";
@@ -59,6 +60,7 @@ for (const target of ["production", "test"]) {
     ];
     const products = await evaluateModule('content/products.ts', {
       'node:path':path,
+      '@/lib/product-editorial.mjs':{withProductEditorial},
       '@/lib/product-catalog-order.mjs':{orderCatalog, loadCatalogOrder:()=>({version:1,productIds:[a,b]})},
       '@/lib/public-products-v2.mjs':{loadPublicProductsV2:()=>({products:projected})},
       '@/lib/product-image-previews.mjs':{withProductPreviews:p=>p},
@@ -80,6 +82,7 @@ for (const target of ["production", "test"]) {
     const before = JSON.stringify(projected);
     const products = await evaluateModule("content/products.ts", {
       "node:path": path,
+      "@/lib/product-editorial.mjs": { withProductEditorial },
       "@/lib/product-catalog-order.mjs": {orderCatalog, loadCatalogOrder: () => ({version: 1, productIds: null})},
       "@/lib/public-products-v2.mjs": { loadPublicProductsV2: () => ({ products: projected }) },
       "@/lib/product-image-previews.mjs": { withProductPreviews: (product) => product },

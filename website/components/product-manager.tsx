@@ -18,7 +18,7 @@ function PrivateImage({productId, image}: {productId: string; image: ProductImag
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [productId, image.imageId, image.blob, image.uploaded]);
   // Authenticated blob, never a bearer token or private file path in an image URL.
-  // eslint-disable-next-line @next/next/no-img-element
+  // oxlint-disable-next-line nextjs/no-img-element
   return url ? <img src={url} alt={image.alt} width={150} height={150} /> : <span className="pm-image-placeholder">Bild noch nicht verfügbar</span>;
 }
 

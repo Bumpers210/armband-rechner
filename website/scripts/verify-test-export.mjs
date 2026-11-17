@@ -2,6 +2,7 @@ import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { readJpegDimensions } from "../lib/public-products.mjs";
+import { withProductEditorial } from "../lib/product-editorial.mjs";
 import { loadPublicProductsV2 } from "../lib/public-products-v2.mjs";
 
 const projectRoot = process.cwd();
@@ -115,6 +116,8 @@ function assertTestMetadata(html, relativePath) {
       .map((token) => token.trim()),
   );
   const canonical = head.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+  const route = relativePath.split(path.sep).join("/").replace(/index\.html$/, "");
+  const ownUrl = new URL(route, siteUrl).href;
 
   for (const token of ["noindex", "nofollow", "noimageindex"]) {
     assert(
@@ -124,8 +127,8 @@ function assertTestMetadata(html, relativePath) {
   }
 
   assert(
-    typeof canonical === "string" && canonical.startsWith(siteUrl),
-    `${relativePath} besitzt keinen Canonical-Link auf der Testdomain.`,
+    canonical === ownUrl || (canonical === undefined && !expectedSitemap.includes(ownUrl)),
+    `${relativePath} besitzt einen ungültigen Canonical-Link.`,
   );
   assert(
     !head.includes("https://www.carmaja-perlen.de"),
@@ -149,6 +152,7 @@ for (const requiredFile of [
 }
 
 const source = loadPublicProductsV2(productsFile, productImagesDirectory);
+source.products = source.products.map(withProductEditorial);
 const enabled = source.products.filter((product) => product.salesEnabled);
 const unavailable = source.products.filter((product) => !product.salesEnabled);
 const overviewHtml = await readOutput("armbaender/index.html");
@@ -192,6 +196,7 @@ const expectedSitemap = [
   `${siteUrl}armbaender/`,
   `${siteUrl}ueber-mich/`,
   `${siteUrl}material-pflege/`,
+  `${siteUrl}armbandgroesse/`,
   `${siteUrl}kontakt/`,
   ...source.products.map(
     (product) => `${siteUrl}armbaender/${product.slug}/`,

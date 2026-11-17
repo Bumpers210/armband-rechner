@@ -166,6 +166,6 @@ test("Test-Lint schliesst produktive Hostingdateien aus", async () => {
   const packageJson = JSON.parse(await readRepositoryFile("website/package.json"));
   const lintCommand = packageJson.scripts["lint:test"];
 
-  assert.match(lintCommand, /^eslint /);
+  assert.match(lintCommand, /^oxlint /);
   assert.doesNotMatch(lintCommand, /hosting/);
 });

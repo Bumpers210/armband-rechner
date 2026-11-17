@@ -4,6 +4,11 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CelestialOrnament } from "@/components/celestial-ornament";
 
+export const metadata = {
+  title: "Checkout nicht abgeschlossen",
+  alternates: { canonical: "/shop/cancel/" },
+};
+
 export default function ShopCancelPage() {
   return (
     <div className="v2-page">

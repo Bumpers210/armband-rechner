@@ -140,9 +140,9 @@ export const siteContent: SiteContent = {
   ],
   hero: {
     eyebrow: "Von Hand gefertigt",
-    title: "Edelsteinarmbänder mit Charakter.",
+    title: "Handgefertigte Edelsteinarmbänder mit Charakter",
     description:
-      "Handgefertigte Edelsteinarmbänder voller Farbe und Charakter. Als persönlicher Begleiter, als Erinnerung an das, was dir wichtig ist – oder einfach, weil du es schön findest.",
+      "Entdecke handgemachten Schmuck aus Naturstein mit individuellen Farben und Maserungen. Für dich selbst oder als Geschenk.",
     image: {
       src: "/images/bracelets/hero-dunkelrot-braun-holz.jpg",
       alt: "Dunkelrot-braunes Perlenarmband mit goldfarbenen Akzenten auf verwittertem Holz.",

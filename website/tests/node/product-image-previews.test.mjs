@@ -68,6 +68,8 @@ test("Gallery fetches the full original only inside the opened lightbox", async 
   const text = await readFile(new URL("../../components/product-image-gallery.tsx", import.meta.url), "utf8");
   assert.match(text, /activeImage && typeof document/);
   assert.match(text, /src=\{activeImage\.src\}/);
-  for (const edge of [240, 640, 1200]) assert.ok(text.includes(`previews?.[${edge}]`));
+  assert.match(text, /previews\?\.\[240\]/);
+  assert.match(text, /previews\?\.\[variant === "card" \? 640 : 1200\]/);
+  assert.match(text, /srcSet=\{srcSet \|\| undefined\}/);
   assert.doesNotMatch(text, /src=\{mainImage\.src\}|src=\{image\.src\}/);
 });

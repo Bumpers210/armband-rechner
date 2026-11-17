@@ -47,5 +47,7 @@ test("Übersicht und Detailseite behalten ihre Produktnavigation", async () => {
   assert.ok(!productList.includes("product.description"));
   assert.ok(detail.includes("<ProductImageGallery"));
   assert.ok(detail.includes('variant="detail"'));
-  assert.ok(detail.includes('href="/armbaender/"'));
+  assert.match(detail, /productBreadcrumbs\(product\)/);
+  const seo = await source("lib/product-seo.ts");
+  assert.match(seo, /name: "Armbänder", href: "\/armbaender\/"/);
 });
