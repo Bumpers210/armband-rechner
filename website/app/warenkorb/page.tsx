@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
+
 import { ShopCart } from "@/components/shop-cart";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CelestialOrnament } from "@/components/celestial-ornament";
 import { mainProductImage, publicProducts } from "@/content/products";
+
+export const metadata: Metadata = {
+  title: "Warenkorb",
+  alternates: { canonical: "/warenkorb/" },
+  robots: { index: false, follow: false, noimageindex: true },
+};
+
 export default function CartPage() {
   const productPreviews = publicProducts.map((product) => {
     const image = mainProductImage(product);

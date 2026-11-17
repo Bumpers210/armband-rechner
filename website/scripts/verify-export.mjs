@@ -1,6 +1,7 @@
 import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
+import { withProductEditorial } from "../lib/product-editorial.mjs";
 import { loadPublicProductsV2 } from "../lib/public-products-v2.mjs";
 
 const projectRoot = process.cwd();
@@ -220,6 +221,7 @@ const expectedSitemapLocations = [
   `${siteUrl}armbaender/`,
   `${siteUrl}ueber-mich/`,
   `${siteUrl}material-pflege/`,
+  `${siteUrl}armbandgroesse/`,
   `${siteUrl}kontakt/`,
   ...publishedProducts.map(
     (product) => `${siteUrl}armbaender/${product.slug}/`,
@@ -233,6 +235,28 @@ assert(
     ),
   "Die Sitemap enthält nicht exakt die freigegebenen öffentlichen Produktseiten.",
 );
+
+const sitemapTitles = new Set();
+for (const location of sitemapLocations) {
+  const pathname = new URL(location).pathname;
+  const html = await readOutputFile(`${pathname.slice(1)}index.html`);
+  const head = readHead(html);
+  const title = head.match(/<title>([^<]+)<\/title>/)?.[1];
+  assert(title && !sitemapTitles.has(title), `Fehlender oder doppelter Titel: ${pathname}`);
+  sitemapTitles.add(title);
+  assert(head.includes(`<link rel="canonical" href="${location}"/>`) &&
+    !/name="robots" content="[^"]*\bnoindex\b/i.test(head) &&
+    [...html.matchAll(/<h1(?:\s|>)/g)].length === 1,
+  `Sitemap-Seite hat ungültigen Canonical, Robots-Metadaten oder H1: ${pathname}`);
+}
+
+for (const route of ["admin", "artikelverwaltung", "warenkorb", "shop/cancel", "shop/error", "shop/success"]) {
+  const head = readHead(await readOutputFile(`${route}/index.html`));
+  assert(/name="robots" content="[^"]*\bnoindex\b/i.test(head) &&
+    !head.includes(`<link rel="canonical" href="${siteUrl}"/>`) &&
+    !sitemapLocations.includes(`${siteUrl}${route}/`),
+  `Interne Shoproute ist nicht korrekt von der Suche ausgeschlossen: ${route}`);
+}
 
 assert(
   imprintHead.includes("<title>Impressum | Carmaja-Perlen</title>") &&
@@ -278,13 +302,13 @@ for (const trackedLink of expectedTrackedLinks) {
 
 const productsOverviewHtml = await readOutputFile("armbaender/index.html");
 assert(
-  productsOverviewHtml.includes("Handgefertigte Armbänder") &&
+  productsOverviewHtml.includes("Handgefertigte Natursteinarmbänder") &&
     !productsOverviewHtml.toLowerCase().includes("verkaufspreis") &&
     !productsOverviewHtml.toLowerCase().includes("materialkosten"),
   "Die Produktübersicht fehlt oder zeigt interne Preis-/Kalkulationsdaten.",
 );
 
-for (const product of publishedProducts) {
+for (const product of publishedProducts.map(withProductEditorial)) {
   const detailHtml = await readOutputFile(`armbaender/${product.slug}/index.html`);
 
   assert(
@@ -303,6 +327,22 @@ for (const product of publishedProducts) {
     readHead(detailHtml).includes('name="robots" content="index, follow"'),
     `Veröffentlichte Produktdetailseite muss indexierbar sein: ${product.slug}`,
   );
+  const structuredData = [...detailHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .map(([, data]) => JSON.parse(data));
+  const schema = structuredData.find((data) => data["@type"] === "Product");
+  const breadcrumbs = structuredData.find((data) => data["@type"] === "BreadcrumbList");
+  const url = `${siteUrl}armbaender/${product.slug}/`;
+  assert(schema?.name === product.publicTitle && schema.sku === product.sku &&
+    schema.url === url && schema.description && !("offers" in schema) &&
+    JSON.stringify(schema.image) === JSON.stringify(product.images.map((image) => new URL(image.src, siteUrl).href)),
+  `Product-JSON-LD fehlt oder enthält unbelegte Angaben: ${product.slug}`);
+  assert(breadcrumbs?.itemListElement?.length === 3 &&
+    breadcrumbs.itemListElement[2].item === url &&
+    detailHtml.includes('href="/armbandgroesse/"'),
+  `Brotkrumennavigation oder Größenhilfe fehlt: ${product.slug}`);
+  for (const image of product.images) {
+    await access(path.join(outputDirectory, image.src.slice(1)));
+  }
 }
 
 for (const product of unavailableProducts) {

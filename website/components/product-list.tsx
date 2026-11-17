@@ -6,22 +6,25 @@ import type { PublicProduct } from "@/content/products";
 type ProductListProps = {
   products: PublicProduct[];
   headingLevel?: "h2" | "h3";
+  prioritizeFirstImage?: boolean;
 };
 
 export function ProductList({
   products,
   headingLevel = "h2",
+  prioritizeFirstImage = false,
 }: ProductListProps) {
   const Heading = headingLevel;
 
   return (
     <div className="products-grid">
-      {products.map((product) => (
+      {products.map((product, index) => (
         <article className="product-card" key={product.sku}>
           <ProductImageGallery
             images={product.images}
             productName={product.publicTitle}
             variant="card"
+            prioritize={prioritizeFirstImage && index === 0}
           />
           <div className="product-card-copy">
             <Heading>
@@ -48,7 +51,7 @@ export function ProductList({
                 </dd>
               </div>
               <div>
-                <dt>Größe</dt>
+                <dt>Armbandumfang</dt>
                 <dd>{product.displaySize}</dd>
               </div>
               <div>

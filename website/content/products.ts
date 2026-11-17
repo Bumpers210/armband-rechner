@@ -1,5 +1,6 @@
 import path from "node:path";
 import { loadCatalogOrder, orderCatalog } from "@/lib/product-catalog-order.mjs";
+import { withProductEditorial } from "@/lib/product-editorial.mjs";
 import { withProductPreviews } from "@/lib/product-image-previews.mjs";
 
 import {
@@ -9,7 +10,10 @@ import {
 } from "@/lib/public-products-v2.mjs";
 
 export type ProductImage = ProductImageV2 & { previews?: Record<number, string> };
-export type PublicProduct = Omit<PublicProductV2, "images"> & { images: ProductImage[] };
+export type PublicProduct = Omit<PublicProductV2, "images"> & {
+  images: ProductImage[];
+  custom?: boolean;
+};
 
 const fixtureMode = process.env.CARMAJA_TEST_FIXTURES === "true";
 const configuredProductsFile = process.env.CARMAJA_PRODUCTS_FILE;
@@ -34,7 +38,7 @@ const imagesDirectory = configuredImagesDirectory
 const productsData = loadPublicProductsV2(productsFile, imagesDirectory);
 
 export const publicProducts = productsData.products.map((product) =>
-  withProductPreviews(product, process.env.CARMAJA_SITE_TARGET),
+  withProductEditorial(withProductPreviews(product, process.env.CARMAJA_SITE_TARGET)),
 );
 
 // The public projection already determines publication. Sales permission only

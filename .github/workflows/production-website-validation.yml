@@ -24,7 +24,7 @@ on:
       - 'website/tests/node/production-*.test.mjs'
       - 'website/tests/shell/**'
       - 'website/.gitignore'
-      - 'website/eslint.config.mjs'
+      - 'website/.oxlintrc.json'
       - 'website/next.config.ts'
       - 'website/package.json'
       - 'website/package-lock.json'

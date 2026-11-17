@@ -953,9 +953,17 @@
 }
 
 .v2-page .product-detail-copy h1 {
-  max-width: 16ch;
+  max-width: none;
   margin-bottom: 0;
   color: var(--v2-moss);
+}
+
+.v2-page .product-detail-copy h1,
+.v2-page .product-card-copy :is(h2, h3),
+.v2-page .product-breadcrumbs li,
+.v2-page .bracelet-guide :is(h2, h3) {
+  hyphens: auto;
+  overflow-wrap: anywhere;
 }
 
 .v2-page .product-lede {
@@ -1084,6 +1092,66 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+}
+
+.v2-page .shop-live-offer {
+  display: grid;
+  align-content: start;
+  gap: 0.35rem;
+  min-block-size: calc(clamp(2.15rem, 8vw, 2.8rem) + 1.85rem);
+}
+
+.v2-page .shop-live-offer button.v2-text-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.v2-page .product-breadcrumbs ol,
+.v2-page .product-guide-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.v2-page .product-breadcrumbs ol {
+  gap: 0.25rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.v2-page .product-breadcrumbs li + li::before {
+  content: "";
+  display: inline-block;
+  width: 0.35em;
+  height: 0.35em;
+  margin-inline-end: 0.5rem;
+  border-block-start: 1px solid currentColor;
+  border-inline-end: 1px solid currentColor;
+  transform: translateY(-0.15em) rotate(45deg);
+}
+
+.v2-page .product-related {
+  margin-block: 2rem 0;
+}
+
+.v2-page .bracelet-guide {
+  display: grid;
+  gap: 1.25rem;
+  margin-block: 0 3rem;
+}
+
+.v2-page .bracelet-guide h2,
+.v2-page .bracelet-guide h3 {
+  margin-block: 0 0.5rem;
+}
+
+.v2-page .bracelet-guide p {
+  margin-block: 0 0.5rem;
 }
 
 .v2-page .shop-message {
@@ -1671,6 +1739,13 @@
 @media (max-width: 22rem) {
   .v2-page h1 {
     font-size: 2rem;
+  }
+
+  .v2-page .v2-hero h1,
+  .v2-page .products-intro h1 {
+    max-width: none;
+    hyphens: auto;
+    overflow-wrap: anywhere;
   }
 
   .v2-page .v2-introduction-statement {

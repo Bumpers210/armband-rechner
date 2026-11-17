@@ -8,9 +8,9 @@ import { siteTarget } from "@/config/site-target";
 import { visibleProducts } from "@/content/products";
 
 export const metadata: Metadata = {
-  title: "Verfügbare Armbänder",
+  title: "Natursteinarmbänder kaufen – handgefertigt",
   description:
-    "Aktuell verfügbare handgefertigte Edelsteinarmbänder von Carmaja-Perlen mit Bildern, Materialien und Größen.",
+    "Entdecke handgefertigte Natursteinarmbänder aus Sodalith, Rosenquarz und weiteren Steinen. Vergleiche Farben, Materialien, Perlengrößen und Umfang.",
   alternates: {
     canonical: "/armbaender/",
   },
@@ -33,10 +33,11 @@ export default function ProductsPage() {
           <div className="content-shell products-intro-inner">
             <CelestialOrnament />
             <p className="v2-eyebrow">Von der Natur inspiriert. Für dich gefertigt.</p>
-            <h1>Handgefertigte Armbänder</h1>
+            <h1>Handgefertigte Natursteinarmbänder</h1>
             <p>
-              Jeder Stein erzählt seine eigene Geschichte. Entdecke Farben,
-              die dich berühren, und ein Armband, das sich nach dir anfühlt.
+              Von mattem Amazonit bis zu tiefblauem Sodalith findest du hier
+              handgefertigte Armbänder aus Naturstein. Die Produktseiten zeigen
+              die Perlen im Detail und geben dir Auskunft über Material und Größe.
             </p>
           </div>
         </section>
@@ -52,7 +53,7 @@ export default function ProductsPage() {
                 </p>
               </div>
             ) : (
-              <ProductList products={visibleProducts} />
+              <ProductList products={visibleProducts} prioritizeFirstImage />
             )}
           </div>
         </section>

@@ -5,6 +5,11 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { CelestialOrnament } from "@/components/celestial-ornament";
 
+export const metadata = {
+  title: "Bestellbestätigung",
+  alternates: { canonical: "/shop/success/" },
+};
+
 export default function ShopSuccessPage() {
   return (
     <div className="v2-page">

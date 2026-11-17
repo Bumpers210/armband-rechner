@@ -3,6 +3,11 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CelestialOrnament } from "@/components/celestial-ornament";
 
+export const metadata = {
+  title: "Checkout vorübergehend nicht verfügbar",
+  alternates: { canonical: "/shop/error/" },
+};
+
 export default function ShopErrorPage() {
   return (
     <div className="v2-page">
