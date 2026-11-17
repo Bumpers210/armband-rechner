@@ -117,7 +117,7 @@ test("nicht verfügbare Produkte starten keinen Checkout", async () => {
   const detail = await source("app/armbaender/[slug]/page.tsx");
   assert.match(
     detail,
-    /product\.salesEnabled \? \([\s\S]*<ShopBuyNow productId=\{product\.productId\} \/>[\s\S]*\) : null/,
+    /product\.salesEnabled \? \(\s*<ShopBuyNow[^>]+productId=\{product\.productId\}[^>]*\/>\s*\) : <JsonLd/,
   );
   assert.doesNotMatch(detail, /product\.stock/);
 });

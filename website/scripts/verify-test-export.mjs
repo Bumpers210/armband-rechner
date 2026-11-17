@@ -2,7 +2,10 @@ import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { readJpegDimensions } from "../lib/public-products.mjs";
+import { withProductEditorial } from "../lib/product-editorial.mjs";
 import { loadPublicProductsV2 } from "../lib/public-products-v2.mjs";
+import { PREVIEW_EDGES, productPreviewPath } from "../lib/product-image-previews.mjs";
+import editorial from "../content/product-editorial.json" with { type: "json" };
 
 const projectRoot = process.cwd();
 const outputDirectory = path.join(projectRoot, "out-test");
@@ -115,6 +118,8 @@ function assertTestMetadata(html, relativePath) {
       .map((token) => token.trim()),
   );
   const canonical = head.match(/<link rel="canonical" href="([^"]+)"/)?.[1];
+  const route = relativePath.split(path.sep).join("/").replace(/index\.html$/, "");
+  const ownUrl = new URL(route, siteUrl).href;
 
   for (const token of ["noindex", "nofollow", "noimageindex"]) {
     assert(
@@ -124,8 +129,8 @@ function assertTestMetadata(html, relativePath) {
   }
 
   assert(
-    typeof canonical === "string" && canonical.startsWith(siteUrl),
-    `${relativePath} besitzt keinen Canonical-Link auf der Testdomain.`,
+    canonical === ownUrl || (canonical === undefined && !expectedSitemap.includes(ownUrl)),
+    `${relativePath} besitzt einen ungültigen Canonical-Link.`,
   );
   assert(
     !head.includes("https://www.carmaja-perlen.de"),
@@ -137,6 +142,8 @@ for (const requiredFile of [
   "index.html",
   "404.html",
   "armbaender/index.html",
+  "armbandgroesse/index.html",
+  "seo-vorschau/index.html",
   "ueber-mich/index.html",
   "material-pflege/index.html",
   "kontakt/index.html",
@@ -158,6 +165,7 @@ for (const requiredFile of [
 }
 
 const source = loadPublicProductsV2(productsFile, productImagesDirectory);
+source.products = source.products.map(withProductEditorial);
 const enabled = source.products.filter((product) => product.salesEnabled);
 const unavailable = source.products.filter((product) => !product.salesEnabled);
 const overviewHtml = await readOutput("armbaender/index.html");
@@ -201,6 +209,7 @@ const expectedSitemap = [
   `${siteUrl}armbaender/`,
   `${siteUrl}ueber-mich/`,
   `${siteUrl}material-pflege/`,
+  `${siteUrl}armbandgroesse/`,
   `${siteUrl}kontakt/`,
   ...source.products.map(
     (product) => `${siteUrl}armbaender/${product.slug}/`,
@@ -286,6 +295,33 @@ for (const product of unavailable) {
       !detailHtml.toLowerCase().includes("marktplatz"),
     `Nicht verfügbares Produkt ist nicht korrekt gerendert: ${product.sku}`,
   );
+}
+
+const previewHtml = await readOutput("seo-vorschau/index.html");
+assert(
+  Object.values(editorial).every(({ title }) => previewHtml.includes(escapeHtmlText(title))),
+  "In der SEO-Vorschau fehlen Produkttexte.",
+);
+assert(!sitemapLocations.includes(`${siteUrl}seo-vorschau/`), "Die SEO-Vorschau gehört nicht in die Sitemap.");
+
+for (const product of source.products) {
+  const url = `${siteUrl}armbaender/${product.slug}/`;
+  const detailHtml = await readOutput(`armbaender/${product.slug}/index.html`);
+  const structured = [...detailHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+    .map(([, json]) => JSON.parse(json));
+  const schema = structured.find((value) => value["@type"] === "Product");
+  const breadcrumbs = structured.find((value) => value["@type"] === "BreadcrumbList");
+  assert(schema?.sku === product.sku && schema.url === url && !("offers" in schema),
+    `Statische Produktdaten sind fehlerhaft: ${product.sku}`);
+  assert(breadcrumbs?.itemListElement?.at(-1)?.item === url &&
+    detailHtml.includes('href="/armbandgroesse/"'),
+  `Produktnavigation oder Größenhilfe fehlt: ${product.sku}`);
+  for (const image of product.images) {
+    for (const edge of PREVIEW_EDGES) {
+      const relative = productPreviewPath(image.src, product.sourceHash, edge).slice(1);
+      assert(await exists(relative), `Produktvorschau fehlt: ${relative}`);
+    }
+  }
 }
 
 const exportedFiles = await listFiles(outputDirectory);

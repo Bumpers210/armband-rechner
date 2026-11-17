@@ -227,6 +227,8 @@ case "$url|$auth" in
         body='<a href="/warenkorb/">Warenkorb</a>'
         case "$url" in
             */shop/cancel/|*/shop/error/) body='<a href="/armbaender/">Zurück zu den Armbändern</a>' ;;
+            */armbandgroesse/) body+='<h1>Welche Armbandgröße passt zu mir?</h1>' ;;
+            */seo-vorschau/) body+='<h1>SEO-Vorschau der Produktseiten</h1>' ;;
         esac
         case "$url|$CARMAJA_MOCK_SCENARIO" in
             *'/warenkorb/|cart_page_missing') code='404' ;;

@@ -20,6 +20,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: new URL("/material-pflege/", siteContent.metadata.siteUrl).toString(),
     },
     {
+      url: new URL("/armbandgroesse/", siteContent.metadata.siteUrl).toString(),
+    },
+    {
       url: new URL("/kontakt/", siteContent.metadata.siteUrl).toString(),
     },
     ...visibleProducts.map((product) => ({

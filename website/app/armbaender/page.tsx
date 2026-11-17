@@ -7,9 +7,9 @@ import { siteTarget } from "@/config/site-target";
 import { visibleProducts } from "@/content/products";
 
 export const metadata: Metadata = {
-  title: "Verfügbare Armbänder",
+  title: "Natursteinarmbänder kaufen – handgefertigt",
   description:
-    "Aktuell verfügbare handgefertigte Edelsteinarmbänder von Carmaja-Perlen mit Bildern, Materialien und Größen.",
+    "Entdecke handgefertigte Natursteinarmbänder. Vergleiche Farben, Materialien, Perlengrößen und Umfang.",
   alternates: {
     canonical: "/armbaender/",
   },
@@ -31,10 +31,10 @@ export default function ProductsPage() {
         <section className="products-intro">
           <div className="content-shell products-intro-inner">
             <p className="v2-eyebrow">Aktuelle Auswahl</p>
-            <h1>Handgefertigte Armbänder</h1>
+            <h1>Handgefertigte Natursteinarmbänder</h1>
             <p>
-              Eine Auswahl aktuell verfügbarer Stücke mit Bildern, Materialien
-              und Größen.
+              Die Produktseiten zeigen die Perlen handgefertigter
+              Natursteinarmbänder im Detail und geben Auskunft über Material und Größe.
             </p>
           </div>
         </section>
@@ -50,7 +50,7 @@ export default function ProductsPage() {
                 </p>
               </div>
             ) : (
-              <ProductList products={visibleProducts} />
+              <ProductList products={visibleProducts} prioritizeFirstImage />
             )}
           </div>
         </section>

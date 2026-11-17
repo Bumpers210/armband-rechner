@@ -14,9 +14,6 @@ export const metadata: Metadata = {
     template: `%s | ${siteContent.brandName}`,
   },
   description: siteContent.metadata.description,
-  alternates: {
-    canonical: "/",
-  },
   robots: {
     index: !siteTarget.isTest,
     follow: !siteTarget.isTest,

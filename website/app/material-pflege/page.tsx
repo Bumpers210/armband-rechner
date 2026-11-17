@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -7,7 +8,7 @@ import { siteContent } from "@/content/site-content";
 export const metadata: Metadata = {
   title: "Material & Pflege",
   description:
-    "Materialien und Pflegehinweise für handgefertigte Edelsteinarmbänder von Carmaja-Perlen.",
+    "So reinigst und lagerst du Natursteinarmbänder schonend und schützt Perlen, Metallelemente und Elastikband beim Tragen.",
   alternates: {
     canonical: "/material-pflege/",
   },
@@ -49,6 +50,38 @@ export default function MaterialsAndCarePage() {
               </div>
             </div>
           </div>
+        </section>
+        <section className="content-shell legal-content bracelet-guide" aria-labelledby="care-details">
+          <h2 id="care-details">Armbänder schonend pflegen</h2>
+          <section>
+            <h3>Reinigung und Wasser</h3>
+            <p>
+              Wische die Perlen und Zwischenelemente mit einem weichen, trockenen
+              Tuch ab. Lege dein Armband vor dem Duschen, Baden und Schwimmen ab.
+              Bei unbekannter Steinbehandlung lass dir vor einer feuchten Reinigung
+              sagen, welche Pflege für das konkrete Armband geeignet ist.
+              Verzichte auf Schmucktauchbäder, Ultraschall und Dampfreiniger.
+            </p>
+          </section>
+          <section>
+            <h3>Aufbewahrung und Elastikband</h3>
+            <p>
+              Lagere das Armband trocken und separat in einem weichen Beutel
+              oder einem ausgekleideten Fach. So reibt es nicht an anderem Schmuck.
+              Rolle ein elastisches Armband vorsichtig über die Hand, statt
+              das Band weit auseinanderzuziehen. Lege es bei Tätigkeiten ab,
+              bei denen es hängen bleiben oder anstoßen kann.
+            </p>
+          </section>
+          <section>
+            <h3>Besonderheiten einzelner Materialien</h3>
+            <ul>
+              <li>Schütze Fluorit besonders vor Stößen und Kratzern durch härteren Schmuck.</li>
+              <li>Bewahre Amethyst vor grellem Sonnenlicht über längere Zeit geschützt auf, weil seine Farbe verblassen kann.</li>
+              <li>Halte poröse Lavaperlen und oberflächenbehandelte Perlen von Parfüm, Ölen und Reinigungsmitteln fern.</li>
+            </ul>
+            <p><Link className="v2-text-link" href="/kontakt/">Frage zur Pflege stellen</Link></p>
+          </section>
         </section>
       </main>
       <SiteFooter />

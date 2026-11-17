@@ -1,5 +1,10 @@
 import Link from "next/link";
 
+export const metadata = {
+  title: "Checkout nicht abgeschlossen",
+  alternates: { canonical: "/shop/cancel/" },
+};
+
 export default function ShopCancelPage() {
   return (
     <main id="main-content" className="legal-main">

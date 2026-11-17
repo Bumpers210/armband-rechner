@@ -140,9 +140,9 @@ export const siteContent: SiteContent = {
   ],
   hero: {
     eyebrow: "Handgefertigt · Naturstein · kleine Stückzahlen",
-    title: "Handgefertigte Perlenarmbänder aus echten Edelsteinen",
+    title: "Handgefertigte Edelsteinarmbänder mit Charakter",
     description:
-      "Liebevoll gefertigte Armbänder aus echten Edelsteinen. Ein hochwertiges Stück Natur, das schmückt und Bedeutung hat.",
+      "Entdecke handgemachten Schmuck aus Naturstein mit individuellen Farben und Maserungen. Für dich selbst oder als Geschenk.",
     image: {
       src: "/images/bracelets/hero-dunkelrot-braun-holz.jpg",
       alt: "Dunkelrot-braunes Perlenarmband mit goldfarbenen Akzenten auf verwittertem Holz.",

@@ -573,8 +573,8 @@ run_smoke_tests()
     fi
     smoke_check_ok 'cart_unauthenticated_status' '401'
 
-    local page expected_link link_check
-    for page in warenkorb impressum datenschutz shopbedingungen widerruf versand-und-zahlung shop/success shop/cancel shop/error; do
+    local page expected_link link_check expected_heading
+    for page in warenkorb impressum datenschutz shopbedingungen widerruf versand-und-zahlung shop/success shop/cancel shop/error armbandgroesse seo-vorschau; do
         smoke_check_start "page_${page//\//_}"
         if ! code=$(curl_authenticated -o "$smoke_directory/page.html" -w '%{http_code}' "${HTTPS_ROOT}${page}/"); then
             smoke_check_failed "page_${page//\//_}" '200' 'curl_error'
@@ -596,6 +596,15 @@ run_smoke_tests()
         esac
         if ! grep -Fq "$expected_link" "$smoke_directory/page.html"; then
             smoke_check_failed "$link_check" 'present' 'missing'
+            return 1
+        fi
+        expected_heading=''
+        case "$page" in
+            armbandgroesse) expected_heading='<h1>Welche Armbandgröße passt zu mir?</h1>' ;;
+            seo-vorschau) expected_heading='<h1>SEO-Vorschau der Produktseiten</h1>' ;;
+        esac
+        if [ -n "$expected_heading" ] && ! grep -Fq "$expected_heading" "$smoke_directory/page.html"; then
+            smoke_check_failed "page_${page}_heading" 'present' 'missing'
             return 1
         fi
         smoke_check_ok "page_${page//\//_}" '200'

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { JsonLd } from "@/components/json-ld";
 import { ProductImageGallery } from "@/components/product-image-gallery";
 import { ShopBuyNow } from "@/components/shop-buy-now";
 import { SiteFooter } from "@/components/site-footer";
@@ -11,8 +12,16 @@ import {
   detailProducts,
   findDetailProduct,
   mainProductImage,
+  visibleProducts,
   type PublicProduct,
 } from "@/content/products";
+import {
+  breadcrumbStructuredData,
+  productBreadcrumbs,
+  productHref,
+  productStructuredData,
+  productSummary,
+} from "@/lib/product-seo";
 
 type ProductDetailPageProps = {
   params: Promise<{
@@ -108,12 +117,13 @@ export async function generateMetadata({
   }
 
   const image = mainProductImage(product);
+  const description = productSummary(product);
 
   return {
     title: product.publicTitle,
-    description: product.description,
+    description,
     alternates: {
-      canonical: `/armbaender/${product.slug}/`,
+      canonical: productHref(product),
     },
     robots: siteTarget.isTest
       ? {
@@ -121,20 +131,18 @@ export async function generateMetadata({
           follow: false,
           noimageindex: true,
         }
-      : !product.salesEnabled
-        ? {
-            index: false,
-            follow: true,
-          }
-        : {
-            index: true,
-            follow: true,
-          },
+      : !product.salesEnabled ? {
+          index: false,
+          follow: true,
+        } : {
+          index: true,
+          follow: true,
+        },
     openGraph: image
       ? {
           title: product.publicTitle,
-          description: product.description,
-          url: `/armbaender/${product.slug}/`,
+          description,
+          url: productHref(product),
           images: [
             {
               url: image.src,
@@ -159,11 +167,25 @@ export default async function ProductDetailPage({
     notFound();
   }
 
+  const breadcrumbs = productBreadcrumbs(product);
+  const structuredProduct = productStructuredData(product);
+  const similarProducts = product.custom ? [] : visibleProducts
+    .filter((candidate) => candidate.sku !== product.sku && !candidate.custom)
+    .map((candidate) => ({
+      candidate,
+      score: product.materials.filter((material) => candidate.materials.includes(material)).length * 2
+        + product.metalElements.filter((metal) => candidate.metalElements.includes(metal)).length,
+    }))
+    .filter(({ score }) => score > 0)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 3);
+
   return (
     <div className="v2-page">
       <SiteHeader />
 
       <main id="main-content" className="product-detail-main">
+        <JsonLd data={breadcrumbStructuredData(breadcrumbs)} />
         <article
           className="content-shell product-detail"
           data-product-id={product.productId}
@@ -178,21 +200,25 @@ export default async function ProductDetailPage({
           </div>
 
           <div className="product-detail-copy">
-            <Link className="product-back-link" href="/armbaender/">
-              Zur Übersicht
-            </Link>
+            <nav className="product-breadcrumbs" aria-label="Brotkrumennavigation">
+              <ol>
+                {breadcrumbs.map(({ name, href }, index) => (
+                  <li key={href}>
+                    {index === breadcrumbs.length - 1
+                      ? <span aria-current="page">{name}</span>
+                      : <Link className="product-back-link" href={href}>{name}</Link>}
+                  </li>
+                ))}
+              </ol>
+            </nav>
             <h1>{product.publicTitle}</h1>
             {!product.salesEnabled ? (
               <p className="product-status product-status--sold">Nicht verfügbar</p>
             ) : null}
             <ProductDescription product={product} />
-            {product.notices.length > 0 ? (
-              <section aria-label="Produkthinweise">
-                <h2>Hinweise zu Natursteinen</h2>
-                {product.notices.map((notice) => <p key={notice}>{notice}</p>)}
-              </section>
+            {product.custom ? (
+              <Link className="v2-text-link" href="/kontakt/">Wunscharmband anfragen</Link>
             ) : null}
-
             <dl className="product-detail-facts">
               <div>
                 <dt>Materialien</dt>
@@ -207,25 +233,48 @@ export default async function ProductDetailPage({
                 </dd>
               </div>
               <div>
-                <dt>Größe</dt>
+                <dt>Armbandumfang</dt>
                 <dd>{product.displaySize}</dd>
               </div>
               <div>
                 <dt>Perlengröße</dt>
                 <dd>{product.displayPearlSize}</dd>
               </div>
+              <div>
+                <dt>Artikelnummer</dt>
+                <dd>{product.sku}</dd>
+              </div>
             </dl>
 
-            <Link className="v2-text-link" href="/material-pflege/">
-              Hinweise zu Material &amp; Pflege
-            </Link>
-
-            {product.salesEnabled ? (
-              <ShopBuyNow productId={product.productId} />
+            {product.notices.length > 0 ? (
+              <section className="product-notices" aria-label="Produkthinweise">
+                <h2>Hinweise zu Natursteinen</h2>
+                {product.notices.map((notice) => <p key={notice}>{notice}</p>)}
+              </section>
             ) : null}
 
+            <ul className="product-guide-links">
+              <li><Link className="v2-text-link" href="/armbandgroesse/">Armbandgröße ermitteln</Link></li>
+              <li><Link className="v2-text-link" href="/material-pflege/">Hinweise zu Material &amp; Pflege</Link></li>
+            </ul>
+
+            {product.salesEnabled ? (
+              <ShopBuyNow key={product.productId} productId={product.productId} structuredProduct={structuredProduct} />
+            ) : <JsonLd data={structuredProduct} />}
           </div>
         </article>
+        {similarProducts.length > 0 ? (
+          <section className="content-shell product-related" aria-labelledby="related-title">
+            <h2 id="related-title">Ähnliche Armbänder</h2>
+            <ul className="product-guide-links">
+              {similarProducts.map(({ candidate }) => (
+                <li key={candidate.sku}>
+                  <Link className="v2-text-link" href={productHref(candidate)}>{candidate.publicTitle}</Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </main>
 
       <SiteFooter />

@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import {
   useCallback,
   useEffect,
@@ -16,7 +16,42 @@ type ProductImageGalleryProps = {
   images: ProductImage[];
   productName: string;
   variant: "card" | "detail";
+  prioritize?: boolean;
 };
+
+function ProductPreview({
+  image,
+  variant,
+  prioritize,
+}: {
+  image: ProductImage;
+  variant: "card" | "detail";
+  prioritize: boolean;
+}) {
+  // The static export serves these prebuilt JPEGs without a Next image server.
+  const candidates = new Map<number, string>();
+  for (const [edge, url] of Object.entries(image.previews ?? {})) {
+    const scale = Math.min(1, Number(edge) / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    if (!candidates.has(width)) candidates.set(width, url);
+  }
+  const srcSet = Array.from(candidates, ([width, url]) => `${url} ${width}w`).join(", ");
+  const sizes = variant === "card"
+    ? "(min-width: 76rem) 22.67rem, (min-width: 64rem) 33vw, (min-width: 48rem) 50vw, calc(100vw - 2rem)"
+    : "(min-width: 76rem) 36rem, (min-width: 48rem) 52vw, calc(100vw - 2rem)";
+  const { props } = getImageProps({
+    src: image.previews?.[variant === "card" ? 640 : 1200] ?? image.src,
+    alt: image.alt,
+    width: image.width,
+    height: image.height,
+    className: `product-${variant}-image`,
+    loading: prioritize ? "eager" : "lazy",
+    fetchPriority: prioritize ? "high" : undefined,
+  });
+
+  // eslint-disable-next-line @next/next/no-img-element -- getImageProps sets dimensions and decoding for the static JPEGs.
+  return <img {...props} alt={image.alt} srcSet={srcSet || undefined} sizes={srcSet ? sizes : undefined} />;
+}
 
 function adjacentIndex(
   current: number,
@@ -30,6 +65,7 @@ export function ProductImageGallery({
   images,
   productName,
   variant,
+  prioritize = false,
 }: ProductImageGalleryProps) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const dialogTitleId = useId();
@@ -230,14 +266,7 @@ export function ProductImageGallery({
           aria-label={`${mainImage.alt} vergrößern`}
           data-lightbox-open={mainIndex}
         >
-          <Image
-            src={mainImage.src}
-            alt={mainImage.alt}
-            width={mainImage.width}
-            height={mainImage.height}
-            sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1023px) 50vw, 33vw"
-            className="product-card-image"
-          />
+          <ProductPreview image={mainImage} variant="card" prioritize={prioritize} />
           {images.length > 1 ? (
             <span className="product-card-image-count">
               {images.length} Bilder
@@ -262,15 +291,7 @@ export function ProductImageGallery({
           aria-label={`${mainImage.alt} vergrößern`}
           data-lightbox-open={mainIndex}
         >
-          <Image
-            src={mainImage.src}
-            alt={mainImage.alt}
-            width={mainImage.width}
-            height={mainImage.height}
-            sizes="(max-width: 767px) calc(100vw - 32px), 50vw"
-            className="product-detail-image"
-            priority
-          />
+          <ProductPreview image={mainImage} variant="detail" prioritize />
         </button>
 
         {images.length > 1 ? (
@@ -291,7 +312,7 @@ export function ProductImageGallery({
                   data-lightbox-open={index}
                 >
                   <Image
-                    src={image.src}
+                    src={image.previews?.[240] ?? image.src}
                     alt={image.alt}
                     width={image.width}
                     height={image.height}

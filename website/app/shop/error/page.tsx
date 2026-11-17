@@ -1,5 +1,10 @@
 import Link from "next/link";
 
+export const metadata = {
+  title: "Checkout vorübergehend nicht verfügbar",
+  alternates: { canonical: "/shop/error/" },
+};
+
 export default function ShopErrorPage() {
   return (
     <main id="main-content" className="legal-main">

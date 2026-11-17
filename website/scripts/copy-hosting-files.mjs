@@ -1,5 +1,7 @@
 import { access, cp, mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
+import { loadPublicProductsV2 } from "../lib/public-products-v2.mjs";
+import { generateProductPreviews } from "./generate-product-previews.mjs";
 
 const projectRoot = process.cwd();
 const siteTarget = process.env.CARMAJA_SITE_TARGET ?? "production";
@@ -56,6 +58,10 @@ if (isTest) {
       },
     );
   }
+  const productSource = process.env.CARMAJA_PRODUCTS_FILE ?? productsFile;
+  const imageRoot = fixtureImages ?? path.join(projectRoot, "public", "images", "products");
+  const { products } = loadPublicProductsV2(productSource, imageRoot);
+  await generateProductPreviews(products, outputDirectory);
 } else {
   await mkdir(path.join(outputDirectory, "_internal"), { recursive: true });
   await cp(

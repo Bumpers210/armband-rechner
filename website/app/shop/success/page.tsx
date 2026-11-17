@@ -3,6 +3,11 @@ import { CheckoutQueryCleanup } from "@/components/checkout-query-cleanup";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
+export const metadata = {
+  title: "Bestellbestätigung",
+  alternates: { canonical: "/shop/success/" },
+};
+
 export default function ShopSuccessPage() {
   return (
     <div className="v2-page">
