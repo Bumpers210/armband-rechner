@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import test from "node:test";
 import ts from "typescript";
+import { createLegalBundle } from "../../lib/legal-bundles.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(import.meta.url);
@@ -65,10 +66,20 @@ test("Versandkosten und Richtlinien stammen aus dem aktiven Produktionsvertrag",
   assert.equal(data.hasMerchantReturnPolicy["@type"], "MerchantReturnPolicy");
   assert.equal(data.hasMerchantReturnPolicy.merchantReturnLink, "https://www.carmaja-perlen.de/widerruf/");
 
-  // Published total delivery and withdrawal periods cannot be split or shortened.
+  // Published total delivery cannot be split into handling and transport.
   assert.equal(service.handlingTime, undefined);
   assert.equal(service.shippingConditions.transitTime, undefined);
-  assert.equal(data.hasMerchantReturnPolicy.merchantReturnDays, undefined);
+  assert.equal(data.hasMerchantReturnPolicy.merchantReturnDays, 14);
+  assert.equal(data.hasMerchantReturnPolicy.applicableCountry, "DE");
+  assert.equal(data.hasMerchantReturnPolicy.returnPolicyCountry, "DE");
+  assert.equal(data.hasMerchantReturnPolicy.returnPolicyCategory, "https://schema.org/MerchantReturnFiniteReturnWindow");
+  assert.equal(data.hasMerchantReturnPolicy.returnMethod, "https://schema.org/ReturnByMail");
+  assert.equal(data.hasMerchantReturnPolicy.returnFees, "https://schema.org/FreeReturn");
+  assert.match(data.hasMerchantReturnPolicy.description, /Die Frist beginnt an dem Tag.*die Ware erhalten haben/);
+  assert.match(data.hasMerchantReturnPolicy.description, /spätestens binnen vierzehn Tagen nach Ihrem Widerruf/);
+  for (const paragraph of data.hasMerchantReturnPolicy.description.split("\n\n")) {
+    assert.ok(bundle.texts.withdrawal.some(section => section.paragraphs.includes(paragraph)));
+  }
   const withdrawal = bundle.texts.withdrawal.flatMap(section => section.paragraphs).join(" ");
   assert.match(withdrawal, /binnen vierzehn Tagen/);
   assert.match(withdrawal, /spätestens binnen vierzehn Tagen nach Ihrem Widerruf/);
@@ -80,6 +91,8 @@ test("Produktangebote verweisen auf dieselben vollständig definierten Richtlini
   const organization = policies.merchantOrganizationStructuredData();
   const offer = policies.merchantOfferPolicies();
   assert.equal(offer.seller["@id"], organization["@id"]);
+  assert.deepEqual(offer.hasMerchantReturnPolicy, organization.hasMerchantReturnPolicy);
+  assert.equal(offer.hasMerchantReturnPolicy["@id"], "https://www.carmaja-perlen.de/#return-policy");
   assert.equal(offer.shippingDetails["@type"], "OfferShippingDetails");
   assert.equal(offer.shippingDetails.hasShippingService["@id"], organization.hasShippingService["@id"]);
   assert.equal(offer.price, undefined);
@@ -93,4 +106,29 @@ test("Der Testexport erhält keine strukturierten Produktionsrichtlinien", () =>
   assert.equal(organization.hasShippingService, undefined);
   assert.equal(organization.hasMerchantReturnPolicy, undefined);
   assert.ok(!JSON.stringify(organization).includes("https://www.carmaja-perlen.de"));
+});
+
+
+test("Geänderte Widerrufsbedingungen verhindern veraltete strukturierte Rückgabeversprechen", () => {
+  for (const change of ["deadline", "fees", "approval"]) {
+    const { policies, bundle } = loadPolicies();
+    if (change === "deadline") {
+      bundle.texts.withdrawal[0].paragraphs[0] = "Geänderte Widerrufsfrist";
+    } else if (change === "fees") {
+      for (const section of bundle.texts.withdrawal) {
+        section.paragraphs = section.paragraphs.map(paragraph => paragraph.replace(
+          "Wir tragen die unmittelbaren Rücksendekosten innerhalb Deutschlands.",
+          "Sie tragen die unmittelbaren Rücksendekosten.",
+        ));
+      }
+    } else {
+      bundle.status = "draft";
+    }
+    // Model a valid newly approved revision, not a corrupted legal snapshot.
+    bundle.contentHash = createLegalBundle(Object.fromEntries(
+      Object.entries(bundle).filter(([key]) => key !== "contentHash"),
+    )).contentHash;
+    assert.throws(() => policies.merchantOrganizationStructuredData(), /Widerrufsbedingungen geändert/);
+    assert.throws(() => policies.merchantOfferPolicies(), /Widerrufsbedingungen geändert/);
+  }
 });
