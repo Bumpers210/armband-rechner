@@ -13,6 +13,7 @@ export type ProductImage = ProductImageV2 & { previews?: Record<number, string> 
 export type PublicProduct = Omit<PublicProductV2, "images"> & {
   images: ProductImage[];
   custom?: boolean;
+  descriptionTitle?: string;
 };
 
 const fixtureMode = process.env.CARMAJA_TEST_FIXTURES === "true";

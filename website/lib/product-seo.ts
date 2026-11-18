@@ -9,7 +9,8 @@ export function productSummary(product: PublicProduct) {
   const paragraphs = product.description
     .split(/\r?\n\s*\r?\n/)
     .map((paragraph) => paragraph.trim().replace(/\s+/g, " "));
-  const lead = paragraphs.find((paragraph) => paragraph && paragraph !== product.publicTitle);
+  const descriptionTitle = (product.descriptionTitle ?? product.publicTitle).trim().replace(/\s+/g, " ");
+  const lead = paragraphs.find((paragraph) => paragraph && paragraph !== descriptionTitle);
   return lead || [product.publicTitle, ...product.materials].join(" · ");
 }
 

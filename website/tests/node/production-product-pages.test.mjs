@@ -105,6 +105,46 @@ for (const target of ["production", "test"]) {
   });
 }
 
+test("Redigierte Produktdaten behalten die Originaltexte und deren Formatierung mit Rechtschreibkorrekturen", async () => {
+  const catalog = JSON.parse(await source("content/products.json"));
+  for (const original of catalog.products) {
+    const product = { ...original, publicTitle: original.title };
+    const before = structuredClone(product);
+    const result = withProductEditorial(product);
+    assert.deepEqual(product, before);
+    if (!original.descriptionDocument) {
+      assert.equal(result.descriptionDocument, original.descriptionDocument);
+      continue;
+    }
+    assert.equal(result.descriptionDocument.version, original.descriptionDocument.version);
+    const blocks = result.descriptionDocument.blocks;
+    assert.equal(blocks.map(block => block.spans.map(span => span.text).join("")).join("\n\n"), result.description);
+    assert.deepEqual(
+      blocks.map(block => block.spans.map(({ text: _text, ...format }) => format)),
+      original.descriptionDocument.blocks.map(block => block.spans.map(({ text: _text, ...format }) => format)),
+    );
+  }
+
+  const editorial = JSON.parse(await source("content/product-editorial.json"));
+  const product = {
+    sku: "CP-2026-0014",
+    sourceHash: editorial["CP-2026-0014"].sourceHash,
+    publicTitle: "Amnethyst Armband",
+    description: "Mit seinem tiefem Violett fasziniert der Amnethyst. Ihm werden innerer Frieden, Intution und Ausgeglichenheit zugeschrieben. Es handelt sich bei jedem Armband und ein handgefertigtes Unikat.",
+    descriptionDocument: null,
+    images: [],
+  };
+  const result = withProductEditorial(product);
+  assert.equal(result.descriptionTitle, "Amethyst Armband");
+  assert.match(result.description, /Mit seinem tiefem Violett fasziniert der Amethyst/);
+  assert.match(result.description, /innerer Frieden, Intuition und Ausgeglichenheit/);
+  assert.match(result.description, /bei jedem Armband um ein handgefertigtes Unikat/);
+  assert.doesNotMatch(result.description, /Amnethyst|Intution/);
+
+  const republished = { ...product, sourceHash: "a".repeat(64) };
+  assert.equal(withProductEditorial(republished), republished);
+});
+
 test("der Produktoutput nutzt nur oeffentliche, websitegenerierte Werte", async () => {
   const publicProducts = await source("lib/public-products-v2.mjs");
   const detail = await source("app/armbaender/[slug]/page.tsx");

@@ -48,11 +48,12 @@ function formatDescriptionParagraphs(
 
 function ProductDescription({ product }: { product: PublicProduct }) {
   const document = product.descriptionDocument;
+  const descriptionTitle = product.descriptionTitle ?? product.publicTitle;
 
   if (document) {
     const blocks = document.blocks.length > 1 &&
       document.blocks[0].spans.map((span) => span.text).join("").trim() ===
-        product.publicTitle.trim()
+        descriptionTitle.trim()
       ? document.blocks.slice(1)
       : document.blocks;
 
@@ -82,7 +83,7 @@ function ProductDescription({ product }: { product: PublicProduct }) {
 
   const paragraphs = formatDescriptionParagraphs(
     product.description,
-    product.publicTitle,
+    descriptionTitle,
   );
   return (
     <div className="product-lede">
