@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { JsonLd } from "@/components/json-ld";
+import { merchantOfferPolicies, merchantOrganizationStructuredData } from "@/lib/merchant-policies";
 import { ProductImageGallery } from "@/components/product-image-gallery";
 import { ShopBuyNow } from "@/components/shop-buy-now";
 import { SiteFooter } from "@/components/site-footer";
@@ -167,6 +168,7 @@ export default async function ProductDetailPage({
 
   const breadcrumbs = productBreadcrumbs(product);
   const structuredProduct = siteTarget.isTest ? undefined : productStructuredData(product);
+  const organization = siteTarget.isTest ? null : merchantOrganizationStructuredData();
   const similarProducts = product.custom ? [] : visibleProducts
     .filter((candidate) => candidate.sku !== product.sku && !candidate.custom)
     .map((candidate) => ({
@@ -184,6 +186,7 @@ export default async function ProductDetailPage({
 
       <main id="main-content" className="product-detail-main">
         {structuredProduct ? <JsonLd data={breadcrumbStructuredData(breadcrumbs)} /> : null}
+        {organization ? <JsonLd data={organization} /> : null}
         <article
           className="content-shell product-detail"
           data-product-id={product.productId}
@@ -257,7 +260,8 @@ export default async function ProductDetailPage({
             </ul>
 
             {product.salesEnabled ? (
-              <ShopBuyNow key={product.productId} productId={product.productId} structuredProduct={structuredProduct} />
+              <ShopBuyNow key={product.productId} productId={product.productId} structuredProduct={structuredProduct}
+                offerPolicies={structuredProduct ? merchantOfferPolicies() : undefined} />
             ) : structuredProduct ? <JsonLd data={structuredProduct} /> : null}
           </div>
         </article>
