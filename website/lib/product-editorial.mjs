@@ -5,11 +5,25 @@ export function withProductEditorial(product) {
   // New app publications take precedence over copy reviewed against older data and photos.
   if (!entry || entry.sourceHash !== product.sourceHash) return product;
 
+  // Keep the author's original copy and rich formatting from this publication.
+  const correctSpelling = (text) => (entry.spelling ?? []).reduce(
+    (result, [from, to]) => result.replaceAll(from, to),
+    text.replaceAll("bei jedem Armband und ein", "bei jedem Armband um ein"),
+  );
+  const document = product.descriptionDocument;
+
   return {
     ...product,
     publicTitle: entry.title,
-    description: entry.description,
-    descriptionDocument: null,
+    descriptionTitle: correctSpelling(product.publicTitle),
+    description: correctSpelling(product.description),
+    descriptionDocument: document && {
+      ...document,
+      blocks: document.blocks.map((block) => ({
+        ...block,
+        spans: block.spans.map((span) => ({ ...span, text: correctSpelling(span.text) })),
+      })),
+    },
     materials: entry.materials ?? product.materials,
     metalElements: entry.metalElements ?? product.metalElements,
     displaySize: entry.displaySize ?? product.displaySize,

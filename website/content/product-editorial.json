@@ -2,18 +2,22 @@
   "CP-2026-0008": {
     "sourceHash": "b7c709a9d59ec3cbb827f431895988610b76a277b25654e1481944f6c25917cb",
     "title": "Fluorit-Armband",
-    "description": "Durchscheinende Fluoritperlen in Grün, Blau und Violett machen dieses handgefertigte Armband lebendig. Schmale Strass-Zwischenelemente aus Edelstahl setzen helle Akzente.",
     "alts": [
       "Fluorit-Armband mit grünen und violetten Perlen auf hellem Untergrund",
       "Fluorit-Armband auf dunklem Grund mit violetten Blüten",
       "Nahaufnahme der durchscheinenden grünen und violetten Fluoritperlen",
       "Fluorit-Armband am Handgelenk im Freien"
+    ],
+    "spelling": [
+      [
+        "Flourit",
+        "Fluorit"
+      ]
     ]
   },
   "CP-2026-0009": {
     "sourceHash": "2020dd40f295c65d3274600c652606a8a18027cb1695e50ea7fcbe4f8be2ef06",
     "title": "Sodalith-Armband",
-    "description": "Dunkelblaue Sodalithperlen mit heller Maserung treffen auf glatte und mit Strass besetzte Edelstahl-Zwischenelemente. So entsteht ein Armband mit einem klaren Hell-Dunkel-Kontrast.",
     "alts": [
       "Dunkelblaues Sodalith-Armband mit hellen Edelstahl-Zwischenelementen",
       "Blaues Sodalith-Armband auf dunkler Fläche neben hellen Blüten",
@@ -24,7 +28,6 @@
   "CP-2026-0010": {
     "sourceHash": "63121feb4f25f68ae38b78857a38dc960507ade7f2526b3e36a8d2d2d7071a2d",
     "title": "Amazonit-Armband",
-    "description": "Matte Amazonitperlen in Blau, Creme und Braun bilden ein ruhiges Farbspiel. Die 8-mm-Perlen stehen ohne Metallelemente für sich.",
     "materials": [
       "Mattierter Amazonit"
     ],
@@ -33,23 +36,33 @@
       "Amazonit-Armband auf dunkler Fläche neben Trockenblüten",
       "Nahaufnahme von brauner, cremefarbener und blauer Amazonitperle",
       "Buntes Amazonit-Armband am Handgelenk im Freien"
+    ],
+    "spelling": [
+      [
+        "Farben von grau über braun bis zu blau",
+        "Farben von Grau über Braun bis zu Blau"
+      ]
     ]
   },
   "CP-2026-0011": {
     "sourceHash": "5bcca36e36ff123f3b435c076143f704f0e3cba953a43035380ecfe686da54d6",
     "title": "Tigerauge-Falkenauge-Armband mit Strass",
-    "description": "Goldbraune und blaugraue Perlen wechseln sich in diesem Tigerauge-Falkenauge-Armband ab. Edelstahl-Zwischenelemente mit Strass setzen helle Akzente.",
     "alts": [
       "Dunkles Tigerauge-Falkenauge-Armband mit silberfarbenen Akzenten",
       "Tigerauge-Falkenauge-Armband mit Strass neben roten Zweigen",
       "Nahaufnahme von braun schimmernden Perlen und einem Strass-Zwischenelement",
       "Tigerauge-Falkenauge-Armband mit Strass am Handgelenk im Freien"
+    ],
+    "spelling": [
+      [
+        "Steinheilkunde zu Folge",
+        "Steinheilkunde zufolge"
+      ]
     ]
   },
   "CP-2026-0012": {
     "sourceHash": "a8698c892569c16d3ac8f4c5e8aeb44200ec9a81baab1776963c48223cc7da52",
     "title": "Karneol-Armband",
-    "description": "Rotorange Karneolperlen treffen auf goldfarbene Lavaperlen und Edelstahl-Zwischenelemente.\n\nDie Karneolperlen sind als behandelt angegeben. Der Materialeintrag nennt „gebrannt/gefärbt“.",
     "materials": [
       "Lavaperlen",
       "Karneol (behandelt)"
@@ -64,29 +77,54 @@
   "CP-2026-0013": {
     "sourceHash": "b07fdc77c5341b139bd48daa7ed1eaad2f221d7cfe06f6703d62a42c65c7d357",
     "title": "Schneeflockenobsidian-Armband",
-    "description": "Auf den matten, dunklen Schneeflockenobsidianperlen verteilen sich helle, flockenartige Zeichnungen. Glatte Edelstahl-Zwischenelemente betonen den Kontrast.",
     "alts": [
       "Schneeflockenobsidian-Armband mit schwarz-grauen Perlen auf hellem Grund",
       "Schneeflockenobsidian-Armband auf dunkler Fläche neben rosa Blüten",
       "Nahaufnahme der hellen Zeichnung auf den dunklen Obsidianperlen",
       "Schneeflockenobsidian-Armband am Handgelenk im Sonnenlicht"
+    ],
+    "spelling": [
+      [
+        "Schneeflockenobsidian Arband",
+        "Schneeflockenobsidian Armband"
+      ],
+      [
+        "tiefem schwarz",
+        "tiefem Schwarz"
+      ],
+      [
+        "unterstüzten",
+        "unterstützen"
+      ]
     ]
   },
   "CP-2026-0014": {
     "sourceHash": "0ca9f47bf3e9c0ed150e0c4f85b588caa9d948a6533d4039281767879cf2b6d9",
     "title": "Amethyst-Armband",
-    "description": "Violette Amethystperlen wechseln sich mit goldfarbenen Lavaperlen und kleinen Edelstahl-Zwischenelementen ab. Je nach Licht wirkt das Violett heller oder dunkler.",
     "alts": [
       "Violettes Amethyst-Armband mit goldfarbenen Akzenten auf hellem Grund",
       "Amethyst-Armband auf dunkler Fläche mit violetten Blüten",
       "Nahaufnahme violetter Amethystperlen und einer goldfarbenen Lavaperle",
       "Violettes Amethyst-Armband am Handgelenk im Sonnenlicht"
+    ],
+    "spelling": [
+      [
+        "Amnethyst",
+        "Amethyst"
+      ],
+      [
+        "Intution",
+        "Intuition"
+      ],
+      [
+        "innerer Frieden - Intuition",
+        "Innerer Frieden - Intuition"
+      ]
     ]
   },
   "CP-2026-0015": {
     "sourceHash": "b8a3941308062b5e2dfdd3d9e12d739c1498a5decccd1123d289034e9ddd0cc2",
     "title": "Armband mit afrikanischem Türkis",
-    "description": "Grün bis mintfarben gezeichnete Perlen bilden mit goldfarbenen Lavaperlen und Edelstahl-Zwischenelementen ein kontrastreiches Armband.\n\nDie grün gemusterten Perlen werden unter der Handelsbezeichnung „Afrikanischer Türkis“ geführt.",
     "materials": [
       "Lavaperlen",
       "„Afrikanischer Türkis“ (Handelsbezeichnung)"
@@ -96,35 +134,54 @@
       "Armband mit afrikanischem Türkis auf dunkler Fläche neben Trockenblüten",
       "Nahaufnahme der dunkel geäderten grünen Perlen neben einer goldfarbenen Lavaperle",
       "Grün gemustertes Armband mit afrikanischem Türkis am Handgelenk"
+    ],
+    "spelling": [
+      [
+        "Zeichungen",
+        "Zeichnungen"
+      ]
     ]
   },
   "CP-2026-0016": {
     "sourceHash": "63e1cb5405490926ba8086a43365164f1441023d7098cd2af5aec0159d551184",
     "title": "Serpentit-Armband",
-    "description": "Hellgrüne, leicht durchscheinende Perlen prägen dieses Serpentit-Armband. Kleine Edelstahl-Zwischenelemente mit Strass unterbrechen den sanften Grünton.",
     "displayPearlSize": "Auf Anfrage",
     "alts": [
       "Hellgrünes Serpentit-Armband mit Strassakzenten auf hellem Grund",
       "Hellgrünes Serpentit-Armband auf dunkler Fläche neben Trockenblüten",
       "Nahaufnahme leicht durchscheinender hellgrüner Perlen und eines Strass-Zwischenelements",
       "Hellgrünes Serpentit-Armband am Handgelenk im Sonnenlicht"
+    ],
+    "spelling": [
+      [
+        "Stimmungunsschwangkungen",
+        "Stimmungsschwankungen"
+      ],
+      [
+        "Nervösität",
+        "Nervosität"
+      ]
     ]
   },
   "CP-2026-0017": {
     "sourceHash": "beb904ca9bd0a0dbcdab7c5227b99cfae3f722e91f6c3ae9d15a5079214ebeb9",
     "title": "Labradorit-Armband",
-    "description": "Dunkle Labradoritperlen zeigen je nach Lichteinfall einen blauen Schimmer. Dazwischen sitzen silberfarbene Zwischenelemente aus Edelstahl.",
     "alts": [
       "Graubraunes Labradorit-Armband mit silberfarbenen Akzenten auf hellem Grund",
       "Labradorit-Armband auf dunkler Fläche neben hellen Blüten",
       "Nahaufnahme dunkler Labradoritperlen mit blauem Lichtreflex",
       "Labradorit-Armband am Handgelenk im Freien"
+    ],
+    "spelling": [
+      [
+        "Steilheilkunde",
+        "Steinheilkunde"
+      ]
     ]
   },
   "CP-2026-0018": {
     "sourceHash": "5b71c21c5e28ef6cfe25a7e8b3434f266e740706b577ab6996f1fbd9a8f199ca",
     "title": "Bergkristall-Armband",
-    "description": "Feine Risse im Inneren der klaren, gecrackten Bergkristallperlen brechen das Licht. Silberfarbene Lavaperlen und Edelstahl-Zwischenelemente mit Strass ergänzen das Armband.",
     "materials": [
       "Lavaperlen",
       "Bergkristall (gecrackt)"
@@ -134,12 +191,21 @@
       "Bergkristall-Armband auf dunkler Fläche neben hellen Blüten",
       "Nahaufnahme gecrackter Bergkristallperlen auf rotem Stoff",
       "Helles Bergkristall-Armband am Handgelenk im Sonnenlicht"
+    ],
+    "spelling": [
+      [
+        "glamurös",
+        "glamourös"
+      ],
+      [
+        "in diesem Armand",
+        "in diesem Armband"
+      ]
     ]
   },
   "CP-2026-0019": {
     "sourceHash": "22f9e26495d145821dc6c811b446b344475859d495a7a2b1a6c2c321efd5e8ac",
     "title": "Rosenquarz-Armband",
-    "description": "Mattierte Rosenquarzperlen in zartem Rosa treffen auf silberfarbene Lavaperlen und Edelstahl-Zwischenelemente. Die unterschiedlichen Oberflächen kommen im Detail zur Geltung.",
     "alts": [
       "Mattes Rosenquarz-Armband mit silberfarbenen Akzenten auf hellem Grund",
       "Rosenquarz-Armband auf dunkler Fläche neben hellen Trockenblüten",
@@ -150,18 +216,22 @@
   "CP-2026-0020": {
     "sourceHash": "ccc2f633e766cb271c0fcd5e9fce8a7e14f76eaee4cd71f2ac2c982f0388510b",
     "title": "Tigerauge-Falkenauge-Armband mit goldfarbenen Akzenten",
-    "description": "Goldbraune und blaugraue Tigerauge-Falkenauge-Perlen mit sichtbaren Lichtbändern treffen in diesem Armband auf goldfarbene Edelstahl-Zwischenelemente.",
     "alts": [
       "Tigerauge-Falkenauge-Armband mit goldfarbenen Zwischenelementen auf hellem Grund",
       "Dunkles Tigerauge-Falkenauge-Armband mit goldfarbenen Akzenten neben roten Zweigen",
       "Nahaufnahme schimmernder Perlen mit goldfarbenem Zwischenelement",
       "Tigerauge-Falkenauge-Armband mit goldfarbenen Akzenten am Handgelenk"
+    ],
+    "spelling": [
+      [
+        "Steinheilkunde zu Folge",
+        "Steinheilkunde zufolge"
+      ]
     ]
   },
   "CP-2026-0021": {
     "sourceHash": "0da1b6129cbfdb76cddced932ae1cd1cdcb9ef58c5072460dc671faccc410066",
     "title": "Sonnenstein-Armband",
-    "description": "Warme pfirsichfarbene Sonnensteinperlen geben diesem Armband seinen Ton. Roségoldfarbene Lavaperlen und runde Edelstahl-Zwischenelemente ergänzen die Gestaltung.",
     "alts": [
       "Pfirsichfarbenes Sonnenstein-Armband auf hellem Grund",
       "Sonnenstein-Armband auf dunkler Fläche neben Trockenblüten",
@@ -172,7 +242,6 @@
   "CP-2026-0023": {
     "sourceHash": "372ac62bebdf16ae0032776e9ea5dffd03f97b5a5ef5c1334f9fba779c2ad208",
     "title": "Dein Wunscharmband",
-    "description": "Dein Wunscharmband wird individuell gefertigt. Schreib uns, welche Farben oder Steine dir gefallen. Materialien, Perlengröße und Umfang stimmen wir vorab mit dir ab.",
     "displaySize": "Nach Absprache",
     "displayPearlSize": "Nach Absprache",
     "metalElements": [
@@ -181,6 +250,12 @@
     "alts": [
       "Mehrere Perlenarmbänder in verschiedenen Farben als Beispiele für Wunscharmbänder"
     ],
-    "custom": true
+    "custom": true,
+    "spelling": [
+      [
+        "nichts passendes",
+        "nichts Passendes"
+      ]
+    ]
   }
 }
