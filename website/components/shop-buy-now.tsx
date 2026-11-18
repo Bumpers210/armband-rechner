@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { JsonLd } from "@/components/json-ld";
 import { CART_MAX_QUANTITY, money, readCart, replaceCart, shopApiOrigin, shopContext } from "@/lib/cart-client";
 import type { ProductStructuredData } from "@/lib/product-seo";
+import type { MerchantOfferPolicies } from "@/lib/merchant-policies";
 
 type LiveProduct = {
   productId: string;
@@ -13,9 +14,10 @@ type LiveProduct = {
   availableQuantity: number;
 };
 
-export function ShopBuyNow({ productId, structuredProduct }: {
+export function ShopBuyNow({ productId, structuredProduct, offerPolicies }: {
   productId: string;
   structuredProduct?: ProductStructuredData;
+  offerPolicies?: MerchantOfferPolicies;
 }) {
   const [product, setProduct] = useState<LiveProduct | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -66,6 +68,7 @@ export function ShopBuyNow({ productId, structuredProduct }: {
   const schema = structuredProduct && product ? {
     ...structuredProduct,
     offers: {
+      ...offerPolicies,
       "@type": "Offer",
       url: structuredProduct.url,
       price: (product.priceMinor / 100).toFixed(2),

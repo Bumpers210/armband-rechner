@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { CelestialOrnament } from "@/components/celestial-ornament";
+import { JsonLd } from "@/components/json-ld";
+import { merchantOrganizationStructuredData } from "@/lib/merchant-policies";
 import { ProductList } from "@/components/product-list";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -20,33 +22,11 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  const imprint = siteContent.legal.imprint;
-  const [postalCode, ...localityParts] = imprint.postalCodeAndCity.split(" ");
-  const organizationJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Organization",
-    name: siteContent.brandName,
-    legalName: imprint.name,
-    url: siteContent.metadata.siteUrl,
-    email: imprint.email,
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: imprint.street,
-      postalCode,
-      addressLocality: localityParts.join(" "),
-      addressCountry: "DE",
-    },
-    sameAs: [siteContent.instagram.url],
-  };
+  const organizationJsonLd = merchantOrganizationStructuredData();
 
   return (
     <div className="v2-page">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(organizationJsonLd).replace(/</g, "\\u003c"),
-        }}
-      />
+      {organizationJsonLd ? <JsonLd data={organizationJsonLd} /> : null}
       <SiteHeader />
 
       <main id="main-content">
