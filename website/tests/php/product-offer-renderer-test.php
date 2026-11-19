@@ -50,6 +50,30 @@ try {
         try { \Carmaja\ProductOffers\fetchLiveProduct($id,static fn()=>array_replace($packet,$mutation)); } catch(Throwable) { $rejected=true; }
         offer_assert($rejected,'Malformed/redirected/timed-out transport must fail.');
     }
+    $attempts = 0;
+    $recovered = \Carmaja\ProductOffers\fetchLiveProduct($id, static function () use (&$attempts, $packet): array {
+        if (++$attempts === 1) throw new RuntimeException('Transient transport timeout');
+        return $packet;
+    });
+    offer_assert($attempts === 2 && $recovered->priceMinor === 1234, 'One retry recovers a transient transport failure.');
+    foreach ([['headers'=>['HTTP/1.1 503 Service Unavailable']], ['timedOut'=>true]] as $transient) {
+        $attempts = 0;
+        $recovered = \Carmaja\ProductOffers\fetchLiveProduct($id, static function () use (&$attempts, $packet, $transient): array {
+            return ++$attempts === 1 ? array_replace($packet, $transient) : $packet;
+        });
+        offer_assert($attempts === 2 && $recovered->productId === $id, 'One retry recovers timeout/5xx without stale data.');
+    }
+    foreach ([['headers'=>['HTTP/1.1 429 Too Many Requests']], ['headers'=>['HTTP/1.1 403 Forbidden']], ['body'=>'invalid JSON']] as $permanent) {
+        $attempts = 0; $rejected = false;
+        try { \Carmaja\ProductOffers\fetchLiveProduct($id, static function () use (&$attempts, $packet, $permanent): array {
+            $attempts++; return array_replace($packet, $permanent);
+        }); } catch (Throwable) { $rejected = true; }
+        offer_assert($rejected && $attempts === 1, 'Rate limits, access denial and invalid data are never retried.');
+    }
+    $attempts = 0; $rejected = false;
+    try { \Carmaja\ProductOffers\fetchLiveProduct($id, static function () use (&$attempts): never { $attempts++; throw new RuntimeException('Still offline'); }); }
+    catch (Throwable) { $rejected = true; }
+    offer_assert($rejected && $attempts === 2, 'An outage stays bounded at two attempts.');
     $calls = 0;
     $load = static function (string $requested) use (&$calls, $id, $live): object {
         offer_assert($requested === $id, 'Only template UUID may be requested.'); $calls++; return $live;
