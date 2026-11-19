@@ -6,21 +6,19 @@ import { CART_MAX_QUANTITY, money, readCart, replaceCart, shopApiOrigin, shopCon
 import type { ProductStructuredData } from "@/lib/product-seo";
 import type { MerchantOfferPolicies } from "@/lib/merchant-policies";
 
-type LiveProduct = {
-  productId: string;
-  priceMinor: number;
-  currency: "eur";
-  available: boolean;
-  availableQuantity: number;
-};
+import { offerBoxId, offerSchemaId, offerSeedId, readOfferBootstrap, validatedLiveProduct, withLiveOffer,
+  type LiveProduct } from "@/lib/live-product-offer.mjs";
 
 export function ShopBuyNow({ productId, structuredProduct, offerPolicies }: {
   productId: string;
   structuredProduct?: ProductStructuredData;
   offerPolicies?: MerchantOfferPolicies;
 }) {
+  // PHP supplies matching markup and this request's validated API projection.
+  // The purchase controls still wait for the browser's own successful live GET.
+  const [serverOffer] = useState(() => structuredProduct ? readOfferBootstrap(productId) : null);
   const [product, setProduct] = useState<LiveProduct | null>(null);
-  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(serverOffer?.failed ?? false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [quantity, setQuantity] = useState(1);
@@ -36,15 +34,9 @@ export function ShopBuyNow({ productId, structuredProduct, offerPolicies }: {
           signal: controller.signal,
         });
         const data = await response.json();
-        const live = data.product as LiveProduct | undefined;
-        if (!response.ok || live?.productId !== productId || live.currency !== "eur"
-          || !Number.isSafeInteger(live.priceMinor) || live.priceMinor <= 0
-          || typeof live.available !== "boolean"
-          || !Number.isSafeInteger(live.availableQuantity) || live.availableQuantity < 0
-          || (live.available && live.availableQuantity === 0)) {
-          throw new Error();
-        }
-        if (!controller.signal.aborted) setProduct(live);
+        const live = validatedLiveProduct(data.product, productId);
+        if (!response.ok || !live) throw new Error();
+        if (!controller.signal.aborted) { setProduct(live); setLoadFailed(false); }
       } catch {
         if (!controller.signal.aborted) setLoadFailed(true);
       }
@@ -65,40 +57,32 @@ export function ShopBuyNow({ productId, structuredProduct, offerPolicies }: {
     } catch (error) { setMessage(error instanceof Error ? error.message : "Bitte erneut versuchen."); }
     finally { setBusy(false); }
   }
-  const schema = structuredProduct && product ? {
-    ...structuredProduct,
-    offers: {
-      ...offerPolicies,
-      "@type": "Offer",
-      url: structuredProduct.url,
-      price: (product.priceMinor / 100).toFixed(2),
-      priceCurrency: product.currency.toUpperCase(),
-      availability: product.available ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-    },
-  } : structuredProduct;
+  const displayOffer = product ?? serverOffer?.product ?? null;
+  const schema = withLiveOffer(structuredProduct, offerPolicies, displayOffer);
 
   return <section className="shop-buy-now" aria-live="polite">
-    {schema ? <JsonLd data={schema} /> : null}
-    <div className="shop-live-offer">
-      {product ? (
-        <>
-          <p className="shop-price">{money(product.priceMinor)}</p>
-          <p className="shop-message">{product.available ? "Verfügbar" : "Vorübergehend nicht verfügbar"}</p>
-        </>
-      ) : loadFailed ? (
-        <div>
-          <p className="shop-message">Preis und Verfügbarkeit sind momentan nicht erreichbar.</p>
-          <button className="v2-text-link" type="button" onClick={() => {
-            setLoadFailed(false);
-            setLoadAttempt((attempt) => attempt + 1);
-          }}>Erneut prüfen</button>
-        </div>
-      ) : <p className="shop-message">Preis und Verfügbarkeit werden geprüft …</p>}
+    {structuredProduct ? <script id={offerSeedId(productId)} type="application/json"
+      dangerouslySetInnerHTML={{__html: JSON.stringify(serverOffer)}} /> : null}
+    {schema ? <JsonLd id={offerSchemaId(productId)} data={schema} /> : null}
+    <div className="shop-live-offer" id={offerBoxId(productId)}>
+      {displayOffer ? <>
+        <p className="shop-price">{money(displayOffer.priceMinor)}</p>
+        <p className="shop-message">{displayOffer.available ? "Verfügbar" : "Vorübergehend nicht verfügbar"}</p>
+      </> : !loadFailed ? <p className="shop-message">Preis und Verfügbarkeit werden geprüft …</p> : null}
+      {loadFailed ? <div>
+        <p className="shop-message">{displayOffer
+          ? "Preis und Verfügbarkeit konnten nicht erneut geprüft werden. Kaufen ist vorübergehend nicht möglich."
+          : "Preis und Verfügbarkeit sind momentan nicht erreichbar."}</p>
+        <button className="v2-text-link" type="button" onClick={() => {
+          setLoadFailed(false);
+          setLoadAttempt((attempt) => attempt + 1);
+        }}>Erneut prüfen</button>
+      </div> : null}
     </div>
     <label>Menge <input type="number" min={1} step={1} max={Math.min(CART_MAX_QUANTITY, product?.availableQuantity || 1)} value={quantity}
       onChange={(event) => setQuantity(Number(event.target.value))} /></label>
     {message ? <p>{message}</p> : null}
-    <button className="shop-buy-button" type="button" disabled={busy || !product?.available || !Number.isInteger(quantity) || quantity < 1 || quantity > CART_MAX_QUANTITY || quantity > product.availableQuantity}
+    <button className="shop-buy-button" type="button" disabled={busy || loadFailed || !product?.available || !Number.isInteger(quantity) || quantity < 1 || quantity > CART_MAX_QUANTITY || quantity > product.availableQuantity}
       onClick={() => void add()}>{busy ? "Wird hinzugefügt …" : "In den Warenkorb"}</button>
     <p>Maximal {CART_MAX_QUANTITY} Armbänder insgesamt je Bestellung.</p>
     <p><Link href="/warenkorb/">Warenkorb ansehen</Link></p>

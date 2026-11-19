@@ -139,7 +139,7 @@ assert(
 );
 
 const jsonLdMatch = rootHtml.match(
-  /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
+  /<script\b(?=[^>]*\btype="application\/ld\+json")[^>]*>([\s\S]*?)<\/script>/,
 );
 assert(jsonLdMatch, "Organization-JSON-LD fehlt in out/index.html.");
 
@@ -327,7 +327,7 @@ for (const product of publishedProducts.map(withProductEditorial)) {
     readHead(detailHtml).includes('name="robots" content="index, follow"'),
     `Veröffentlichte Produktdetailseite muss indexierbar sein: ${product.slug}`,
   );
-  const structuredData = [...detailHtml.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)]
+  const structuredData = [...detailHtml.matchAll(/<script\b(?=[^>]*\btype="application\/ld\+json")[^>]*>([\s\S]*?)<\/script>/g)]
     .map(([, data]) => JSON.parse(data));
   const schema = structuredData.find((data) => data["@type"] === "Product");
   const breadcrumbs = structuredData.find((data) => data["@type"] === "BreadcrumbList");
