@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+/* oxlint-disable nextjs/no-img-element -- Versioned static variants preserve the logo without a runtime optimizer. */
+import brandImage from "@/content/brand-image-sources.json";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -40,15 +41,12 @@ export function SiteHeader() {
           aria-label={`${siteContent.brandName} – Startseite`}
           onClick={() => setIsMenuOpen(false)}
         >
-          <Image
-            className="v2-brand-logo"
-            src="/images/brand/carmaja-logo-transparent.png"
-            alt=""
-            width={128}
-            height={128}
-            sizes="44px"
-            priority
-          />
+          <picture className="responsive-picture">
+            <source type="image/webp" srcSet={brandImage.webpSrcSet} sizes="44px" />
+            <img className="v2-brand-logo" src={brandImage.fallback}
+              srcSet={brandImage.pngSrcSet} sizes="44px" alt=""
+              width={128} height={128} loading="eager" decoding="async" />
+          </picture>
           <span className="v2-brand-wordmark" aria-hidden="true">
             <span className="v2-brand-primary">{brandRemainder}</span>
             {brandSecondary ? (

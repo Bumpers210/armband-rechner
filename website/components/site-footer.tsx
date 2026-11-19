@@ -1,4 +1,5 @@
-import Image from "next/image";
+/* oxlint-disable nextjs/no-img-element -- Statically generated logo variants preserve the original appearance. */
+import brandImage from "@/content/brand-image-sources.json";
 import Link from "next/link";
 
 import { InstagramLink } from "@/components/instagram-link";
@@ -16,14 +17,12 @@ export function SiteFooter() {
             href="/"
             aria-label={`${siteContent.brandName} – Startseite`}
           >
-            <Image
-              className="v2-brand-logo"
-              src="/images/brand/carmaja-logo-transparent.png"
-              alt=""
-              width={128}
-              height={128}
-              sizes="44px"
-            />
+            <picture className="responsive-picture">
+              <source type="image/webp" srcSet={brandImage.webpSrcSet} sizes="44px" />
+              <img className="v2-brand-logo" src={brandImage.fallback}
+                srcSet={brandImage.pngSrcSet} sizes="44px" alt=""
+                width={128} height={128} loading="lazy" decoding="async" />
+            </picture>
             <span className="v2-brand-wordmark" aria-hidden="true">
               <span className="v2-brand-primary">armaja</span>
               <span className="v2-brand-secondary">PERLEN</span>

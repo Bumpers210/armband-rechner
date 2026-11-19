@@ -9,7 +9,7 @@ import {
   type PublicProductV2,
 } from "@/lib/public-products-v2.mjs";
 
-export type ProductImage = ProductImageV2 & { previews?: Record<number, string> };
+export type ProductImage = ProductImageV2 & { previews?: Record<number, string>; webpPreviews?: Record<number, string> };
 export type PublicProduct = Omit<PublicProductV2, "images"> & {
   images: ProductImage[];
   custom?: boolean;

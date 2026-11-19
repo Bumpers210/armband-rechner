@@ -11,6 +11,19 @@ async function source(relativePath) {
   return readFile(path.join(websiteDirectory, relativePath), "utf8");
 }
 
+async function assertOriginalBrandVariants(component) {
+  const manifest = JSON.parse(await source("content/site-image-previews.json"));
+  const brand = JSON.parse(await source("content/brand-image-sources.json"));
+  assert.equal(manifest.logo.source, "/images/brand/carmaja-logo-transparent.png");
+  for (const key of ["fallback", "pngSrcSet", "webpSrcSet"]) {
+    assert.equal(brand[key], manifest.logo[key]);
+  }
+  assert.match(component, /import brandImage from "@\/content\/brand-image-sources\.json"/);
+  assert.match(component, /src=\{brandImage\.fallback\}/);
+  assert.match(component, /srcSet=\{brandImage\.pngSrcSet\}/);
+  assert.match(component, /srcSet=\{brandImage\.webpSrcSet\}/);
+}
+
 test("die öffentliche Website hat die vorgesehenen eigenständigen Seiten", async () => {
   const routes = [
     ["app/page.tsx", 'canonical: "/"'],
@@ -48,7 +61,7 @@ test("Navigation, Sitemap und Produktseiten bleiben erreichbar", async () => {
   assert.match(header, /data-active=/);
   assert.match(header, /pathname\.startsWith\("\/armbaender\/"\)/);
   assert.match(header, /event\.key === "Escape"/);
-  assert.match(header, /carmaja-logo-transparent\.png/);
+  await assertOriginalBrandVariants(header);
   assert.match(header, /className="v2-brand-primary">\{brandRemainder\}/);
   assert.match(sitemap, /ueber-mich/);
   assert.match(sitemap, /material-pflege/);
@@ -83,7 +96,7 @@ test("gemeinsame Kontakt- und Armbänder-Weiterleitungen bleiben einheitlich", a
   assert.doesNotMatch(materials, /BraceletGallery|siteContent\.gallery/);
   assert.match(contact, /ContactEmailLink className="v2-contact-card"/);
   assert.match(footer, /className="v2-brand"/);
-  assert.match(footer, /carmaja-logo-transparent\.png/);
+  await assertOriginalBrandVariants(footer);
   assert.match(footer, /className="v2-brand-primary">armaja</);
   assert.match(layout, /persistent-bracelet-flag/);
   assert.match(
