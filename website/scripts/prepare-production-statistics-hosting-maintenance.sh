@@ -17,13 +17,12 @@ esac
 test "${#commit_sha}" -eq 40
 
 files=(
-  .htaccess
-  click.php
-  pageview.php
-  _internal/.htaccess
-  _internal/tracking.php
-  private-data/.htaccess
   statistik/.htaccess
+  statistik/commerce-projection.php
+  statistik/live-commerce.php
+  statistik/report.php
+  statistik/dashboard.php
+  statistik/google.php
   statistik/index.php
 )
 

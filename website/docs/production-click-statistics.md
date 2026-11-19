@@ -1,6 +1,6 @@
 # Produktions-Website-Statistik
 
-Die Hostingdateien unter `website/hosting/` werden nicht vom normalen Website-Deployment verwaltet. Der separate Workflow `deploy-statistics-hosting.yml` installiert ausschliesslich die acht geprueften Statistikdateien nach einer manuellen Freigabe.
+Die Hostingdateien unter `website/hosting/` werden nicht vom normalen Website-Deployment verwaltet. Der separate Workflow `deploy-statistics-hosting.yml` installiert die sieben Dateien unter `statistik/` nach einer manuellen Freigabe. Weitere Quellen beschreibt die [Statistikauswertung](statistics-reporting.md).
 
 ## Daten und Datenschutz
 
@@ -20,22 +20,23 @@ Der Statistikbereich liegt unter `/statistik/` und benoetigt Apache Basic Auth. 
 
 Der Ordner wird mit `0711`, die Passwortdatei mit `0604` angelegt, falls Apache diese Leserechte benoetigt. Benutzername und Passwort werden ausschliesslich interaktiv mit `htpasswd -B` erfasst. Die Passwortdatei wird nie vom Website-Deployment, Manifest oder Rollback verwaltet.
 
+Beim Öffnen liest die geschützte Seite die Seitenaufrufe aus der vorhandenen Zählerdatei sowie Bestellungen und Warenumsatz aus der Shop-Datenbank. Der Datenbankzugriff ist verschlüsselt und lesend. Die zwei bestätigten Testkäufe sind ausgeschlossen. Bei einem Fehler bleiben die zuletzt erfolgreich geladenen Bestellzahlen mit ihrem Zeitstempel und einem Fehlerhinweis sichtbar, sofern bereits ein Stand vorliegt. Die aggregierte Sicherung liegt privat unter `carmaja-production-stats-maintenance/dashboard-cache/`.
+
 ## Kontrollierte Installation
 
 Der separate Workflow verlangt den exakten Main-Commit, die Bestaetigung `INSTALL_PRODUCTION_STATISTICS` und die kurzzeitig gesetzte Variable `CARMAJA_PRODUCTION_STATISTICS_HOSTING_ENABLED=true`. Er setzt die Variable abschliessend unabhaengig vom Ergebnis wieder auf `false`.
 
 Vor der Installation sichert der Installer alle betroffenen Produktionsdateien ausserhalb des Webroots, erfasst Hashes und Rechte und prueft den Rollback in einem isolierten Verzeichnis. Danach tauscht er nur diese Dateien dateiweise atomar aus:
 
-- `.htaccess`
-- `click.php`
-- `pageview.php`
-- `_internal/.htaccess`
-- `_internal/tracking.php`
-- `private-data/.htaccess`
 - `statistik/.htaccess`
 - `statistik/index.php`
+- `statistik/report.php`
+- `statistik/dashboard.php`
+- `statistik/google.php`
+- `statistik/commerce-projection.php`
+- `statistik/live-commerce.php`
 
-`private-data/clicks.json` bleibt erhalten und wird nicht manuell bearbeitet. Der Smoketest speichert genau eine dokumentierte technische Seitenaufrufzaehlung fuer `/` mit `direct-unknown`; er prueft ausserdem den Basic-Auth-Schutz von `/statistik/`.
+Die Installation prüft vor dem Dateiaustausch den lesenden Abruf für den laufenden Tag. Der Smoketest prüft den Basic-Auth-Schutz von `/statistik/` und die Erreichbarkeit des Zählers mit einer `HEAD`-Anfrage.
 
 ## Pruefungen
 
