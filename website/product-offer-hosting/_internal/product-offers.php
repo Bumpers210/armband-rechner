@@ -38,15 +38,29 @@ function fetchLiveProduct(string $id, ?callable $transport = null): object
             'ignore_errors' => true, 'header' => "Origin: " . SITE . "\r\nAccept: application/json\r\nCache-Control: no-store\r\nConnection: close\r\n"],
         'ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'allow_self_signed' => false],
     ];
-    // The optional transport is only a code-level test seam, never an HTTP/env parameter.
-    $reply = ($transport ?? readPublicApi(...))(API . '/shop/v3/products/' . $id, $options);
-    $body = $reply['body'] ?? false;
-    if (!preg_match('~^HTTP/\S+ 200(?: |$)~', $reply['headers'][0] ?? '')
-        || !is_string($body) || strlen($body) > MAX_JSON || ($reply['timedOut'] ?? false)) throw new \RuntimeException('Offer unavailable.');
-    $response = json_decode($body, false, 16, JSON_THROW_ON_ERROR);
-    $product = validatedProduct($response->product ?? null, $id);
-    if ($product === null) throw new \RuntimeException('Invalid offer.');
-    return $product;
+    // At most two fresh reads: recover a transient connection timeout/5xx without
+    // caching prices, changing the source, retrying 429 or forwarding credentials.
+    for ($attempt = 0; $attempt < 2; $attempt++) {
+        try {
+            $reply = ($transport ?? readPublicApi(...))(API . '/shop/v3/products/' . $id, $options);
+        } catch (\Throwable) {
+            if ($attempt === 0) continue;
+            throw new \RuntimeException('Offer unavailable.');
+        }
+        $body = $reply['body'] ?? false;
+        preg_match('~^HTTP/\S+ ([0-9]{3})(?: |$)~', $reply['headers'][0] ?? '', $status);
+        $code = (int) ($status[1] ?? 0);
+        if (($reply['timedOut'] ?? false) || in_array($code, [500, 502, 503, 504], true)) {
+            if ($attempt === 0) continue;
+            throw new \RuntimeException('Offer unavailable.');
+        }
+        if ($code !== 200 || !is_string($body) || strlen($body) > MAX_JSON) throw new \RuntimeException('Offer unavailable.');
+        $response = json_decode($body, false, 16, JSON_THROW_ON_ERROR);
+        $product = validatedProduct($response->product ?? null, $id);
+        if ($product === null) throw new \RuntimeException('Invalid offer.');
+        return $product;
+    }
+    throw new \RuntimeException('Offer unavailable.');
 }
 
 function json(object|null $value): string

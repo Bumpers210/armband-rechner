@@ -101,3 +101,15 @@ Nach ausdrücklicher Freigabe: exakte Dateistände sichern und vergleichen, Hilf
 **Nicht den allgemeinen acht Dateien umfassenden Statistikhosting-Installer ausführen:** Die zuletzt dokumentierten Serverabweichungen bei `click.php`, `_internal/tracking.php` und `statistik/index.php` sind ungeklärt. Diese Dateien sind für die Lösung nicht erforderlich und dürfen nicht überschrieben werden. Keine API-/Checkout-Installation und keine Änderungen an Freigabe-Gates erforderlich.
 
 Die lokalen Testergebnisse und der aktuelle Bearbeitungsstatus stehen im bestehenden Notion-SEO-Bericht. Ein lokal bestandener Test bedeutet nicht, dass Google die Korrektur schon gecrawlt oder die neun Hinweise schon entfernt hat.
+
+## Erster Aktivierungsversuch und begrenzte Wiederholung
+
+Die Veröffentlichung wurde am 19. November ausdrücklich freigegeben. PR 122 bestand die vollständige Website- und PHP-Paket-CI; der manuelle Website-Deploy von `1b82aa548c675da8faebaa333379f1ef7eb73967` war erfolgreich. Die gesondert freigegebene, per Zufallsheader geschützte Web-Diagnose bestätigte PHP 8.4.28 (cgi-fcgi), OpenSSL, HTTPS-Wrapper, allow_url_fopen, den tatsächlichen API-Abruf und passenden DocumentRoot. Sie wurde unmittelbar entfernt (HTTP 404).
+
+Der erste separate Runtime-Smoke-Test scheiterte mit HTTP 503. Der getestete Installer stellte automatisch die bisherige Root-.htaccess wieder her und entfernte beide neuen Runtime-Dateien; die Wartungssperre wurde entfernt. Bestehende Shop-, Tracking- und Statistikprogramme wurden nicht überschrieben. Der neue statische Export blieb kompatibel aktiv.
+
+Die anschließende lesende Diagnose zeigte einzelne bestehende API-Abrufe ohne Antwort innerhalb des Drei-Sekunden-Timeouts. Andere Antworten kamen zwischen rund 35 ms und 2,8 s und wurden korrekt gerendert. Auch ein unabhängiger cURL-Vergleich zeigte bei erfolgreichem Verbindungs-/TLS-Aufbau einen Antwort-Timeout; die genaue interne Ursache der API-Verzögerung ist damit nicht bewiesen. Kein Template- oder Preisfehler festgestellt.
+
+Der Transport führt deshalb bei Verbindungsfehler, Timeout oder HTTP 500/502/503/504 höchstens einen zweiten frischen GET derselben Quelle aus, jeweils mit drei Sekunden Timeout. Keine Wiederholung bei 429, 403, Redirect, ungültigem JSON, falscher Produktidentität oder zu großer Antwort. Keine Ratenlimitänderung, keine erfundenen Cookies, keine neue Quelle und kein Cache. Bleiben beide Versuche erfolglos, bleibt das bisherige sichere 503-Verhalten bestehen. Der zusätzliche Versuch kann im Fehlerfall die Wartezeit verlängern.
+
+Zusätzliche gezielte PHP-Tests prüfen Erholung nach Transportfehler/Timeout/503, genau einen Versuch bei Ratenlimit/Zugriffsfehler/ungültigen Daten und höchstens zwei Versuche bei fortgesetztem Ausfall: insgesamt 64 Assertions erfolgreich. Alle 45 PHP-/React-Vergleiche bleiben erfolgreich. Vor erneuter Aktivierung ist eine vollständige neue GitHub-CI für den korrigierten Commit erforderlich.
