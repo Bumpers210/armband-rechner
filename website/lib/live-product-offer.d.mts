@@ -1,0 +1,10 @@
+export type LiveProduct = {productId: string; priceMinor: number; currency: "eur"; available: boolean; availableQuantity: number};
+export type OfferBootstrap = {version: 1; product: LiveProduct | null; failed: boolean};
+export function validatedLiveProduct(value: unknown, productId: string): LiveProduct | null;
+export function parseOfferBootstrap(raw: unknown, productId: string): OfferBootstrap | null;
+export function readOfferBootstrap(productId: string): OfferBootstrap | null;
+export function offerSeedId(id: string): string;
+export function offerSchemaId(id: string): string;
+export function offerBoxId(id: string): string;
+export function minorPrice(amount: number): string;
+export function withLiveOffer<T extends object>(structuredProduct: T | undefined, policies: object | undefined, product: LiveProduct | null): T | (T & {offers: object}) | undefined;
