@@ -38,7 +38,7 @@ chmod 0600 "$webroot/click.php" "$webroot/private-data/clicks.json"
 cat > "$mock_bin/curl" <<'MOCK'
 #!/usr/bin/env bash
 case "$*" in
-  *pageview.php*) printf 204 ;;
+  *pageview.php*) [[ "$*" == *--head* ]]; printf 405 ;;
   *statistik/*) printf 401 ;;
   *) exit 1 ;;
 esac
@@ -46,8 +46,11 @@ MOCK
 chmod 0700 "$mock_bin/curl"
 cat > "$mock_bin/php" <<'MOCK'
 #!/usr/bin/env bash
-test "$1" = -l
-test -f "$2"
+case "$1" in
+  -l) test -f "$2" ;;
+  -d) [[ "${*: -1}" == */statistik/live-commerce.php ]] && test -f "${*: -1}" ;;
+  *) exit 1 ;;
+esac
 MOCK
 chmod 0700 "$mock_bin/php"
 
@@ -81,14 +84,22 @@ commit_one=1111111111111111111111111111111111111111
 release_one="$commit_one-1-1"
 hash_one=$(create_package "$commit_one" "$release_one")
 run_install "$patched_installer" "$commit_one" "$release_one" "$hash_one"
-cmp "$source_root/hosting/pageview.php" "$webroot/pageview.php"
-cmp "$source_root/hosting/_internal/tracking.php" "$webroot/_internal/tracking.php"
+test ! -e "$webroot/pageview.php"
+test "$(cat "$webroot/.htaccess")" = 'old root'
+test "$(cat "$webroot/click.php")" = 'old click'
+test "$(cat "$webroot/_internal/tracking.php")" = 'old tracking'
+cmp "$source_root/hosting/statistik/report.php" "$webroot/statistik/report.php"
+cmp "$source_root/hosting/statistik/dashboard.php" "$webroot/statistik/dashboard.php"
+cmp "$source_root/hosting/statistik/google.php" "$webroot/statistik/google.php"
+cmp "$source_root/hosting/statistik/commerce-projection.php" "$webroot/statistik/commerce-projection.php"
+cmp "$source_root/hosting/statistik/live-commerce.php" "$webroot/statistik/live-commerce.php"
+test "$(stat -c '%a' "$workspace/dashboard-cache")" = 700
 test "$(cat "$webroot/private-data/clicks.json")" = 'private counter data'
 test "$(stat -c '%a' "$webroot/click.php")" = 600
-test -f "$workspace/backups/before-$release_one/files/click.php"
+test -f "$workspace/backups/before-$release_one/files/statistik/index.php"
 grep -Fx 'status	installed' "$workspace/state/current.tsv" >/dev/null
 
-printf 'changed click\n' >> "$source_root/hosting/click.php"
+printf 'changed dashboard\n' >> "$source_root/hosting/statistik/dashboard.php"
 commit_two=2222222222222222222222222222222222222222
 release_two="$commit_two-2-1"
 hash_two=$(create_package "$commit_two" "$release_two")
@@ -98,6 +109,6 @@ failure_code=$?
 set -e
 test "$failure_code" -ne 0
 grep -Fx 'STATISTICS_HOSTING_ROLLBACK_OK' "$root/failed.log" >/dev/null
-! grep -Fq 'changed click' "$webroot/click.php"
+! grep -Fq 'changed dashboard' "$webroot/statistik/dashboard.php"
 test "$(cat "$webroot/private-data/clicks.json")" = 'private counter data'
 printf '%s\n' 'Produktions-Statistikhosting-Shell-Test erfolgreich.'

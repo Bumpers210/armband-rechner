@@ -234,10 +234,12 @@ try {
     expect_true(!contains_personal_statistic_key($finalStats), 'Personenbezogene Statistikfelder vorhanden.');
 
     $source = file_get_contents($hostingRoot . DIRECTORY_SEPARATOR . 'statistik' . DIRECTORY_SEPARATOR . 'index.php');
+    $headersSource = $source;
+    $source = file_get_contents($hostingRoot . DIRECTORY_SEPARATOR . 'statistik' . DIRECTORY_SEPARATOR . 'dashboard.php');
     expect_true(is_string($source) && str_contains($source, 'Seitenaufrufe'), 'Dashboard zeigt keine Seitenaufrufe.');
     expect_true(is_string($source) && str_contains($source, 'Herkunft beim Einstieg'), 'Dashboard zeigt keine Herkunftskanäle.');
     expect_true(is_string($source) && str_contains($source, 'Externe Linkklicks'), 'Dashboard zeigt keine Linkklicks.');
-    expect_true(is_string($source) && str_contains($source, "Content-Type: text/html; charset=utf-8"), 'Dashboard liefert keinen UTF-8-Content-Type.');
+    expect_true(is_string($headersSource) && str_contains($headersSource, "Content-Type: text/html; charset=utf-8"), 'Dashboard liefert keinen UTF-8-Content-Type.');
     expect_true(is_string($source) && str_contains($source, 'Häufige Seiten'), 'Dashboard nutzt keine korrekte deutsche Umlautschreibweise.');
     echo "PHP Klickstatistik-Test erfolgreich.\n";
 } finally {
