@@ -9,14 +9,14 @@ readonly PHP_BINARY='/usr/bin/php8.4'
 readonly CURL_BINARY='curl'
 readonly EXPECTED_REPOSITORY='Bumpers210/armband-rechner'
 readonly EXPECTED_BRANCH='main'
+readonly CACHE_ROOT="$WORKSPACE/dashboard-cache"
 readonly -a FILES=(
-  '.htaccess'
-  'click.php'
-  'pageview.php'
-  '_internal/.htaccess'
-  '_internal/tracking.php'
-  'private-data/.htaccess'
   'statistik/.htaccess'
+  'statistik/commerce-projection.php'
+  'statistik/live-commerce.php'
+  'statistik/report.php'
+  'statistik/dashboard.php'
+  'statistik/google.php'
   'statistik/index.php'
 )
 
@@ -24,7 +24,7 @@ fail() { printf '%s\n' "$1" >&2; exit 1; }
 
 validate_relative_path() {
   case "$1" in
-    '.htaccess'|'click.php'|'pageview.php'|'_internal/.htaccess'|'_internal/tracking.php'|'private-data/.htaccess'|'statistik/.htaccess'|'statistik/index.php') ;;
+    'statistik/.htaccess'|'statistik/commerce-projection.php'|'statistik/live-commerce.php'|'statistik/report.php'|'statistik/dashboard.php'|'statistik/google.php'|'statistik/index.php') ;;
     *) fail 'Unzulaessiger Hostingpfad.' ;;
   esac
 }
@@ -45,7 +45,7 @@ esac
 case "$CARMAJA_STATS_HOSTING_ARCHIVE_SHA256" in *[!0-9a-f]*|'') fail 'Archivpruefsumme ist ungueltig.' ;; esac
 test "${#CARMAJA_STATS_HOSTING_ARCHIVE_SHA256}" = 64 || fail 'Archivpruefsumme ist unvollstaendig.'
 
-for command_name in awk cp curl date dirname find mkdir mv realpath rm rmdir sha256sum stat tar tr wc "$PHP_BINARY"; do
+for command_name in awk cp curl date dirname find mkdir mv realpath rm rmdir sha256sum stat tac tar tr wc "$PHP_BINARY"; do
   command -v "$command_name" >/dev/null 2>&1 || fail "Erforderliches Werkzeug fehlt: $command_name"
 done
 test "$(realpath "$WEBROOT")" = "$WEBROOT" || fail 'Webroot ist nicht kanonisch.'
@@ -71,7 +71,7 @@ applied='false'
 backup_directory=''
 backup_manifest=''
 restore_backup() {
-  local kind hash mode relative_path destination backup_file
+  local kind hash mode relative_path destination backup_file temporary_file
   test -f "$backup_manifest" || return 1
   while IFS=$'\t' read -r kind hash mode relative_path; do
     case "$kind" in
@@ -80,17 +80,20 @@ restore_backup() {
         destination="$WEBROOT/$relative_path"
         backup_file="$backup_directory/files/$relative_path"
         test -f "$backup_file" && test ! -L "$backup_file" || return 1
-        cp "$backup_file" "$destination"
-        chmod "$mode" "$destination"
+        test "$(sha256sum "$backup_file" | awk '{print $1}')" = "$hash" || return 1
+        temporary_file="$destination.rollback-$CARMAJA_STATS_HOSTING_RELEASE_ID"
+        test ! -e "$temporary_file" && test ! -L "$temporary_file" || return 1
+        cp "$backup_file" "$temporary_file" && chmod "$mode" "$temporary_file" \
+          && mv -f "$temporary_file" "$destination" || return 1
         ;;
       absent)
         validate_relative_path "$relative_path"
-        rm -f -- "$WEBROOT/$relative_path"
+        rm -f -- "$WEBROOT/$relative_path" || return 1
         ;;
       backup|meta) ;;
       *) return 1 ;;
     esac
-  done < "$backup_manifest"
+  done < <(tac "$backup_manifest")
 }
 on_exit() {
   exit_code=$?
@@ -137,16 +140,31 @@ for relative_path in "${FILES[@]}"; do
   expected_size=$(awk -F '\t' -v path="$relative_path" '$1 == "file" && $4 == path { print $3; exit }' "$manifest")
   test "$(sha256sum "$source_file" | awk '{print $1}')" = "$expected_hash" || fail 'Release-Hash ist falsch.'
   test "$(wc -c < "$source_file" | tr -d ' ')" = "$expected_size" || fail 'Release-Groesse ist falsch.'
+  case "$relative_path" in *.php) "$PHP_BINARY" -l "$source_file" >/dev/null ;; esac
 done
-"$PHP_BINARY" -l "$release_directory/click.php" >/dev/null
-"$PHP_BINARY" -l "$release_directory/pageview.php" >/dev/null
-"$PHP_BINARY" -l "$release_directory/_internal/tracking.php" >/dev/null
-"$PHP_BINARY" -l "$release_directory/statistik/index.php" >/dev/null
 
 for directory in "$WEBROOT/_internal" "$WEBROOT/private-data" "$WEBROOT/statistik"; do
   test -d "$directory" && test ! -L "$directory" || fail 'Erforderliches Hostingverzeichnis fehlt.'
 done
 test -f "$WEBROOT/index.html" || fail 'Der aktive Websiteexport fehlt.'
+
+"$PHP_BINARY" -d display_errors=0 -d log_errors=0 -r '
+  define("CARMAJA_STATISTICS_CONTEXT", true);
+  try {
+    require $argv[1];
+    $data = cs_read_live_commerce();
+    $today = (new DateTimeImmutable("now", new DateTimeZone("Europe/Berlin")))->format("Y-m-d");
+    exit(isset($data["days"][$today]["orders"]) ? 0 : 1);
+  } catch (Throwable) {
+    exit(1);
+  }
+' "$release_directory/statistik/live-commerce.php" || fail 'Der lesende Abruf der heutigen Bestellungen ist fehlgeschlagen.'
+test ! -L "$CACHE_ROOT" || fail 'Privates Statistikverzeichnis ist ungültig.'
+if ! test -d "$CACHE_ROOT"; then
+  (umask 077; mkdir "$CACHE_ROOT")
+fi
+test "$(realpath "$CACHE_ROOT")" = "$CACHE_ROOT" && test -w "$CACHE_ROOT" \
+  && test "$(stat -c '%a' "$CACHE_ROOT")" = 700 || fail 'Privates Statistikverzeichnis ist ungültig.'
 
 backup_directory="$backup_root/before-$CARMAJA_STATS_HOSTING_RELEASE_ID"
 test ! -e "$backup_directory" || fail 'Backup-Verzeichnis existiert bereits.'
@@ -196,8 +214,8 @@ for relative_path in "${FILES[@]}"; do install_file "$relative_path"; done
 
 # CARMAJA_STATS_HOSTING_ROLLBACK_POINT
 
-pageview_status=$("$CURL_BINARY" --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' --request POST --header 'Content-Type: application/x-www-form-urlencoded' --data 'path=%2F&source=direct-unknown' "$SITE_URL/pageview.php")
-test "$pageview_status" = '204' || fail 'Seitenaufruf-Smoketest ist fehlgeschlagen.'
+pageview_status=$("$CURL_BINARY" --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' --head "$SITE_URL/pageview.php")
+test "$pageview_status" = '405' || fail 'Seitenaufruf-Smoketest ist fehlgeschlagen.'
 statistics_status=$("$CURL_BINARY" --silent --show-error --max-time 20 --output /dev/null --write-out '%{http_code}' --head "$SITE_URL/statistik/")
 test "$statistics_status" = '401' || fail 'Statistikschutz-Smoketest ist fehlgeschlagen.'
 {
@@ -205,7 +223,7 @@ test "$statistics_status" = '401' || fail 'Statistikschutz-Smoketest ist fehlges
   printf 'commit\t%s\n' "$CARMAJA_STATS_HOSTING_COMMIT_SHA"
   printf 'release\t%s\n' "$CARMAJA_STATS_HOSTING_RELEASE_ID"
   printf 'installed_at\t%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  printf 'smoke_pageview\tdirect-unknown:/\n'
+  printf 'smoke_pageview\t405\n'
 } > "$state_root/current.tsv"
 chmod 0640 "$state_root/current.tsv"
 rm -f -- "$archive" "$manifest"

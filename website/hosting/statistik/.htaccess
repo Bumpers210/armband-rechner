@@ -5,6 +5,10 @@ AuthName "Carmaja-Perlen Statistik"
 AuthUserFile /home/www/carmaja-production-auth/statistik.htpasswd
 Require valid-user
 
+<FilesMatch "^(commerce-projection|live-commerce)\.php$">
+  Require all denied
+</FilesMatch>
+
 <IfModule mod_headers.c>
   Header always set Cache-Control "private, no-store, max-age=0"
   Header always set X-Content-Type-Options "nosniff"

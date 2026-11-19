@@ -19,6 +19,7 @@ test("Statistikhosting bleibt ein getrennt freizugebender Produktionswartungssch
   assert.doesNotMatch(workflow, /website\/out/);
   assert.match(installer, /\/usr\/bin\/php8\.4/);
   assert.match(installer, /STATISTICS_HOSTING_ROLLBACK_OK/);
-  assert.match(installer, /direct-unknown/);
+  assert.match(installer, /--head "\$SITE_URL\/pageview\.php"/);
+  assert.doesNotMatch(installer, /--request POST|direct-unknown/);
   assert.doesNotMatch(installer, /clicks\.json/);
 });

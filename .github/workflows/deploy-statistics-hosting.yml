@@ -5,17 +5,27 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/deploy-statistics-hosting.yml'
-      - 'website/hosting/**'
+      - 'website/hosting/statistik/**'
       - 'website/scripts/prepare-production-statistics-hosting-maintenance.sh'
       - 'website/scripts/install-production-statistics-hosting.sh'
+      - 'website/scripts/export-statistics.php'
+      - 'website/scripts/statistics-source-reader.php'
+      - 'website/scripts/read-production-statistics.ps1'
+      - 'website/tests/powershell/read-production-statistics-test.ps1'
+      - 'website/tests/php/statistics-report-test.php'
       - 'website/tests/shell/production-statistics-hosting-maintenance-test.sh'
   push:
     branches: [main]
     paths:
       - '.github/workflows/deploy-statistics-hosting.yml'
-      - 'website/hosting/**'
+      - 'website/hosting/statistik/**'
       - 'website/scripts/prepare-production-statistics-hosting-maintenance.sh'
       - 'website/scripts/install-production-statistics-hosting.sh'
+      - 'website/scripts/export-statistics.php'
+      - 'website/scripts/statistics-source-reader.php'
+      - 'website/scripts/read-production-statistics.ps1'
+      - 'website/tests/powershell/read-production-statistics-test.ps1'
+      - 'website/tests/php/statistics-report-test.php'
       - 'website/tests/shell/production-statistics-hosting-maintenance-test.sh'
   workflow_dispatch:
     inputs:
@@ -57,6 +67,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
+          extensions: pdo_sqlite
       - uses: actions/setup-node@v4
         with:
           node-version: '24.16.0'
@@ -75,11 +86,23 @@ jobs:
           php -l hosting/pageview.php
           php -l hosting/_internal/tracking.php
           php -l hosting/statistik/index.php
+          php -l hosting/statistik/report.php
+          php -l hosting/statistik/dashboard.php
+          php -l hosting/statistik/google.php
+          php -l hosting/statistik/commerce-projection.php
+          php -l hosting/statistik/live-commerce.php
+          php -l scripts/export-statistics.php
+          php -l scripts/statistics-source-reader.php
+          php tests/php/statistics-report-test.php
           bash tests/shell/production-statistics-hosting-maintenance-test.sh scripts/prepare-production-statistics-hosting-maintenance.sh scripts/install-production-statistics-hosting.sh
           npm ci
           npm run lint
           npm test
           npm run build
+      - name: Validate read-only bridge without network access
+        working-directory: website
+        shell: pwsh
+        run: ./tests/powershell/read-production-statistics-test.ps1
       - id: release
         name: Bind maintenance release to workflow commit
         shell: bash
@@ -167,8 +190,10 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$CARMAJA_RELEASE_ID" = "${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           test "$(sha256sum .statistics-hosting-package/statistics-hosting.tar.gz | awk '{print $1}')" = "$CARMAJA_ARCHIVE_SHA256"
-          test "$(awk -F '\t' '$1 == "file" { count += 1 } END { print count + 0 }' .statistics-hosting-package/manifest.tsv)" = 8
-          ! tar -tzf .statistics-hosting-package/statistics-hosting.tar.gz | grep -Ev '^(\./)?(\.htaccess|click\.php|pageview\.php|_internal/\.htaccess|_internal/tracking\.php|private-data/\.htaccess|statistik/\.htaccess|statistik/index\.php)$' | grep -q .
+          test "$(awk -F '\t' '$1 == "file" { count += 1 } END { print count + 0 }' .statistics-hosting-package/manifest.tsv)" = 7
+          if tar -tzf .statistics-hosting-package/statistics-hosting.tar.gz | grep -Ev '^(\./)?statistik/(\.htaccess|(index|report|dashboard|google|commerce-projection|live-commerce)\.php)$'; then
+            exit 1
+          fi
       - name: Prepare pinned SSH client
         shell: bash
         run: |
