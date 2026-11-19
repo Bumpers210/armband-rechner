@@ -1,6 +1,7 @@
 import { access, cp, mkdir, readdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { loadPublicProductsV2 } from "../lib/public-products-v2.mjs";
+import { verifySiteImages } from "./generate-site-images.mjs";
 import { generateProductPreviews } from "./generate-product-previews.mjs";
 
 const projectRoot = process.cwd();
@@ -17,6 +18,7 @@ if (siteTarget !== "production" && siteTarget !== "test") {
 }
 
 await access(outputDirectory);
+await verifySiteImages(projectRoot);
 
 const entries = await readdir(hostingDirectory, { withFileTypes: true });
 

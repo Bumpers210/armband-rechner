@@ -1,0 +1,5 @@
+{
+  "fallback": "/images/site-previews/v1/bfa585c22b6e235b/logo-192.png",
+  "pngSrcSet": "/images/site-previews/v1/bfa585c22b6e235b/logo-64.png 64w, /images/site-previews/v1/bfa585c22b6e235b/logo-128.png 128w, /images/site-previews/v1/bfa585c22b6e235b/logo-192.png 192w",
+  "webpSrcSet": "/images/site-previews/v1/bfa585c22b6e235b/logo-64.webp 64w, /images/site-previews/v1/bfa585c22b6e235b/logo-128.webp 128w, /images/site-previews/v1/bfa585c22b6e235b/logo-192.webp 192w"
+}

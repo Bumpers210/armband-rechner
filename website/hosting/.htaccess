@@ -16,3 +16,22 @@ RewriteRule ^ https://www.carmaja-perlen.de%{REQUEST_URI} [R=301,L,NE]
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options "nosniff"
 </IfModule>
+
+# BEGIN CARMAJA STATIC PERFORMANCE
+# Only static text is compressed; dynamic JSON/PHP/shop responses are untouched.
+<IfModule mod_mime.c>
+    AddType image/webp .webp
+</IfModule>
+<IfModule mod_deflate.c>
+    <IfModule mod_filter.c>
+        AddOutputFilterByType DEFLATE text/css text/javascript application/javascript image/svg+xml
+    </IfModule>
+</IfModule>
+
+# Cache successful, versioned assets only. Never match HTML or shop/API routes.
+<IfModule mod_headers.c>
+    Header set Cache-Control "public, max-age=31536000, immutable" "expr=%{REQUEST_STATUS} == 200 && %{REQUEST_URI} =~ m#^/_next/static/(?:chunks|media)/[A-Za-z0-9_./-]+\.(?:js|css|woff2?|png|jpe?g|webp|avif|svg)$#"
+    Header set Cache-Control "public, max-age=31536000, immutable" "expr=%{REQUEST_STATUS} == 200 && %{REQUEST_URI} =~ m#^/images/product-previews/CP-[0-9]{4}-[0-9]{4}/[a-f0-9]{16}/(?:webp-v1/)?0[1-5]-(?:240|640|960|1200)\.(?:jpg|webp)$#"
+    Header set Cache-Control "public, max-age=31536000, immutable" "expr=%{REQUEST_STATUS} == 200 && %{REQUEST_URI} =~ m#^/images/site-previews/v1/[a-f0-9]{16}/(?:logo-[0-9]+\.(?:png|webp)|hero-[0-9]+\.webp)$#"
+</IfModule>
+# END CARMAJA STATIC PERFORMANCE

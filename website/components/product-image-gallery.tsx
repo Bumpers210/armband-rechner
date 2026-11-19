@@ -1,6 +1,6 @@
 "use client";
 
-import Image, { getImageProps } from "next/image";
+/* oxlint-disable nextjs/no-img-element -- Static prebuilt sources need no runtime image optimizer. */
 import {
   useCallback,
   useEffect,
@@ -19,38 +19,35 @@ type ProductImageGalleryProps = {
   prioritize?: boolean;
 };
 
-function ProductPreview({
-  image,
-  variant,
-  prioritize,
-}: {
+function ProductPreview({ image, variant, prioritize }: {
   image: ProductImage;
   variant: "card" | "detail";
   prioritize: boolean;
 }) {
-  // The static export serves these prebuilt JPEGs without a Next image server.
-  const candidates = new Map<number, string>();
-  for (const [edge, url] of Object.entries(image.previews ?? {})) {
-    const scale = Math.min(1, Number(edge) / Math.max(image.width, image.height));
-    const width = Math.max(1, Math.round(image.width * scale));
-    if (!candidates.has(width)) candidates.set(width, url);
-  }
-  const srcSet = Array.from(candidates, ([width, url]) => `${url} ${width}w`).join(", ");
+  const sourceSet = (previews: Record<number, string> | undefined) => {
+    const candidates = new Map<number, string>();
+    for (const [edge, url] of Object.entries(previews ?? {})) {
+      const scale = Math.min(1, Number(edge) / Math.max(image.width, image.height));
+      candidates.set(Math.max(1, Math.round(image.width * scale)), url);
+    }
+    return Array.from(candidates, ([width, url]) => url + " " + width + "w").join(", ");
+  };
+  const srcSet = sourceSet(image.previews);
+  const webpSrcSet = sourceSet(image.webpPreviews);
   const sizes = variant === "card"
     ? "(min-width: 76rem) 22.67rem, (min-width: 64rem) 33vw, (min-width: 48rem) 50vw, calc(100vw - 2rem)"
     : "(min-width: 76rem) 36rem, (min-width: 48rem) 52vw, calc(100vw - 2rem)";
-  const { props } = getImageProps({
-    src: image.previews?.[variant === "card" ? 640 : 1200] ?? image.src,
-    alt: image.alt,
-    width: image.width,
-    height: image.height,
-    className: `product-${variant}-image`,
-    loading: prioritize ? "eager" : "lazy",
-    fetchPriority: prioritize ? "high" : undefined,
-  });
-
-  // oxlint-disable-next-line nextjs/no-img-element -- getImageProps sets dimensions and decoding for the static JPEGs.
-  return <img {...props} alt={image.alt} srcSet={srcSet || undefined} sizes={srcSet ? sizes : undefined} />;
+  return <picture className="responsive-picture">
+    {webpSrcSet ? <source type="image/webp" srcSet={webpSrcSet} sizes={sizes} /> : null}
+    <img
+      src={image.previews?.[variant === "card" ? 640 : 1200] ?? image.src}
+      alt={image.alt} width={image.width} height={image.height}
+      srcSet={srcSet || undefined} sizes={srcSet ? sizes : undefined}
+      loading={prioritize ? "eager" : "lazy"}
+      fetchPriority={prioritize ? "high" : undefined} decoding="async"
+      className={"product-" + variant + "-image"}
+    />
+  </picture>;
 }
 
 function adjacentIndex(
@@ -221,14 +218,16 @@ export function ProductImageGallery({
                 ) : null}
 
                 <figure className="product-lightbox-figure">
-                  <Image
+                  <img
                     src={activeImage.src}
                     alt={activeImage.alt}
                     width={activeImage.width}
                     height={activeImage.height}
                     sizes="100vw"
                     className="product-lightbox-image"
-                    priority
+                    loading="eager"
+                    fetchPriority="high"
+                    decoding="async"
                   />
                   <figcaption aria-live="polite">
                     Bild {images.indexOf(activeImage) + 1} von {images.length}
@@ -311,12 +310,14 @@ export function ProductImageGallery({
                   aria-label={`${image.alt} vergrößern`}
                   data-lightbox-open={index}
                 >
-                  <Image
+                  <img
                     src={image.previews?.[240] ?? image.src}
                     alt={image.alt}
                     width={image.width}
                     height={image.height}
                     sizes="8rem"
+                    loading="lazy"
+                    decoding="async"
                     className="product-detail-thumb"
                   />
                 </button>

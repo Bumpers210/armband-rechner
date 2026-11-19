@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import siteImages from "@/content/site-image-previews.json";
 import Link from "next/link";
 
 import { CelestialOrnament } from "@/components/celestial-ornament";
@@ -23,6 +23,8 @@ export const metadata: Metadata = {
 
 export default function Home() {
   const organizationJsonLd = merchantOrganizationStructuredData();
+  // object-fit: cover needs more pixels than the narrow viewport's width.
+  const heroSizes = "(max-width: 47.99rem) 56rem, (max-width: 76rem) max(100vw, 58.67rem), 100vw";
 
   return (
     <div className="v2-page">
@@ -31,15 +33,16 @@ export default function Home() {
 
       <main id="main-content">
         <section className="v2-hero">
-          <Image
-            src={siteContent.hero.image.src}
-            alt={siteContent.hero.image.alt}
-            fill
-            sizes="100vw"
-            priority
-            className="v2-hero-image"
-            style={{ objectPosition: siteContent.hero.image.objectPosition }}
-          />
+          <link rel="preload" as="image" type="image/webp" href={siteImages.hero.preloadSrc}
+            imageSrcSet={siteImages.hero.webpSrcSet} imageSizes={heroSizes} fetchPriority="high" />
+          <picture className="responsive-picture">
+            <source type="image/webp" srcSet={siteImages.hero.webpSrcSet} sizes={heroSizes} />
+            {/* oxlint-disable-next-line nextjs/no-img-element -- Prebuilt sources preserve the static hero layout without client image code. */}
+            <img src={siteContent.hero.image.src} alt={siteContent.hero.image.alt}
+              decoding="async" loading="eager" fetchPriority="high" className="v2-hero-image"
+              style={{ position: "absolute", height: "100%", width: "100%", inset: 0,
+                objectPosition: siteContent.hero.image.objectPosition }} />
+          </picture>
           <div className="v2-hero-overlay" aria-hidden="true" />
           <div className="content-shell v2-hero-inner">
             <div className="v2-hero-copy">

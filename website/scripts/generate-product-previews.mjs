@@ -1,7 +1,7 @@
 import { lstat, mkdir, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { PREVIEW_EDGES, productPreviewPath } from "../lib/product-image-previews.mjs";
+import { PREVIEW_EDGES, WEBP_PREVIEW_EDGES, productPreviewPath } from "../lib/product-image-previews.mjs";
 
 async function safeParents(root, relative, create = false) {
   let current = root;
@@ -38,14 +38,19 @@ export async function generateProductPreviews(products, outputDirectory) {
           || metadata.width > 3200 || metadata.height > 3200) {
         throw new Error("Produktbild und Metadaten stimmen nicht überein.");
       }
-      for (const edge of PREVIEW_EDGES) {
-        const destination = productPreviewPath(image.src, product.sourceHash, edge).slice(1);
+      for (const [format, edge] of [
+        ...PREVIEW_EDGES.map(edge => ["jpeg", edge]),
+        ...WEBP_PREVIEW_EDGES.map(edge => ["webp", edge]),
+      ]) {
+        const destination = productPreviewPath(image.src, product.sourceHash, edge, format).slice(1);
         await safeParents(root, destination, true);
         const target = path.join(root, destination);
         // No source changes, no enlargement, no EXIF/GPS metadata in derivatives.
-        const preview = await sharp(bytes, { limitInputPixels: 3200 * 3200, failOn: "warning" })
-          .resize(edge, edge, { fit: "inside", withoutEnlargement: true })
-          .jpeg({ quality: 84 }).toBuffer();
+        const encoder = sharp(bytes, { limitInputPixels: 3200 * 3200, failOn: "warning" })
+          .resize(edge, edge, { fit: "inside", withoutEnlargement: true });
+        const preview = await (format === "webp"
+          ? encoder.webp({ quality: 86, effort: 5 })
+          : encoder.jpeg({ quality: 84 })).toBuffer();
         const temporary = `${target}.tmp`;
         let created = false;
         try {

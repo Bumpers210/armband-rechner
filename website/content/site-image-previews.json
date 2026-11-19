@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "logo": {
+    "source": "/images/brand/carmaja-logo-transparent.png",
+    "sourceHash": "9c222699185d0de2e6ef19ce2dca7fc8feb18277b0046628f9a83fd2f16c58a8",
+    "variants": [
+      {
+        "src": "/images/site-previews/v1/bfa585c22b6e235b/logo-64.png",
+        "width": 64,
+        "format": "png",
+        "bytes": 3526
+      },
+      {
+        "src": "/images/site-previews/v1/bfa585c22b6e235b/logo-64.webp",
+        "width": 64,
+        "format": "webp",
+        "bytes": 2790
+      },
+      {
+        "src": "/images/site-previews/v1/bfa585c22b6e235b/logo-128.png",
+        "width": 128,
+        "format": "png",
+        "bytes": 8597
+      },
+      {
+        "src": "/images/site-previews/v1/bfa585c22b6e235b/logo-128.webp",
+        "width": 128,
+        "format": "webp",
+        "bytes": 6948
+      },
+      {
+        "src": "/images/site-previews/v1/bfa585c22b6e235b/logo-192.png",
+        "width": 192,
+        "format": "png",
+        "bytes": 14597
+      },
+      {
+        "src": "/images/site-previews/v1/bfa585c22b6e235b/logo-192.webp",
+        "width": 192,
+        "format": "webp",
+        "bytes": 11796
+      }
+    ],
+    "webpSrcSet": "/images/site-previews/v1/bfa585c22b6e235b/logo-64.webp 64w, /images/site-previews/v1/bfa585c22b6e235b/logo-128.webp 128w, /images/site-previews/v1/bfa585c22b6e235b/logo-192.webp 192w",
+    "fallback": "/images/site-previews/v1/bfa585c22b6e235b/logo-192.png",
+    "pngSrcSet": "/images/site-previews/v1/bfa585c22b6e235b/logo-64.png 64w, /images/site-previews/v1/bfa585c22b6e235b/logo-128.png 128w, /images/site-previews/v1/bfa585c22b6e235b/logo-192.png 192w"
+  },
+  "hero": {
+    "source": "/images/bracelets/hero-dunkelrot-braun-holz.jpg",
+    "sourceHash": "e108da9ad6a64175b5539d1ef407afb7c24f2caa80768c29aabfdd1d0f26e5f5",
+    "variants": [
+      {
+        "src": "/images/site-previews/v1/2c3fef753632d60d/hero-480.webp",
+        "width": 480,
+        "format": "webp",
+        "bytes": 34192
+      },
+      {
+        "src": "/images/site-previews/v1/2c3fef753632d60d/hero-960.webp",
+        "width": 960,
+        "format": "webp",
+        "bytes": 95176
+      },
+      {
+        "src": "/images/site-previews/v1/2c3fef753632d60d/hero-1440.webp",
+        "width": 1440,
+        "format": "webp",
+        "bytes": 168044
+      },
+      {
+        "src": "/images/site-previews/v1/2c3fef753632d60d/hero-1920.webp",
+        "width": 1920,
+        "format": "webp",
+        "bytes": 233234
+      }
+    ],
+    "webpSrcSet": "/images/site-previews/v1/2c3fef753632d60d/hero-480.webp 480w, /images/site-previews/v1/2c3fef753632d60d/hero-960.webp 960w, /images/site-previews/v1/2c3fef753632d60d/hero-1440.webp 1440w, /images/site-previews/v1/2c3fef753632d60d/hero-1920.webp 1920w",
+    "preloadSrc": "/images/site-previews/v1/2c3fef753632d60d/hero-1440.webp"
+  }
+}

@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promis
 import path from "node:path";
 import os from "node:os";
 import sharp from "sharp";
-import { PREVIEW_EDGES, productPreviewPath, withProductPreviews } from "../../lib/product-image-previews.mjs";
+import { PREVIEW_EDGES, WEBP_PREVIEW_EDGES, productPreviewPath, withProductPreviews } from "../../lib/product-image-previews.mjs";
 import { generateProductPreviews } from "../../scripts/generate-product-previews.mjs";
 
 const sourceHash = "a".repeat(64);
@@ -25,7 +25,7 @@ test("Preview paths are bounded and identical for test/production; public fields
   assert.throws(() => productPreviewPath(image.src, sourceHash, 3200));
 });
 
-test("3200px and legacy photos produce small deterministic JPEGs without modifying originals", async () => {
+test("3200px and legacy photos produce deterministic JPEG/WebP variants without modifying originals", async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), "carmaja-image-preview-"));
   try {
     await mkdir(path.join(root, "images/products/CP-2026-0001"), { recursive: true });
@@ -34,13 +34,16 @@ test("3200px and legacy photos produce small deterministic JPEGs without modifyi
         .withExif({ IFD0: { Artist: "private synthetic metadata" } }).jpeg().toBuffer();
       await writeFile(path.join(root, image.src.slice(1)), bytes);
       const product = { sourceHash, images: [{ ...image, width, height }] };
-      assert.equal(await generateProductPreviews([product], root), 3);
+      assert.equal(await generateProductPreviews([product], root), PREVIEW_EDGES.length + WEBP_PREVIEW_EDGES.length);
       const first = [];
-      for (const edge of PREVIEW_EDGES) {
-        const output = await readFile(path.join(root, productPreviewPath(image.src, sourceHash, edge).slice(1)));
+      for (const [format, edge] of [
+        ...PREVIEW_EDGES.map(edge => ["jpeg", edge]),
+        ...WEBP_PREVIEW_EDGES.map(edge => ["webp", edge]),
+      ]) {
+        const output = await readFile(path.join(root, productPreviewPath(image.src, sourceHash, edge, format).slice(1)));
         first.push(output);
         const meta = await sharp(output).metadata();
-        assert.equal(meta.format, "jpeg");
+        assert.equal(meta.format, format);
         assert.equal(meta.exif, undefined);
         assert.equal(Math.max(meta.width, meta.height), Math.min(edge, Math.max(width, height)));
         assert.ok(meta.width <= width && meta.height <= height);
@@ -50,14 +53,17 @@ test("3200px and legacy photos produce small deterministic JPEGs without modifyi
         assert.ok(output.length < bytes.length || width < 240);
       }
       await generateProductPreviews([product], root);
-      for (const [i, edge] of PREVIEW_EDGES.entries()) {
-        const file = path.join(root, productPreviewPath(image.src, sourceHash, edge).slice(1));
+      for (const [i, [format, edge]] of [
+        ...PREVIEW_EDGES.map(edge => ["jpeg", edge]),
+        ...WEBP_PREVIEW_EDGES.map(edge => ["webp", edge]),
+      ].entries()) {
+        const file = path.join(root, productPreviewPath(image.src, sourceHash, edge, format).slice(1));
         assert.deepEqual(await readFile(file), first[i]);
       }
       assert.deepEqual(await readFile(path.join(root, image.src.slice(1))), bytes);
     }
     assert.ok((await readdir(path.join(root, "images/product-previews/CP-2026-0001", sourceHash.slice(0, 16))))
-      .every((file) => file.endsWith(".jpg")));
+      .every((file) => file.endsWith(".jpg") || file === "webp-v1"));
     await assert.rejects(generateProductPreviews([{ sourceHash, images: [image] }], root)); // metadata mismatch
     await writeFile(path.join(root, image.src.slice(1)), "not an image");
     await assert.rejects(generateProductPreviews([{ sourceHash, images: [image] }], root));
