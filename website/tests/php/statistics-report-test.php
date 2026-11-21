@@ -37,6 +37,24 @@ check(cs_views(['days'=>[]],['2026-11-01'])['value'] === null, 'Fehlender Tag is
 $legacy=['days'=>['2026-11-01'=>['pageviews'=>['/'=>['views'=>3,'sources'=>['google'=>2]],'/armbaender/fl/'=>['views'=>4]]]]];
 check(cs_views($legacy,['2026-11-01']) === ['value'=>7,'status'=>'partial'],'Seitenaufrufe nicht als Besuche umdeuten');
 check(cs_views($legacy,['2026-11-01'],'instagram')['value'] === 0,'Bekannter Tageszähler ohne Instagram-Ereignis');
+
+$newStart = '2026-11-19';
+$skuRoute = '/armbaender/cp-2026-0015-fluorit/';
+$cutSource = ['days' => [
+    '2026-11-18' => ['pageviews' => [$skuRoute => ['views' => 8]]],
+    $newStart => ['pageviews' => [$skuRoute => ['views' => 3], '/' => ['views' => 5]]],
+]];
+$cutDays = ['2026-11-18', $newStart, '2026-11-20'];
+$baseline = ['generatedAt' => '2026-11-18T23:30:00Z', 'totals' => [$skuRoute => 3]];
+[$cutStats, $cutRange] = cs_product_views_since($cutSource, $cutDays, $baseline);
+check($cutRange === [$newStart, '2026-11-20'], 'Der Schnitt nutzt den Berliner Kalendertag');
+check(cs_product_views($cutStats, $cutRange, ['path' => $skuRoute])['value'] === 0, 'Ein vorhandener Armband-Zähler startet neu bei null');
+check(cs_all_product_views($cutSource, $cutDays)['value'] === 11, 'Die Rohdaten mit früheren Aufrufen bleiben auswertbar');
+check(cs_views($cutSource, [$newStart])['value'] === 8, 'Die übrige Statistik verwendet die bisherigen Zähler');
+$cutSource['days'][$newStart]['pageviews'][$skuRoute]['views'] += 2;
+$cutSource['days']['2026-11-20']['pageviews'][$skuRoute] = ['views' => 4];
+[$cutStats, $cutRange] = cs_product_views_since($cutSource, $cutDays, $baseline);
+check(cs_all_product_views($cutStats, $cutRange)['value'] === 6, 'Neue Aufrufe am Stichtag und an Folgetagen werden gezählt');
 check(cs_views($legacy,['2026-11-01'],'views','/armbaender/fl/')['value'] === 4,'Direkter Produkteinstieg');
 $productCounters = ['days' => ['2026-11-01' => ['pageviews' => [
     '/armbaender/cp-2026-0008-fluorit/' => ['views' => 4],
@@ -178,6 +196,13 @@ try {
     carmaja_statistics_write($temporary.'/snapshot.json',$temporary.'/web',$projection);
     carmaja_statistics_write($temporary.'/snapshot.json',$temporary.'/web',$projection);
     check(json_decode(file_get_contents($temporary.'/snapshot.json'),true)===$projection,'Atomare Ausgabe verifiziert');
+    $cutFile = $temporary . '/product-views-baseline.json';
+    check(cs_product_views_baseline($cutFile) === null, 'Ohne Schnitt gilt der bisherige Verlauf');
+    $cutSnapshot = ['version' => 1, 'kind' => 'product-views-baseline', 'environment' => 'live', ...$baseline];
+    file_put_contents($cutFile, json_encode($cutSnapshot));
+    check(cs_product_views_baseline($cutFile) === $cutSnapshot, 'Privater Ausgangsstand wird geladen');
+    file_put_contents($cutFile, json_encode([...$cutSnapshot, 'totals' => ['/' => 5]]));
+    rejects(fn () => cs_product_views_baseline($cutFile), 'Ausgangsstand darf nur Armband-Routen enthalten');
     rejects(fn()=>carmaja_statistics_write($temporary.'/web/leak.json',$temporary.'/web',$projection),'Webroot als Ausgabe ablehnen');
     putenv('CARMAJA_STATS_COMMERCE_FILE='.$temporary.'/snapshot.json');
     check(cs_snapshot('CARMAJA_STATS_COMMERCE_FILE','commerce')['status']==='error','Produktivansicht lehnt Testsnapshots ab');
@@ -207,7 +232,7 @@ try {
     putenv('CARMAJA_STATS_COMMERCE_FILE');
     check(cs_snapshot('CARMAJA_STATS_COMMERCE_FILE','commerce')['status']==='disconnected','Nicht verbundene Quelle');
 } finally {
-    foreach (['snapshot.json', 'snapshot.json.status.json', 'commerce.json', 'commerce.json.lock'] as $name) {
+    foreach (['snapshot.json', 'snapshot.json.status.json', 'commerce.json', 'commerce.json.lock', 'product-views-baseline.json'] as $name) {
         if (is_file($temporary . '/' . $name)) { unlink($temporary . '/' . $name); }
     }
     rmdir($temporary . '/web');

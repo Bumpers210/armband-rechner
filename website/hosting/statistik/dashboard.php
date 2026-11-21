@@ -32,7 +32,18 @@ try {
 if ($origin['status'] === 'error') { $stats['_status'] = 'error'; $trackingStatus = 'error'; }
 $views = cs_views($stats, $days);
 $previousViews = cs_views($stats, $previousDays);
-$productViews = cs_all_product_views($stats, $days);
+$productHistory = ($_GET['productViews'] ?? '') === 'history';
+$productBaseline = null;
+$productBaselineError = false;
+try {
+    $productBaseline = cs_product_views_baseline(getenv('CARMAJA_STATS_PRODUCT_VIEWS_BASELINE')
+        ?: '/home/www/carmaja-production-stats-maintenance/dashboard-cache/product-views-baseline.json');
+} catch (RuntimeException) {
+    $productBaselineError = true;
+}
+[$productStats, $productDays] = $productBaseline !== null && !$productHistory
+    ? cs_product_views_since($stats, $days, $productBaseline) : [$stats, $days];
+$productViews = cs_all_product_views($productStats, $productDays);
 if ($trackingStatus === 'error') { $views['status'] = $previousViews['status'] = 'error'; }
 $orders = cs_business($business, $days, 'orders');
 $revenue = cs_business($business, $days, 'netGoodsMinor');
@@ -48,7 +59,7 @@ $sort = in_array($_GET['sort'] ?? '', ['name', 'views', 'units', 'revenue'], tru
 $productRows = [];
 foreach ($catalog as $id => $product) {
     $product['id'] = $id;
-    $product['views'] = cs_product_views($stats, $days, $product);
+    $product['views'] = cs_product_views($productStats, $productDays, $product);
     $product['units'] = cs_business($business, $days, 'units', $id);
     $product['revenue'] = cs_business($business, $days, 'netGoodsMinor', $id);
     $product['posts'] = array_values(array_filter($posts, static fn ($post) => ($post['productId'] ?? null) === $id));
@@ -103,9 +114,11 @@ function cs_preserve(array $names): void {
     foreach ($names as $name) { if (is_string($_GET[$name] ?? null)) { echo '<input type="hidden" name="' . cs_escape($name) . '" value="' . cs_escape($_GET[$name]) . '">'; } }
 }
 
-function cs_period_href(int $length, ?string $scenario): string
+function cs_period_href(int $length, ?string $scenario, bool $productHistory): string
 {
-    return '?' . http_build_query(array_filter(['period' => $length, 'scenario' => $scenario], static fn ($value) => $value !== null));
+    return '?' . http_build_query(array_filter([
+        'period' => $length, 'scenario' => $scenario, 'productViews' => $productHistory ? 'history' : null,
+    ], static fn ($value) => $value !== null));
 }
 ?>
 <!doctype html><html lang="de"><head>
@@ -199,14 +212,14 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
     <p><?= cs_escape($range) ?><?= $includesToday ? ' · Heute (laufend)' : '' ?></p>
     <nav aria-label="Zeitraum">
       <?php foreach ([7, 28, 90] as $length): ?>
-      <a href="<?= cs_escape(cs_period_href($length, $previewScenario)) ?>" <?= $period['preset'] === (string) $length ? 'aria-current="true"' : '' ?>><?= $length ?> Tage</a>
+      <a href="<?= cs_escape(cs_period_href($length, $previewScenario, $productHistory)) ?>" <?= $period['preset'] === (string) $length ? 'aria-current="true"' : '' ?>><?= $length ?> Tage</a>
       <?php endforeach; ?>
     </nav>
   </div>
   <details <?= $period['preset'] === 'custom' ? 'open' : '' ?>>
     <summary>Eigenen Zeitraum wählen</summary>
     <form method="get">
-      <?php cs_preserve([]); ?>
+      <?php cs_preserve(['productViews']); ?>
       <input type="hidden" name="period" value="custom">
       <label>Von<input type="date" name="from" value="<?= $period['start']->format('Y-m-d') ?>" max="<?= $today ?>" required></label>
       <label>Bis<input type="date" name="to" value="<?= $period['end']->modify('-1 day')->format('Y-m-d') ?>" max="<?= $today ?>" required></label>
@@ -292,7 +305,7 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
   <h2 id="funnel">Kaufweg</h2>
   <dl class="number-list">
     <?php foreach ([
-        ['Produktseiten aufgerufen', $productViews],
+        [$productBaseline !== null && !$productHistory ? 'Produktseiten seit Marketing-Neustart' : 'Produktseiten aufgerufen', $productViews],
         ['In den Warenkorb gelegt', null],
         ['Zahlungsseite bereitgestellt', $checkouts],
         ['Bestellung bezahlt', $orders],
@@ -338,10 +351,23 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
 
 <section aria-labelledby="products">
   <h2 id="products">Armbänder</h2>
+  <?php if ($productBaselineError): ?>
+  <p class="notice" role="status">Ausgangsstand für Armband-Aufrufe konnte nicht geladen werden.</p>
+  <?php elseif ($productBaseline !== null): ?>
+  <?php
+    $productQueryKeys = ['period', 'from', 'to', 'product', 'availability', 'sort', 'postWindow', 'scenario'];
+    $productViewQuery = array_filter(array_intersect_key($_GET, array_flip($productQueryKeys)), 'is_string');
+    if (!$productHistory) { $productViewQuery['productViews'] = 'history'; }
+  ?>
+  <p class="note">
+    <?= $productHistory ? 'Aufrufe im gewählten Zeitraum' : 'Aufrufe seit ' . cs_escape(cs_time($productBaseline['generatedAt'])) ?>
+    · <a href="<?= cs_escape('?' . http_build_query($productViewQuery) . '#products') ?>"><?= $productHistory ? 'Seit Neustart' : 'Mit früheren Aufrufen' ?></a>
+  </p>
+  <?php endif; ?>
   <details <?= $productQuery !== '' || $availabilityFilter !== '' || isset($_GET['sort']) ? 'open' : '' ?>>
     <summary>Filtern und sortieren</summary>
     <form method="get" action="#products">
-      <?php cs_preserve(['period', 'from', 'to', 'postWindow']); ?>
+      <?php cs_preserve(['period', 'from', 'to', 'postWindow', 'productViews']); ?>
       <label>Armband suchen<input name="product" value="<?= cs_escape($productQuery) ?>" placeholder="Name oder Artikelnummer"></label>
       <label>Verfügbarkeit<select name="availability">
         <?php foreach (['' => 'Alle', 'available' => 'Kaufbar', 'unavailable' => 'Nicht verfügbar', 'disabled' => 'Deaktiviert', 'unknown' => 'Unbekannt'] as $key => $label): ?>
@@ -382,7 +408,7 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
   <details <?= isset($_GET['postWindow']) ? 'open' : '' ?>>
     <summary id="posts">Beiträge und Bildvarianten</summary>
     <form method="get" action="#posts">
-      <?php cs_preserve(['period', 'from', 'to', 'product', 'availability', 'sort']); ?>
+      <?php cs_preserve(['period', 'from', 'to', 'product', 'availability', 'sort', 'productViews']); ?>
       <label>Vergleichsfenster<select name="postWindow">
         <option value="first14" <?= $window === 'first14' ? 'selected' : '' ?>>Erste 14 Tage</option>
         <option value="lifetime" <?= $window === 'lifetime' ? 'selected' : '' ?>>Gesamtstand</option>

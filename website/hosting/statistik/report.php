@@ -170,6 +170,37 @@ function cs_public_view_stats(array $stats): array
     return $stats;
 }
 
+function cs_product_views_baseline(string $path): ?array
+{
+    if (!is_file($path)) {
+        return null;
+    }
+    $data = cs_snapshot_file($path, 'product-views-baseline')['data'];
+    if (!is_array($data['totals'] ?? null)) {
+        throw new RuntimeException('Ungültiger Ausgangsstand der Armband-Aufrufe.');
+    }
+    foreach ($data['totals'] as $route => $count) {
+        if (!is_string($route) || !preg_match('#^/armbaender/[a-z0-9]+(?:-[a-z0-9]+)*/$#D', $route) || cs_count($count) === null) {
+            throw new RuntimeException('Ungültiger Ausgangsstand der Armband-Aufrufe.');
+        }
+    }
+    return $data;
+}
+
+function cs_product_views_since(array $stats, array $days, array $baseline): array
+{
+    $cut = new DateTimeImmutable($baseline['generatedAt']);
+    $day = $cut->setTimezone(new DateTimeZone('Europe/Berlin'))->format('Y-m-d');
+    $days = array_values(array_filter($days, static fn (string $date): bool => $date >= $day));
+    foreach ($baseline['totals'] as $route => $before) {
+        $views = cs_count($stats['days'][$day]['pageviews'][$route]['views'] ?? null);
+        if ($views !== null) {
+            $stats['days'][$day]['pageviews'][$route]['views'] = max(0, $views - $before);
+        }
+    }
+    return [$stats, $days];
+}
+
 function cs_views(array $stats, array $days, string $field = 'views', string|Closure|null $path = null): array
 {
     $sum = 0;
