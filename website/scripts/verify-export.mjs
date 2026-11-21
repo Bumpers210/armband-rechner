@@ -310,6 +310,21 @@ assert(
 
 for (const product of publishedProducts.map(withProductEditorial)) {
   const detailHtml = await readOutputFile(`armbaender/${product.slug}/index.html`);
+  const card = [...productsOverviewHtml.matchAll(/<article\b[^>]*>[\s\S]*?<\/article>/g)]
+    .map((match) => match[0]).find((entry) => entry.includes(`href="/armbaender/${product.slug}/"`));
+  const priceLabel = product.custom ? "Preis nach Absprache"
+    : new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(product.priceMinor / 100);
+  assert(card?.includes(`<p class="product-card-price">${priceLabel}</p>`),
+    `Öffentlicher Katalogpreis oder Anfragehinweis fehlt: ${product.slug}`);
+  if (product.custom) {
+    assert(detailHtml.includes("Preis nach Absprache") && detailHtml.includes("Wunscharmband anfragen")
+      && !detailHtml.includes('class="shop-buy-now"') && !detailHtml.includes('cmj-offer-seed-')
+      && !detailHtml.includes("Nicht verfügbar") && !detailHtml.includes("Vorübergehend nicht verfügbar"),
+    `Anfrageartikel darf keinen Kaufbereich oder Ausverkauftstatus enthalten: ${product.slug}`);
+  } else if (product.salesEnabled) {
+    assert(detailHtml.includes('class="product-shipping-summary"') && detailHtml.includes("nach endgültiger Zahlungsbestätigung"),
+      `Versandhinweis am Kaufbereich fehlt: ${product.slug}`);
+  }
 
   assert(
     productsOverviewHtml.includes(`href="/armbaender/${product.slug}/"`),
@@ -345,7 +360,7 @@ for (const product of publishedProducts.map(withProductEditorial)) {
   }
 }
 
-for (const product of unavailableProducts) {
+for (const product of unavailableProducts.map(withProductEditorial).filter((product) => !product.custom)) {
   const detailHtml = await readOutputFile(`armbaender/${product.slug}/index.html`);
   const productCard = [...productsOverviewHtml.matchAll(/<article\b[^>]*>[\s\S]*?<\/article>/g)]
     .map((match) => match[0])

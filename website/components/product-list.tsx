@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ProductImageGallery } from "@/components/product-image-gallery";
 import type { PublicProduct } from "@/content/products";
+import { money } from "@/lib/cart-client";
 
 type ProductListProps = {
   products: PublicProduct[];
@@ -32,7 +33,10 @@ export function ProductList({
                 {product.publicTitle}
               </Link>
             </Heading>
-            {!product.salesEnabled ? (
+            <p className="product-card-price">
+              {product.custom ? "Preis nach Absprache" : money(product.priceMinor)}
+            </p>
+            {!product.custom && !product.salesEnabled ? (
               <p className="product-status product-status--sold">
                 Nicht verfügbar
               </p>
