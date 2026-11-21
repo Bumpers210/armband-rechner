@@ -22,6 +22,8 @@ Der Ordner wird mit `0711`, die Passwortdatei mit `0604` angelegt, falls Apache 
 
 Beim Öffnen liest die geschützte Seite die Seitenaufrufe aus der vorhandenen Zählerdatei sowie Bestellungen und Warenumsatz aus der Shop-Datenbank. Der Datenbankzugriff ist verschlüsselt und lesend. Die zwei bestätigten Testkäufe sind ausgeschlossen. Bei einem Fehler bleiben die zuletzt erfolgreich geladenen Bestellzahlen mit ihrem Zeitstempel und einem Fehlerhinweis sichtbar, sofern bereits ein Stand vorliegt. Die aggregierte Sicherung liegt privat unter `carmaja-production-stats-maintenance/dashboard-cache/`.
 
+Für einen Marketing-Neustart kann dort privat `product-views-baseline.json` mit dem Zeitpunkt und den bis dahin erfassten Armband-Aufrufen dieses Berliner Kalendertags abgelegt werden. Die Werte ab dem Neustart erscheinen in der Armbandtabelle und beim Einstieg in den Kaufweg. Über „Mit früheren Aufrufen“ lässt sich der vollständige gewählte Zeitraum anzeigen. Das Statistik-Wartungspaket enthält keine Auszüge aus dem Live-Zähler.
+
 ## Kontrollierte Installation
 
 Der separate Workflow verlangt den exakten Main-Commit, die Bestaetigung `INSTALL_PRODUCTION_STATISTICS` und die kurzzeitig gesetzte Variable `CARMAJA_PRODUCTION_STATISTICS_HOSTING_ENABLED=true`. Er setzt die Variable abschliessend unabhaengig vom Ergebnis wieder auf `false`.
