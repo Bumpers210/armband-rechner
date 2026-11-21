@@ -857,6 +857,28 @@
   color: var(--v2-muted);
 }
 
+.v2-page .product-card-copy .product-card-price,
+.v2-page .product-inquiry-price {
+  margin: 0;
+  color: var(--v2-moss);
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.v2-page .product-inquiry {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+.v2-page .product-shipping-summary {
+  margin: 0;
+  color: var(--v2-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
 .v2-page .product-sku {
   margin: 0;
   color: var(--v2-clay);

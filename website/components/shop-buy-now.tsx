@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { JsonLd } from "@/components/json-ld";
 import { CART_MAX_QUANTITY, money, readCart, replaceCart, shopApiOrigin, shopContext } from "@/lib/cart-client";
 import type { ProductStructuredData } from "@/lib/product-seo";
@@ -9,10 +9,11 @@ import type { MerchantOfferPolicies } from "@/lib/merchant-policies";
 import { offerBoxId, offerSchemaId, offerSeedId, readOfferBootstrap, validatedLiveProduct, withLiveOffer,
   type LiveProduct } from "@/lib/live-product-offer.mjs";
 
-export function ShopBuyNow({ productId, structuredProduct, offerPolicies }: {
+export function ShopBuyNow({ productId, structuredProduct, offerPolicies, children }: {
   productId: string;
   structuredProduct?: ProductStructuredData;
   offerPolicies?: MerchantOfferPolicies;
+  children?: ReactNode;
 }) {
   // PHP supplies matching markup and this request's validated API projection.
   // The purchase controls still wait for the browser's own successful live GET.
@@ -84,6 +85,7 @@ export function ShopBuyNow({ productId, structuredProduct, offerPolicies }: {
     {message ? <p>{message}</p> : null}
     <button className="shop-buy-button" type="button" disabled={busy || loadFailed || !product?.available || !Number.isInteger(quantity) || quantity < 1 || quantity > CART_MAX_QUANTITY || quantity > product.availableQuantity}
       onClick={() => void add()}>{busy ? "Wird hinzugefügt …" : "In den Warenkorb"}</button>
+    {children}
     <p>Maximal {CART_MAX_QUANTITY} Armbänder insgesamt je Bestellung.</p>
     <p><Link href="/warenkorb/">Warenkorb ansehen</Link></p>
   </section>;

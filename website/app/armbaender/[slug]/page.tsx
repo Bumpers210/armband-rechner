@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
 import { merchantOfferPolicies, merchantOrganizationStructuredData } from "@/lib/merchant-policies";
 import { ProductImageGallery } from "@/components/product-image-gallery";
+import { ProductShippingSummary } from "@/components/product-shipping-summary";
 import { ShopBuyNow } from "@/components/shop-buy-now";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
@@ -213,12 +214,15 @@ export default async function ProductDetailPage({
               </ol>
             </nav>
             <h1>{product.publicTitle}</h1>
-            {!product.salesEnabled ? (
+            {!product.custom && !product.salesEnabled ? (
               <p className="product-status product-status--sold">Nicht verfügbar</p>
             ) : null}
             <ProductDescription product={product} />
             {product.custom ? (
-              <Link className="v2-text-link" href="/kontakt/">Wunscharmband anfragen</Link>
+              <div className="product-inquiry">
+                <p className="product-inquiry-price">Preis nach Absprache</p>
+                <Link className="v2-text-link" href="/kontakt/">Wunscharmband anfragen</Link>
+              </div>
             ) : null}
             <dl className="product-detail-facts">
               <div>
@@ -259,9 +263,11 @@ export default async function ProductDetailPage({
               <li><Link className="v2-text-link" href="/material-pflege/">Hinweise zu Material &amp; Pflege</Link></li>
             </ul>
 
-            {product.salesEnabled ? (
+            {!product.custom && product.salesEnabled ? (
               <ShopBuyNow key={product.productId} productId={product.productId} structuredProduct={structuredProduct}
-                offerPolicies={structuredProduct ? merchantOfferPolicies() : undefined} />
+                offerPolicies={structuredProduct ? merchantOfferPolicies() : undefined}>
+                <ProductShippingSummary />
+              </ShopBuyNow>
             ) : structuredProduct ? <JsonLd data={structuredProduct} /> : null}
           </div>
         </article>
