@@ -970,16 +970,15 @@
         {
             "productModelVersion": 4,
             "productId": "d22ff939-3805-4c36-bc15-86d2b2dd5f16",
-            "productVersion": 11,
-            "sourceHash": "59da925c2c9e6934c5b754f9ababcacfeb1dbafc4a556467c7dea87bd945bb78",
+            "productVersion": 15,
+            "sourceHash": "3b5e9df8d587093b66b464a98b852f452ab988e35ad91c9a5eb2eed2180b313d",
             "sku": "CP-2026-0014",
             "slug": "cp-2026-0014-amnethyst-armband",
-            "title": "Amnethyst Armband",
-            "description": "Amnethyst Armband\n\nMystisch, intensiv und prunkvoll\n\ninnerer Frieden - Intuition - Ausgeglichenheit\n\nMit seinem tiefem Violett fasziniert der Amnethyst mit jeder einzelnen Perle.\nDiesem Stein wird laut Steinheilkunde innerer Frieden, Intution und Ausgeglichenheit zugeschrieben. Er steht sinnbildlich dafür, innezuhalten und den eigenen Gedanken Raum zu geben und auf sein eigenes Bauchgefühl zu vertrauen. \n\nDazu kommen goldfarbene, echte Lavaperlen und goldfarbene Spacer aus hautfreundlichem und langlebigem Edelstahl.\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
+            "title": "Amethyst Armband",
+            "description": "Amethyst Armband\n\nMystisch, intensiv und prunkvoll\n\ninnerer Frieden - Intuition - Ausgeglichenheit\n\nMit seinem tiefem Violett fasziniert der Amnethyst mit jeder einzelnen Perle.\nDiesem Stein wird laut Steinheilkunde innerer Frieden, Intution und Ausgeglichenheit zugeschrieben. Er steht sinnbildlich dafür, innezuhalten und den eigenen Gedanken Raum zu geben und auf sein eigenes Bauchgefühl zu vertrauen. \n\nDazu kommen goldfarbene, echte Lavaperlen und goldfarbene Spacer aus hautfreundlichem und langlebigem Edelstahl.\n\nPerlengröße: ca. 6 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
             "materials": [
                 "Lavaperlen",
-                "Amne",
-                "thyst"
+                "Amethyst"
             ],
             "metalElements": [
                 "Goldene Tibet-Spacer Edelstahl"
@@ -1027,7 +1026,7 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-11-23T12:27:12+00:00",
+            "updatedAt": "2026-11-23T12:30:03+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -1035,7 +1034,7 @@
                         "type": "paragraph",
                         "spans": [
                             {
-                                "text": "Amnethyst Armband",
+                                "text": "Amethyst Armband",
                                 "bold": true,
                                 "italic": false,
                                 "font": "standard",
