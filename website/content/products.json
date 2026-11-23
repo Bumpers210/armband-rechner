@@ -1299,11 +1299,11 @@
         {
             "productModelVersion": 4,
             "productId": "f73a2e83-f133-481c-ba14-85e3d550b062",
-            "productVersion": 6,
-            "sourceHash": "63e1cb5405490926ba8086a43365164f1441023d7098cd2af5aec0159d551184",
+            "productVersion": 9,
+            "sourceHash": "a5f31a1a6585bf7f729b430551aad25cc90a2067189eb738d17d1b9a4095df3a",
             "sku": "CP-2026-0016",
             "slug": "cp-2026-0016-serpentit-armband",
-            "title": "Serpentit Armband",
+            "title": "Serpentin Armband",
             "description": "Serpentit Armband\n\nFrisch und natürlich\n\nStimmungsausgleich - Beruhigung - Schutz\n\nDie helle, freundliche Farbe dieses Steines macht die Welt gleich ein bisschen bunter. Ihm wird laut moderner Steinheilkunde auch die Kraft nachgesagt Stimmungunsschwangkungen ausgleichen zu können. Außerdem soll er innerer Unruhe, Stress und Nervösität entgegenwirken und dem Träger dabei helfen sich gegen negative Energien und emotionale Angriffe von außen abzugrenzen. \n\nDie Strassspacer sind aus hautfreundlichem und langlebigem Edelstahl\n\nPerlengröße: ca. 6,5 mm\nUmfang: ca. 18,5 cm\n\nHinweise: Die Wirksamkeit von Heilsteinen ist nicht wissenschaftlich belegt!\n\nDie Farbgebung und Maserungen der Armbänder und deren Perlen können sich von den Bildern unterscheiden, da es sich bei jedem Armband und ein handgefertigtes Unikat aus Naturprodukten handelt.",
             "materials": [
                 "Serpentin"
@@ -1354,7 +1354,7 @@
                     "isMain": false
                 }
             ],
-            "updatedAt": "2026-11-15T10:40:13+00:00",
+            "updatedAt": "2026-11-23T12:27:48+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
