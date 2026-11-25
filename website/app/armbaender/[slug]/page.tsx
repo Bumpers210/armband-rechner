@@ -19,6 +19,7 @@ import {
 } from "@/content/products";
 import {
   breadcrumbStructuredData,
+  inquiryPageStructuredData,
   productBreadcrumbs,
   productHref,
   productStructuredData,
@@ -168,7 +169,8 @@ export default async function ProductDetailPage({
   }
 
   const breadcrumbs = productBreadcrumbs(product);
-  const structuredProduct = siteTarget.isTest ? undefined : productStructuredData(product);
+  const structuredProduct = siteTarget.isTest || product.custom ? undefined : productStructuredData(product);
+  const structuredInquiry = !siteTarget.isTest && product.custom ? inquiryPageStructuredData(product) : null;
   const organization = siteTarget.isTest ? null : merchantOrganizationStructuredData();
   const similarProducts = product.custom ? [] : visibleProducts
     .filter((candidate) => candidate.sku !== product.sku && !candidate.custom)
@@ -186,8 +188,9 @@ export default async function ProductDetailPage({
       <SiteHeader />
 
       <main id="main-content" className="product-detail-main">
-        {structuredProduct ? <JsonLd data={breadcrumbStructuredData(breadcrumbs)} /> : null}
+        {!siteTarget.isTest ? <JsonLd data={breadcrumbStructuredData(breadcrumbs)} /> : null}
         {organization ? <JsonLd data={organization} /> : null}
+        {structuredInquiry ? <JsonLd data={structuredInquiry} /> : null}
         <article
           className="content-shell product-detail"
           data-product-id={product.productId}

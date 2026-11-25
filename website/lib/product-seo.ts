@@ -32,6 +32,20 @@ export function productStructuredData(product: PublicProduct) {
 
 export type ProductStructuredData = ReturnType<typeof productStructuredData>;
 
+export function inquiryPageStructuredData(product: PublicProduct) {
+  const base = siteContent.metadata.siteUrl;
+  const url = new URL(productHref(product), base).href;
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${url}#webpage`,
+    name: product.publicTitle,
+    description: product.description.trim() || productSummary(product),
+    image: product.images.map((image) => new URL(image.src, base).href),
+    url,
+  };
+}
+
 export function productBreadcrumbs(product: PublicProduct) {
   return [
     { name: "Startseite", href: "/" },

@@ -347,10 +347,19 @@ for (const product of publishedProducts.map(withProductEditorial)) {
   const schema = structuredData.find((data) => data["@type"] === "Product");
   const breadcrumbs = structuredData.find((data) => data["@type"] === "BreadcrumbList");
   const url = `${siteUrl}armbaender/${product.slug}/`;
-  assert(schema?.name === product.publicTitle && schema.sku === product.sku &&
-    schema.url === url && schema.description && !("offers" in schema) &&
-    JSON.stringify(schema.image) === JSON.stringify(product.images.map((image) => new URL(image.src, siteUrl).href)),
-  `Product-JSON-LD fehlt oder enthält unbelegte Angaben: ${product.slug}`);
+  if (product.custom) {
+    const page = structuredData.find((data) => data["@type"] === "WebPage");
+    assert(!schema && page?.name === product.publicTitle && page["@id"] === `${url}#webpage` &&
+      page.url === url && page.description &&
+      !["sku", "brand", "offers", "review", "aggregateRating"].some((key) => key in page) &&
+      JSON.stringify(page.image) === JSON.stringify(product.images.map((image) => new URL(image.src, siteUrl).href)),
+    `WebPage-JSON-LD fehlt oder Anfrageartikel enthält Produkt-/Angebotsdaten: ${product.slug}`);
+  } else {
+    assert(schema?.name === product.publicTitle && schema.sku === product.sku &&
+      schema.url === url && schema.description && !("offers" in schema) &&
+      JSON.stringify(schema.image) === JSON.stringify(product.images.map((image) => new URL(image.src, siteUrl).href)),
+    `Product-JSON-LD fehlt oder enthält unbelegte Angaben: ${product.slug}`);
+  }
   assert(breadcrumbs?.itemListElement?.length === 3 &&
     breadcrumbs.itemListElement[2].item === url &&
     detailHtml.includes('href="/armbandgroesse/"'),
