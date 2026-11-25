@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { visibleProducts } from "@/content/products";
 import { siteContent } from "@/content/site-content";
+import styles from "./advent.module.css";
 
 export const metadata: Metadata = {
   title: {
@@ -49,53 +50,49 @@ export default function Home() {
       <SiteHeader />
 
       <main id="main-content">
-        <section className="v2-hero">
-          <Image
-            src={siteContent.hero.image.src}
-            alt={siteContent.hero.image.alt}
-            fill
-            sizes="100vw"
-            priority
-            className="v2-hero-image"
-            style={{ objectPosition: siteContent.hero.image.objectPosition }}
-          />
-          <div className="v2-hero-overlay" aria-hidden="true" />
-          <div className="content-shell v2-hero-inner">
-            <div className="v2-hero-copy">
-              <p className="v2-eyebrow">{siteContent.hero.eyebrow}</p>
-              <h1>{siteContent.hero.title}</h1>
-              <p className="v2-hero-description">
-                {siteContent.hero.description}
+        <section className={styles.hero} aria-labelledby="advent-season">
+          <div className={styles.spread}>
+            <div className={styles.message}>
+              <p className={styles.season} id="advent-season">Advent bei Carmaja-Perlen</p>
+              <h1>
+                Kleine Perlen,<br />
+                <em>große Freude.</em>
+              </h1>
+              <p className={styles.description}>
+                Handgefertigte Edelsteinarmbänder für den Gabentisch und für
+                all die Tage danach.
               </p>
-              <Link className="v2-button v2-button--warm" href="/armbaender/">
-                Armbänder ansehen
+              <Link className={styles.discover} href="/armbaender/">
+                Armbänder entdecken <span aria-hidden="true">→</span>
               </Link>
+            </div>
+            <div className={styles.portrait}>
+              <Image
+                src={siteContent.hero.image.src}
+                alt={siteContent.hero.image.alt}
+                width={siteContent.hero.image.width}
+                height={siteContent.hero.image.height}
+                sizes="(min-width: 76rem) 34rem, (min-width: 48rem) 46vw, 90vw"
+                priority
+              />
+              <div className={styles.ornaments} aria-hidden="true">
+                <span /><span />
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="v2-introduction" aria-label="Über Carmaja-Perlen">
-          <div className="content-shell v2-introduction-grid">
-            <p className="v2-introduction-statement">{siteContent.statement}</p>
-            <div className="v2-introduction-copy">
-              <p>{siteContent.introduction}</p>
-              <Link className="v2-text-link" href="/ueber-mich/">
-                Mehr über Carmaja-Perlen
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        <section className="v2-products-teaser">
+        <section className={`v2-products-teaser ${styles.selection}`}>
           <div className="content-shell">
             <div className="v2-section-heading">
               <div>
-                <p className="v2-eyebrow">Aktuelle Auswahl</p>
-                <h2>Armbänder entdecken</h2>
+                <h2>Geschenkideen aus Naturstein</h2>
               </div>
               <p>
-                Eine kleine Auswahl handgefertigter Stücke mit Bildern,
-                Materialien und Größen.
+                Du hast ein Armband ins Auge gefasst? So findest du die{" "}
+                <Link className="v2-text-link" href="/armbandgroesse/">
+                  passende Armbandgröße
+                </Link>.
               </p>
             </div>
             {visibleProducts.length > 0 ? (
@@ -116,7 +113,17 @@ export default function Home() {
             </p>
           </div>
         </section>
-
+        <section className="v2-introduction" aria-label="Über Carmaja-Perlen">
+          <div className="content-shell v2-introduction-grid">
+            <p className="v2-introduction-statement">{siteContent.statement}</p>
+            <div className="v2-introduction-copy">
+              <p>{siteContent.introduction}</p>
+              <Link className="v2-text-link" href="/ueber-mich/">
+                Mehr über Carmaja-Perlen
+              </Link>
+            </div>
+          </div>
+        </section>
       </main>
 
       <SiteFooter />
