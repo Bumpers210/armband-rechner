@@ -64,6 +64,35 @@ function harness(products, target = 'production') {
   };
 }
 const visible = html => html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+const jsonLd = html => [...html.matchAll(/<script\b(?=[^>]*\btype="application\/ld\+json")[^>]*>([\s\S]*?)<\/script>/g)]
+  .map(([, data]) => JSON.parse(data));
+
+test('Anfrageseiten enthalten WebPage, Breadcrumbs und Händlerdaten ohne Produkt- oder Angebotsauszeichnung', async () => {
+  for (const salesEnabled of [true, false]) {
+    const product = structuredClone({ ...fixture, custom: true, salesEnabled });
+    const h = harness([product]);
+    const html = await h.detail(product);
+    const documents = jsonLd(html);
+    const url = `https://www.carmaja-perlen.de/armbaender/${product.slug}/`;
+    assert.equal(documents.filter(data => data['@type'] === 'Product').length, 0);
+    assert.equal(documents.filter(data => data['@type'] === 'WebPage').length, 1);
+    const page = documents.find(data => data['@type'] === 'WebPage');
+    assert.equal(page['@id'], `${url}#webpage`);
+    assert.equal(page.url, url);
+    assert.equal(page.name, product.publicTitle);
+    assert.equal(page.description, product.description);
+    assert.deepEqual(page.image, product.images.map(image => `https://www.carmaja-perlen.de${image.src}`));
+    for (const key of ['sku', 'brand', 'offers', 'review', 'aggregateRating']) assert.equal(key in page, false);
+    const breadcrumbs = documents.find(data => data['@type'] === 'BreadcrumbList');
+    assert.equal(breadcrumbs.itemListElement.length, 3);
+    assert.equal(breadcrumbs.itemListElement[2].item, url);
+    assert.equal(documents.filter(data => data['@type'] === 'Organization').length, 1);
+    const metadata = await h.load('@/app/armbaender/[slug]/page').generateMetadata({ params: Promise.resolve({ slug: product.slug }) });
+    assert.equal(metadata.alternates.canonical, `/armbaender/${product.slug}/`);
+    assert.equal(metadata.robots.index, true);
+    assert.equal(metadata.robots.follow, true);
+  }
+});
 
 test('Anfrageartikel hat nur Anfrage und Absprachepreis, unabhängig von der unveränderten Verkaufsfreigabe', async () => {
   for (const salesEnabled of [true, false]) {
@@ -112,6 +141,8 @@ test('Normale Produkte behalten Live-Prüfung und fail-closed Kaufbereich statt 
   assert.match(html, /<button[^>]*disabled=""[^>]*>In den Warenkorb/);
   assert.doesNotMatch(visible(html), /28,50|Preis nach Absprache|Wunscharmband anfragen/);
   assert.match(html, /cmj-offer-seed-/);
+  assert.equal(jsonLd(html).filter(data => data['@type'] === 'Product').length, 1);
+  assert.equal(jsonLd(html).some(data => data['@type'] === 'WebPage'), false);
   const unavailable = { ...product, salesEnabled: false };
   const closed = await harness([unavailable]).detail(unavailable);
   assert.match(closed, /Nicht verfügbar/);
@@ -137,7 +168,11 @@ test('Versand steht direkt nach dem Kaufbutton und stimmt mit Vertrag und freige
 });
 
 test('Testdarstellung bleibt ohne Produktions-URLs oder private Deploymentkonfiguration', async () => {
-  const html = await harness([fixture], 'test').detail(fixture);
-  assert.match(html, /product-shipping-summary/);
-  assert.doesNotMatch(html, /www\.carmaja-perlen\.de|\/home\/www\/|runtime-config|production-shop-deployment/);
+  for (const custom of [false, true]) {
+    const product = { ...fixture, custom };
+    const html = await harness([product], 'test').detail(product);
+    if (!custom) assert.match(html, /product-shipping-summary/);
+    assert.equal(jsonLd(html).length, 0);
+    assert.doesNotMatch(html, /www\.carmaja-perlen\.de|\/home\/www\/|runtime-config|production-shop-deployment/);
+  }
 });

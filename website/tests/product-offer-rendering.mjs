@@ -47,9 +47,16 @@ for(const [index,p] of catalog.entries()){
   const reply=phpReply(uri,null,true);
   assert.equal(reply.status,200,p.sku);
   assert.equal(reply.body,baseline);
-  assert.equal(base.offers,undefined);
   assert.doesNotMatch(baseline,/cmj-offer-seed-|class="shop-buy-now"/);
-  if(custom)assert.match(baseline,/Preis nach Absprache/);
+  if(custom){
+   assert.equal(base,undefined);
+   const page=docs.find(d=>d['@type']==='WebPage');
+   assert.equal(page?.url,'https://www.carmaja-perlen.de'+uri);
+   assert.match(baseline,/Preis nach Absprache/);
+  }else{
+   assert.ok(base);
+   assert.equal(base.offers,undefined);
+  }
   informationalPages++;
   continue;
  }
