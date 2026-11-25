@@ -30,11 +30,11 @@ export default function ProductsPage() {
       <main id="main-content" className="products-main">
         <section className="products-intro">
           <div className="content-shell products-intro-inner">
-            <p className="v2-eyebrow">Aktuelle Auswahl</p>
+            <p className="v2-eyebrow">Armbänder zum Fest</p>
             <h1>Handgefertigte Natursteinarmbänder</h1>
             <p>
-              Die Produktseiten zeigen die Perlen handgefertigter
-              Natursteinarmbänder im Detail und geben Auskunft über Material und Größe.
+              Welche Farbe trägt dein Lieblingsmensch am liebsten? Schau dir
+              die Steine aus der Nähe an und vergleiche Material und Größe.
             </p>
           </div>
         </section>

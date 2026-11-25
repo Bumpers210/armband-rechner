@@ -9,5 +9,16 @@ export const metadata = {
 };
 
 export default function CartPage() {
-  return <div className="v2-page"><SiteHeader /><main className="content-shell cart-main" id="main-content"><h1>Warenkorb</h1><ShopCart /></main><SiteFooter /></div>;
+  return (
+    <div className="v2-page">
+      <SiteHeader />
+      <main id="main-content">
+        <header className="v2-page-intro advent-cart-heading">
+          <div className="content-shell"><h1>Warenkorb</h1></div>
+        </header>
+        <div className="content-shell cart-main"><ShopCart /></div>
+      </main>
+      <SiteFooter />
+    </div>
+  );
 }

@@ -6,6 +6,7 @@ import { siteContent } from "@/content/site-content";
 
 import "./globals.css";
 import "./site.css";
+import "./adventszeit.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteContent.metadata.siteUrl),
@@ -55,6 +56,7 @@ export default function RootLayout({
         <a className="skip-link" href="#main-content">
           Zum Inhalt springen
         </a>
+        <p className="adventsgruss">Eine schöne Adventszeit</p>
         <Link className="persistent-bracelet-flag" href="/armbaender/">
           Armbänder ansehen
         </Link>

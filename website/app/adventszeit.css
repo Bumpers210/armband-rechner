@@ -1,0 +1,177 @@
+/* Die gemeinsame Adventspalette gilt auch für Seiten ohne Shop-Navigation. */
+:root {
+  --tannengruen: #163b30;
+  --abendgruen: #34584a;
+  --kerzenlicht: #fff6e4;
+  --goldfolie: #e3c78a;
+  --goldkante: #b89b60;
+  --weinrot: #7d3540;
+  --background: #f7f1e6;
+  --accent: var(--tannengruen);
+  --accent-secondary: var(--weinrot);
+}
+
+.v2-page {
+  --v2-canvas: var(--background);
+  --v2-surface: #fffcf5;
+  --v2-moss: var(--tannengruen);
+  --v2-clay: var(--weinrot);
+  --v2-line: #dacdb6;
+}
+
+.adventsgruss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  margin: 0;
+  padding: 0.35rem 1rem;
+  border-bottom: 1px solid var(--goldkante);
+  background: var(--tannengruen);
+  color: var(--kerzenlicht);
+  font: italic 1rem/1.4 Georgia, serif;
+}
+
+/* Ein gefalteter Papierstern zwischen zwei feinen Goldlinien. */
+.adventsgruss::before,
+.adventsgruss::after {
+  width: clamp(1.5rem, 8vw, 6rem);
+  height: 0.85rem;
+  background: linear-gradient(90deg, var(--goldkante), var(--goldfolie));
+  clip-path: polygon(0 47%, 84% 47%, 91% 0, 95% 38%, 100% 50%, 95% 62%, 91% 100%, 84% 53%, 0 53%);
+  content: "";
+}
+
+.adventsgruss::after {
+  transform: scaleX(-1);
+}
+
+.v2-page :is(.v2-page-intro, .products-intro) {
+  --kugel: clamp(5.5rem, 11vw, 10rem);
+  --band: clamp(2rem, 4vw, 4rem);
+  --rand: max(8%, calc((100% - var(--content-width)) / 2 + 2rem));
+  position: relative;
+  padding-block: 3.25rem;
+  border-bottom: 3px double var(--goldkante);
+  background: radial-gradient(ellipse at 85% 15%, var(--abendgruen), transparent 65%), var(--tannengruen);
+}
+
+.v2-page :is(.v2-page-intro, .products-intro) .content-shell {
+  padding-right: calc(var(--kugel) + var(--rand));
+}
+
+.v2-page :is(.v2-page-intro, .products-intro) h1 {
+  max-width: 21ch;
+  color: var(--kerzenlicht);
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
+.v2-page :is(.v2-page-intro, .products-intro) .v2-eyebrow {
+  color: var(--goldfolie);
+  letter-spacing: 0.1em;
+}
+
+.v2-page :is(.v2-page-intro, .products-intro) p:last-child {
+  color: #f2edde;
+}
+
+/* Aufhängung und geriffelte Glaskugel sind rein dekorativ. */
+.v2-page :is(.v2-page-intro, .products-intro)::before,
+.v2-page :is(.v2-page-intro, .products-intro)::after {
+  position: absolute;
+  pointer-events: none;
+  content: "";
+}
+
+.v2-page :is(.v2-page-intro, .products-intro)::before {
+  top: 0;
+  right: calc(var(--rand) + var(--kugel) * 0.42);
+  width: calc(var(--kugel) * 0.16);
+  height: var(--band);
+  background:
+    linear-gradient(var(--goldfolie), var(--goldfolie)) center / 1px 100% no-repeat,
+    linear-gradient(90deg, #a7884d, #ffe3a6, #ac8c51) bottom / 100% 0.4rem no-repeat;
+}
+
+.v2-page :is(.v2-page-intro, .products-intro)::after {
+  top: var(--band);
+  right: var(--rand);
+  width: var(--kugel);
+  aspect-ratio: 1;
+  border: 1px solid rgb(245 211 150 / 60%);
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 28% 17%, rgb(255 237 204 / 58%), transparent 24%),
+    radial-gradient(ellipse at 82% 87%, rgb(47 12 26 / 75%), transparent 62%),
+    repeating-linear-gradient(135deg, transparent 0 11px, #dfbd7f 11px 12px, transparent 12px 16px),
+    var(--weinrot);
+  box-shadow: inset -0.35rem -0.35rem 0.8rem rgb(46 18 27 / 32%), 0 0.6rem 1rem rgb(9 28 22 / 20%);
+}
+
+.v2-page .product-card-copy {
+  border-top: 3px double var(--goldkante);
+}
+
+.v2-page .product-detail-image-trigger {
+  box-shadow: 0 0 0 3px var(--v2-surface), 0 0 0 4px var(--goldkante);
+}
+
+.v2-page .advent-cart-heading {
+  --kugel: clamp(3rem, 6vw, 5rem);
+  --band: 1.1rem;
+}
+
+.v2-page .advent-cart-heading h1 {
+  margin-bottom: 0;
+}
+
+.shop-cart button:not(.shop-buy-button) {
+  width: fit-content;
+  min-height: 2.75rem;
+  padding: 0.4rem 1.1rem;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  background: var(--v2-surface);
+  color: var(--tannengruen);
+  font: inherit;
+  cursor: pointer;
+}
+
+.shop-cart button:not(.shop-buy-button):hover:enabled {
+  background: var(--tannengruen);
+  color: var(--kerzenlicht);
+}
+
+.shop-cart button:not(.shop-buy-button):disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+:is(.legal-content, .product-detail-copy, .checkout-confirmation-heading) > h1::before {
+  display: block;
+  width: 3.5rem;
+  height: 0.85rem;
+  margin-bottom: 0.65rem;
+  background: #97773a;
+  clip-path: polygon(0 50%, 6% 36%, 10% 0, 14% 36%, 20% 48%, 100% 48%, 100% 56%, 20% 56%, 14% 66%, 10% 100%, 6% 65%);
+  content: "";
+}
+
+.v2-page .v2-footer {
+  border-top: 3px double var(--goldkante);
+  background: linear-gradient(180deg, #f0e7d5, var(--v2-surface) 5rem);
+}
+
+@media (max-width: 47.99rem) {
+  .v2-page :is(.v2-page-intro, .products-intro) {
+    --kugel: 2.5rem;
+    --band: 0.8rem;
+    --rand: 1.25rem;
+    padding-block: 3.75rem 2.25rem;
+  }
+
+  .v2-page :is(.v2-page-intro, .products-intro) .content-shell {
+    padding-right: 0;
+  }
+}
