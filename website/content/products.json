@@ -2641,12 +2641,12 @@
         {
             "productModelVersion": 4,
             "productId": "43e8c46d-bb66-4ccc-bc32-0203679a2b8b",
-            "productVersion": 3,
-            "sourceHash": "565cbcf96bb62735aecd682f502b94f7276a641f12d7e4847cfed5f1a215aedc",
+            "productVersion": 6,
+            "sourceHash": "963f6613f8f3f3deafae251093407a38aa1d7b0a0867a73270bd858f830c446f",
             "sku": "CP-2026-0027",
             "slug": "cp-2026-0027-karneol-set",
             "title": "Karneol Set",
-            "description": "Karneol Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "description": "Karneol Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nLaut moderner Steinheilkunde fördert Karneol den Lebensmut, die Tatkraft und das Selbstvertrauen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.\n\nBitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
             "materials": [
                 "Carneol (gebrannt)",
                 "Lavaperlen"
@@ -2670,7 +2670,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-26T19:16:14+00:00",
+            "updatedAt": "2026-11-26T20:21:20+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -2702,7 +2702,31 @@
                         "type": "paragraph",
                         "spans": [
                             {
+                                "text": "Laut moderner Steinheilkunde fördert Karneol den Lebensmut, die Tatkraft und das Selbstvertrauen.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
                                 "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
