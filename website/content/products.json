@@ -2537,12 +2537,12 @@
         {
             "productModelVersion": 4,
             "productId": "93246322-5d22-4447-ada3-bfab9da23e3b",
-            "productVersion": 3,
-            "sourceHash": "3e724256bc601463a19cd2c2ac6b842dccd98d9047094d71bf854c1149f91188",
+            "productVersion": 6,
+            "sourceHash": "6e7df660b7a2e80bcc2a46ec66d65224630380a4b7ae212430ecfd4ed6327d64",
             "sku": "CP-2026-0026",
             "slug": "cp-2026-0026-amethyst-set",
             "title": "Amethyst Set",
-            "description": "Amethyst Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "description": "Amethyst Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nLaut moderner Steinheilkunde unterstützt Amethyst den inneren Frieden, die Intuition und Ausgeglichenheit.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.\n\nBitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
             "materials": [
                 "Amethyst",
                 "Lavaperlen"
@@ -2566,7 +2566,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-26T19:14:19+00:00",
+            "updatedAt": "2026-11-26T20:19:56+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -2598,7 +2598,31 @@
                         "type": "paragraph",
                         "spans": [
                             {
+                                "text": "Laut moderner Steinheilkunde unterstützt Amethyst den inneren Frieden, die Intuition und Ausgeglichenheit.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
                                 "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
