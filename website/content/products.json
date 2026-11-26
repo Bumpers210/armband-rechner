@@ -2967,12 +2967,12 @@
         {
             "productModelVersion": 4,
             "productId": "7e5d1124-f5e8-40f0-a7fa-0db50e82d0fc",
-            "productVersion": 3,
-            "sourceHash": "98d39fbcdcd567f4e88429e5018bd74768d7ae5b81f76cccc05a9da9ca6c2c08",
+            "productVersion": 6,
+            "sourceHash": "192d24c1286220bcc82f8191cb5f4ca46ca38b079981901b56be958134b3ef7b",
             "sku": "CP-2026-0032",
             "slug": "cp-2026-0032-tigerauge-falkenauge-set",
             "title": "Tigerauge/Falkenauge Set",
-            "description": "Tigerauge/Falkenauge Set\n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "description": "Tigerauge/Falkenauge Set\n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.\n\nBitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
             "materials": [
                 "Tigerauge-Falkenauge"
             ],
@@ -2995,7 +2995,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-26T19:25:54+00:00",
+            "updatedAt": "2026-11-26T19:49:55+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -3028,6 +3028,18 @@
                         "spans": [
                             {
                                 "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
