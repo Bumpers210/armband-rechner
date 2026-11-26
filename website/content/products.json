@@ -2888,12 +2888,12 @@
         {
             "productModelVersion": 4,
             "productId": "28fb4d38-d05c-4495-a9b5-30be882ec5f0",
-            "productVersion": 3,
-            "sourceHash": "fe486d597582756de4e10198c4bfe12af5d9d820c3d3d36974b559ff5e92a92b",
+            "productVersion": 6,
+            "sourceHash": "0a24c5e88de6cf9782be945db30da8bb9c1d2d477500b451415a8a7e483c35e5",
             "sku": "CP-2026-0031",
             "slug": "cp-2026-0031-fluorit-set",
             "title": "Fluorit Set",
-            "description": "Flourit Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "description": "Flourit Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.\n\nBitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
             "materials": [
                 "Flourit"
             ],
@@ -2916,7 +2916,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-26T19:23:43+00:00",
+            "updatedAt": "2026-11-26T19:50:37+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -2949,6 +2949,18 @@
                         "spans": [
                             {
                                 "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
