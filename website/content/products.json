@@ -2849,12 +2849,12 @@
         {
             "productModelVersion": 4,
             "productId": "8bb02764-81c8-44bb-beef-f8b7449aece4",
-            "productVersion": 3,
-            "sourceHash": "1fca0b2f4e4a836e8cde37ba3eeb3bcc74b5e556c6f3d76972ec4a20a9ff6ecf",
+            "productVersion": 6,
+            "sourceHash": "8e129b1a0ca3d104f16a3cc877a6ca24592e574444b650a7d814735c525cdfb0",
             "sku": "CP-2026-0029",
             "slug": "cp-2026-0029-afrikanischer-turkis-set",
             "title": "Afrikanischer Türkis Set",
-            "description": "Afrikanischer Türkis Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "description": "Afrikanischer Türkis Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nLaut moderner Steinheilkunde unterstützt Afrikanischer Türkis den Wandel, die Balance und die Selbstentfaltung.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.\n\nBitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
             "materials": [
                 "Chrysocoll-Diorit",
                 "Lavaperlen"
@@ -2878,7 +2878,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-26T19:20:37+00:00",
+            "updatedAt": "2026-11-26T20:25:00+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -2910,7 +2910,31 @@
                         "type": "paragraph",
                         "spans": [
                             {
+                                "text": "Laut moderner Steinheilkunde unterstützt Afrikanischer Türkis den Wandel, die Balance und die Selbstentfaltung.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
                                 "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
