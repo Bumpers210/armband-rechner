@@ -2805,6 +2805,85 @@
                 "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
                 "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
             ]
+        },
+        {
+            "productModelVersion": 4,
+            "productId": "0b015087-cb0a-4033-825b-9c60e3e179b4",
+            "productVersion": 3,
+            "sourceHash": "674d298cb4af50a206746c6d5b65346e2ab04e47852d815aef56ca6470c98ffe",
+            "sku": "CP-2026-0030",
+            "slug": "cp-2026-0030-serpentin-set",
+            "title": "Serpentin Set",
+            "description": "Serpentin Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "materials": [
+                "Serpentin"
+            ],
+            "metalElements": [
+                "Strassspacer Edelstahl"
+            ],
+            "braceletSizeCm": 14.5,
+            "pearlSizeMm": 6,
+            "priceMinor": 5900,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "dd2ad6e6-8158-477c-a684-8cc61ced0445",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0030/01.jpg",
+                    "alt": "Serpentin Set",
+                    "width": 1086,
+                    "height": 1448,
+                    "isMain": true
+                }
+            ],
+            "updatedAt": "2026-11-26T19:21:59+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Serpentin Set ",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Perfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "noticePolicyId": "natural-stones-v1",
+            "notices": [
+                "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+                "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
+            ]
         }
     ]
 }
