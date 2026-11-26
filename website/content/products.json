@@ -2745,12 +2745,12 @@
         {
             "productModelVersion": 4,
             "productId": "71d34f2e-6190-4d39-9c7c-1145860b7ef0",
-            "productVersion": 3,
-            "sourceHash": "c0b46447211d5ac92d75a0c8f58702c0576184f8805eefc80fb7721cffc4b059",
+            "productVersion": 6,
+            "sourceHash": "9c13c2f06072b36953d1733b43f67c0fe5344c219c688fed6634c08408ed0ba5",
             "sku": "CP-2026-0028",
             "slug": "cp-2026-0028-bergkristall-set",
             "title": "Bergkristall Set",
-            "description": "Bergkristall Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "description": "Bergkristall Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nLaut moderner Steinheilkunde steht Bergkristall für Reinheit, Fokus und Selbsterkenntnis.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.\n\nBitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
             "materials": [
                 "Bergkristall",
                 "Lavaperlen"
@@ -2774,7 +2774,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-26T19:18:30+00:00",
+            "updatedAt": "2026-11-26T20:23:09+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -2806,7 +2806,31 @@
                         "type": "paragraph",
                         "spans": [
                             {
+                                "text": "Laut moderner Steinheilkunde steht Bergkristall für Reinheit, Fokus und Selbsterkenntnis.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
                                 "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
