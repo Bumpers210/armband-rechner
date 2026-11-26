@@ -2809,12 +2809,12 @@
         {
             "productModelVersion": 4,
             "productId": "0b015087-cb0a-4033-825b-9c60e3e179b4",
-            "productVersion": 3,
-            "sourceHash": "674d298cb4af50a206746c6d5b65346e2ab04e47852d815aef56ca6470c98ffe",
+            "productVersion": 6,
+            "sourceHash": "feea2a55d825153aa592a709640bc85e8fb9ade9b68e172c9916c5edcfa57bcd",
             "sku": "CP-2026-0030",
             "slug": "cp-2026-0030-serpentin-set",
             "title": "Serpentin Set",
-            "description": "Serpentin Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "description": "Serpentin Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.\n\nBitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
             "materials": [
                 "Serpentin"
             ],
@@ -2837,7 +2837,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-26T19:21:59+00:00",
+            "updatedAt": "2026-11-26T19:51:26+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -2870,6 +2870,18 @@
                         "spans": [
                             {
                                 "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
