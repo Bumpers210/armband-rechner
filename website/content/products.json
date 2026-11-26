@@ -2725,6 +2725,86 @@
                 "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
                 "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
             ]
+        },
+        {
+            "productModelVersion": 4,
+            "productId": "8bb02764-81c8-44bb-beef-f8b7449aece4",
+            "productVersion": 3,
+            "sourceHash": "1fca0b2f4e4a836e8cde37ba3eeb3bcc74b5e556c6f3d76972ec4a20a9ff6ecf",
+            "sku": "CP-2026-0029",
+            "slug": "cp-2026-0029-afrikanischer-turkis-set",
+            "title": "Afrikanischer Türkis Set",
+            "description": "Afrikanischer Türkis Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "materials": [
+                "Chrysocoll-Diorit",
+                "Lavaperlen"
+            ],
+            "metalElements": [
+                "Goldene Tibet Spacer Edelstahl"
+            ],
+            "braceletSizeCm": 14.5,
+            "pearlSizeMm": 6,
+            "priceMinor": 6050,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "168cf42d-f377-4b0a-bfc1-8705ce549ed8",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0029/01.jpg",
+                    "alt": "Afrikanischer Türkis Set",
+                    "width": 1086,
+                    "height": 1448,
+                    "isMain": true
+                }
+            ],
+            "updatedAt": "2026-11-26T19:20:37+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Afrikanischer Türkis Set ",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Perfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "noticePolicyId": "natural-stones-v1",
+            "notices": [
+                "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+                "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
+            ]
         }
     ]
 }
