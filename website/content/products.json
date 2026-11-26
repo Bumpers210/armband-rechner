@@ -2328,6 +2328,86 @@
                 "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
                 "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
             ]
+        },
+        {
+            "productModelVersion": 4,
+            "productId": "64f22d05-fa85-4765-9c64-1d1867db4932",
+            "productVersion": 3,
+            "sourceHash": "d710aaa39d1582c56121ce58659987125eba00d083f1f5d10dbd51ecdf890f6e",
+            "sku": "CP-2026-0024",
+            "slug": "cp-2026-0024-rosenquarz-set",
+            "title": "Rosenquarz Set",
+            "description": "Rosenquarz Set\n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "materials": [
+                "Rosenquarz",
+                "Lavaperlen"
+            ],
+            "metalElements": [
+                "Strassspacer Edelstahl"
+            ],
+            "braceletSizeCm": 14.5,
+            "pearlSizeMm": 6,
+            "priceMinor": 5650,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "4deb9d5e-8de2-41d6-b606-0560a0439dd7",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0024/01.jpg",
+                    "alt": "Rosenquarz Set",
+                    "width": 1086,
+                    "height": 1448,
+                    "isMain": true
+                }
+            ],
+            "updatedAt": "2026-11-26T19:08:51+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Rosenquarz Set",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Perfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "noticePolicyId": "natural-stones-v1",
+            "notices": [
+                "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+                "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
+            ]
         }
     ]
 }
