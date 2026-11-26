@@ -2645,6 +2645,86 @@
                 "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
                 "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
             ]
+        },
+        {
+            "productModelVersion": 4,
+            "productId": "71d34f2e-6190-4d39-9c7c-1145860b7ef0",
+            "productVersion": 3,
+            "sourceHash": "c0b46447211d5ac92d75a0c8f58702c0576184f8805eefc80fb7721cffc4b059",
+            "sku": "CP-2026-0028",
+            "slug": "cp-2026-0028-bergkristall-set",
+            "title": "Bergkristall Set",
+            "description": "Bergkristall Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "materials": [
+                "Bergkristall",
+                "Lavaperlen"
+            ],
+            "metalElements": [
+                "Strassspacer Edelstahl"
+            ],
+            "braceletSizeCm": 14.5,
+            "pearlSizeMm": 6,
+            "priceMinor": 6000,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "81cac531-b606-4719-906a-6c1c8a12abbd",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0028/01.jpg",
+                    "alt": "Bergkristall Set",
+                    "width": 1086,
+                    "height": 1448,
+                    "isMain": true
+                }
+            ],
+            "updatedAt": "2026-11-26T19:18:30+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bergkristall Set ",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Perfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "noticePolicyId": "natural-stones-v1",
+            "notices": [
+                "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+                "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
+            ]
         }
     ]
 }
