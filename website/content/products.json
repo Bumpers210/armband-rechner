@@ -2332,12 +2332,12 @@
         {
             "productModelVersion": 4,
             "productId": "64f22d05-fa85-4765-9c64-1d1867db4932",
-            "productVersion": 3,
-            "sourceHash": "d710aaa39d1582c56121ce58659987125eba00d083f1f5d10dbd51ecdf890f6e",
+            "productVersion": 6,
+            "sourceHash": "eb1b863197ddc36559e8ca959cfd14fbb106379a1a5dd7deada7372f48020fb8",
             "sku": "CP-2026-0024",
             "slug": "cp-2026-0024-rosenquarz-set",
             "title": "Rosenquarz Set",
-            "description": "Rosenquarz Set\n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "description": "Rosenquarz Set\n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nLaut moderner Steinheilkunde unterstützt Rosenquarz Selbstliebe, Mitgefühl und emotionale Heilung.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.\n\nBitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
             "materials": [
                 "Rosenquarz",
                 "Lavaperlen"
@@ -2361,7 +2361,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-26T19:08:51+00:00",
+            "updatedAt": "2026-11-26T20:14:41+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -2393,7 +2393,31 @@
                         "type": "paragraph",
                         "spans": [
                             {
+                                "text": "Laut moderner Steinheilkunde unterstützt Rosenquarz Selbstliebe, Mitgefühl und emotionale Heilung.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
                                 "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
