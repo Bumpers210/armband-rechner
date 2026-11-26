@@ -2485,6 +2485,86 @@
                 "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
                 "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
             ]
+        },
+        {
+            "productModelVersion": 4,
+            "productId": "93246322-5d22-4447-ada3-bfab9da23e3b",
+            "productVersion": 3,
+            "sourceHash": "3e724256bc601463a19cd2c2ac6b842dccd98d9047094d71bf854c1149f91188",
+            "sku": "CP-2026-0026",
+            "slug": "cp-2026-0026-amethyst-set",
+            "title": "Amethyst Set",
+            "description": "Amethyst Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "materials": [
+                "Amethyst",
+                "Lavaperlen"
+            ],
+            "metalElements": [
+                "Goldene Tibet Spacer Edelstahl"
+            ],
+            "braceletSizeCm": 14.5,
+            "pearlSizeMm": 6,
+            "priceMinor": 6150,
+            "currency": "eur",
+            "salesEnabled": true,
+            "images": [
+                {
+                    "imageId": "b335739d-ec5c-4ae2-a85d-4972560f28c0",
+                    "fileName": "01.jpg",
+                    "src": "/images/products/CP-2026-0026/01.jpg",
+                    "alt": "Amethyst Set",
+                    "width": 1086,
+                    "height": 1448,
+                    "isMain": true
+                }
+            ],
+            "updatedAt": "2026-11-26T19:14:19+00:00",
+            "descriptionDocument": {
+                "version": 1,
+                "blocks": [
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Amethyst Set ",
+                                "bold": true,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Perfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "noticePolicyId": "natural-stones-v1",
+            "notices": [
+                "Natursteine können in Farbe, Maserung und Form von der Abbildung abweichen.",
+                "Die den Steinen zugeschriebenen Wirkungen sind wissenschaftlich nicht nachgewiesen."
+            ]
         }
     ]
 }
