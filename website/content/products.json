@@ -2436,12 +2436,12 @@
         {
             "productModelVersion": 4,
             "productId": "b4a5cdba-a5eb-4dd2-bee8-56fcce638ac5",
-            "productVersion": 3,
-            "sourceHash": "28845bea62f0d93ade87cee7c0b86b3941247155fa82a218e2ee1abefee5fbd9",
+            "productVersion": 6,
+            "sourceHash": "c626a3f33de72a2ba54c06901c98eab59559d339bdb217e5589a7071ed76ad5c",
             "sku": "CP-2026-0025",
             "slug": "cp-2026-0025-amazonit-set",
             "title": "Amazonit Set",
-            "description": "Amazonit Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+            "description": "Amazonit Set \n\nPerfekt für Mutter und Tochter, Patin und Patenkind, Tante und Nichte oder einfach für die Lieblingsmenschen.\n\nLaut moderner Steinheilkunde spendet Amazonit Trost, stärkt die Geduld und sorgt für Harmonie.\n\nDas Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.\n\nBitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
             "materials": [
                 "Amazonit"
             ],
@@ -2462,7 +2462,7 @@
                     "isMain": true
                 }
             ],
-            "updatedAt": "2026-11-26T19:10:43+00:00",
+            "updatedAt": "2026-11-26T20:16:40+00:00",
             "descriptionDocument": {
                 "version": 1,
                 "blocks": [
@@ -2494,7 +2494,31 @@
                         "type": "paragraph",
                         "spans": [
                             {
+                                "text": "Laut moderner Steinheilkunde spendet Amazonit Trost, stärkt die Geduld und sorgt für Harmonie.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
                                 "text": "Das Set besteht aus einem Armband für Erwachsene mit ca. 18,5 cm Umfang und einem Armband für Kinder mit ca. 14,5 cm Umfang.",
+                                "bold": false,
+                                "italic": false,
+                                "font": "standard",
+                                "size": "normal"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "paragraph",
+                        "spans": [
+                            {
+                                "text": "Bitte beachten Sie das die Armbänder mit Elastikfaden hergestellt werden, der unter zu hoher Beanspruchung (häufiges, starkes Dehnen oder ruckartiges Ziehen)  reißen kann. Perlen und Spacer können dann leicht verschluckt werden. Daher sollten die Armbänder nicht in die Hände von Kleinkindern geraten.",
                                 "bold": false,
                                 "italic": false,
                                 "font": "standard",
