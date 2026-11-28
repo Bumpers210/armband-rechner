@@ -1,0 +1,82 @@
+name: Check protected test website
+
+# The test branch can start this workflow without a change to the default branch.
+on:
+  push:
+    branches:
+      - test/product-management-beta
+    paths:
+      - .github/workflows/check-protected-test-website.yml
+
+permissions: {}
+
+jobs:
+  check-test-website:
+    if: ${{ github.repository == 'Bumpers210/armband-rechner' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    environment:
+      name: carmaja-test
+      deployment: false
+
+    steps:
+      - name: Verify Basic Auth and test website responses
+        shell: bash
+        env:
+          CARMAJA_TEST_BASIC_AUTH_USER: ${{ secrets.CARMAJA_TEST_BASIC_AUTH_USER }}
+          CARMAJA_TEST_BASIC_AUTH_PASSWORD: ${{ secrets.CARMAJA_TEST_BASIC_AUTH_PASSWORD }}
+        run: |
+          node --input-type=module <<'NODE'
+          const user = process.env.CARMAJA_TEST_BASIC_AUTH_USER;
+          const password = process.env.CARMAJA_TEST_BASIC_AUTH_PASSWORD;
+          if (!user || !password || user.includes(':')) {
+            throw new Error('Missing or invalid Basic Auth configuration in carmaja-test.');
+          }
+
+          const origin = 'https://test.carmaja-perlen.de';
+          const authorization = `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
+          const pages = [
+            ['/', 'text/html'],
+            ['/armbaender/', 'text/html'],
+            ['/robots.txt', 'text/plain'],
+          ];
+
+          async function request(path, expectedStatus, headers) {
+            const response = await fetch(`${origin}${path}`, {
+              headers,
+              redirect: 'manual',
+              signal: AbortSignal.timeout(10000),
+            }).catch(() => {
+              throw new Error(`${path} – HTTPS request failed.`);
+            });
+            await response.body?.cancel();
+            if (response.status !== expectedStatus) {
+              throw new Error(`${path} – expected HTTP ${expectedStatus}, got ${response.status}.`);
+            }
+            return response.headers;
+          }
+
+          for (const [path] of pages) {
+            const headers = await request(path, 401);
+            if (!/^Basic(?:\s|$)/i.test(headers.get('www-authenticate') ?? '')) {
+              throw new Error(`${path} – missing Basic Auth challenge.`);
+            }
+            console.log(`${path} – HTTP 401 with Basic Auth challenge.`);
+          }
+
+          for (const [path, expectedType] of pages) {
+            const headers = await request(path, 200, { Authorization: authorization });
+            const contentType = headers.get('content-type')?.split(';')[0].trim().toLowerCase();
+            if (contentType !== expectedType) {
+              throw new Error(`${path} – unexpected response content type.`);
+            }
+
+            const robots = (headers.get('x-robots-tag') ?? '').toLowerCase().split(',').map(token => token.trim());
+            const cache = (headers.get('cache-control') ?? '').toLowerCase().split(',').map(token => token.trim());
+            if (!['noindex', 'nofollow', 'noimageindex'].every(token => robots.includes(token)) ||
+                !['private', 'no-store'].every(token => cache.includes(token))) {
+              throw new Error(`${path} – missing indexing or cache protection.`);
+            }
+            console.log(`${path} – HTTP 200 with Basic Auth and required protection headers.`);
+          }
+          NODE
