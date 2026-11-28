@@ -60,7 +60,7 @@ export function StatisticsConsent() {
     <div className="statistics-consent-shell">
       {open && <section className="statistics-consent" aria-labelledby="statistics-consent-heading">
         <h2 id="statistics-consent-heading" ref={heading} tabIndex={-1}>{policy.title}</h2>
-        {policy.status !== "approved" && <p className="statistics-consent-draft">Lokale Testvorschau – externe Datenschutzfreigabe ausstehend.</p>}
+        {policy.status !== "approved" && <p className="statistics-consent-draft">{policy.status === "approved_pending_operations" ? "Lokale Testvorschau – Datenschutzfreigabe bestätigt, technische Aktivierung noch gesperrt." : "Lokale Testvorschau – Datenschutzfreigabe ausstehend."}</p>}
         <p>{policy.summary}</p>
         <p>{policy.choiceNotice}</p>
         <p><Link href="/datenschutz/">Details zur Tagesbesucherstatistik</Link> · <Link href="/impressum/">Impressum</Link></p>

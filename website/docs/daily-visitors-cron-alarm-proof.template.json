@@ -1,0 +1,27 @@
+{
+  "format": "daily-visitors-operations-proof-v1",
+  "status": "not_run",
+  "environment": "isolated_artificial_only",
+  "codeCommit": null,
+  "testRunId": null,
+  "activationAllowed": false,
+  "providerRetention": { "backupDays": 14, "logDays": 14, "source": "operator_confirmation" },
+  "schedule": { "cleanup": "*/15 * * * *", "observerMinutes": 5, "calendarTimezone": "Europe/Berlin", "logTimezone": "UTC", "maxRunSeconds": 40, "maxRetries": 1 },
+  "cronRuns": [],
+  "alarmSentAtUtc": null,
+  "alarmReceivedAtUtc": null,
+  "recoveryReceivedAtUtc": null,
+  "checks": [
+    { "id": "preflight", "status": "not_run", "evidenceRef": null },
+    { "id": "cron_runs", "status": "not_run", "evidenceRef": null },
+    { "id": "midnight", "status": "not_run", "evidenceRef": null },
+    { "id": "lock", "status": "not_run", "evidenceRef": null },
+    { "id": "cleanup_outage", "status": "not_run", "evidenceRef": null },
+    { "id": "alarm_delivery", "status": "not_run", "evidenceRef": null },
+    { "id": "timeout", "status": "not_run", "evidenceRef": null },
+    { "id": "recovery", "status": "not_run", "evidenceRef": null },
+    { "id": "observer_outage", "status": "not_run", "evidenceRef": null },
+    { "id": "provider_restore", "status": "not_run", "evidenceRef": null },
+    { "id": "cleanup", "status": "not_run", "evidenceRef": null }
+  ]
+}

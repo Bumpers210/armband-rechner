@@ -1,10 +1,11 @@
 # Tagesbesucher – lokale Vorbereitung, 28. November 2026
 
-Fortschreibung nach PR #127: [Datenschutz-/Betriebsnachweise](daily-visitors-operations.md).
+Fortschreibung nach PR #128: [Datenschutz-/Betriebsnachweise](daily-visitors-operations.md).
 Die Vorbereitung ist auf `main` integriert, aber nicht bereitgestellt oder
 aktiviert. Neue lokale Betriebsprüfungen und die Bereinigung von Abbruchresten
-liegen gesondert auf `codex/statistics-privacy-operations`. Commit, Push und PR
-sind freigegeben; Merge, Bereitstellung und Aktivierung bleiben gesperrt.
+liegen auf `main` vor. Die Anpassung an bestätigte 14 Tage für IONOS-Sicherungen
+und Serverlogs wird auf `codex/statistics-retention-operations` lokal vorbereitet.
+Kein neuer Commit/Push, keine Bereitstellung und keine Aktivierung.
 
 ## Auftrag und Zählvertrag
 
@@ -31,11 +32,13 @@ null Besucher hatte. Summen bleiben deshalb als unvollständige Messung erklärt
 
 ## Getrennte Aktivierung – derzeit AUS
 
-Keine bestehende Datenschutzfreigabe wird hier erweitert oder als Einwilligung
-ausgelegt. Die bisherigen freigegebenen Rechtstexte bleiben unverändert.
-Einwilligungsoberfläche, technische Aufbewahrung und Datenschutzentwurf sind
-lokal implementiert. Vor Livebetrieb ist das [Prüfpaket](daily-visitors-privacy-review.md)
-extern zu bestätigen; diese Änderung erteilt keine Rechtsfreigabe.
+Die Betreiberseite hat die Datenschutzfreigabe bestätigt und die Übernahme der
+14-Tage-IONOS-Aufbewahrung beauftragt. Das ist keine Einwilligung der Besucher
+und keine Aktivierungsfreigabe. Bestehende aktive Rechtstexte bleiben unverändert.
+Die Textquelle ist `approved_pending_operations`, Revision
+`daily-visitors-v2-ionos14d-2026-11-28`; der technische Consent-Vertrag bleibt v2.
+Siehe [Freigabezuordnung](daily-visitors-privacy-review.md). Betriebsnachweise
+und die technische Bindung an eine neue aktive Datenschutzfassung fehlen noch.
 
 Voneinander unabhängige Voraussetzungen:
 
@@ -98,7 +101,8 @@ angelegt und darf keine anderen laufenden Daten ersetzen.
 - Server: nur Tagesanzahlen und SHA-256-Deduplizierungsschlüssel für den aktiven
   Tag. Keine IPs, User-Agents, Roh-Referrer, Shopkennungen oder Navigationsprofile.
 - Der Pfad wird nur auf eine veröffentlichte Seite geprüft, nicht gespeichert.
-- Neue Requests tragen die Kennung nur im POST-Body, nie in URL oder Logs.
+- Neue Requests tragen die Kennung nur im POST-Body, nie in URL oder eigenen Logs.
+  Der Inhalt sämtlicher Providerlogs ist damit nicht unabhängig bestätigt.
 - Gleiche Kennung wird unter Dateilock atomar genau einmal gezählt, auch nach
   verlorener Antwort. Lockkonflikt/Fehler bleibt ohne Datenreset und wird bei
   einem späteren Seiten-/Sichtbarkeitsereignis erneut versucht.
@@ -143,13 +147,20 @@ alarmieren. Ein Statusaufruf allein versendet keine Warnung. Vor Aktivierung
 Cronausfall, Alarmweg, Wiederanlauf und Bereinigung im Ziel nachweisen.
 `prune` funktioniert auch bei deaktivierten Zähl-/Datenschutzschaltern.
 
-Die laufende Datei mit `seen` darf **nicht** gesichert werden. Ausschließlich
+Die laufende Datei mit `seen` darf **nicht in eigene Exporte/Backups** aufgenommen werden. Ausschließlich
 `export-aggregates` liefert eine kennungsfreie JSON-Projektion (`version`,
 `kind`, `days`) für einen später freizugebenden Statistikbackupweg. Die lokal
 geprüfte Produktionsbackup-Allowlist umfasst Produktpfade und Runtime, nicht
-das separate Statistikverzeichnis. Provider-Snapshots, Access-/Errorlogs,
-POST-/Cookie-Logging und tatsächliche Backupausschlüsse wurden ohne Serverzugriff
-nicht verifiziert; deren Bestätigung bleibt ein Aktivierungsgate.
+das separate Statistikverzeichnis. Für automatische IONOS-Sicherungskopien
+(die Prüfwerte enthalten können) und Serverlogs gelten laut Betreiberbestätigung
+14 Tage mit anschließender automatischer Löschung. Die tägliche Bereinigung
+löscht diese Kopien nicht. Kein pauschaler Backupausschluss wird zugesagt.
+Nach Wiederherstellung einer Providerkopie bleiben Erfassung und Veröffentlichung
+aus, bis alte Prüfwerte bereinigt und Zähler verglichen sind. Ein älterer
+Backupstand darf keine aktuellen historischen Zähler ungeprüft überschreiben.
+Der genaue Inhalt der Providerlogs wurde nicht selbst ausgelesen.
+
+Konkreter nächster Nachweis: [Cron-/Alarmtestplan](daily-visitors-cron-alarm-test-plan.md).
 
 ## Lokale Prüfung und späterer Bereitstellungsweg
 
@@ -169,13 +180,17 @@ Die PHP-Sperre des statischen Website-Manifests bleibt unverändert; der
 Endpunkt wird ausschließlich über das separate Statistikpaket bereitgestellt.
 Rollback des Codes darf weder alte noch neue Zähler zurücksetzen.
 
-Noch erforderlich: Datenschutz-/Consent-Abnahme, gesonderte Freigabe für
-Commit/Push/CI und später für Website-/Statistikbereitstellung samt
+Datenschutzfreigabe bestätigt. Noch erforderlich: aktuelle Text-/Bundlebindung,
+gesonderte Freigabe für neue Commit/Push/CI und später für Website-/Statistikbereitstellung samt
 Aktivierung, geschützter Live-Smoke-Test und Betriebsüberwachung. Kein Server,
 Produkt, Bestand, Authentifizierungsbereich oder Produktionsschalter wurde
 für die lokale Vorbereitung verändert.
 
-### Ergebnis der lokalen Prüfung
+### Historischer lokaler Erstnachweis vor PR #127
+
+Die folgenden Ergebnisse dokumentieren die ursprüngliche Vorbereitung, nicht
+den heutigen Branch-/CI-Stand. Aktueller Stand nach PR #128 und lokale
+14-Tage-/Restoretests: [Betriebsnachweise](daily-visitors-operations.md).
 
 - PHP 8.4.22: gezielter Lint bestanden; 95 Prüfungen einschließlich echter
   HTTP-Aufrufe auf `127.0.0.1`, Parallelität und gerenderter Statistikansicht

@@ -138,7 +138,7 @@ test("UI offers equal choices, direct footer withdrawal and no default-on activa
   assert.match(config,/siteTarget === "production" && process.env.NEXT_PUBLIC_DAILY_VISITORS_ENABLED === "true"/);
   assert.match(config,/statisticsPolicy.status !== "approved"/);
   const policy=JSON.parse(readFileSync(new URL("../../content/daily-visitors-policy.json",import.meta.url)));
-  assert.equal(policy.status,"awaiting_external_approval");assert.equal(policy.version,"daily-visitors-v2");
+  assert.equal(policy.status,"approved_pending_operations");assert.equal(policy.version,"daily-visitors-v2");
   assert.equal(policy.consentDays,consentLifetimeSeconds/86400);
   const tracker=readFileSync(new URL("../../components/pageview-tracker.tsx",import.meta.url),"utf8");
   assert.match(tracker,/sendPageView\(pathname, source\)/);

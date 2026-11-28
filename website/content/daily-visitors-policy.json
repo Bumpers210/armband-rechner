@@ -1,7 +1,20 @@
 {
   "version": "daily-visitors-v2",
   "date": "2026-11-28",
-  "status": "awaiting_external_approval",
+  "status": "approved_pending_operations",
+  "documentRevision": "daily-visitors-v2-ionos14d-2026-11-28",
+  "approval": {
+    "status": "confirmed_by_operator",
+    "date": "2026-11-28",
+    "source": "operator_confirmation"
+  },
+  "providerRetention": {
+    "backupDays": 14,
+    "logDays": 14,
+    "automaticDeletion": true,
+    "source": "operator_confirmation",
+    "confirmedOn": "2026-11-28"
+  },
   "consentDays": 180,
   "title": "Dürfen wir Tagesbesucher zählen?",
   "summary": "Mit deiner Zustimmung zählen wir deinen Browser einmal pro Kalendertag (Europe/Berlin). Dafür speichern wir eine zufällige Tageskennung bis Mitternacht. Keine Werbung, keine Nutzungsprofile und keine Verknüpfung mit Käufen oder deinem Login. Ohne Zustimmung kannst du den Shop genauso nutzen.",
@@ -19,14 +32,15 @@
       "paragraphs": [
         "Das Cookie carmaja_daily_visitor enthält eine zufällige Tageskennung, das Datum und eine Empfangsbestätigung. Es läuft um die nächste Berliner Mitternacht ab. Es gibt keine dauerhafte Besucherkennung. Andere Browser oder Geräte und gelöschte Cookies können weitere Zählungen verursachen. Gezählt werden nur zustimmende Browser mit den nötigen Browserfunktionen; die Zahl entspricht daher weder allen Besuchern noch eindeutig erkannten Personen.",
         "Auf dem Server speichern wir nur einen aus Tagesdatum und Kennung abgeleiteten Prüfwert gegen Doppelzählungen sowie Tagesanzahlen. IP-Adressen, Geräteinformationen, besuchte Seiten, Referrer, Bestell- und Login-Daten werden nicht in dieser Statistik gespeichert oder zusammengeführt. Der übermittelte Seitenpfad wird nur auf eine öffentliche Seite geprüft und nicht gespeichert. Technisch notwendige Verbindungsdaten und Hostingprotokolle sind davon getrennt; hierfür gelten die übrigen Hostingangaben dieser Datenschutzerklärung.",
-        "Eine zeitgesteuerte Bereinigung entfernt Prüfwerte des Vortags im normalen Betrieb spätestens um 00:15 Uhr Europe/Berlin, auch ohne erneuten Besuch. Fällt sie aus, wird die Zählung bei mehr als 30 Minuten altem Wartungsnachweis gesperrt. Überfällige Prüfwerte werden nach Behebung unverzüglich entfernt. Prüfwerte dürfen nicht in Backups übernommen werden. Die Tagesanzahlen enthalten keine Kennungen und bleiben für zeitliche Vergleiche erhalten; vorhandene aggregierte Statistiken werden nicht verändert.",
+        "Eine zeitgesteuerte Bereinigung entfernt Prüfwerte des Vortags aus dem laufenden Statistiksystem im normalen Betrieb spätestens um 00:15 Uhr Europe/Berlin, auch ohne erneuten Besuch. Fällt sie aus, wird die Zählung bei mehr als 30 Minuten altem Wartungsnachweis gesperrt. Überfällige Prüfwerte werden nach Behebung unverzüglich entfernt. Die Tagesanzahlen enthalten keine Kennungen und bleiben für zeitliche Vergleiche erhalten; vorhandene aggregierte Statistiken werden nicht verändert.",
+        "IONOS bewahrt automatische Sicherungskopien und Serverlogs für 14 Tage auf und löscht sie anschließend automatisch. Serverseitige Tagesprüfwerte können deshalb in einer Sicherungskopie noch bis zu 14 Tage nach deren Erstellung enthalten sein, auch wenn sie im laufenden System bereits gelöscht wurden. Die tägliche Bereinigung entfernt diese Kopien nicht. Solche Kopien werden nicht für die Besucherzählung ausgewertet; nach einer Wiederherstellung werden alte Tagesprüfwerte vor erneuter Erfassung bereinigt. Eigene Statistikexporte enthalten ausschließlich kennungsfreie Tagesanzahlen.",
         "Das notwendige Cookie carmaja_analytics_consent speichert Ihre Wahl, die Textversion und den Entscheidungszeitpunkt für 180 Tage, ohne zufällige Nutzerkennung. Es verhindert wiederholte Nachfragen und setzt Ihre Entscheidung um. Rechtsgrundlagen hierfür sind § 25 Absatz 2 Nummer 2 TDDDG sowie Artikel 6 Absatz 1 Buchstabe c DSGVO in Verbindung mit Artikel 7 DSGVO. Ablehnung und Zustimmung haben dieselbe Speicherdauer. Bei einer neuen Textversion oder nach Ablauf fragen wir erneut."
       ]
     },
     {
       "heading": "Empfänger, Widerruf und Rechte",
       "paragraphs": [
-        "Die Statistik wird auf unserem IONOS-Webhosting verarbeitet. Es wird dafür kein zusätzlicher Analysedienst oder Werbenetzwerk eingebunden. Auftragsverarbeitung sowie tatsächliche Hosting- und Logfristen sind vor Aktivierung mit den übrigen Hostingangaben abzugleichen.",
+        "Die Statistik wird auf unserem IONOS-Webhosting verarbeitet. Es wird dafür kein zusätzlicher Analysedienst oder Werbenetzwerk eingebunden. Für automatische Sicherungskopien und Serverlogs gilt die oben beschriebene Aufbewahrung von 14 Tagen. Die übrigen Angaben zu IONOS und zur Auftragsverarbeitung finden Sie in den Hostingabschnitten dieser Datenschutzerklärung.",
         "Über „Statistik-Einstellungen“ im Footer können Sie Ihre Wahl ändern. Bei erteilter Zustimmung steht dort außerdem „Statistik-Zustimmung widerrufen“ direkt bereit. Der Widerruf löscht die Tageskennung im Browser sofort und beendet weitere Zählanfragen. Bereits rechtmäßig verarbeitete Daten bleiben vom Widerruf unberührt. Bereits gezählte Tagesanzahlen lassen sich keiner Person zuordnen und werden nicht zurückgerechnet; der serverseitige Prüfwert verbleibt bis zur beschriebenen Bereinigung. Ein bereits abgesendeter Request kann noch abgeschlossen werden.",
         "Ihre weiteren Rechte, insbesondere Auskunft, Berichtigung, Löschung, Einschränkung und Beschwerde bei einer Aufsichtsbehörde, sind in den übrigen Abschnitten dieser Datenschutzerklärung beschrieben. Eine neue persönliche Kennung zur Identifizierung anonymer Tagesanzahlen wird nicht angelegt."
       ]
