@@ -153,6 +153,10 @@ Der gesperrte manuelle Statistik-Wartungsworkflow paketiert zusätzlich
 keine Konfiguration oder Laufzeitdaten. Die Website-JavaScript-Dateien benötigen
 später weiterhin ihren eigenen freigegebenen Website-Deploy. Eine
 Konfigurationsaktivierung gehört zu keinem dieser Deployments.
+Der normale Website-Workflow entfernt `daily-visitor.php` vor der
+Manifestbildung zusammen mit den übrigen separat verwalteten Hostingdateien.
+Die PHP-Sperre des statischen Website-Manifests bleibt unverändert; der
+Endpunkt wird ausschließlich über das separate Statistikpaket bereitgestellt.
 Rollback des Codes darf weder alte noch neue Zähler zurücksetzen.
 
 Noch erforderlich: Datenschutz-/Consent-Abnahme, gesonderte Freigabe für

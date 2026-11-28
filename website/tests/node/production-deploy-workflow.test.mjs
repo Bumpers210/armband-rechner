@@ -35,6 +35,7 @@ test("Produktionsworkflow trennt manuelle Deploys von streng validierten Collect
   assert.match(buildSection, /Exclude separately managed production hosting files/);
   assert.match(buildSection, /test "\$\(realpath out\)" = "\$GITHUB_WORKSPACE\/website\/out"/);
   assert.match(buildSection, /out\/\.htaccess/);
+  assert.match(buildSection, /out\/daily-visitor\.php/);
   assert.match(buildSection, /out\/_internal/);
   assert.match(buildSection, /out\/private-data/);
   assert.match(buildSection, /out\/statistik/);

@@ -67,6 +67,8 @@ test("Produktionsmanifest lehnt geschuetzte und private Serverpfade ab", () => {
     ".htaccess",
     "click.php",
     "pageview.php",
+    "daily-visitor.php",
+    "_internal/daily-visitors.php",
     "_internal/tracking.php",
     "statistik/index.html",
     "private-data/clicks.json",
