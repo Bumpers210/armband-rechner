@@ -6,28 +6,40 @@ Auf Wunsch wird ein Browser künftig pro Berliner Kalendertag einmal gezählt.
 Die Hauptanzeige verwendet Tagesbesucher bzw. die Summe der Besuchertage.
 Bisherige Seitenaufrufe bleiben vollständig erhalten und separat beschriftet;
 keine rückwirkende Umdeutung. Die neue Messung ist standardmäßig deaktiviert
-und benötigt vor Aktivierung eine gesonderte Datenschutz-/Consent- und
-Aufbewahrungsfreigabe. Es gibt keinen Serverzugriff, keine Produktionsänderung
+und benötigt vor Aktivierung abgeschlossene Betriebsnachweise sowie eine eigene
+Aktivierungsfreigabe. Die Datenschutzfreigabe ist bestätigt. Es gibt keinen Serverzugriff, keine Produktionsänderung
 und kein Deployment in diesem Arbeitsschritt.
 Einwilligungsoberfläche mit gleichwertiger Ablehnung und direktem Widerruf sowie
 Cookieablauf an Berliner Mitternacht und private Löschroutine sind lokal
 vorbereitet. Wahlcookie: 180 Tage; Prüfwerte: im Normalbetrieb bis 00:15 des
-Folgetags. Bei überfälliger Wartung fail-closed. Datenschutzentwurf bleibt
-`awaiting_external_approval`; aktive Legal Bundles unverändert. Produktionsbuild
-mit Zählung ist bis zur neuen freigegebenen Datenschutzfassung gesperrt.
-Offen bleiben externe Prüfung und technische Zielumgebungsnachweise, insbesondere
-Löschcron, Alarmweg, Providerlogs und Backupausschlüsse; kein Aktivierungsauftrag.
+Folgetags. Bei überfälliger Wartung fail-closed. Die vorbereitete Datenschutzfassung erhält
+`approved_pending_operations`; aktive Legal Bundles unverändert. Produktionsbuild
+mit Zählung ist bis zur abgeschlossenen Betriebsabnahme und neuen aktiven Datenschutzfassung gesperrt.
+Die Betreiberseite hat die Datenschutzfreigabe bestätigt. Offen bleiben technische
+Zielumgebungsnachweise, insbesondere Löschcron, Alarmweg und neue Text-/Bundlebindung;
+kein Aktivierungsauftrag.
 Vertrag und lokale Nachweise: [Tagesbesucher](../website/docs/daily-visitors.md).
 
 Fortschreibung vom selben Tag: PR #127 ist ohne Deployment nach `main`
 integriert. Zusätzliche lokale Betriebsprüfungen decken Abbruchreste, Alarmstatus,
 Wiederanlauf und Aggregate-Restore ab; eine dabei gefundene Löschlücke ist lokal
 korrigiert, noch nicht bereitgestellt. IONOS bestätigt öffentlich tägliche
-Webspace-Backups bis zu 14 Tagen; der konkrete Kennungs-Backupausschluss und
-tarifbezogene Logs/AVV bleiben ungeklärt. Kein Ersatz durch vermutete Anonymität.
+Webspace-Backups bis zu 14 Tagen. Anschließend bestätigte die Betreiberseite
+14 Tage mit automatischer Löschung für Sicherungskopien UND Serverlogs.
+Eigene Exporte bleiben kennungsfrei; IONOS-Kopien können Prüfwerte enthalten.
+Die tägliche Bereinigung im laufenden System bleibt davon getrennt und unverändert.
 Neue Nachweise: [Betriebs-/Providerprüfung](../website/docs/daily-visitors-operations.md).
-Externe Freigabe, POSIX-Nachweis der Ergänzung, echter Cron und unabhängiger
-Alarmempfang bleiben Aktivierungsgates. Keine Aktivierungs- oder Deployfreigabe.
+PR #128 ist mit vollständig grüner CI integriert, main
+`b87dd8ed04f6a76577936a806b21305e27352937`; auch POSIX ist nachgewiesen.
+Die erteilte Datenschutzfreigabe wird nicht erneut pauschal angefordert.
+Dokumentrevision `daily-visitors-v2-ionos14d-2026-11-28` und der
+[Cron-/Alarmtestplan](../website/docs/daily-visitors-cron-alarm-test-plan.md)
+werden lokal vorbereitet. Echte Cronläufe, Alarmempfang, Abgleich der vorhandenen
+Hosting-/AVV-Zuordnung und neue Legal-Bundle-Inhaltsbindung stehen noch aus.
+Lokal bestanden: 43 Betriebs-, 95 Tagesbesucher- und 93 PHP-Berichtprüfungen,
+320 Node-Prüfungen (zwei optionale Apache-Prüfungen übersprungen), Lint,
+Shelltests, Testbuild und erwartete Ablehnung einer Produktionsaktivierung.
+Keine Aktivierungs- oder Deployfreigabe; bestehende Statistikdaten bleiben erhalten.
 
 ## Erweiterung am 16. November 2026: manuelle Katalogreihenfolge
 

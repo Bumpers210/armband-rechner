@@ -113,6 +113,26 @@ try {
     dvo_check($run('status') === [1, '', $failure], 'Restore needs maintenance before collection');
     dvo_check($run('prune') === [0, $success, ''] && cdv_read($file)['days'] === $counts && cdv_read($file)['seen'] === [], 'Counts-only restore retains history without visitor identifiers');
 
+    // IONOS can retain a copy containing old identifiers for 14 days. Rehearse
+    // its restore only in a separate synthetic file, never over live statistics.
+    $providerFile = $root . '/provider-restore.json';
+    $providerBackup = $root . '/provider-backup.json';
+    $oldTime = (new DateTimeImmutable())->modify('-13 days');
+    cdv_maintain($providerFile, $oldTime);
+    cdv_record($providerFile, cdv_day($oldTime), str_repeat('e', 64), $oldTime);
+    copy($providerFile, $providerBackup);
+    $providerBytes = file_get_contents($providerBackup);
+    $providerCounts = cdv_read($providerFile)['days'];
+    copy($providerBackup, $providerFile);
+    dvo_check(!cdv_retention_healthy($providerFile), 'Old provider restore is not healthy before cleanup');
+    try { cdv_record($providerFile, cdv_day(), str_repeat('f', 64)); throw new LogicException('Unexpected restored collection'); }
+    catch (RuntimeException) { dvo_check(true, 'Old provider restore cannot resume collection before maintenance'); }
+    dvo_check(file_get_contents($providerFile) === $providerBytes, 'Rejected collection does not overwrite the restored counts');
+    cdv_maintain($providerFile);
+    dvo_check(cdv_read($providerFile)['seen'] === [] && cdv_read($providerFile)['days'] === $providerCounts, 'Provider restore cleanup removes old identifiers but preserves its aggregate history');
+    dvo_check(cdv_retention_healthy($providerFile), 'Clean provider restore passes retention status');
+    dvo_check(file_get_contents($providerBackup) === $providerBytes, 'Runtime cleanup does not claim to erase provider copies');
+
     // Inspect the real backup inventory method without credentials, commands or DB access.
     require_once dirname(__DIR__, 2) . '/test-api-private/program/production-backup.php';
     $products = $root . '/product-private'; mkdir($products . '/products', 0700, true);

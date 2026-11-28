@@ -10,7 +10,7 @@ const configuredSiteUrl = process.env.CARMAJA_SITE_URL ?? expectedSiteUrl;
 // A preview flag must never turn an unreviewed privacy draft into a live policy.
 if (siteTarget === "production" && process.env.NEXT_PUBLIC_DAILY_VISITORS_ENABLED === "true"
     && statisticsPolicy.status !== "approved") {
-  throw new Error("Tagesbesucher: externe Datenschutzfreigabe und neue aktive Datenschutzfassung fehlen.");
+  throw new Error("Tagesbesucher: technische Betriebsfreigabe und neue aktive Datenschutzfassung fehlen.");
 }
 const configuredShopApiOrigin =
   process.env.CARMAJA_SHOP_API_ORIGIN ??

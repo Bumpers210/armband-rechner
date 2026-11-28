@@ -1,30 +1,35 @@
 # Tagesbesucher: Datenschutz- und Betriebsnachweise
 
-Stand: 28. November 2026. Basis: `main` nach PR #127.
-Status: **lokal erweitert; weder bereitgestellt noch aktiviert**.
-Keine externe Datenschutzfreigabe, kein Zugriff auf Produktionsdateien oder
-private Konfigurationen. Ergebnisse sind ausdrücklich keine Live-Abnahme.
+Stand: 28. November 2026. Basis: geprüfter Inhaltsstand aus PR #128, auf `main`
+integriert als `b87dd8ed04f6a76577936a806b21305e27352937`.
+Status: **Datenschutzfreigabe bestätigt; technische Betriebsabnahme offen**.
+Die Betreiberseite bestätigt 14 Tage automatische IONOS-Aufbewahrung für
+Sicherungskopien UND Serverlogs. Keine erneute pauschale Freigabeanfrage.
+Neue Anpassungen ausschließlich lokal; kein Zugriff auf Produktionsdateien
+oder private Konfigurationen. Keine Live-Abnahme, Bereitstellung oder Aktivierung.
 
 ## Nachweismatrix
 
 | Nachweis | Ergebnis | Verbleibender Schritt |
 | --- | --- | --- |
-| Einwilligung vor neuer Kennung; gleichwertige Ablehnung; direkter Widerruf | lokal durch vorhandene Node-/PHP-Tests abgesichert | endgültige Text-/UI-Fassung extern bestätigen |
+| Einwilligung vor neuer Kennung; gleichwertige Ablehnung; direkter Widerruf | Tests bestanden; Datenschutzfreigabe durch Betreiberseite bestätigt | endgültige Revision in neues Legal Bundle übernehmen, nicht aktivieren |
 | Ein Browser je Berliner Tag, Sommer-/Winterzeit, Parallelität | bestehende 95 PHP-Prüfungen bestanden | später geschützter Zielumgebungstest |
-| Löschung ohne nächsten Besuch; Ausfall und Wiederanlauf | zusätzliche 37 lokale Prüfungen bestanden, Fixtures bereinigt | echter IONOS-Löschcron und Ausfalltest erst nach Bereitstellungsfreigabe |
+| Löschung ohne nächsten Besuch; Ausfall, Wiederanlauf und Provider-Restore | 43 lokale Betriebsprüfungen bestanden, Fixtures bereinigt | echter IONOS-Löschcron und Ausfalltest erst nach Bereitstellungsfreigabe |
 | Abbruchreste mit Kennungen | Fehler nachgestellt, lokal korrigiert und retestet | korrigiertes Paket nach separater Freigabe bereitstellen |
 | Nichtveränderung alter Statistik und Konfiguration | in künstlichen Fixtures bytegleich | vor/nach späterer Bereitstellung private Integritätskontrolle |
 | Eigener Produktbackup-Code | echte Inventarmethode mit künstlichen Dateien geprüft; Statistikpfad nicht in Allowlist | tatsächliche Runtimepfade später lesend abgleichen |
-| IONOS-Systembackups, Snapshots, Loginhalt/-fristen | öffentliche Quellen geprüft; kein kontospezifischer Ausschluss belegt | schriftliche IONOS-Antwort zum konkreten Vertrag |
-| POSIX 0600 / Symlinkabwehr der neuen Korrektur | Testfälle vorhanden; unter Windows ausdrücklich übersprungen | PHP-8.4-Linux-CI oder isolierter Linux-Test erforderlich |
+| IONOS-Sicherungen und Serverlogs | 14 Tage, danach automatische Löschung: direkte Betreiberbestätigung für beide Bereiche | Frist in Text und Restoreablauf berücksichtigen; keine Behauptung eines Backupausschlusses |
+| POSIX 0600 / Symlinkabwehr der Abbruchkorrektur | PR #128 und Merge-CI mit PHP 8.4 unter Linux bestanden | später Zielumgebung prüfen |
 | Unabhängiger Alarm und tatsächlicher Empfang | Statusfehler/Entwarnung lokal geprüft; kein Versand behauptet | getrennten Wächter und Alarmempfang im Ziel belegen |
-| AVV, neue aktive Datenschutzfassung, Archivbindung | noch nicht abschließend belegt/freigegeben | Vertragszuordnung und endgültige Rechtsfreigabe |
+| AVV, neue aktive Datenschutzfassung, Archivbindung | Freigabe bestätigt, neue technische Inhaltsbindung noch nicht bereitgestellt | vorhandenen Hostingvertrag zuordnen, neue Fassung integrieren; alte Archive erhalten |
 
 „Lokal bestanden“ bedeutet nicht „alle Betriebsbedingungen erfüllt“.
-Die fünf Linux-Prüfungen waren bei dieser lokalen Abnahme offen; ihr Ergebnis
-wird im zugehörigen PR nachgewiesen. Die realen Betriebs-/Provider-Gates bleiben offen.
+Die fünf zuvor lokal übersprungenen Linux-Prüfungen sind geschlossen:
+[Merge-CI](https://github.com/Bumpers210/armband-rechner/actions/runs/46153759610)
+mit 42 Betriebs-, 95 Tagesbesucher-, 93 Berichts- und 318 Node-Prüfungen,
+ohne übersprungene Node-Tests. Reale Cron-/Alarmnachweise bleiben offen.
 
-Lokale Regression am 28. November 2026: PHP 8.4.22, Lint der drei betroffenen
+Frühere lokale Regression für PR #128 am 28. November 2026: PHP 8.4.22, Lint der drei betroffenen
 PHP-Dateien, 37 Betriebs-, 95 Tagesbesucher- und 93 Berichtprüfungen bestanden.
 Die bestehende Klickstatistik wurde zusätzlich nativ geprüft, da WSL kein PHP
 bereitstellt. Node: 316 bestanden, keine Fehler, zwei optionale Apache-Prüfungen
@@ -32,8 +37,24 @@ mangels lokalem Apache übersprungen. Deployment-Shelltests mit künstlichen
 Dateien, Website-Lint, Testbuild/Exportprüfung und `git diff --check` bestanden.
 Geheimwert-Musterprüfung der geänderten Dateien ohne Treffer; keine Prüfung
 realer Secrets. Dieser lokale Lauf umfasste keinen Serverzugriff oder Deployment.
-Commit, Push und PR/CI sind anschließend ausdrücklich freigegeben, jedoch weder
-Merge noch Bereitstellung oder Aktivierung.
+PR #128 wurde anschließend freigegeben zusammengeführt. Für die jetzt folgenden
+14-Tage-Anpassungen gibt es noch keinen Commit/Push; weiterhin keine Bereitstellung.
+
+Aktuelle lokale Regression der 14-Tage-Anpassung am 28. November 2026:
+PHP 8.4.22, Lint des ergänzten Tests, 43 Betriebs-, 95 Tagesbesucher- und
+93 Berichtprüfungen sowie native Klickstatistik bestanden. Die sechs neuen
+Betriebsprüfungen verwenden eine 13 Tage alte künstliche Sicherung: vor Wartung
+gesperrt, danach alte Prüfwerte entfernt und Tagesanzahlen erhalten. Die
+unveränderten fünf POSIX-Prüfungen werden unter Windows weiterhin übersprungen;
+deren oben genannter Linux-Nachweis stammt aus PR #128, nicht aus einem neuen
+CI-Lauf dieser Anpassung.
+
+`npm ci` meldet keine bekannten Schwachstellen. Website-Lint, 320 von 322
+Node-Prüfungen (zwei optionale Apache-Prüfungen mangels Apache übersprungen),
+alle Deployment-Shelltests mit künstlichen Dateien und der frische Testbuild
+einschließlich Exportprüfung bestanden. Der Produktionsbuild mit aktivierter
+Statistik wurde erwartungsgemäß bereits durch die unveränderte Freigabesperre
+abgewiesen: bestätigte Datenschutzfreigabe allein aktiviert nichts.
 
 ## Festgestellte und behobene Abbruchlücke
 
@@ -61,8 +82,11 @@ betroffene Messzeiträume sind dann als unvollständig zu dokumentieren.
 
 ## Was die öffentlichen IONOS-Quellen belegen – und was nicht
 
-Gelesen am 28. November 2026. Keine Quelle ersetzt die Zuordnung zum konkreten
-Hostingvertrag. Es wurden keine Kontodokumente oder vertraulichen Logs abgerufen.
+Historische Recherche am 28. November 2026 vor der Betreiberbestätigung.
+Für diesen Vertrag ist nun die direkte Angabe **14 Tage für beide Bereiche**
+maßgeblich. Die folgenden allgemeinen Artikel ersetzen diese Zuordnung nicht;
+abweichende öffentliche Fristen werden nicht als Shopfrist übernommen.
+Es wurden keine Kontodokumente oder vertraulichen Logs abgerufen.
 
 - IONOS beschreibt tägliche Webspace-Sicherungen, die bis zu **14 Tage** für eine
   Wiederherstellung verfügbar sind. Ein zugesicherter Ausschluss unseres privaten
@@ -86,11 +110,15 @@ Hostingvertrag. Es wurden keine Kontodokumente oder vertraulichen Logs abgerufen
   eine zusätzliche Unterschrift ist nicht pauschal zu verlangen.
   [IONOS-AVV](https://www.ionos.de/hilfe/datenschutz/allgemeine-informationen-zur-datenschutz-grundverordnung-dsgvo/vereinbarung-zur-auftragsverarbeitung-avv-mit-ionos-abschliessen/)
 
-**Konsequenz:** Der bisherige Vertrag „Prüfwerte nicht in Backups“ bleibt bestehen.
-Ist der Pfad in Providersicherungen enthalten und nicht ausschließbar, ist dieses
-Gate nicht erfüllt. Dann entweder einen nachweislich geeigneten Speicherweg
-prüfen oder eine geänderte Aufbewahrungsregel samt Text ausdrücklich neu freigeben
-lassen. Keine Frist stillschweigend verlängern, keine Backups global abschalten.
+**Aktueller Vertrag:** Eigene Exporte/Backups bleiben kennungsfrei.
+Automatische IONOS-Sicherungskopien können Tagesprüfwerte enthalten und werden
+nach 14 Tagen gelöscht; ebenso IONOS-Serverlogs. Dies ist ausdrücklich getrennt
+von der täglichen Löschung in der laufenden Statistik dokumentiert.
+Kein weiterer pauschaler Backupausschluss-Gate und keine erneute Anfrage zur
+bereits bestätigten Frist. Backup-/Logfelder, AVV und tatsächlicher technischer
+Betrieb werden dadurch nicht erfunden oder als unabhängig geprüft bezeichnet.
+Keine Providerkopien für Analysen verwenden, keine unbefristeten eigenen Kopien
+erzeugen und keine vorhandenen Backups global abschalten.
 
 ## Einwilligungsnachweis ohne zusätzliche Besucherkartei
 
@@ -104,14 +132,14 @@ der konkreten Rechtsgrundlage, 180-Tage-Frist und Gestaltung.
 
 Vor Aktivierung zusammen dokumentieren: geprüfter Code-SHA, unveränderliche
 Banner-/Datenschutzfassung und Version, Legal-Bundle-ID und Inhaltsbindung,
-Ergebnisse zu Zustimmung/Ablehnung/Widerruf und die externe Bestätigung.
+Ergebnisse zu Zustimmung/Ablehnung/Widerruf und die erteilte Betreiberbestätigung.
 Keine zentralen Besucher- oder Einwilligungskennungen zusätzlich einführen.
 Die vorhandenen Legal-Bundle-Archive werden nicht geändert.
 
 ## Späterer Betriebsnachweis – noch nicht ausführen
 
-1. Providerantwort, private Datenpfade außerhalb **aller** Webroots, 0600 und
-   Ausschlüsse sämtlicher Backupwege bestätigen. Nur anonymisierte Ergebnisnotiz
+1. Bestätigte 14-Tage-Providerfrist, private Datenpfade außerhalb **aller** Webroots,
+   0600 und kennungsfreie eigene Exporte dokumentieren. Nur anonymisierte Ergebnisnotiz
    ins Repository, keine Vertragsnummern, Logs, Kontodaten oder Prüferdaten.
 2. Nach gesonderter Bereitstellungsfreigabe private CLI und Statistikpaket
    hashgebunden installieren; `enabled=false`, `privacyApproved=false` belassen.
@@ -131,7 +159,8 @@ Die vorhandenen Legal-Bundle-Archive werden nicht geändert.
    gesperrt; Alarm kommt ohne Websiteaufruf an; Wiederanlauf entfernt Reste und
    alte Prüfwerte, ohne Zähler oder andere Daten zurückzusetzen. Auch den Ausfall
    des Wächters prüfen. Keine Kontaktdaten im öffentlichen Jobbefehl.
-8. Aktive Datenschutzfassung und Freigaben erst nach diesen Nachweisen separat
+8. Bestätigte Datenschutzfassung technisch in ein neues Bundle übernehmen;
+   Veröffentlichung und Aktivierung erst nach den Betriebsnachweisen separat
    freigeben. Noch kein Flag auf `true` setzen.
 
 Die IONOS-Cronhinweise belegen die PHP-8.4-CLI und empfehlen Fehlerberichte,
@@ -151,23 +180,12 @@ nachweisen. Website, Shop, Zahlungen und bestehende Statistiken nicht reparieren
 oder zurücksetzen. Gesamtarchiv-Restore darf keine alten Prüfwerte unbemerkt
 erneut produktiv machen; vor Erfassung erst Wartung und Statusprüfung.
 
-## Nächste einzelne externe Aktion
+## Vorbereiteter nächster Betriebsnachweis
 
-Im eingeloggten IONOS-Support zum bestehenden Webhostingvertrag **eine Anfrage**
-stellen. Keine Passwörter, Tokens, Logauszüge oder Kundendaten mitsenden:
-
-> Bitte bestätigen Sie für meinen bestehenden Webhostingvertrag schriftlich:
-> Wird `/home/www/carmaja-production-stats-maintenance/dashboard-cache/` außerhalb
-> der Webroots durch automatische Backups, Snapshots oder Wiederherstellungskopien
-> gesichert? Können dieses Verzeichnis und seine temporären Dateien verbindlich
-> von allen solchen Sicherungen ausgeschlossen werden? Falls nein, welche
-> maximale Aufbewahrungs- und Löschfrist gilt für diese Kopien?
->
-> Bitte nennen Sie außerdem die für meinen Vertrag tatsächlich geltenden
-> Access-/Proxy-/Fehlerlog-Fristen und bestätigen Sie, ob Cookie-Header,
-> POST-Formulardaten oder vollständige IP-/X-Forwarded-For-Werte protokolliert
-> werden. Welche AVV-Fassung gilt für diesen Vertrag? Es geht um eine noch nicht
-> aktivierte, einwilligungsbasierte Tagesbesucherzählung; bitte nichts umstellen.
-
-Antwort außerhalb des Repositorys aufbewahren; nur die technischen Aussagen ohne
-Kontonummern oder personenbezogene Nachweise zur weiteren Prüfung bereitstellen.
+[Cron-/Alarmtestplan](daily-visitors-cron-alarm-test-plan.md) mit Reihenfolge,
+isolierten Befehlen, Abnahmekriterien, Abbruch und Cleanup. Das zugehörige
+[leere Nachweisprotokoll](daily-visitors-cron-alarm-proof.template.json) enthält
+ausdrücklich noch keine echten Läufe, Alarmempfänger oder bestandenen Livechecks.
+Die frühere IONOS-Rückfrage zu den Fristen ist durch die Betreiberantwort erledigt.
+Eine gesonderte Bereitstellungs-/Testcronfreigabe und ein privat festgelegter
+Alarmweg sind für echte Tests weiterhin erforderlich, nicht für diese Vorbereitung.

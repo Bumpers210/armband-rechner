@@ -1,97 +1,92 @@
-# Prüfpaket: Tagesbesucherstatistik
+# Tagesbesucherstatistik: Datenschutz und Aufbewahrung
 
-Stand: 28. November 2026. **Externe Datenschutzfreigabe ausstehend.**
-Nur lokale Vorbereitung; keine Aktivierung oder Erweiterung alter Freigaben.
+Stand: 28. November 2026. **Datenschutzfreigabe bestätigt; technische
+Bereitstellung und Aktivierung weiterhin gesperrt.**
 
-Fortschreibung: [Datenschutz- und Betriebsnachweise](daily-visitors-operations.md).
-Die offenen Providerbedingungen wurden am 28. November anhand offizieller
-IONOS-Quellen eingegrenzt. Automatische Sicherungen bis zu 14 Tagen sind
-dokumentiert; ein Backupausschluss dieses privaten Pfads ist **nicht** belegt.
-Logfristen sind vertragsabhängig und nicht pauschal aus dem Hilfeartikel zu
-übernehmen. Eine kopierfertige, kontospezifische Rückfrage steht im Nachweispaket.
+## Grundlage und Freigabezuordnung
 
-## Umfang und maßgebliche Texte
+Die Betreiberseite bestätigte am 28. November 2026 im Chat:
+„Die Datenschutzfreigabe ist erteilt“. Danach wurden **14 Tage Aufbewahrung
+mit automatischer Löschung für IONOS-Sicherungskopien UND Serverlogs**
+bestätigt und die Anpassung dieser Unterlagen beauftragt. Quelle ist die
+Betreiberbestätigung, keine neue unabhängige Provider- oder Rechtsprüfung.
+Keine vertraulichen Nachweisunterlagen oder personenbezogenen Prüferdaten
+werden ins Repository übernommen. Keine erneute pauschale Freigabeanfrage
+für denselben bestätigten Inhalt.
 
-- Wunsch: ein Browser pro Berliner Kalendertag einmal; keine Personenerkennung.
-- Verbindlicher Textentwurf und UI-Kurztext: `../content/daily-visitors-policy.json`,
-  Version `daily-visitors-v2`, Status `awaiting_external_approval`.
-- Technischer Ablauf und Prüfungen: [Tagesbesucher-Vertrag](daily-visitors.md).
-- Vorgesehene öffentliche Informationsseite: `/datenschutz/` der Shopwebsite.
-  Footerzugang zur Wahl und zum direkten Widerruf auf allen öffentlichen Seiten.
-- Alle bisherigen freigegebenen Legal Bundles/Archive bleiben unverändert.
-  Vor Aktivierung neue Fassung erstellen: widersprechende Aussage „Eigene Analyse-,
-  Werbe- oder Newsletter-Cookies setzen wir nicht ein.“ ersetzen, neue Abschnitte
-  vollständig einbinden, neue Bundle-ID/Version/Hash extern bestätigen. Keine
-  vorhandenen Checkout-/Bestellsnapshots umschreiben.
+- Textquelle: `../content/daily-visitors-policy.json`.
+- Dokumentrevision: `daily-visitors-v2-ionos14d-2026-11-28`.
+- Technischer Consent-Vertrag unverändert `daily-visitors-v2`, bislang nicht live.
+  Die Dokumentrevision kennzeichnet die Änderung; die endgültigen Inhalte werden
+  beim späteren Legal-Bundle neu hashgebunden.
+- Status `approved_pending_operations`: Freigabe bestätigt, Betriebsabnahme offen.
+  Dieser Status ist absichtlich **nicht** der technische Freischaltstatus
+  `approved`; der Produktionsbuild mit aktivierter Zählung bleibt gesperrt.
+- Aktive Datenschutzerklärung, freigegebene Legal-Archive und Bestellsnapshots
+  bleiben unverändert. Vor Veröffentlichung neue vollständige Fassung mit
+  eigener Bundle-ID, Version und Inhaltsbindung erstellen.
 
-## Vorgeschlagene Fristen und Zweckbindung
+## Getrennte Fristen
 
-| Datentyp | Zweck | Aufbewahrung / Löschung |
-| --- | --- | --- |
-| Zufällige Browser-Tageskennung | Doppelzählung am selben Tag verhindern | Cookieablauf nächste Berliner Mitternacht; sofort bei Widerruf |
-| Serverseitiger täglicher Prüfwert | atomare Doppelzählungssperre | im Normalbetrieb bis 00:15 des Folgetags; unabhängig von neuen Besuchen |
-| Entscheidung, Textversion, Zeitpunkt | Wahl beachten und wiederholte Nachfrage vermeiden | 180 Tage bei Zustimmung **und** Ablehnung; keine zufällige Nutzer-ID |
-| Kennungsfreie Tagesanzahlen | zeitliche statistische Vergleiche | erhalten; kein Personenbezug im Zähler, keine Rückrechnung Einzelner |
-| Bisherige Statistikdaten | historischer Vergleich | unverändert; keine Migration zu vermeintlichen Unique-Zahlen |
+| Datenbereich | Aufbewahrung / Löschung |
+| --- | --- |
+| Tageskennung im Browser | nächste Berliner Mitternacht; sofort bei Widerruf |
+| Tagesprüfwerte im laufenden System | Vortag im Normalbetrieb bis 00:15 Europe/Berlin; Löschjob alle 15 Minuten, unabhängig von Besuchen |
+| IONOS-Sicherungskopien einschließlich möglicher Tagesprüfwerte | 14 Tage ab Erstellung der Kopie, anschließend automatisch gelöscht laut Betreiberbestätigung |
+| IONOS-Serverlogs | 14 Tage, anschließend automatisch gelöscht laut Betreiberbestätigung |
+| Wahlcookie mit Textversion und Entscheidungszeitpunkt | 180 Tage für Zustimmung und Ablehnung, keine zufällige Nutzer-ID |
+| Eigene Statistikexporte | ausschließlich kennungsfreie Tagesanzahlen |
+| Tagesanzahlen und historische Statistikdaten | erhalten; keine Umdeutung früherer Aufrufe zu Personen |
 
-180 Tage und das 15-Minuten-Löschintervall sind **gewählte technische Fristen**,
-keine gesetzlich vorgeschriebenen Werte. Prüfer muss Angemessenheit, tatsächliche
-Anonymisierung der Aggregate und Nachweisfähigkeit der Einwilligung bestätigen.
-Keine zusätzliche zentrale Personen-/Consent-Historie nur zum Nachweis erzeugen.
-Das versionierte Wahlcookie und die unveränderte Textfassung dokumentieren das
-Verfahren, ersetzen aber nicht automatisch jeden rechtlichen Nachweis.
-DSK OH Digitale Dienste, Randnummern 84–85, stützen einen Verfahrensnachweis
-ohne zusätzliche langlebige UID; Bannerfassungen, Abläufe und Testbelege müssen
-dabei dauerhaft nachvollziehbar bleiben. Die konkrete Ausgestaltung bleibt
-extern zu bestätigen.
+Die frühere pauschale Vorgabe „Prüfwerte nicht in Backups“ wird präzisiert:
+**eigene Exporte bleiben kennungsfrei; automatische IONOS-Kopien können
+Prüfwerte enthalten und unterliegen der getrennten 14-Tage-Frist.**
+Die tägliche Anwendungsbereinigung löscht diese Kopien nicht. Ein Ausschluss
+aus allen Providerbackups wird weder behauptet noch als Voraussetzung verlangt.
+Providerkopien nicht zur Besucheranalyse verwenden oder als eigene Dauerkopie
+über die dokumentierte Frist hinaus behalten. Nach einem Restore alte Prüfwerte
+vor erneuter Erfassung bereinigen; bestehende aktuelle Zähler nicht ungeprüft
+durch einen älteren Stand ersetzen.
 
-Bei Cronausfall ist keine garantierte Löschung um 00:15 gegeben. Nach 30 Minuten
-ohne Wartungsnachweis stoppt die neue Erfassung automatisch; Betriebsalarm und
-unverzügliche Nachholung müssen zusätzlich nachgewiesen werden. Diese
-Restabhängigkeit wird in der Information nicht verschwiegen.
+Die Frist sagt nicht, welche Felder IONOS protokolliert. Kein unbelegtes
+Versprechen über vollständige Anonymität oder fehlende Cookie-/POST-/IP-Daten
+in sämtlichen Providerlogs ergänzen. Die eigene Statistik speichert diese
+zusätzlichen Daten nicht; eigene Logs dürfen keine Tageskennungen,
+Cookie-Header oder POST-Inhalte aufnehmen. Die Zuordnung des vorhandenen
+Hosting-/AVV-Vertrags bleibt Teil des späteren Abgleichs der Gesamterklärung.
 
-## Vor Aktivierung zu bestätigen
+## Unverändert: Einwilligung und Ausfallsicherheit
 
-1. Entwurf, gleichwertige Erlauben-/Ablehnen-Buttons, Freiwilligkeit und direkter
-   Widerruf sind für diesen Zweck freigegeben; keine Kopplung an Einkauf/Login.
-2. Vorgeschlagene Rechtsgrundlagen, Fristen, Aggregateaufbewahrung und
-   Einwilligungsnachweis sind akzeptiert. Keine Behauptung einer Rechtsfreigabe
-   allein durch erfolgreiche Tests.
-3. Tatsächlicher IONOS-Auftragsverarbeitungsvertrag, Hosting-/Logfristen,
-   Empfänger, gegebenenfalls Transfers sowie Betroffenenrechte stimmen mit der
-   Gesamterklärung überein. Kein neuer externer Analysedienst wird eingebunden.
-4. Keine Kennungen/POST-Bodies/Cookies in eigenen Logs oder dauerhaften Backups;
-   Provider-Backups/Snapshots und deren Fristen ausdrücklich prüfen. Nur der
-   kennungsfreie Aggregatexport darf gesichert werden.
-5. Neue aktive Datenschutzfassung mit ID, Version, Datum und Inhalts-Hash statt
-   Änderung eines vorhandenen Archivs; Checkout-/Website-Bundle konsistent.
-6. Separater technischer Betriebsnachweis: private Pfade/0600, Cron */15,
-   unabhängiger Alarm über `status`, Ausfall/Wiederanlauf, alte Daten unverändert.
-   Commit/Push/CI, Bereitstellung und Aktivierung jeweils nur auf Auftrag.
+Ein Browser pro Berliner Kalendertag, keine sichere Personenerkennung.
+Gleichwertiges Erlauben/Ablehnen, keine Vorauswahl oder Kopplung an einen Kauf,
+direkter Widerruf im Footer. Die Messung beginnt nur nach aktiver Einwilligung.
 
-### Formulierung für die externe Bestätigung
+Bei mehr als 30 Minuten ohne Wartungsnachweis stoppt die neue Erfassung.
+Das ersetzt weder Löschung noch Alarm; überfällige Prüfwerte nach Behebung
+unverzüglich bereinigen. Die normale 00:15-Löschzeit gilt nicht für Providerkopien.
 
-„Geprüft und bestätigt werden die endgültige Datenschutzfassung **[ID, Version,
-Datum, Inhalts-Hash]** einschließlich Tagesbesucherzählung, Einwilligungsoberfläche
-und Widerruf sowie der dokumentierten Speicher-, Lösch-, Log- und Backupregeln.
-Die tatsächlichen Hosting-/Auftragsverarbeitungsangaben, Rechtsgrundlagen und
-Einwilligungsnachweise wurden abgeglichen. Die verbleibenden Betriebsbedingungen
-**[falls vorhanden konkret aufführen]** sind vor Aktivierung nachzuweisen.“
+## Noch erforderliche technische Schritte – nicht aktiviert
 
-Keine personenbezogenen Prüferdaten oder vertraulichen Nachweisunterlagen ins
-Repository übernehmen. Eine spätere Bestätigung muss auf die endgültige Fassung
-verweisen; dieser noch ungeprüfte Entwurf ist dafür kein Ersatz.
+1. Neue aktive Datenschutzfassung mit dieser Revision verbinden und die alte
+   Aussage „keine Analyse-Cookies“ ersetzen; alte Archive unverändert erhalten.
+2. Private Pfade außerhalb aller Webroots, Modus 0600, unveränderte historische
+   Statistiken und kennungsfreie eigene Backups im Ziel prüfen.
+3. Echten Cron, Mitternachtsbereinigung, unabhängige Warnung, tatsächlichen
+   Empfang und Wiederanlauf prüfen. Siehe [Cron-/Alarmtestplan](daily-visitors-cron-alarm-test-plan.md).
+4. Bereitstellung, Cronanlage und Aktivierung benötigen gesonderte Freigabe.
+   Keine Freigabe wird allein aus bestandenen lokalen Tests abgeleitet.
 
-## Herangezogene Primärquellen
+Die Freigabequelle, Dokumentrevision, spätere Bundle-ID/Inhaltsbindung und
+Betriebsnachweise gemeinsam dokumentieren. Materielle spätere Textänderungen
+nicht stillschweigend von dieser Bestätigung abdecken.
 
-Gelesen am 28. November 2026; technische Umsetzung, keine eigenständige Rechtsberatung:
+## Quellen
 
-- [§ 25 TDDDG](https://www.gesetze-im-internet.de/ttdsg/__25.html): Einwilligung für
-  Endgerätespeicherung/-zugriff, Ausnahmen für unbedingt erforderliche Funktionen.
-- [DSK, Orientierungshilfe Digitale Dienste (2024)](https://www.datenschutzkonferenz-online.de/media/oh/OH_Digitale_Dienste.pdf):
-  aktive informierte Wahl, keine Vorauswahl oder irreführende Gestaltung.
-- [LfD Niedersachsen: TDDDG-FAQ](https://www.lfd.niedersachsen.de/faq/faq-telekommunikation-digitale-dienste-datenschutzgesetz-tdddg-206449.html):
-  gleichwertige Möglichkeiten und keine Lenkung zur Zustimmung.
-- [DSGVO, amtliche EU-Fassung](https://eur-lex.europa.eu/legal-content/DE/ALL/?uri=celex%3A32016R0679):
-  insbesondere Art. 5, 6, 7 und 13; Zweckbindung, Speicherbegrenzung,
-  Nachweisbarkeit, einfacher Widerruf und Information.
+- Direkte Betreiberbestätigungen im Chat vom 28. November 2026.
+- [Betriebsnachweise](daily-visitors-operations.md): öffentliche Recherche,
+  lokale/CI-Ergebnisse und Abgrenzung der noch offenen Zielumgebungsprüfungen.
+- Bereits herangezogene Grundlagen:
+  [§ 25 TDDDG](https://www.gesetze-im-internet.de/ttdsg/__25.html),
+  [DSK OH Digitale Dienste](https://www.datenschutzkonferenz-online.de/media/oh/OH_Digitale_Dienste.pdf),
+  [DSGVO](https://eur-lex.europa.eu/legal-content/DE/ALL/?uri=celex%3A32016R0679).
+  Dieser Schritt ändert keine Rechtsgrundlagen und erteilt keine eigene Rechtsfreigabe.
