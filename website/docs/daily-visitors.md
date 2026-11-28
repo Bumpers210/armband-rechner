@@ -1,5 +1,11 @@
 # Tagesbesucher – lokale Vorbereitung, 28. November 2026
 
+Fortschreibung nach PR #127: [Datenschutz-/Betriebsnachweise](daily-visitors-operations.md).
+Die Vorbereitung ist auf `main` integriert, aber nicht bereitgestellt oder
+aktiviert. Neue lokale Betriebsprüfungen und die Bereinigung von Abbruchresten
+liegen gesondert auf `codex/statistics-privacy-operations`. Commit, Push und PR
+sind freigegeben; Merge, Bereitstellung und Aktivierung bleiben gesperrt.
+
 ## Auftrag und Zählvertrag
 
 Ein Browser zählt pro Kalendertag in `Europe/Berlin` einmal für die gesamte
@@ -127,7 +133,11 @@ Nach gesonderter Freigabe privates Skript hashgeprüft bereitstellen, zuerst
 ```
 
 `status` liefert nur OK oder einen generischen Fehler mit Exitcode 1; es prüft
-Wartungsalter und überfällige Prüfwerte. Die bestehende Betriebsüberwachung muss
+Wartungsalter, überfällige Prüfwerte und liegen gebliebene atomare Schreibdateien.
+Es liest unter einem nicht blockierenden gemeinsamen Lock. `prune` entfernt
+Schreibreste ausschließlich unter exklusivem Lock, nur im exakten eigenen
+Namensformat und ohne Symlinks zu verfolgen. Andere Dateien bleiben erhalten.
+Die bestehende Betriebsüberwachung muss
 diesen Status unabhängig vom Zählverkehr regelmäßig abfragen und bei Fehlern
 alarmieren. Ein Statusaufruf allein versendet keine Warnung. Vor Aktivierung
 Cronausfall, Alarmweg, Wiederanlauf und Bereinigung im Ziel nachweisen.

@@ -16,8 +16,7 @@ try {
         cdv_maintain($config['dataFile']);
         echo "Daily visitor retention: OK\n";
     } elseif ($action === 'status') {
-        $data = cdv_read($config['dataFile']);
-        if (!cdv_maintenance_fresh($data) || ($data['seen'] !== [] && $data['activeDay'] !== cdv_day())) {
+        if (!cdv_retention_healthy($config['dataFile'])) {
             throw new RuntimeException('Retention overdue');
         }
         echo "Daily visitor retention: OK\n";
