@@ -155,6 +155,7 @@ jobs:
             out/.htaccess.publish.example \
             out/click.php \
             out/pageview.php \
+            out/daily-visitor.php \
             out/_internal \
             out/private-data \
             out/statistik

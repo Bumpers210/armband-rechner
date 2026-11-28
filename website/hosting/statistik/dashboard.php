@@ -30,8 +30,18 @@ try {
     else { $stats = cs_public_view_stats(@carmaja_read_stats()); $trackingStatus = 'partial'; }
 } catch (Throwable) { $stats = carmaja_empty_stats(); $stats['_status'] = 'error'; $trackingStatus = 'error'; }
 if ($origin['status'] === 'error') { $stats['_status'] = 'error'; $trackingStatus = 'error'; }
-$views = cs_views($stats, $days);
-$previousViews = cs_views($stats, $previousDays);
+$pageViews = cs_views($stats, $days);
+require_once dirname(__DIR__) . '/_internal/daily-visitors.php';
+$visitorData = cdv_empty();
+$visitorStatus = 'missing';
+try {
+    $visitorPath = cdv_private_path(getenv('CARMAJA_DAILY_VISITORS_FILE')
+        ?: '/home/www/carmaja-production-stats-maintenance/dashboard-cache/daily-visitors.json', carmaja_page_root());
+    $visitorData = cdv_read($visitorPath);
+} catch (Throwable) { $visitorStatus = 'error'; }
+$views = cdv_metric($visitorData, $days);
+$previousViews = cdv_metric($visitorData, $previousDays);
+if ($visitorStatus === 'error') { $views['status'] = $previousViews['status'] = 'error'; }
 $productHistory = ($_GET['productViews'] ?? '') === 'history';
 $productBaseline = null;
 $productBaselineError = false;
@@ -44,7 +54,6 @@ try {
 [$productStats, $productDays] = $productBaseline !== null && !$productHistory
     ? cs_product_views_since($stats, $days, $productBaseline) : [$stats, $days];
 $productViews = cs_all_product_views($productStats, $productDays);
-if ($trackingStatus === 'error') { $views['status'] = $previousViews['status'] = 'error'; }
 $orders = cs_business($business, $days, 'orders');
 $revenue = cs_business($business, $days, 'netGoodsMinor');
 $checkouts = cs_business($business, $days, 'checkouts');
@@ -78,7 +87,7 @@ $daily = [];
 foreach ($days as $day) {
     $daily[] = [
         'day' => $day,
-        'views' => cs_views($stats, [$day])['value'],
+        'views' => cdv_metric($visitorData, [$day])['value'],
         'orders' => cs_business($business, [$day], 'orders')['value'],
     ];
 }
@@ -235,7 +244,7 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
   <?php endif; ?>
   <div class="summary">
     <?php foreach ([
-        ['Seitenaufrufe', $views, false],
+        [$period['length'] === 1 ? 'Tagesbesucher' : 'Besuchertage', $views, false],
         ['Bestätigte Bestellungen', $orders, false],
         ['Warenumsatz', $revenue, true],
     ] as [$label, $metric, $money]): ?>
@@ -245,6 +254,11 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
     </article>
     <?php endforeach; ?>
   </div>
+  <p class="note">Ein Browser zählt pro Kalendertag (Europe/Berlin) höchstens einmal.
+    Besuchertage sind die Summe dieser Tageswerte, keine eindeutigen Personen über den gesamten Zeitraum.
+    Nur Browser mit Einwilligung werden erfasst; andere Geräte oder gelöschte Browserdaten können erneut zählen.</p>
+  <?php if ($views['value'] === null): ?><p class="note" role="status"><?= $visitorStatus === 'error' ? 'Besucherzählung konnte nicht geladen werden.' : 'Tagesbesucher: noch nicht erfasst.' ?></p>
+  <?php else: ?><p class="note">Nur erfasste Tage werden summiert. Striche sind unbekannte Werte, nicht null Besucher.</p><?php endif; ?>
   <?php if (($business['data']['operatorTestFilterConfirmed'] ?? true) !== true): ?>
   <p class="note" role="status">Bestellungen und Umsatz vorläufig</p>
   <?php elseif ($business['status'] === 'partial'): ?>
@@ -263,12 +277,12 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
   <h2 id="timeline">Verlauf</h2>
   <?php if ($views['value'] !== null): ?>
   <figure class="traffic">
-    <figcaption>Seitenaufrufe pro Tag<?= count($daily) > count($timelineChart) ? ' · letzte 90 Tage' : '' ?></figcaption>
+    <figcaption>Tagesbesucher<?= count($daily) > count($timelineChart) ? ' · letzte 90 Tage' : '' ?></figcaption>
     <div class="traffic-plot" aria-hidden="true">
       <?php foreach ($timelineChart as $row): ?>
       <?php
       $label = cs_date($row['day'])->format('d.m.') . ' · '
-          . ($row['views'] === null ? 'Keine Daten' : cs_number($row['views']) . ' Aufrufe');
+          . ($row['views'] === null ? 'Keine Daten' : cs_number($row['views']) . ' Tagesbesucher');
       ?>
       <div class="traffic-day" title="<?= cs_escape($label) ?>">
         <?php if ($row['views'] === null): ?><span class="traffic-gap"></span>
@@ -282,12 +296,12 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
     </div>
     <?php if (in_array(null, array_column($timelineChart, 'views'), true)): ?><div class="traffic-key"><span class="traffic-gap" aria-hidden="true"></span> Keine Daten</div><?php endif; ?>
   </figure>
-  <?php else: ?><p class="note">Keine Aufrufdaten</p><?php endif; ?>
+  <?php else: ?><p class="note">Keine Tagesbesucher erfasst</p><?php endif; ?>
   <details>
     <summary>Tageszahlen ansehen</summary>
     <div class="table-wrap" tabindex="0" role="region" aria-label="Tagesverlauf, seitlich scrollbar">
       <table>
-        <thead><tr><th scope="col">Tag</th><th scope="col">Seitenaufrufe</th><th scope="col">Bestellungen</th></tr></thead>
+        <thead><tr><th scope="col">Tag</th><th scope="col">Tagesbesucher</th><th scope="col">Bestellungen</th></tr></thead>
         <tbody>
           <?php foreach ($daily as $row): ?>
           <tr>
@@ -303,6 +317,7 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
 
 <section aria-labelledby="funnel">
   <h2 id="funnel">Kaufweg</h2>
+  <p class="note">Produktaufrufe bleiben Seitenaufrufe, keine Besucher. Die Schritte sind nicht personenbezogen verknüpft.</p>
   <dl class="number-list">
     <?php foreach ([
         [$productBaseline !== null && !$productHistory ? 'Produktseiten seit Marketing-Neustart' : 'Produktseiten aufgerufen', $productViews],
@@ -328,6 +343,7 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
 
 <section aria-labelledby="sources">
   <h2 id="sources">Herkunft pro Tag</h2>
+  <p class="note">Bisherige Einstiegsaufrufe nach Herkunft; nicht nach Besuchern bereinigt.</p>
   <div class="table-wrap source-table" tabindex="0" role="region" aria-label="Herkunft beim Einstieg">
     <table>
       <thead>
@@ -338,7 +354,7 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
         <tr>
           <th scope="row"><time datetime="<?= cs_escape($row['day']) ?>"><?= cs_date($row['day'])->format('d.m.Y') ?></time><?= $row['day'] === $today ? ' · Heute' : '' ?></th>
           <?php foreach (array_keys($sources) as $key): ?>
-          <?php $count = $row['views'] === null ? null : carmaja_bucket_pageview_source_total($stats['days'][$row['day']], $key); ?>
+          <?php $count = cs_views($stats, [$row['day']])['value'] === null ? null : carmaja_bucket_pageview_source_total($stats['days'][$row['day']], $key); ?>
           <td><?= $count === null ? cs_missing_cell() : cs_number($count) ?></td>
           <?php endforeach; ?>
         </tr>
@@ -405,6 +421,10 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
 
 <section aria-labelledby="more">
   <h2 id="more">Weitere Auswertungen</h2>
+  <details><summary>Bisherige Seitenaufrufe</summary>
+    <p><?= cs_escape(cs_value($pageViews)) ?> Seitenaufrufe im gewählten Zeitraum.</p>
+    <p class="note">Die bisherigen Daten bleiben erhalten. Seitenaufrufe lassen sich nicht nachträglich in Tagesbesucher umrechnen.</p>
+  </details>
   <details <?= isset($_GET['postWindow']) ? 'open' : '' ?>>
     <summary id="posts">Beiträge und Bildvarianten</summary>
     <form method="get" action="#posts">
@@ -507,7 +527,7 @@ summary { cursor: pointer; min-height: 44px; padding-block: .6rem; font-weight: 
       <div><dt>Bestellungen · Stand</dt><dd><?= cs_escape(cs_time($businessDate)) ?></dd></div>
       <?php if ($excluded > 0): ?><div><dt>Ausgeschlossene Testkäufe · insgesamt</dt><dd><?= $excluded ?></dd></div><?php endif; ?>
       <div><dt>Vorperiode</dt><dd><?= cs_escape($previousRange) ?></dd></div>
-      <div><dt>Seitenaufrufe · Vorperiode</dt><dd><?= cs_escape(cs_value($previousViews)) ?></dd></div>
+      <div><dt>Besuchertage · Vorperiode</dt><dd><?= cs_escape(cs_value($previousViews)) ?></dd></div>
       <div><dt>Bestellungen · Vorperiode</dt><dd><?= cs_escape(cs_value(cs_business($business, $previousDays, 'orders'))) ?></dd></div>
       <div><dt>Warenumsatz · Vorperiode</dt><dd><?= cs_escape(cs_value(cs_business($business, $previousDays, 'netGoodsMinor'), true)) ?></dd></div>
     </dl>

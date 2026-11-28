@@ -11,6 +11,8 @@ readonly EXPECTED_REPOSITORY='Bumpers210/armband-rechner'
 readonly EXPECTED_BRANCH='main'
 readonly CACHE_ROOT="$WORKSPACE/dashboard-cache"
 readonly -a FILES=(
+  '_internal/daily-visitors.php'
+  'daily-visitor.php'
   'statistik/.htaccess'
   'statistik/commerce-projection.php'
   'statistik/live-commerce.php'
@@ -24,7 +26,7 @@ fail() { printf '%s\n' "$1" >&2; exit 1; }
 
 validate_relative_path() {
   case "$1" in
-    'statistik/.htaccess'|'statistik/commerce-projection.php'|'statistik/live-commerce.php'|'statistik/report.php'|'statistik/dashboard.php'|'statistik/google.php'|'statistik/index.php') ;;
+    '_internal/daily-visitors.php'|'daily-visitor.php'|'statistik/.htaccess'|'statistik/commerce-projection.php'|'statistik/live-commerce.php'|'statistik/report.php'|'statistik/dashboard.php'|'statistik/google.php'|'statistik/index.php') ;;
     *) fail 'Unzulaessiger Hostingpfad.' ;;
   esac
 }

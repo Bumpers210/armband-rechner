@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import statisticsPolicy from "./content/daily-visitors-policy.json";
 
 const siteTarget = process.env.CARMAJA_SITE_TARGET ?? "production";
 const expectedSiteUrl =
@@ -6,6 +7,11 @@ const expectedSiteUrl =
     ? "https://test.carmaja-perlen.de"
     : "https://www.carmaja-perlen.de";
 const configuredSiteUrl = process.env.CARMAJA_SITE_URL ?? expectedSiteUrl;
+// A preview flag must never turn an unreviewed privacy draft into a live policy.
+if (siteTarget === "production" && process.env.NEXT_PUBLIC_DAILY_VISITORS_ENABLED === "true"
+    && statisticsPolicy.status !== "approved") {
+  throw new Error("Tagesbesucher: externe Datenschutzfreigabe und neue aktive Datenschutzfassung fehlen.");
+}
 const configuredShopApiOrigin =
   process.env.CARMAJA_SHOP_API_ORIGIN ??
   (siteTarget === "test"

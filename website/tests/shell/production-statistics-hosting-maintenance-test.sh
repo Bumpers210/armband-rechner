@@ -85,6 +85,8 @@ release_one="$commit_one-1-1"
 hash_one=$(create_package "$commit_one" "$release_one")
 run_install "$patched_installer" "$commit_one" "$release_one" "$hash_one"
 test ! -e "$webroot/pageview.php"
+cmp "$source_root/hosting/daily-visitor.php" "$webroot/daily-visitor.php"
+cmp "$source_root/hosting/_internal/daily-visitors.php" "$webroot/_internal/daily-visitors.php"
 test "$(cat "$webroot/.htaccess")" = 'old root'
 test "$(cat "$webroot/click.php")" = 'old click'
 test "$(cat "$webroot/_internal/tracking.php")" = 'old tracking'

@@ -1,5 +1,16 @@
 # Geschützte Statistikauswertung
 
+## Lokale Ergänzung vom 28. November 2026
+
+Die Zählung „pro Browser und Berliner Kalendertag einmal“ ist getrennt von den
+bestehenden Seitenaufrufen vorbereitet. Hauptzahl und Verlauf nutzen künftig
+Tagesbesucher; Mehrtagessummen heißen Besuchertage. Alle bisherigen Zähler
+bleiben erhalten. Keine Aktivierung und keine Änderung der bisherigen
+Datenschutzfreigabe: siehe [Tagesbesucher-Vertrag](daily-visitors.md), einschließlich
+der lokal implementierten Einwilligung und Löschroutine. Externe Bestätigung
+von Texten/Fristen und tatsächlichen Hosting-/Backupbedingungen bleibt offen:
+[Datenschutz-Prüfpaket](daily-visitors-privacy-review.md).
+
 Stand: 19.11.2026. Lokal implementiert, noch nicht veröffentlicht. Basis ist
 der veröffentlichte Shopstand `542521d5e3fabc606421a19ae9502665ee5f87ae` im
 isolierten Arbeitsbaum `carmaja-statistik-20261119`, Branch

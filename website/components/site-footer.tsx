@@ -5,6 +5,7 @@ import Link from "next/link";
 import { InstagramLink } from "@/components/instagram-link";
 import { siteContent } from "@/content/site-content";
 import { CelestialOrnament } from "@/components/celestial-ornament";
+import { StatisticsSettings } from "@/components/statistics-consent";
 
 export function SiteFooter() {
   return (
@@ -33,6 +34,7 @@ export function SiteFooter() {
 
         <nav aria-label="Rechtliche Hinweise">
           <ul className="v2-footer-links">
+            <StatisticsSettings />
             <li>
               <InstagramLink position="footer" />
             </li>

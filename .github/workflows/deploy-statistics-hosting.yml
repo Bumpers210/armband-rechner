@@ -6,6 +6,10 @@ on:
     paths:
       - '.github/workflows/deploy-statistics-hosting.yml'
       - 'website/hosting/statistik/**'
+      - 'website/hosting/daily-visitor.php'
+      - 'website/hosting/_internal/daily-visitors.php'
+      - 'website/tests/php/daily-visitors-test.php'
+      - 'website/scripts/daily-visitors-maintenance.php'
       - 'website/scripts/prepare-production-statistics-hosting-maintenance.sh'
       - 'website/scripts/install-production-statistics-hosting.sh'
       - 'website/scripts/export-statistics.php'
@@ -19,6 +23,10 @@ on:
     paths:
       - '.github/workflows/deploy-statistics-hosting.yml'
       - 'website/hosting/statistik/**'
+      - 'website/hosting/daily-visitor.php'
+      - 'website/hosting/_internal/daily-visitors.php'
+      - 'website/tests/php/daily-visitors-test.php'
+      - 'website/scripts/daily-visitors-maintenance.php'
       - 'website/scripts/prepare-production-statistics-hosting-maintenance.sh'
       - 'website/scripts/install-production-statistics-hosting.sh'
       - 'website/scripts/export-statistics.php'
@@ -94,6 +102,10 @@ jobs:
           php -l scripts/export-statistics.php
           php -l scripts/statistics-source-reader.php
           php tests/php/statistics-report-test.php
+          php -l hosting/_internal/daily-visitors.php
+          php -l hosting/daily-visitor.php
+          php -l scripts/daily-visitors-maintenance.php
+          php tests/php/daily-visitors-test.php
           bash tests/shell/production-statistics-hosting-maintenance-test.sh scripts/prepare-production-statistics-hosting-maintenance.sh scripts/install-production-statistics-hosting.sh
           npm ci
           npm run lint
@@ -190,8 +202,8 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$CARMAJA_RELEASE_ID" = "${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           test "$(sha256sum .statistics-hosting-package/statistics-hosting.tar.gz | awk '{print $1}')" = "$CARMAJA_ARCHIVE_SHA256"
-          test "$(awk -F '\t' '$1 == "file" { count += 1 } END { print count + 0 }' .statistics-hosting-package/manifest.tsv)" = 7
-          if tar -tzf .statistics-hosting-package/statistics-hosting.tar.gz | grep -Ev '^(\./)?statistik/(\.htaccess|(index|report|dashboard|google|commerce-projection|live-commerce)\.php)$'; then
+          test "$(awk -F '\t' '$1 == "file" { count += 1 } END { print count + 0 }' .statistics-hosting-package/manifest.tsv)" = 9
+          if tar -tzf .statistics-hosting-package/statistics-hosting.tar.gz | grep -Ev '^(\./)?(daily-visitor\.php|_internal/daily-visitors\.php|statistik/(\.htaccess|(index|report|dashboard|google|commerce-projection|live-commerce)\.php))$'; then
             exit 1
           fi
       - name: Prepare pinned SSH client
