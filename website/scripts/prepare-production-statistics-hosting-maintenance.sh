@@ -17,6 +17,8 @@ esac
 test "${#commit_sha}" -eq 40
 
 files=(
+  _internal/daily-visitors.php
+  daily-visitor.php
   statistik/.htaccess
   statistik/commerce-projection.php
   statistik/live-commerce.php

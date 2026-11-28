@@ -1,5 +1,24 @@
 # Carmaja-Perlen Shop – finaler V1-Implementierungsplan mit V2-Ausbau
 
+## Lokale Statistikvorbereitung am 28. November 2026
+
+Auf Wunsch wird ein Browser künftig pro Berliner Kalendertag einmal gezählt.
+Die Hauptanzeige verwendet Tagesbesucher bzw. die Summe der Besuchertage.
+Bisherige Seitenaufrufe bleiben vollständig erhalten und separat beschriftet;
+keine rückwirkende Umdeutung. Die neue Messung ist standardmäßig deaktiviert
+und benötigt vor Aktivierung eine gesonderte Datenschutz-/Consent- und
+Aufbewahrungsfreigabe. Es gibt keinen Serverzugriff, keine Produktionsänderung
+und kein Deployment in diesem Arbeitsschritt.
+Einwilligungsoberfläche mit gleichwertiger Ablehnung und direktem Widerruf sowie
+Cookieablauf an Berliner Mitternacht und private Löschroutine sind lokal
+vorbereitet. Wahlcookie: 180 Tage; Prüfwerte: im Normalbetrieb bis 00:15 des
+Folgetags. Bei überfälliger Wartung fail-closed. Datenschutzentwurf bleibt
+`awaiting_external_approval`; aktive Legal Bundles unverändert. Produktionsbuild
+mit Zählung ist bis zur neuen freigegebenen Datenschutzfassung gesperrt.
+Offen bleiben externe Prüfung und technische Zielumgebungsnachweise, insbesondere
+Löschcron, Alarmweg, Providerlogs und Backupausschlüsse; kein Aktivierungsauftrag.
+Vertrag und lokale Nachweise: [Tagesbesucher](../website/docs/daily-visitors.md).
+
 ## Erweiterung am 16. November 2026: manuelle Katalogreihenfolge
 
 Die Betreiberin legt die Website-Reihenfolge künftig ausschließlich in der

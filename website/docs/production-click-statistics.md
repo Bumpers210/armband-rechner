@@ -1,6 +1,6 @@
 # Produktions-Website-Statistik
 
-Die Hostingdateien unter `website/hosting/` werden nicht vom normalen Website-Deployment verwaltet. Der separate Workflow `deploy-statistics-hosting.yml` installiert die sieben Dateien unter `statistik/` nach einer manuellen Freigabe. Weitere Quellen beschreibt die [Statistikauswertung](statistics-reporting.md).
+Die Hostingdateien unter `website/hosting/` werden nicht vom normalen Website-Deployment verwaltet. Der separate Workflow `deploy-statistics-hosting.yml` paketiert die sieben Dateien unter `statistik/` sowie die lokal vorbereiteten Dateien `daily-visitor.php` und `_internal/daily-visitors.php` (neun Dateien). Eine Installation benötigt weiterhin eine manuelle Freigabe; die Besucherzählung bleibt unabhängig davon deaktiviert. Weitere Quellen beschreibt die [Statistikauswertung](statistics-reporting.md), den neuen Vertrag [Tagesbesucher](daily-visitors.md).
 
 ## Daten und Datenschutz
 

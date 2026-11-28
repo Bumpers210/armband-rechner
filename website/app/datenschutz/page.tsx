@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { LegalBundlePage } from "@/components/legal-bundle-page";
+import { StatisticsPrivacy } from "@/components/statistics-privacy";
 import { siteTarget } from "@/config/site-target";
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <LegalBundlePage sectionKey="privacy" title="Datenschutz">
+      <StatisticsPrivacy />
       <p className="legal-contact-link">
         Datenschutzanfragen:{" "}
         <a href="mailto:kontakt@carmaja-perlen.de">

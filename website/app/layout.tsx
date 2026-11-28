@@ -2,11 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PageViewTracker } from "@/components/pageview-tracker";
+import { StatisticsConsent } from "@/components/statistics-consent";
+import statisticsPolicy from "@/content/daily-visitors-policy.json";
+import { getActiveLegalBundle } from "@/content/legal-bundles";
+import { assertDailyVisitorsPublication } from "@/lib/daily-visitors-publication.mjs";
 import { siteTarget } from "@/config/site-target";
 import { siteContent } from "@/content/site-content";
 
 import "./globals.css";
 import "./site.css";
+import "./statistics-consent.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteContent.metadata.siteUrl),
@@ -50,6 +55,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  assertDailyVisitorsPublication({ enabled: process.env.NEXT_PUBLIC_DAILY_VISITORS_ENABLED === "true",
+    target: siteTarget.name, policy: statisticsPolicy, bundle: getActiveLegalBundle() });
   return (
     <html lang="de">
       <body>
@@ -57,6 +64,7 @@ export default function RootLayout({
         <a className="skip-link" href="#main-content">
           Zum Inhalt springen
         </a>
+        <StatisticsConsent />
         <Link className="persistent-bracelet-flag" href="/armbaender/">
           Armbänder ansehen
         </Link>

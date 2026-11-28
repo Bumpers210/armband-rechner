@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { recordDailyVisitor } from "@/lib/daily-visitors.mjs";
 
 type EntrySource =
   | "google"
@@ -85,6 +86,24 @@ export function PageViewTracker() {
 
     isInitialPage.current = false;
     sendPageView(pathname, source);
+    // Separate, default-off preparation. Never reuse shop or authentication identifiers.
+    const countVisitor = () => {
+      if (process.env.NEXT_PUBLIC_DAILY_VISITORS_ENABLED !== "true") return;
+      try {
+        void recordDailyVisitor({
+          enabled: true, cookie: () => document.cookie, setCookie: (value) => { document.cookie = value; },
+          locks: navigator.locks, crypto: window.crypto, fetch: window.fetch.bind(window),
+        }, pathname.endsWith("/") ? pathname : `${pathname}/`);
+      } catch { /* Storage can be unavailable even before the collector is called. */ }
+    };
+    countVisitor();
+    const onVisible = () => { if (document.visibilityState === "visible") countVisitor(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("carmaja:analytics-consent", countVisitor);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("carmaja:analytics-consent", countVisitor);
+    };
   }, [pathname]);
 
   return null;
