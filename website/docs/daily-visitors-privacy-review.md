@@ -3,6 +3,13 @@
 Stand: 28. November 2026. **Externe Datenschutzfreigabe ausstehend.**
 Nur lokale Vorbereitung; keine Aktivierung oder Erweiterung alter Freigaben.
 
+Fortschreibung: [Datenschutz- und Betriebsnachweise](daily-visitors-operations.md).
+Die offenen Providerbedingungen wurden am 28. November anhand offizieller
+IONOS-Quellen eingegrenzt. Automatische Sicherungen bis zu 14 Tagen sind
+dokumentiert; ein Backupausschluss dieses privaten Pfads ist **nicht** belegt.
+Logfristen sind vertragsabhängig und nicht pauschal aus dem Hilfeartikel zu
+übernehmen. Eine kopierfertige, kontospezifische Rückfrage steht im Nachweispaket.
+
 ## Umfang und maßgebliche Texte
 
 - Wunsch: ein Browser pro Berliner Kalendertag einmal; keine Personenerkennung.
@@ -33,6 +40,10 @@ Anonymisierung der Aggregate und Nachweisfähigkeit der Einwilligung bestätigen
 Keine zusätzliche zentrale Personen-/Consent-Historie nur zum Nachweis erzeugen.
 Das versionierte Wahlcookie und die unveränderte Textfassung dokumentieren das
 Verfahren, ersetzen aber nicht automatisch jeden rechtlichen Nachweis.
+DSK OH Digitale Dienste, Randnummern 84–85, stützen einen Verfahrensnachweis
+ohne zusätzliche langlebige UID; Bannerfassungen, Abläufe und Testbelege müssen
+dabei dauerhaft nachvollziehbar bleiben. Die konkrete Ausgestaltung bleibt
+extern zu bestätigen.
 
 Bei Cronausfall ist keine garantierte Löschung um 00:15 gegeben. Nach 30 Minuten
 ohne Wartungsnachweis stoppt die neue Erfassung automatisch; Betriebsalarm und

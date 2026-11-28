@@ -25,6 +25,7 @@ test("Statistikhosting bleibt ein getrennt freizugebender Produktionswartungssch
   assert.match(installer, /'_internal\/daily-visitors\.php'/);
   assert.match(installer, /'daily-visitor\.php'/);
   assert.match(workflow, /daily-visitors-test\.php/);
+  assert.match(workflow, /php tests\/php\/daily-visitors-operations-test\.php/);
   assert.match(workflow, /" = 9/);
   assert.doesNotMatch(workflow, /NEXT_PUBLIC_DAILY_VISITORS_ENABLED:\s*['"]?true/);
 });

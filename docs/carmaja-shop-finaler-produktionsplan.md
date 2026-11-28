@@ -19,6 +19,16 @@ Offen bleiben externe Prüfung und technische Zielumgebungsnachweise, insbesonde
 Löschcron, Alarmweg, Providerlogs und Backupausschlüsse; kein Aktivierungsauftrag.
 Vertrag und lokale Nachweise: [Tagesbesucher](../website/docs/daily-visitors.md).
 
+Fortschreibung vom selben Tag: PR #127 ist ohne Deployment nach `main`
+integriert. Zusätzliche lokale Betriebsprüfungen decken Abbruchreste, Alarmstatus,
+Wiederanlauf und Aggregate-Restore ab; eine dabei gefundene Löschlücke ist lokal
+korrigiert, noch nicht bereitgestellt. IONOS bestätigt öffentlich tägliche
+Webspace-Backups bis zu 14 Tagen; der konkrete Kennungs-Backupausschluss und
+tarifbezogene Logs/AVV bleiben ungeklärt. Kein Ersatz durch vermutete Anonymität.
+Neue Nachweise: [Betriebs-/Providerprüfung](../website/docs/daily-visitors-operations.md).
+Externe Freigabe, POSIX-Nachweis der Ergänzung, echter Cron und unabhängiger
+Alarmempfang bleiben Aktivierungsgates. Keine Aktivierungs- oder Deployfreigabe.
+
 ## Erweiterung am 16. November 2026: manuelle Katalogreihenfolge
 
 Die Betreiberin legt die Website-Reihenfolge künftig ausschließlich in der

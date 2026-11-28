@@ -97,6 +97,34 @@ function cdv_maintenance_fresh(array $data, ?DateTimeImmutable $now = null): boo
         && $time - $data['maintenanceAt'] <= CDV_MAINTENANCE_SECONDS;
 }
 
+// Only our exact writer filenames; never recurse, follow links or touch backups.
+function cdv_abandoned_writes(string $path): array
+{
+    $pattern = '/^' . preg_quote(basename($path), '/') . '\.tmp-[a-f0-9]{24}$/D';
+    $paths = [];
+    foreach (new DirectoryIterator(dirname($path)) as $entry) {
+        if (!preg_match($pattern, $entry->getFilename())) { continue; }
+        if ($entry->isLink() || !$entry->isFile()) { throw new RuntimeException('Visitor storage unavailable.'); }
+        $paths[] = $entry->getPathname();
+    }
+    return $paths;
+}
+
+// Read-only and serialized with writers: a live temporary write is not an orphan.
+function cdv_retention_healthy(string $path, ?DateTimeImmutable $now = null): bool
+{
+    if (is_link($path . '.lock')) { throw new RuntimeException('Visitor storage unavailable.'); }
+    $lock = @fopen($path . '.lock', 'rb');
+    if ($lock === false) { return false; }
+    try {
+        if (!flock($lock, LOCK_SH | LOCK_NB)) { return false; }
+        $data = cdv_read($path);
+        return cdv_maintenance_fresh($data, $now)
+            && ($data['seen'] === [] || $data['activeDay'] === cdv_day($now))
+            && cdv_abandoned_writes($path) === [];
+    } finally { flock($lock, LOCK_UN); fclose($lock); }
+}
+
 // One lock and atomic replacement for counting and scheduled retention alike.
 function cdv_update(string $path, callable $change): mixed
 {
@@ -107,6 +135,10 @@ function cdv_update(string $path, callable $change): mixed
     try {
         $lock = @fopen($path . '.lock', 'c');
         if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) { throw new RuntimeException('Visitor storage busy.'); }
+        // With the exclusive lock held, any previous writer fragment is abandoned.
+        foreach (cdv_abandoned_writes($path) as $abandoned) {
+            if (!@unlink($abandoned)) { throw new RuntimeException('Visitor storage unavailable.'); }
+        }
         $data = cdv_read($path);
         $result = $change($data);
         $json = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
